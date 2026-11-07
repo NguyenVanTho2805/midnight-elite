@@ -99,11 +99,18 @@ export async function loadAdminQueue(session: SessionPayload, opts: LoadQueueOpt
     want("vao-lop") ? loadJoinCourses() : Promise.resolve<JoinRep[]>([]),
   ]);
 
+  // Số báo cáo đang mở của từng gia sư có mặt trong trang này (một truy vấn gộp, chỉ đếm). Cố ý KHÔNG lọc theo con trỏ trang: N là TỔNG báo cáo đang mở về gia sư đó, gồm cả báo cáo nằm ngoài trang đang xem.
+  const openByTutor = new Map<string, number>();
+  if (profiles.length > 0) {
+    const g = await prisma.tutorProfileReport.groupBy({ by: ["tutorId"], where: { status: "open", tutorId: { in: [...new Set(profiles.map(r => r.tutorId))] } }, _count: { _all: true } });
+    for (const x of g) openByTutor.set(x.tutorId, x._count._all);
+  }
+
   const built = buildAdminQueue({
     now, viewerId: session.userId, limit: Number.MAX_SAFE_INTEGER,
     tutors: tutors.filter(t => t.tutorAppliedAt).map(t => ({ id: t.id, name: t.name, email: t.email, phone: t.phone, city: t.city, emailVerified: t.emailVerified, bio: t.bio, subjects: t.subjects, appliedAt: t.tutorAppliedAt! })),
     threads: threads.map(r => ({ id: r.id, reason: r.reason, createdAt: r.createdAt, reporter: r.reporter.name, reporterStaff: isStaff(r.reporter), author: r.thread.author.name, authorStaff: isStaff(r.thread.author), content: r.thread.content, course: r.thread.course?.name ?? null })),
-    profiles: profiles.map(r => ({ id: r.id, tutorId: r.tutorId, tutorName: r.tutor.name, reason: r.reason, detail: r.detail, channel: r.channel, createdAt: r.createdAt })),
+    profiles: profiles.map(r => ({ id: r.id, tutorId: r.tutorId, tutorName: r.tutor.name, reason: r.reason, detail: r.detail, channel: r.channel, createdAt: r.createdAt, openForTutor: openByTutor.get(r.tutorId) })),
     answers: answers.map(r => ({ id: r.id, reason: r.reason, createdAt: r.createdAt, reporter: r.reporter.name, reporterStaff: isStaff(r.reporter), author: r.answer.author.name, authorStaff: isStaff(r.answer.author), content: r.answer.content, questionTitle: r.answer.question.title, rewardPaid: r.answer.rewardPaid ?? 0 })),
     reviews: reviews.map(r => ({ id: r.id, rating: r.rating, comment: r.comment, createdAt: r.createdAt, reviewer: r.user.name, reviewerStaff: isStaff(r.user), courseId: r.courseId, courseName: r.course.name })),
     topups: topups.map(r => ({ id: r.id, requesterId: r.userId, requester: r.user.name, requesterStaff: isStaff(r.user), amountVnd: r.amountVnd, coinAmount: r.coinAmount, bankRef: r.bankRef, note: r.note, createdAt: r.createdAt })),

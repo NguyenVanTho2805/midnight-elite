@@ -1,9 +1,8 @@
 // Đánh giá khoá học — LỊCH SỬ + xoá (BU-08). Đánh giá đang chờ duyệt/từ chối nằm ở Hàng chờ (/admin/kiem-duyet?loai=danh-gia), không còn ở đây.
 // Bảng: cột đầu là định danh (khoá học · người viết rút gọn); ≤ 1 nút mỗi hàng (Xoá, xác nhận NỘI DÒNG — không hộp thoại); học sinh chỉ hiện tên rút gọn, không email.
 "use client";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { KinButton, KinCallout, KinEmptyState, KinStatus } from "@/components/kin";
+import { KinButton, KinEmptyState, KinStatus } from "@/components/kin";
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { QueueErrorStrip, QueueSkeleton } from "@/components/admin/queue/shared";
@@ -59,12 +58,9 @@ function Content() {
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
       <header>
-        <h1 className="text-[28px] font-medium leading-9 text-[var(--kin-chu-chinh)]">Đánh giá khoá học</h1>
-        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lịch sử các đánh giá đã xử lý. Có thể xoá một đánh giá không phù hợp.</p>
+        <h1 className="text-[28px] font-medium leading-9 text-[var(--kin-chu-chinh)]">Lịch sử đánh giá</h1>
+        <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đây là lịch sử các đánh giá đã xử lý, không phải nơi duyệt. Có thể xoá một đánh giá không phù hợp.</p>
       </header>
-      <KinCallout title="Đánh giá mới chờ duyệt ở Hàng chờ">
-        Duyệt hoặc từ chối ở <Link href="/admin/kiem-duyet?loai=danh-gia" className="font-medium underline text-[var(--kin-nhan-link)]">Hàng chờ, loại Đánh giá khoá</Link>.
-      </KinCallout>
 
       <nav aria-label="Lọc theo trạng thái" className="flex flex-wrap gap-2">
         {TABS.map(t => (

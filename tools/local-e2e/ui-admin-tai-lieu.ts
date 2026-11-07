@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
 
   async function openLessonPanel(pg: any, url: string) {
     await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await pg.getByRole("button", { name: /Danh sách chương bài/ }).first().click({ timeout: 60000 }).catch(() => {});
+    await pg.getByRole("button", { name: /Chương bài/ }).first().click({ timeout: 60000 }).catch(() => {});
     await pg.getByRole("button", { name: /\+ Thêm bài học/ }).first().click({ timeout: 60000 });
     await pg.getByText("Tài liệu đính kèm").first().waitFor({ timeout: 60000 });
   }
@@ -68,7 +68,7 @@ import { prisma } from "@/lib/prisma";
   const ca = await ctxFor(SA, { width: 1280, height: 900 });
   const pa = await ca.newPage(); watch(pa);
   await pa.goto(`${ADMIN}/admin/khoa-hoc/${course.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await pa.getByRole("button", { name: /Danh sách chương bài/ }).first().click({ timeout: 60000 }).catch(() => {});
+  await pa.getByRole("button", { name: /Chương bài/ }).first().click({ timeout: 60000 }).catch(() => {});
   // nút sửa của hàng bài học là nút biểu tượng có title="Sửa" (không có aria-label — có sẵn ở khoa-hoc/[id]/page.tsx, ghi trong phiếu)
   const edit = pa.locator('main button[title="Sửa"]');
   await edit.first().waitFor({ timeout: 60000 }).catch(() => {});

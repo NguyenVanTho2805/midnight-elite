@@ -83,9 +83,9 @@ import { COIN_VISIBLE } from "@/lib/features";
   const hn = pg.getByTestId("hom-nay");
   await hn.locator("[data-todo]").first().waitFor({ timeout: 90000 });
   const keys = await hn.locator("[data-todo]").evaluateAll(els => els.map(e => e.getAttribute("data-todo")).sort().join());
-  check("danh sách có đúng việc đang chờ: gia sư xin duyệt + nạp Coin", keys === (COIN_VISIBLE ? "gia-su,nap-coin" : "gia-su"), keys); // 05/11/2026: Coin ẩn → không có việc nạp Coin
-  check("mỗi việc là liên kết tới Hàng chờ đã lọc theo loại (?loai=…)", (!COIN_VISIBLE || await hn.locator('[data-todo="nap-coin"] a').getAttribute("href") === "/admin/kiem-duyet?loai=nap-coin") && await hn.locator('[data-todo="gia-su"] a').getAttribute("href") === "/admin/kiem-duyet?loai=gia-su");
-  check("mục chờ lâu nhất vẫn có chữ giải thích (không chỉ số)", (COIN_VISIBLE ? /Đối chiếu sao kê rồi duyệt/ : /Mở hàng chờ để duyệt hoặc từ chối/).test(await hn.innerText()));
+  check("danh sách có đúng MỘT dòng tổng 'hang-cho' (gia sư xin duyệt" + (COIN_VISIBLE ? " + nạp Coin" : "") + " gộp lại)", keys === "hang-cho", keys); // 05/11/2026: Coin ẩn → không có việc nạp Coin; điều hướng B1: gộp thành một dòng
+  check("dòng tổng là liên kết tới Hàng chờ (/admin/kiem-duyet)", await hn.locator('[data-todo="hang-cho"] a').getAttribute("href") === "/admin/kiem-duyet");
+  check("dòng tổng có chữ giải thích số theo loại (không chỉ số)", /hồ sơ gia sư chờ duyệt/.test(await hn.innerText()) && (!COIN_VISIBLE || /yêu cầu nạp Coin/.test(await hn.innerText())));
   check("khối 'Nhắc nhở theo lớp' đã rời khỏi Hôm nay (BU-08 Q7)", (await pg.getByRole("button", { name: "Nhắc nhở theo lớp" }).count()) === 0 && (await pg.getByTestId("nhac-chon-lop").count()) === 0);
 
   section("Nhắc cả lớp (QT-07) — nay ở trang Học viên của lớp");

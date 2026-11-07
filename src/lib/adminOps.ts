@@ -252,13 +252,34 @@ export function buildTodayList(c: TodayCounts): TodayItem[] {
     c.reviewsPending == null ? null : { key: "danh-gia", group: "duyet", label: "Đánh giá khoá học chờ duyệt", count: c.reviewsPending, href: queueHref("danh-gia"), hint: "Duyệt hoặc từ chối" },
     c.guestQuestions == null ? null : { key: "khach-hoi", group: "duyet", label: "Câu hỏi của khách chờ duyệt", count: c.guestQuestions, href: queueHref("khach-hoi"), hint: "Đọc kỹ trước khi cho hiện công khai" },
     c.topupsPending === null || !COIN_VISIBLE ? null : { key: "nap-coin", group: "duyet", label: "Yêu cầu nạp Coin chờ duyệt", count: c.topupsPending, href: queueHref("nap-coin"), hint: "Đối chiếu sao kê rồi duyệt" },
-    c.proOrdersPending === null ? null : { key: "goi-pro", group: "duyet", label: "Yêu cầu gói Pro chờ kích hoạt", count: c.proOrdersPending, href: "/admin/goi-pro", hint: "Đối chiếu sao kê rồi kích hoạt" },
-    c.supportOpen === null ? null : { key: "ho-tro", group: "duyet", label: "Yêu cầu hỗ trợ gia sư đang chờ", count: c.supportOpen, href: "/admin/ho-tro", hint: "Trả lời trong giờ hành chính" },
+    c.proOrdersPending === null ? null : { key: "goi-pro", group: "duyet", label: "Yêu cầu gói Pro chờ kích hoạt", count: c.proOrdersPending, href: "/admin/goi-pro", hint: "Xử lý ở trang Gói KiN Pro (không qua Hàng chờ): đối chiếu sao kê rồi kích hoạt" },
+    c.supportOpen === null ? null : { key: "ho-tro", group: "duyet", label: "Yêu cầu hỗ trợ gia sư đang chờ", count: c.supportOpen, href: "/admin/ho-tro", hint: "Trả lời ở trang Hỗ trợ gia sư (không qua Hàng chờ), trong giờ hành chính" },
     c.joinSlowCourses == null ? null : { key: "vao-lop-cham", group: "theo-doi", label: "Lớp để học sinh chờ vào quá lâu", count: c.joinSlowCourses, href: queueHref("vao-lop"), hint: "Gia sư của lớp chưa duyệt yêu cầu vào lớp" },
     c.scheduledArticles == null ? null : { key: "bai-hen-gio", group: "theo-doi", label: "Bài viết hẹn giờ sắp lên", count: c.scheduledArticles, href: "/admin/tin-tuc", hint: "Học sinh được báo khi bài lên" },
     c.cronSlow == null ? null : { key: "cron-cham", group: "he-thong", label: "Tác vụ định kỳ chạy chậm", count: c.cronSlow, href: "/admin/trien-khai", hint: "Xem lần gọi gần nhất ở màn Triển khai" },
   ];
   return rows.filter((r): r is TodayItem => !!r && r.count > 0);
+}
+const QUEUE_SHORT: Record<string, string> = {
+  "gia-su": "hồ sơ gia sư chờ duyệt", "bai-viet": "bài viết bị báo cáo", "ho-so": "hồ sơ gia sư bị báo cáo", "tra-loi": "câu trả lời bị báo cáo",
+  "danh-gia": "đánh giá khoá học", "khach-hoi": "câu hỏi của khách", "nap-coin": "yêu cầu nạp Coin",
+};
+const isQueueRow = (i: TodayItem) => i.group === "duyet" && i.href.startsWith("/admin/kiem-duyet");
+/**
+ * Màn Hôm nay (điều hướng B1): các dòng loại DUYỆT nằm trong Hàng chờ gộp thành MỘT dòng tổng "N việc đang chờ" dẫn tới Hàng chờ
+ * (mô tả liệt kê số theo loại, không tên người). Gói Pro chờ kích hoạt và Hỗ trợ gia sư không qua Hàng chờ nên giữ dòng riêng (trang xử lý riêng),
+ * và vẫn được tính vào tổng việc chờ của Hôm nay. Nhóm theo-doi / he-thong giữ nguyên. Không có dòng duyệt nào → không thêm dòng tổng.
+ */
+export function foldQueueItems(items: TodayItem[]): TodayItem[] {
+  const queue = items.filter(isQueueRow);
+  if (queue.length === 0) return items;
+  const n = queue.reduce((s, i) => s + i.count, 0);
+  const folded: TodayItem = {
+    key: "hang-cho", group: "duyet", label: `${n} việc đang chờ trong Hàng chờ`, count: n, href: "/admin/kiem-duyet",
+    hint: queue.map(i => `${i.count} ${QUEUE_SHORT[i.key] ?? i.label.toLocaleLowerCase("vi")}`).join(" · "),
+  };
+  const at = items.findIndex(isQueueRow);
+  return [...items.slice(0, at), folded, ...items.slice(at).filter(i => !isQueueRow(i))];
 }
 /** Chia theo nhóm theo thứ tự cố định; nhóm rỗng bị bỏ. */
 export function groupTodayItems(items: TodayItem[]): { key: TodayGroupKey; label: string; items: TodayItem[] }[] {

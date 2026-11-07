@@ -67,6 +67,9 @@ it = q.items[0];
 check("kind ho-so, Khoá cần lý do ≤ 500 (PATCH lock), Bỏ qua không cần (dismiss); chỉ 'Bỏ qua' được hàng loạt", it.kind === "ho-so" && act(it, "lock").reason?.max === 500 && act(it, "lock").method === "PATCH" && JSON.stringify(act(it, "lock").body) === '{"action":"lock"}' && !act(it, "dismiss").reason && JSON.stringify(act(it, "dismiss").body) === '{"action":"dismiss"}' && it.bulk.join() === "dismiss");
 check("đúng API: /api/admin/profile-reports/<id>", it.detail.actions.every(a => a.url === "/api/admin/profile-reports/p1"));
 check("khung đọc nói rõ khoá làm gì", it.detail.sections.some(s => s.title === "Khoá hồ sơ làm gì" && /ẩn hồ sơ công khai/.test(s.text)));
+q = run({ profiles: [prof({ openForTutor: 3 })] });
+check("gia sư có ≥2 báo cáo đang chờ → khung đọc ghi 'có 3 báo cáo đang chờ'", q.items[0].detail.sections.some(s => s.title === "Báo cáo về gia sư này" && /có 3 báo cáo đang chờ/.test(s.text)));
+check("chỉ 1 báo cáo (hoặc không biết) → không thêm dòng thừa", [prof({ openForTutor: 1 }), prof()].every(p => !run({ profiles: [p] }).items[0].detail.sections.some(s => s.title === "Báo cáo về gia sư này")));
 q = run({ profiles: [prof({ detail: "Số điện thoại không đúng", channel: "Zalo" })] });
 check("chi tiết + kênh báo hiện khi có; place = kênh", q.items[0].detail.sections.some(s => s.title === "Chi tiết") && q.items[0].detail.sections.some(s => s.title === "Báo cáo từ" && s.text === "Zalo") && q.items[0].place === "Zalo");
 
