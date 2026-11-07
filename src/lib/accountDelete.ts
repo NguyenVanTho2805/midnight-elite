@@ -23,6 +23,7 @@ export function buildAnonymizedUserData(id: string, kind: AccountKind, now: Date
     phone: null, phoneE164: null, phoneVerifiedAt: null, dateOfBirth: null,
     parentPhone: null, parentName: null, school: null, highSchool: null, city: null,
     avatarBase64: null, facebookUrl: null, zaloPhone: null, bio: null,
+    coverUrl: null, introVideoUrl: null, tutorRejectReason: null,
     preferences: Prisma.DbNull,
     subjects: [],
     ...(kind === "tutor" ? { tutorVerified: false, profileLockedAt: now, profileLockReason: "Tài khoản đã xóa" } : {}),
@@ -59,32 +60,43 @@ export function pickBlocker(c: BlockerCounts): Blocker | null {
 }
 
 /** Đọc DB (chỉ ĐỌC các bảng tiền). */
-export async function countBlockers(userId: string, kind: AccountKind): Promise<BlockerCounts> {
+export async function countBlockers(userId: string, kind: AccountKind, db: Pick<typeof prisma, "enrollment" | "course" | "tuitionInvoice" | "feeCharge" | "sessionPackage" | "coinTopupRequest" | "proOrder" | "wallet" | "tutorSubscription"> = prisma): Promise<BlockerCounts> {
   const isTutor = kind === "tutor";
   const [activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, wallet, approvedTopups, activeSubscriptions] = await Promise.all([
-    isTutor ? Promise.resolve(0) : prisma.enrollment.count({ where: { userId, status: "active" } }),
-    isTutor ? prisma.course.count({ where: { ownerId: userId, OR: [{ enrollments: { some: { status: "active" } } }, { status: true, classStatus: { not: "closed" } }] } }) : Promise.resolve(0),
-    prisma.tuitionInvoice.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], status: { in: [...OPEN_INVOICE_STATUSES] } } }),
-    prisma.feeCharge.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], amount: { gt: 0 }, invoiceId: null } }),
-    prisma.sessionPackage.count({ where: { studentId: userId, status: "active" } }),
-    prisma.coinTopupRequest.count({ where: { userId, status: "pending" } }),
-    prisma.proOrder.count({ where: { userId, status: "pending" } }),
-    prisma.wallet.findUnique({ where: { userId }, select: { balance: true } }),
-    prisma.coinTopupRequest.count({ where: { userId, status: "approved" } }),
-    isTutor ? prisma.tutorSubscription.count({ where: { userId, status: "active" } }) : Promise.resolve(0),
+    isTutor ? Promise.resolve(0) : db.enrollment.count({ where: { userId, status: "active" } }),
+    isTutor ? db.course.count({ where: { ownerId: userId, OR: [{ enrollments: { some: { status: "active" } } }, { status: true, classStatus: { not: "closed" } }] } }) : Promise.resolve(0),
+    db.tuitionInvoice.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], status: { in: [...OPEN_INVOICE_STATUSES] } } }),
+    db.feeCharge.count({ where: { OR: [{ studentId: userId }, { tutorId: userId }], amount: { gt: 0 }, invoiceId: null } }),
+    db.sessionPackage.count({ where: { studentId: userId, status: "active" } }),
+    db.coinTopupRequest.count({ where: { userId, status: "pending" } }),
+    db.proOrder.count({ where: { userId, status: "pending" } }),
+    db.wallet.findUnique({ where: { userId }, select: { balance: true } }),
+    db.coinTopupRequest.count({ where: { userId, status: "approved" } }),
+    isTutor ? db.tutorSubscription.count({ where: { userId, status: "active" } }) : Promise.resolve(0),
   ]);
   return { activeEnrollments, ownedCoursesActive, openInvoices, uninvoicedFees, activePackages, pendingTopups, pendingProOrders, walletBalance: wallet?.balance ?? 0, approvedTopups, activeSubscriptions };
 }
 
-/** Ẩn danh hoá trong MỘT giao dịch. false = tài khoản đã ẩn danh (hai người xoá cùng lúc) → không làm gì. */
-export async function anonymizeUser(userId: string, kind: AccountKind): Promise<boolean> {
-  return prisma.$transaction(async tx => {
-    const r = await tx.user.updateMany({ where: { id: userId, ...NOT_ANONYMIZED }, data: buildAnonymizedUserData(userId, kind) });
-    if (r.count === 0) return false;
-    await tx.pushSubscription.deleteMany({ where: { userId } });
-    await tx.verifyToken.deleteMany({ where: { userId } });
-    await tx.passwordResetToken.deleteMany({ where: { userId } });
-    if (kind === "tutor") await tx.tutorPayoutAccount.deleteMany({ where: { userId } });
-    return true;
-  });
+/** Ẩn danh hoá trong MỘT giao dịch: khoá hàng User bằng updateMany (có điều kiện vai), ĐẾM LẠI các mã chặn trong cùng giao dịch rồi mới xoá PII.
+ *  Trả {blocker} (đã hoàn tác), false (đã ẩn danh / sai vai — hai người xoá cùng lúc hoặc vừa đổi vai), hoặc {counts}. */
+class BlockedError extends Error { constructor(public blocker: Blocker) { super("blocked"); } }
+export async function anonymizeUser(userId: string, kind: AccountKind): Promise<false | { blocker: Blocker } | { counts: BlockerCounts }> {
+  const roleWhere = kind === "tutor" ? { role: "admin", adminRole: "teacher" } : { role: "student" };
+  try {
+    return await prisma.$transaction(async tx => {
+      const r = await tx.user.updateMany({ where: { id: userId, ...roleWhere, ...NOT_ANONYMIZED }, data: buildAnonymizedUserData(userId, kind) });
+      if (r.count === 0) return false as const;
+      const counts = await countBlockers(userId, kind, tx);
+      const blocker = pickBlocker(counts);
+      if (blocker) throw new BlockedError(blocker); // hoàn tác cả bước ẩn danh
+      await tx.pushSubscription.deleteMany({ where: { userId } });
+      await tx.verifyToken.deleteMany({ where: { userId } });
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
+      if (kind === "tutor") { await tx.tutorPayoutAccount.deleteMany({ where: { userId } }); await tx.tutorDocBrand.deleteMany({ where: { userId } }); }
+      return { counts };
+    });
+  } catch (e) {
+    if (e instanceof BlockedError) return { blocker: e.blocker };
+    throw e;
+  }
 }
