@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireStudentRole } from "@/lib/studentOnly";
 import { prisma } from "@/lib/prisma";
 import { suspendedLessonBlock } from "@/lib/suspendedContentServer";
 import { isLearnerVisible } from "@/lib/lessonStatus";
@@ -16,8 +16,8 @@ export async function GET(
   _req: Request,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { lessonId } = await params;
   // Đã nghỉ lớp (quyết định 06/11/2026): không đọc / ghi ghi chú của bài thuộc lớp đó nữa (bài miễn phí thì giữ).
@@ -37,8 +37,8 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { lessonId } = await params;
   const blocked = await suspendedLessonBlock(session.userId, lessonId);

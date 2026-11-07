@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ENROLLMENT_STATUS, splitEnrollmentIds } from "@/lib/enrollment";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
+import { isStudentInDb } from "@/lib/studentOnly";
 
 // GET /api/enrollments — danh sách courseId mà student hiện tại đã enroll (xếp theo lúc vào lớp, cũ trước, để "lớp đầu tiên" luôn là một lớp xác định).
 // `courseIds` = CHỈ lớp đang học (status active). `pendingConsentCourseIds` (2A, 04/11/2026) = lớp em đã vào nhưng đang CHỜ PHỤ HUYNH ĐỒNG Ý: không có quyền học, chỉ để thẻ lớp
@@ -13,6 +14,10 @@ export async function GET(req: Request) {
   if (!session) return NextResponse.json({ courseIds: [], pendingConsentCourseIds: [], suspendedCourseIds: [] });
 
   const detail = new URL(req.url).searchParams.get("detail") === "1";
+  // TUT-dong-giang H4: gia sư / quản trị không phải học sinh — Enrollment cũ của tài khoản đã đổi vai là dữ liệu, không phải tư cách đang học. Trả rỗng (200), không lộ danh sách.
+  if (session.role !== "student" || !(await isStudentInDb(session.userId))) {
+    return NextResponse.json({ courseIds: [], pendingConsentCourseIds: [], suspendedCourseIds: [], ...(detail ? { courses: [] } : {}) });
+  }
   const where = { userId: session.userId, status: { in: [ENROLLMENT_STATUS.ACTIVE, ENROLLMENT_STATUS.PENDING_CONSENT, ENROLLMENT_STATUS.SUSPENDED] } };
   const orderBy = [{ createdAt: "asc" as const }, { courseId: "asc" as const }];
   if (!detail) {

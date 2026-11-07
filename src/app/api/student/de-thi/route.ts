@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { isStudentInDb } from "@/lib/studentOnly";
 import { listStudentAssignments } from "@/lib/examAssignmentsServer";
 
 // GET /api/student/de-thi — BU-04: danh sách "Đề thi" của học sinh đang đăng nhập (lớp em học + đề em đã làm).
@@ -7,6 +8,10 @@ import { listStudentAssignments } from "@/lib/examAssignmentsServer";
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  // H4: gia sư / quản trị không phải học sinh ⇒ rỗng (200).
+  if (session.role !== "student" || !(await isStudentInDb(session.userId))) {
+    return NextResponse.json({ serverNow: new Date().toISOString(), items: [] }, { headers: { "Cache-Control": "no-store" } });
+  }
   try {
     const now = new Date();
     const items = await listStudentAssignments(session.userId, now);

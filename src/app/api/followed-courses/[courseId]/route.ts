@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireStudentRole } from "@/lib/studentOnly";
 import { prisma } from "@/lib/prisma";
 
 // POST/DELETE /api/followed-courses/[courseId] — theo dõi / bỏ theo dõi 1 lớp.
@@ -7,8 +7,8 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ courseId: string }> },
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { courseId } = await params;
   try {
@@ -36,8 +36,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ courseId: string }> },
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { courseId } = await params;
   try {
