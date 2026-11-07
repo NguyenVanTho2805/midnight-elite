@@ -50,15 +50,16 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 
   section("Lịch học của lớp: link vào lớp");
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=lich-hoc`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "+ Thêm khung giờ" }).click();
+  // D1: tab Lịch học của admin dùng lưới LichKhung (panel khung giờ), không còn form cũ.
+  await page.getByRole("button", { name: "Thêm khung giờ" }).click();
   await page.getByLabel(/Link vào lớp/).fill("https://meet.google.com/xyz-abcd-efg");
   await page.getByRole("button", { name: "Lưu khung giờ" }).click();
-  await page.getByRole("link", { name: "Link vào lớp" }).waitFor({ timeout: 15000 });
-  check("lưu link, hiện 'Link vào lớp' trên khung giờ", (await prisma.classSchedule.findFirst({ where: { courseId: course.id } }))?.joinUrl === "https://meet.google.com/xyz-abcd-efg");
-  await page.getByRole("button", { name: "+ Thêm khung giờ" }).click();
+  await page.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 15000 });
+  await eventually("lưu link vào lớp trên khung giờ", async () => (await prisma.classSchedule.findFirst({ where: { courseId: course.id } }))?.joinUrl === "https://meet.google.com/xyz-abcd-efg");
+  await page.getByRole("button", { name: "Thêm khung giờ" }).click();
   await page.getByLabel(/Link vào lớp/).fill("javascript:alert(1)");
   await page.getByRole("button", { name: "Lưu khung giờ" }).click();
-  await page.getByText(/Link vào lớp phải là địa chỉ http\(s\) hợp lệ|URL|link/i).first().waitFor({ timeout: 15000 }).catch(() => {});
+  await page.getByText(/http:\/\/ hoặc https:\/\//).first().waitFor({ timeout: 15000 });
   check("link không hợp lệ bị từ chối, không lưu", (await prisma.classSchedule.count({ where: { courseId: course.id } })) === 1);
 
   section("TK-167: chủ đề lưu theo tài khoản");

@@ -224,6 +224,10 @@ export function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
         {/* Form */}
         <div className="p-5 space-y-6">
 
+          <p data-nhac-lich className="text-sm leading-5 rounded-lg border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] px-3 py-2 text-[var(--kin-chu-phu)]">
+            Sau khi tạo, vào tab Lịch học đặt khung giờ hằng tuần. Học sinh chưa thấy buổi nào cho tới lúc đó.
+          </p>
+
           {/* Tên + Slug */}
           <section>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Tên khoá học</h3>

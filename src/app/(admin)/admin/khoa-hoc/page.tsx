@@ -248,7 +248,12 @@ function KhoaHocListInner() {
           onClose={() => setActiveId(null)}
           onSaved={onPanelSaved}
           onRemoved={id => { setRows(p => p.filter(r => r.id !== id)); setSelected(p => { const n = new Set(p); n.delete(id); return n; }); setActiveId(null); showToast("Đã xoá khoá học"); }}
-          onDuplicated={() => { showToast("Đã sao chép khoá học"); load(false); }}
+          onDuplicated={n => {
+            showToast(n === undefined ? "Đã sao chép khoá học"
+              : n > 0 ? `Đã sao chép khoá học, chép ${n} khung giờ`
+              : "Đã sao chép khoá học. Lớp mới chưa có khung giờ, vào tab Lịch học để đặt");
+            load(false);
+          }}
         />
       )}
 
@@ -276,7 +281,7 @@ function KhoaHocListInner() {
         onCreated={slug => {
           // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học. Quản trị trung tâm: ở lại danh sách.
           if (isTeacher) { router.push(href(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`)); return; }
-          showToast("Đã tạo khoá học mới"); load(false);
+          showToast("Đã tạo khoá học mới. Vào tab Lịch học của khoá để đặt khung giờ hằng tuần"); load(false);
         }}
         showToast={(msg, ok) => showToast(msg, ok ?? true)}
       />
