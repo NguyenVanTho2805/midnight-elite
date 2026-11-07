@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccess, hasAssignmentInCourse } from "@/lib/courseAccessServer";
+import { canDo } from "@/lib/courseAccess";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
-  if (isNextResponse(auth)) return auth;
-
   const { id: courseId } = await params;
+  // TUT-dong-giang: đồng giảng / bộ môn xem được tên + trạng thái + tiến độ; KHÔNG có email, SĐT, trường (TRẺ EM, chờ chủ Q3). Bộ môn chưa được giao gì chỉ thấy SỐ LƯỢNG.
+  const acc = await requireCourseAccess(courseId, "roster.view");
+  if (!acc.ok) return acc.res;
+  const withContact = canDo(acc.role, "roster.contact");
+  const namesVisible = acc.role !== "subject_teacher" || (await hasAssignmentInCourse(courseId, acc.session.userId));
 
   // Lấy tất cả lesson IDs của khoá học
   const courseData = await prisma.course.findUnique({
@@ -19,9 +21,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
   if (!courseData) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
-  if (!ownsResource(auth, courseData.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
 
   const allLessonIds = courseData?.sections
     .flatMap(s => s.chapters.flatMap(c => c.lessons.map(l => l.id))) ?? [];
@@ -32,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     prisma.enrollment.findMany({
       where:   { courseId },
       include: {
-        user: { select: { id: true, name: true, email: true, phone: true, school: true, createdAt: true } },
+        user: { select: withContact ? { id: true, name: true, email: true, phone: true, school: true, createdAt: true } : { id: true, name: true, createdAt: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -51,13 +50,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const students = enrollments.map(e => {
     const completed = progressMap.get(e.userId) ?? 0;
+    const u = e.user as { name: string; email?: string; phone?: string | null; school?: string | null };
     return {
       userId:      e.userId,
       status:      e.status,
-      name:        e.user.name,
-      email:       e.user.email,
-      phone:       e.user.phone,
-      school:      e.user.school,
+      name:        u.name,
+      ...(withContact ? { email: u.email, phone: u.phone, school: u.school } : {}),
       enrolledAt:  e.createdAt,
       completed,
       totalLessons,
@@ -65,5 +63,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     };
   });
 
+  if (!namesVisible) return NextResponse.json({ students: [], total: students.length, namesHidden: true });
   return NextResponse.json({ students, total: students.length });
 }

@@ -24,7 +24,7 @@ export type EnrollSource = "class_invite" | "join_open" | "join_approved";
 export interface EnrollCourse { id: string; ownerId: string | null; capacity: number | null; classStatus: string }
 export type EnrollResult =
   | { ok: true; enrollmentId: string; status: "active" | "pending_consent" | "suspended"; created: boolean }
-  | { ok: false; code: "CLASS_CLOSED" | "CAPACITY_FULL" | "CLASS_NOT_ACCEPTING"; status: 409; error: string; gate?: EnrollGate };
+  | { ok: false; code: "CLASS_CLOSED" | "CAPACITY_FULL" | "CLASS_NOT_ACCEPTING" | "NOT_STUDENT"; status: 409; error: string; gate?: EnrollGate };
 
 /** Việc DUY NHẤT tạo Enrollment cho học sinh tự vào / được duyệt. Trong giao dịch `tx` của người gọi: khoá advisory theo LỚP, kiểm classStatus === "open",
  *  sức chứa (đếm active), hạn mức gói của gia sư (feature "redeem"), trạng thái qua deriveStatusForNewEnrollment (cổng ĐỒNG Ý giữ nguyên), rồi tạo Enrollment.
@@ -35,6 +35,11 @@ export async function enrollInTx(
   i: { userId: string; course: EnrollCourse; source: EnrollSource; inviteId?: string | null },
 ): Promise<EnrollResult> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`class_enroll:${i.course.id}`}))`;
+
+  // TUT-dong-giang (H1): chỉ HỌC SINH mới được ghi danh làm học viên. Tài khoản đã chuyển thành gia sư / quản trị (Enrollment cũ vẫn còn, không đụng) không được thêm
+  // lớp nào nữa qua mã mời, vào lớp mở, hay đơn xin vào được duyệt muộn. Đọc vai từ DB (JWT có thể cũ). Gốc của cả ba đường E1–E3.
+  const who = await tx.user.findUnique({ where: { id: i.userId }, select: { role: true } });
+  if (!who || who.role !== "student") return { ok: false, code: "NOT_STUDENT", status: 409, error: "Tài khoản này không phải học sinh" };
 
   const existing = await tx.enrollment.findUnique({ where: { userId_courseId: { userId: i.userId, courseId: i.course.id } }, select: { id: true, status: true } });
   if (existing) {
@@ -190,7 +195,7 @@ export async function cancelJoinRequest(requestId: string, userId: string): Prom
 
 // ── Duyệt / từ chối (gia sư chủ lớp) ────────────────────────────────────────────────────────────
 
-export type DecideOutcome = "ok" | "tuchoi" | "day" | "dong" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co" | "da-nghi";
+export type DecideOutcome = "ok" | "tuchoi" | "day" | "dong" | "goi" | "da-xu-ly" | "loi-ghi-chu" | "khong-co" | "da-nghi" | "khong-phai-hs";
 export interface DecideCourse { id: string; name: string; ownerId: string | null; capacity: number | null; classStatus: string }
 
 /** Duyệt (`duyet`) hoặc từ chối (`tu-choi`) MỘT yêu cầu của lớp `course`. Người gọi đã kiểm gia sư là chủ lớp.
@@ -221,7 +226,15 @@ export async function decideJoinRequest(
     if (!step.ok) return { outcome: "da-xu-ly" };
     if (action === "duyet") {
       const enr = await enrollInTx(tx, { userId: r.userId, course, source: "join_approved", inviteId: r.inviteId });
-      if (!enr.ok) return { outcome: enr.code === "CAPACITY_FULL" ? "day" : enr.code === "CLASS_CLOSED" ? "dong" : "goi" };
+      if (!enr.ok) {
+        // TUT-dong-giang (H1): người xin vào nay không còn là học sinh ⇒ KHÔNG tạo Enrollment; đơn bị đánh dấu cancelled và trả lại lượt mã.
+        if (enr.code === "NOT_STUDENT") {
+          await tx.classJoinRequest.update({ where: { id: requestId }, data: { status: "cancelled", decidedBy: tutorId, decidedAt: now, note: null } });
+          await refundInviteUse(tx, r.inviteId);
+          return { outcome: "khong-phai-hs" };
+        }
+        return { outcome: enr.code === "CAPACITY_FULL" ? "day" : enr.code === "CLASS_CLOSED" ? "dong" : "goi" };
+      }
       // Đang tạm dừng: enrollInTx giữ nguyên hồ sơ (không mở lại). Không đánh dấu approved, không thông báo "đã vào lớp".
       if (enr.status === "suspended") return { outcome: "da-nghi" };
       await tx.classJoinRequest.update({ where: { id: requestId }, data: { status: "approved", decidedBy: tutorId, decidedAt: now, note: null } });

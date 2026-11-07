@@ -17,8 +17,8 @@
 // xoá buổi, thì buổi bù được trả lại.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireAttendanceSessionAccess, sessionTeacherOf, markDeniedResponse, roleForbidden, isHelperRole } from "@/lib/courseAccessServer";
+import { canDo, canMarkSession } from "@/lib/courseAccess";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
@@ -41,17 +41,11 @@ const asSessions = () =>
 const asRecords = (client: unknown = prisma) =>
   (client as { attendanceRecord: RecordDelegate }).attendanceRecord;
 
+/** TUT-dong-giang: thay cho MANAGE_COURSES + ownsResource. Chủ / quản trị: như cũ. Đồng giảng / bộ môn: xem mọi buổi, điểm danh buổi MÌNH dạy khi CHƯA chốt (PUT). */
 async function authorizeSession(id: string) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
-  if (isNextResponse(auth)) return { res: auth as NextResponse };
-  const session = await asSessions().findUnique({ where: { id } });
-  if (!session) return { res: NextResponse.json({ error: "Không tìm thấy buổi" }, { status: 404 }) };
-  const course = await prisma.course.findUnique({ where: { id: session.courseId }, select: { ownerId: true } });
-  if (!course) return { res: NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 }) };
-  if (!ownsResource(auth, course.ownerId)) {
-    return { res: NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 }) };
-  }
-  return { auth, session };
+  const g = await requireAttendanceSessionAccess(id);
+  if (!g.ok) return { res: g.res as NextResponse };
+  return { auth: g.acc.session, session: g.row as unknown as SessionRow & { taughtBy: string | null; state: string | null; startTime: string | null }, acc: g.acc };
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const r = await authorizeSession(id);
   if (r.res) return r.res;
   const session = r.session!;
+  const withContact = canDo(r.acc!.role, "roster.contact"); // đồng giảng / bộ môn: không tên-SĐT phụ huynh, không nhận xét chia sẻ, không buổi bù (TRẺ EM / TIỀN)
 
   // Danh sách học viên active của lớp + record (nếu có). "pending_consent"
   // không hiện vì chưa học — nếu gia sư ghi được là ngụ ý em đó đi học.
@@ -86,8 +81,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const creditsOf = new Map<string, typeof credits>();
   for (const c of credits) { const l = creditsOf.get(c.studentId) ?? []; l.push(c); creditsOf.set(c.studentId, l); }
   const roster = enrollments.map(e => ({
-    makeupAvailable: (creditsOf.get(e.user.id) ?? []).filter(c => c.status === "active").map(c => ({ id: c.id, expiresAt: c.expiresAt })),
-    makeupUsedId:    (creditsOf.get(e.user.id) ?? []).find(c => c.usedSessionId === id)?.id ?? null,
+    makeupAvailable: withContact ? (creditsOf.get(e.user.id) ?? []).filter(c => c.status === "active").map(c => ({ id: c.id, expiresAt: c.expiresAt })) : [],
+    makeupUsedId:    withContact ? (creditsOf.get(e.user.id) ?? []).find(c => c.usedSessionId === id)?.id ?? null : null,
     userId:    e.user.id,
     name:      e.user.name,
     studentId: e.user.studentId,
@@ -95,14 +90,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     status:    byUserId.get(e.user.id)?.status ?? null, // null = chưa điểm danh
     note:      byUserId.get(e.user.id)?.note ?? null,
     // BU-07: gia sư đã tick cho phụ huynh của đúng em này xem nhận xét.
-    parentVisible: byUserId.get(e.user.id)?.parentVisible ?? false,
-    // TT-199: để gia sư nhắn phụ huynh qua Zalo ngay từ màn điểm danh.
-    parentName:   e.user.parentName,
-    parentPhone:  e.user.parentPhone,
-    zaloOpenedAt: byUserId.get(e.user.id)?.zaloOpenedAt?.toISOString() ?? null,
+    ...(withContact ? {
+      parentVisible: byUserId.get(e.user.id)?.parentVisible ?? false,
+      // TT-199: để gia sư nhắn phụ huynh qua Zalo ngay từ màn điểm danh.
+      parentName:   e.user.parentName,
+      parentPhone:  e.user.parentPhone,
+      zaloOpenedAt: byUserId.get(e.user.id)?.zaloOpenedAt?.toISOString() ?? null,
+    } : {}),
   }));
 
-  return NextResponse.json({ session, roster, course: { name: course?.name ?? "", zaloGroupUrl: course?.zaloGroupUrl ?? null } });
+  return NextResponse.json({ session, roster, course: { name: course?.name ?? "", zaloGroupUrl: withContact ? course?.zaloGroupUrl ?? null : null } });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -111,6 +108,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (r.res) return r.res;
   const auth = r.auth!;
   const session = r.session!;
+  const acc = r.acc!;
+  const helper = isHelperRole(acc.role);
+  if (helper) {
+    const own = canMarkSession(acc.role, auth.userId, await sessionTeacherOf(session, acc.course.ownerId), session.state === "closed");
+    if (!own.ok) return markDeniedResponse(own);
+  }
 
   let body: { records?: unknown } = {};
   try { body = await req.json(); } catch { /* fall through */ }
@@ -131,6 +134,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     const note = typeof r2.note === "string" ? r2.note.trim().slice(0, 500) : null;
     const mk = typeof r2.makeupCreditId === "string" && r2.makeupCreditId ? r2.makeupCreditId : null;
+    // Đồng giảng / bộ môn: không dùng buổi bù, không chia sẻ nhận xét cho phụ huynh (403, không lưu dở gì).
+    if (helper && (mk || r2.parentVisible !== undefined)) return roleForbidden();
     if (mk && r2.status !== "present" && r2.status !== "late") {
       return NextResponse.json({ error: "Chỉ dùng buổi bù cho học viên có mặt hoặc đi muộn" }, { status: 400 });
     }
@@ -169,11 +174,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Trạng thái đổi → xoá mốc "đã mở Zalo" (tin trước nói về trạng thái cũ).
   const prevStatus = new Map((await asRecords().findMany({ where: { sessionId: id, userId: { in: items.map(i => i.userId) } } })).map(r => [r.userId, r.status]));
   class MakeupError extends Error {}
+  class ClosedError extends Error {}
   let charges: SyncResult | null = null;
   let packages: PackageSyncResult | null = null;
   try {
     const res = await prisma.$transaction(async (tx) => {
       await lockAttendanceSession(tx, id); // xếp hàng với chốt/mở lại buổi: dòng phí luôn khớp trạng thái buổi
+      if (helper) {
+        // Chốt buổi chen vào giữa lúc kiểm và lúc ghi ⇒ đồng giảng không được ghi nữa (chốt = sinh phí = TIỀN, chỉ chủ).
+        const fresh = await tx.attendanceSession.findUnique({ where: { id }, select: { state: true } });
+        if (fresh?.state === "closed") throw new ClosedError("closed");
+      }
       const txRecords = asRecords(tx);
       for (const i of items) {
         const changed = prevStatus.has(i.userId) && prevStatus.get(i.userId) !== i.status;
@@ -204,6 +215,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // HP-14 (chủ chốt 24/10/2026): lớp tạo sau theo buổi/giờ → dòng học phí CHỈ sinh/đồng bộ khi buổi ĐÃ CHỐT ("Đã dạy xong").
       // Buổi chưa chốt: lưu điểm danh thuần, không sinh phí. Sửa điểm danh sau khi chốt: đồng bộ lại dòng CHƯA vào phiếu, TRONG CÙNG transaction.
       // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
+      // TUT-dong-giang: đồng giảng / bộ môn chỉ ghi điểm danh THUẦN — KHÔNG gọi hai hàm đồng bộ tiền dưới đây (chỉ chủ lớp / quản trị).
+      if (helper) return { ch: null, pk: null };
       const ch = await syncSessionCharges(tx, {
         sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
         items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),
@@ -215,6 +228,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     charges = res.ch; packages = res.pk;
   } catch (e) {
     if (e instanceof MakeupError) return NextResponse.json({ error: e.message }, { status: 400 });
+    if (e instanceof ClosedError) return markDeniedResponse({ ok: false, code: "SESSION_CLOSED_OWNER_ONLY" });
     throw e;
   }
 
@@ -226,6 +240,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const warning = charges && charges.lockedDiffers > 0
     ? `${charges.lockedDiffers} dòng học phí của buổi này đã nằm trong phiếu nên KiN không đổi theo điểm danh vừa lưu. Nếu cần, chỉnh trên phiếu.`
     : null;
+  // Đồng giảng không nhận gì về tiền (charges / packages / warning).
+  if (helper) return NextResponse.json({ ok: true, count: items.length });
   return NextResponse.json({ ok: true, count: items.length, charges, packages, warning });
 }
 
@@ -235,6 +251,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (r.res) return r.res;
   const auth = r.auth!;
   const session = r.session!;
+  if (!canDo(r.acc!.role, "attendance.mark.other")) return roleForbidden(); // xoá buổi: chỉ chủ lớp / quản trị
 
   // Xoá buổi thì trả lại các buổi bù đã gắn vào buổi này.
   await prisma.makeupCredit.updateMany({ where: { usedSessionId: id }, data: { status: "active", usedAt: null, usedSessionId: null } });

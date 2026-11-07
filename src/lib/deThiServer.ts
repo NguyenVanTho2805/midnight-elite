@@ -1,6 +1,7 @@
 // BU-03 P2 — phần CÓ DB của ma trận / mã đề / tệp đề gốc. Luật thuần ở deThiBlueprint.ts, deThiVariants.ts, deThiSourceFile.ts.
 // Mọi hàm giả định người gọi đã qua requireTutor(). Quyền theo tài nguyên (Q2): không có → 404, của người khác → 403.
 // Kết quả trả dạng { ok:true, … } | { ok:false, status, code?, error, extra? } để route mỏng: `failResponse(f)`.
+import { tutorMayAssignToCourse } from "@/lib/courseAccessServer";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -38,7 +39,8 @@ const PREVIEW_CHARS = 240;
 export async function checkOwnCourse(tutorId: string, courseId: string): Promise<Fail | null> {
   const c = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
   if (!c) return fail(404, "Không tìm thấy lớp này.");
-  if (c.ownerId !== tutorId) return fail(403, "Lớp này không phải lớp của cô.", "NOT_YOUR_CLASS");
+  // TUT-dong-giang: đồng giảng đang hiệu lực cũng giao được đề CỦA MÌNH vào lớp (đề vẫn của tác giả; loadOwned* vẫn khoá exam.ownerId).
+  if (c.ownerId !== tutorId && !(await tutorMayAssignToCourse(tutorId, courseId))) return fail(403, "Lớp này không phải lớp của cô.", "NOT_YOUR_CLASS");
   return null;
 }
 

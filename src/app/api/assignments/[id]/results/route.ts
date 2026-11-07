@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOwnedResource, isNextResponse } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireAssignmentAccess } from "@/lib/courseAccessServer";
 
 // GET /api/assignments/[id]/results — giáo viên xem % hoàn thiện + bài làm của
 // TỪNG học viên đã ghi danh khoá học (kể cả học viên chưa mở bài — 0%), dùng
@@ -30,8 +29,10 @@ export async function GET(
     });
     if (!assignment) return NextResponse.json({ error: "Không tìm thấy bài tập" }, { status: 404 });
 
-    const auth = await requireOwnedResource(PERMISSIONS.MANAGE_CURRICULUM, assignment.ownerId);
-    if (isNextResponse(auth)) return auth;
+    // TUT-dong-giang: chủ lớp / quản trị / đồng giảng theo lớp chứa bài; bộ môn chỉ bài của mình hoặc nhóm của mình.
+    const acc = await requireAssignmentAccess(assignmentId, "grade");
+    if (!acc.ok) return acc.res;
+    const auth = acc.session;
 
     if (assignment.mode !== "interactive") {
       return NextResponse.json({ error: "Bài tập này không phải kiểu làm trên web" }, { status: 400 });

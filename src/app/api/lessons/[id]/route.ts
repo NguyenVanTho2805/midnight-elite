@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccessBy, isActiveHelperOfCourse, roleForbidden } from "@/lib/courseAccessServer";
+import { canEditChapter } from "@/lib/courseAccess";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess";
 import { isSuspended, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
@@ -30,10 +30,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // MD-03: quản trị toàn quyền; gia sư chỉ bài của LỚP MÌNH — lớp người khác trả 403 (trước đây mọi tài khoản admin đều đọc được).
   if (session.role === "admin") {
     const ownerId = lesson.chapter.section.course.ownerId;
-    if (!isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, ownerId)) {
+    // TUT-dong-giang: đồng giảng / bộ môn ĐANG HIỆU LỰC của lớp xem bài như quản lý lớp.
+    const helper = await isActiveHelperOfCourse(session, lesson.chapter.section.courseId, ownerId);
+    if (!isCourseManager({ userId: session.userId, role: "admin", adminRole: session.adminRole }, ownerId, helper)) {
       return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
     }
-    const ctx: MediaContext = { viewer: { userId: session.userId, role: "admin", adminRole: session.adminRole }, courseOwnerId: ownerId, enrollment: null };
+    const ctx: MediaContext = { viewer: { userId: session.userId, role: "admin", adminRole: session.adminRole }, courseOwnerId: ownerId, enrollment: null, coTeacher: helper };
     return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));
   }
 
@@ -55,18 +57,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id } = await params;
-  const existing = await prisma.lesson.findUnique({
+  // TUT-dong-giang: chủ / quản trị / đồng giảng soạn mọi bài; bộ môn chỉ bài trong nhóm giao cho mình.
+  const acc = await requireCourseAccessBy(async () => (await prisma.lesson.findUnique({ where: { id }, select: { chapter: { select: { section: { select: { courseId: true } } } } } }))?.chapter.section.courseId ?? null, "Không tìm thấy bài học", "content.edit.own");
+  if (!acc.ok) return acc.res;
+  const auth = acc.session;
+  const existing = (await prisma.lesson.findUnique({
     where: { id },
     include: { chapter: { include: { section: { include: { course: { select: { ownerId: true } } } } } } },
-  });
-  if (!existing) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-  if (!ownsResource(auth, existing.chapter.section.course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  }))!;
+  if (!canEditChapter(acc.role, auth.userId, existing.chapter.teacherId)) return roleForbidden();
 
   const body   = await req.json();
   try {
@@ -104,20 +104,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id } = await params;
+  const acc = await requireCourseAccessBy(async () => (await prisma.lesson.findUnique({ where: { id }, select: { chapter: { select: { section: { select: { courseId: true } } } } } }))?.chapter.section.courseId ?? null, "Không tìm thấy bài học", "content.edit.own");
+  if (!acc.ok) return acc.res;
   try {
-    // Get course ID before deleting to update count
-    const lesson = await prisma.lesson.findUnique({
-      where: { id },
-      include: { chapter: { include: { section: { include: { course: { select: { ownerId: true } } } } } } },
-    });
-    if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-    if (!ownsResource(auth, lesson.chapter.section.course.ownerId)) {
-      return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-    }
+    const lesson = (await prisma.lesson.findUnique({ where: { id }, select: { chapter: { select: { teacherId: true } } } }))!;
+    if (!canEditChapter(acc.role, acc.session.userId, lesson.chapter.teacherId)) return roleForbidden();
 
     // Course.lessons là số bài quảng cáo admin tự đặt — không tự đồng bộ theo
     // số Lesson thật (xem ghi chú tương tự ở route tạo bài học).

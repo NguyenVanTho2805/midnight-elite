@@ -5,15 +5,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidDateKey, normalizeHm } from "@/lib/classSessions";
 import { conflictText } from "@/lib/sessionBook";
-import { authorizeCourse, conflictsForRule, conflictsForSlot } from "@/lib/sessionBookServer";
+import { conflictsForRule, conflictsForSlot } from "@/lib/sessionBookServer";
+import { requireCourseAccess, isHelperRole } from "@/lib/courseAccessServer";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const r = await authorizeCourse(id);
-  if ("res" in r) return r.res;
-  if (!r.course.ownerId) return NextResponse.json({ conflicts: [] });
+  // TUT-dong-giang: trùng lịch tính theo NGƯỜI DẠY (đồng giảng = chính họ; chủ / quản trị = chủ lớp), không theo chủ lớp.
+  const acc = await requireCourseAccess(id, "session.add.own");
+  if (!acc.ok) return acc.res;
+  const r = { course: acc.course };
+  const personId = isHelperRole(acc.role) ? acc.session.userId : acc.course.ownerId;
+  if (!personId) return NextResponse.json({ conflicts: [] });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const start = normalizeHm(b?.startTime), end = normalizeHm(b?.endTime);
   if (!b || !start || !end) return NextResponse.json({ error: "Giờ phải có dạng HH:mm" }, { status: 400 });
@@ -21,9 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let list;
   if (typeof b.dateKey === "string") {
     if (!isValidDateKey(b.dateKey)) return NextResponse.json({ error: "Ngày không hợp lệ (YYYY-MM-DD)" }, { status: 400 });
-    list = await conflictsForSlot(r.course.ownerId, { courseId: id, dateKey: b.dateKey, startTime: start, endTime: end, ignoreKey: typeof b.ignoreKey === "string" ? b.ignoreKey : undefined });
+    list = await conflictsForSlot(personId, { courseId: id, dateKey: b.dateKey, startTime: start, endTime: end, ignoreKey: typeof b.ignoreKey === "string" ? b.ignoreKey : undefined });
   } else if (typeof b.dayOfWeek === "number" && Number.isInteger(b.dayOfWeek) && b.dayOfWeek >= 0 && b.dayOfWeek <= 6) {
-    list = await conflictsForRule(r.course.ownerId, { courseId: id, dayOfWeek: b.dayOfWeek, startTime: start, endTime: end, ignoreScheduleId: typeof b.ignoreScheduleId === "string" ? b.ignoreScheduleId : undefined });
+    list = await conflictsForRule(personId, { courseId: id, dayOfWeek: b.dayOfWeek, startTime: start, endTime: end, ignoreScheduleId: typeof b.ignoreScheduleId === "string" ? b.ignoreScheduleId : undefined });
   } else return NextResponse.json({ error: "Thiếu dateKey hoặc dayOfWeek" }, { status: 400 });
   return NextResponse.json({
     conflicts: list.map(c => ({ kind: c.kind, text: conflictText(c), courseName: c.other.courseName, dateKey: c.other.dateKey, sharedStudents: c.sharedStudents })),

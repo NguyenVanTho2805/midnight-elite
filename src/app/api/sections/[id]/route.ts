@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccessBy } from "@/lib/courseAccessServer";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id } = await params;
-  const existing = await prisma.section.findUnique({ where: { id }, include: { course: { select: { ownerId: true } } } });
-  if (!existing) return NextResponse.json({ error: "Không tìm thấy phần" }, { status: 404 });
-  if (!ownsResource(auth, existing.course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  // TUT-dong-giang: sửa phần = chủ / quản trị / đồng giảng; XOÁ cả phần = chỉ chủ / quản trị. Bộ môn không sửa phần.
+  const acc = await requireCourseAccessBy(async () => (await prisma.section.findUnique({ where: { id }, select: { courseId: true } }))?.courseId ?? null, "Không tìm thấy phần", "content.edit.any");
+  if (!acc.ok) return acc.res;
 
   const body   = await req.json();
   try {
@@ -24,15 +18,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id } = await params;
-  const existing = await prisma.section.findUnique({ where: { id }, include: { course: { select: { ownerId: true } } } });
-  if (!existing) return NextResponse.json({ error: "Không tìm thấy phần" }, { status: 404 });
-  if (!ownsResource(auth, existing.course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  // TUT-dong-giang: sửa phần = chủ / quản trị / đồng giảng; XOÁ cả phần = chỉ chủ / quản trị. Bộ môn không sửa phần.
+  const acc = await requireCourseAccessBy(async () => (await prisma.section.findUnique({ where: { id }, select: { courseId: true } }))?.courseId ?? null, "Không tìm thấy phần", "content.delete_section");
+  if (!acc.ok) return acc.res;
 
   try {
     await prisma.section.delete({ where: { id } });

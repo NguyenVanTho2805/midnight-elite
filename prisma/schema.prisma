@@ -61,6 +61,7 @@ model Course {
 
   sections         Section[]
   enrollments      Enrollment[]
+  courseTeachers   CourseTeacher[] // TUT-dong-giang
   cartItems        CartItem[]
   reviews          CourseReview[]
   exams            Exam[]
@@ -112,6 +113,7 @@ model ClassSchedule {
   mode      String?
   location  String?
   active    Boolean @default(true)
+  teacherId String? // TUT-dong-giang: người dạy khung này; null = chủ lớp. Chuỗi không FK.
 
   createdAt DateTime @default(now())
 
@@ -176,6 +178,7 @@ model Chapter {
   lessons   Lesson[]
   // BU-02-PHẲNG: "Chương ngầm" = chỗ chứa các mục không nhóm. Tối đa một chương ngầm mỗi lớp.
   isImplicit Boolean @default(false)
+  teacherId  String? // TUT-dong-giang: nhóm giao cho giáo viên bộ môn này; null = chủ/đồng giảng soạn. Chuỗi không FK.
 
   @@map("chapters")
 }
@@ -970,6 +973,7 @@ model User {
   assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
   assignmentAnswers     AssignmentAnswer[]     @relation("AssignmentAnswers")
   enrollments         Enrollment[]
+  courseTeachings     CourseTeacher[] @relation("CourseTeacherUser") // TUT-dong-giang
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]
   lessonProgress      LessonProgress[]
@@ -1206,6 +1210,7 @@ model AttendanceSession {
   kind       String?   // null/"regular" = buổi theo lịch tuần | "extra" buổi lẻ | "makeup" dạy bù | "adhoc" phát sinh
   startTime  String?   // "HH:mm" — chỉ buổi lẻ/bù/phát sinh (buổi theo lịch lấy giờ từ ClassSchedule)
   endTime    String?
+  taughtBy   String?   // TUT-dong-giang: người dạy THỰC của buổi; null = suy từ khung rồi chủ lớp. Chuỗi không FK.
 
   course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   creator  User                @relation("AttendanceSessionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
@@ -3121,4 +3126,26 @@ model CourseCategory {
   updatedAt DateTime @updatedAt
 
   @@map("course_categories")
+}
+
+// TUT-dong-giang — giáo viên cùng dạy một lớp. Chủ lớp vẫn là Course.ownerId (KHÔNG có dòng "owner" ở đây).
+model CourseTeacher {
+  id          String    @id @default(cuid())
+  courseId    String
+  userId      String
+  role        String    // "co_teacher" | "subject_teacher" (kiểm ở courseAccess.ts, không CHECK ở DB)
+  subjects    String[]  @default([]) // nhãn môn để HIỂN THỊ (≤5 × ≤40 ký tự); KHÔNG dùng cấp quyền
+  status      String    @default("invited") // invited | active | declined | removed
+  invitedBy   String    // userId chủ lớp (chuỗi, không FK)
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime? // chấp nhận hoặc từ chối
+  removedAt   DateTime?
+  removedBy   String?   // chủ gỡ, hoặc chính người đó khi tự rời
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user        User      @relation("CourseTeacherUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId, status])
+  @@index([courseId, status])
+  @@map("course_teachers")
 }
