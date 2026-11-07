@@ -34,8 +34,18 @@ function tailMatches(f: Family, tail: string[]): boolean {
   });
 }
 
+/** A4: danh sách lớp phụ /lop-cua-toi/quan-lop không còn là trang riêng của gia sư — gốc quản trị /admin/khoa-hoc đi thẳng /lop-cua-toi/lop (?tao=1 → trang tạo lớp). Chiều ngược KHÔNG đổi. */
+function tutorListHref(search: string): string {
+  const q = new URLSearchParams(search.replace(/^\?/, ""));
+  if (q.get("tao") === "1") return "/lop-cua-toi/lop/tao";
+  q.delete("tao");
+  const rest = q.toString();
+  return "/lop-cua-toi/lop" + (rest ? "?" + rest : "");
+}
+
 function translate(input: string, from: "admin" | "tutor"): string | null {
   const [path, search] = splitQuery(input);
+  if (from === "admin" && path === "/admin/khoa-hoc") return tutorListHref(search);
   const to = from === "admin" ? "tutor" : "admin";
   for (const f of FAMILIES) {
     const src = f[from];
@@ -58,7 +68,7 @@ export function contentHref(isTeacher: boolean, adminPath: string): string {
   return isTeacher ? (toTutorPath(adminPath) ?? "/lop-cua-toi") : adminPath;
 }
 
-/** BU-02: màn Giáo trình của một lớp. Gia sư: đường của gia sư. Quản trị không có màn này (đường mới là đường gia sư, không có bản /admin) nên về tab Chương bài của trang quản lớp. */
+/** BU-02: màn Giáo trình của một lớp. Gia sư: đường của gia sư. Quản trị không có màn này (đường mới là đường gia sư, không có bản /admin) nên về tab "Chương bài" (?tab=chuong-bai) của trang quản lớp. */
 export function giaoTrinhHref(courseId: string, isTeacher: boolean): string {
   const id = encodeURIComponent(courseId);
   return isTeacher ? `/lop-cua-toi/quan-lop/${id}/giao-trinh` : `/admin/khoa-hoc/${id}?tab=chuong-bai`;
@@ -74,8 +84,8 @@ const COURSE_TABS = ["cai-dat", "chuong-bai", "lich-hoc", "hoc-vien"] as const;
 /**
  * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang quản lớp (mặc định "cai-dat" như trang gốc).
  *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" (sáng theo tiền tố dài nhất).
- *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Giáo trình · Chương bài · Lịch học · Học viên · Điểm danh" (3 tab ?tab= của trang gốc + 3 trang con /giao-trinh (BU-02), /hoc-vien, /diem-danh).
- *    "Chương bài" cũ GIỮ NGUYÊN cho gia sư: bài tập tự nộp (Assignment) chỉ soạn được ở đó cho tới khi BU-03.
+ *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Giáo trình · Bài tập tự nộp · Lịch học · Danh bạ lớp · Điểm danh" (3 tab ?tab= của trang gốc + 3 trang con /giao-trinh (BU-02), /hoc-vien, /diem-danh).
+ *    Tab ?tab=chuong-bai GIỮ NGUYÊN lối vào và chỉ đổi NHÃN thành "Bài tập tự nộp" (điều hướng A8): bài tập tự nộp (Assignment) chỉ soạn được ở đó cho tới khi BU-03.
  *  - danh sách lớp, tao-moi, đường khác → null (không dải tab).
  */
 export function contentTabsFor(pathname: string, tab: string | null = null): ContentTabGroup | null {
@@ -100,10 +110,10 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
     tabs: [
       { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: current === "cai-dat" },
       { label: "Giáo trình", href: `${base}/giao-trinh`, active: sub === "giao-trinh" || sub.startsWith("giao-trinh/") },
-      { label: "Chương bài", href: `${base}?tab=chuong-bai`, active: current === "chuong-bai" },
+      { label: "Bài tập tự nộp", href: `${base}?tab=chuong-bai`, active: current === "chuong-bai" },
       { label: "Lịch học", href: `${base}?tab=lich-hoc`, active: current === "lich-hoc" },
-      // "Học viên" là trang danh bạ riêng (/hoc-vien, TK-171); ?tab=hoc-vien ("Học viên đăng ký") của trang gốc cũng sáng tab này.
-      { label: "Học viên", href: `${base}/hoc-vien`, active: sub === "hoc-vien" || current === "hoc-vien" },
+      // "Danh bạ lớp" là trang danh bạ riêng (/hoc-vien, TK-171); ?tab=hoc-vien ("Học viên đăng ký") của trang gốc cũng sáng tab này. Mọi link tới /hoc-vien dùng đúng nhãn này.
+      { label: "Danh bạ lớp", href: `${base}/hoc-vien`, active: sub === "hoc-vien" || current === "hoc-vien" },
       { label: "Điểm danh", href: `${base}/diem-danh`, active: sub === "diem-danh" || sub.startsWith("diem-danh/") },
     ],
   };

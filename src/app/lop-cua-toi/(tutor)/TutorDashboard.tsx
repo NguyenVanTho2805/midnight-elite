@@ -1,4 +1,4 @@
-// FE-141..144 — Trang chủ của gia sư ("Lớp của tôi"): lời chào, thẻ một con số, buổi hôm nay, việc cần làm,
+// FE-141..144 — Tổng quan của gia sư (B1 08/11/2026: chỉ còn hiện khi gia sư tắt module Hộp việc; dải Lối tắt đã bỏ vì bảng Khác có đủ các trang đó): lời chào, thẻ một con số, buổi hôm nay, việc cần làm,
 // danh sách lớp dạng thẻ, lối tắt ở cuối. Thiết kế rút từ 102 ảnh research: docs/kin/thiet-ke/gia-su-giao-dien-tu-102-anh.md.
 // Server component: số liệu lấy thẳng từ DB, không cần JS phía client.
 import Link from "next/link";
@@ -142,13 +142,6 @@ export default async function TutorDashboard({ tutorId, name }: { tutorId: strin
         </section>
 
         <TutorClassList classes={d.classes} headingId="h-lop" />
-
-        <nav aria-label="Lối tắt" className="flex gap-x-4 flex-wrap mt-4">
-          {[["Học phí", "/lop-cua-toi/hoc-phi"], ["Báo cáo tháng", "/lop-cua-toi/bao-cao-thang"], ["Bài đăng tìm HS", "/lop-cua-toi/bai-dang"], ["Kế hoạch buổi", "/lop-cua-toi/ke-hoach-buoi"], ["Doanh thu", "/lop-cua-toi/doanh-thu"], ["Hồ sơ gia sư", "/lop-cua-toi/ho-so"]].map(([l, h]) => (
-            <Link key={h} href={h} className="text-xs underline min-h-[44px] inline-flex items-center"
-              style={{ color: "var(--kin-nhan-link)" }}>{l}</Link>
-          ))}
-        </nav>
       </div>
     </div>
   );

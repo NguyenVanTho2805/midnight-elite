@@ -305,10 +305,8 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // ───────────────────── NC2-029: kiểm thêm (không tính vào số đo) ─────────────────────
   section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp vẫn bắt buộc đủ 4 ô");
   await p.goto(`${BASE}/lop-cua-toi/quan-lop`, GOTO);
-  const row2 = p.locator("tr", { hasText: courseName });
-  await row2.getByRole("button", { name: "···" }).click({ timeout: 60000 });
-  const menuLink = p.getByRole("link", { name: /^Mở lớp/ });
-  check("menu ··· (gia sư) có 'Mở lớp' trỏ tới /lop-cua-toi/<lớp>", (await menuLink.count()) === 1 && (await menuLink.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
+  await p.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 60000 });
+  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng link 'Mở lớp' tới /lop-cua-toi/<lớp>", (await p.getByRole("link", { name: new RegExp(`^Mở lớp ${courseName}`) }).first().getAttribute("href").catch(() => null)) === `/lop-cua-toi/${course.id}`);
   {
     const before = await prisma.course.count();
     const ac = await ctxFor(root, { width: 1280, height: 900 });

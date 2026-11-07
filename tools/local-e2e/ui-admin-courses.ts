@@ -152,15 +152,9 @@ import { prisma } from "@/lib/prisma";
   section("Vai gia sư");
   const tctx = await ctxFor(T1, { width: 1280, height: 800 });
   const tp = await tctx.newPage(); watch(tp);
-  await tp.goto(`${BASE}/lop-cua-toi/quan-lop`, { waitUntil: "networkidle", timeout: 120000 });
-  await tp.locator("[data-course-row]").first().waitFor({ timeout: 90000 });
-  check("chỉ thấy 2 khoá của mình", (await tp.locator("[data-course-row]").count()) === 2, await tp.locator("[data-course-row]").count());
-  check("không có bộ lọc Gia sư", (await tp.getByRole("combobox", { name: /Gia sư/ }).count()) === 0);
-  await tp.locator("[data-course-row] input[type=checkbox]").first().check();
-  check("không có 'Đổi kỳ thi' ở thanh chọn nhiều", (await tp.locator("[data-bulk-bar]").getByText("Đổi kỳ thi").count()) === 0);
-  await tp.locator("[data-bulk-bar]").getByRole("button", { name: "Bỏ chọn" }).click();
-  await tp.locator("[data-course-row] button").first().click();
-  check("panel có 'Mở lớp (mã mời, học viên)'", await tp.locator("[data-side-panel]").getByRole("link", { name: /Mở lớp/ }).isVisible());
+  await tp.goto(`${BASE}/lop-cua-toi/quan-lop`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await tp.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 90000 });
+  check("A4b: gia sư mở /lop-cua-toi/quan-lop (danh sách) → chuyển về /lop-cua-toi/lop, không còn bảng danh mục khoá của quản trị", new URL(tp.url()).pathname === "/lop-cua-toi/lop" && (await tp.locator("[data-course-row]").count()) === 0, tp.url());
   await tctx.close();
 
   check("không lỗi JS trên trang", errors.length === 0, errors.slice(0, 3));

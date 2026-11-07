@@ -1,4 +1,4 @@
-// TK-171 (06/10/2026) — Danh sách HS (roster) cho gia sư.
+// TK-171 (06/10/2026) — Danh bạ lớp (roster) cho gia sư.
 // Figma 34:2 (desktop), 108:2 (mobile).
 //
 // Trang này tách khỏi tab "hoc-vien" cũ trong /admin/khoa-hoc/[id]
@@ -64,7 +64,7 @@ export default function RosterPage({ params }: { params: Promise<{ id: string }>
             ← Về trang lớp
           </Link>
           <h1 className="mt-2 text-h3 font-bold" style={{ color: "var(--kin-chu-chinh)" }}>
-            Danh sách học sinh
+            Danh bạ lớp
           </h1>
           <p className="text-caption mt-1" style={{ color: "var(--kin-chu-phu)" }}>
             {total === 0 ? "Chưa có em nào ghi danh." : `${total} em trong lớp`}

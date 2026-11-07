@@ -136,12 +136,12 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await rail(pg).waitFor({ timeout: 90000 });
   check("/admin/khoa-hoc/<lớp>?tab=lich-hoc → /lop-cua-toi/quan-lop/<lớp>?tab=lich-hoc (giữ tham số); 'Lớp' sáng; dải tab Quản lớp có 'Lịch học' đang chọn", new URL(pg.url()).searchParams.get("tab") === "lich-hoc" && (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Lịch học" }).getAttribute("aria-current") === "page", pg.url());
   const qlText = (await tabsQuanLop(pg).innerText()).replace(/\s+/g, " ").trim();
-  check("dải tab Quản lớp: Cài đặt · Chương bài · Lịch học · Học viên · Điểm danh", /Cài đặt.*Chương bài.*Lịch học.*Học viên.*Điểm danh/.test(qlText), qlText);
+  check("dải tab Quản lớp: Cài đặt · Bài tập tự nộp · Lịch học · Danh bạ lớp · Điểm danh", /Cài đặt.*Bài tập tự nộp.*Lịch học.*Danh bạ lớp.*Điểm danh/.test(qlText), qlText);
   await shot(pg, "tutor-admin-2-quan-lop");
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}/hoc-vien`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}/hoc-vien`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
-  check("trang học viên của lớp → /lop-cua-toi/quan-lop/<lớp>/hoc-vien: 'Lớp' sáng, tab 'Học viên' đang chọn", (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Học viên" }).getAttribute("aria-current") === "page", pg.url());
+  check("trang học viên của lớp → /lop-cua-toi/quan-lop/<lớp>/hoc-vien: 'Lớp' sáng, tab 'Danh bạ lớp' đang chọn", (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Danh bạ lớp" }).getAttribute("aria-current") === "page", pg.url());
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}/diem-danh`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
