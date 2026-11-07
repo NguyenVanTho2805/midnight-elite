@@ -1,6 +1,6 @@
 import { buildTodoItems } from "@/lib/tutorTodo";
 import { check, section, done } from "./h";
-const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0, joinRequests: 0, unansweredQuestions: 0 };
+const zero = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, unmarkedSessions: 0, joinRequests: 0, unansweredQuestions: 0, noSchedule: 0 };
 section("buildTodoItems");
 check("không việc nào → rỗng", buildTodoItems(zero).length === 0);
 const items = buildTodoItems({ ...zero, draftInvoices: 9, classReports: 3, bankPending: 1, ungraded: 5, needBankCheck: 2 });
@@ -18,5 +18,7 @@ check("BU-01: học sinh xin vào lớp là việc thường, nhiều trước p
 check("BU-01 (phá): joinRequests = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "joinRequests"));
 const uq = buildTodoItems({ ...zero, unansweredQuestions: 5, draftInvoices: 1 });
 check("TUT-003: câu hỏi học sinh chưa trả lời là việc thường, nhiều trước phiếu nháp, dẫn tới danh sách lớp, nhãn không có tên em", uq[0].key === "questions" && !uq[0].urgent && uq[0].count === 5 && uq[0].href === "/lop-cua-toi/lop" && !/Em |tên/.test(uq[0].label), uq);
-check("TUT-003 (phá): unansweredQuestions = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "questions"));
+check("TUT-003 (phá): unansweredQuestions = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "questions"));const nsd = buildTodoItems({ ...zero, noSchedule: 2, draftInvoices: 1 });
+check("TUT-lich-keo-tha: lớp chưa lịch là việc thường, nhiều trước phiếu nháp, nhãn không có tên em", nsd[0].key === "noSchedule" && !nsd[0].urgent && nsd[0].count === 2 && nsd[1].key === "draft" && nsd[0].href === "/lop-cua-toi/lop", nsd);
+check("TUT-lich-keo-tha (phá): noSchedule = 0 thì không hiện dòng", buildTodoItems({ ...zero, draftInvoices: 1 }).every(i => i.key !== "noSchedule"));
 done();

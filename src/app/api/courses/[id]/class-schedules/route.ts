@@ -4,6 +4,7 @@ import { requireCourseAccess, isHelperRole } from "@/lib/courseAccessServer";
 import { normalizeHm, normalizeJoinUrl } from "@/lib/classSessions";
 import { conflictText, parseSessionPatch } from "@/lib/sessionBook";
 import { conflictsForRule } from "@/lib/sessionBookServer";
+import { SCHEDULES_MAX_PER_COURSE, noteError } from "@/lib/scheduleInput";
 
 // GET /api/courses/[id]/class-schedules — danh sách khung giờ học cố định
 // hàng tuần của 1 khoá (dùng cho tab "Lịch học" trong trang sửa khoá học).
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       dayOfWeek?: number; startTime?: string; endTime?: string; note?: string; joinUrl?: string | null;
     };
     if (
-      typeof dayOfWeek !== "number" || dayOfWeek < 0 || dayOfWeek > 6 ||
+      typeof dayOfWeek !== "number" || !Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 ||
       !startTime?.trim() || !endTime?.trim()
     ) {
       return NextResponse.json({ error: "Thiếu thứ trong tuần hoặc giờ bắt đầu/kết thúc" }, { status: 400 });
@@ -51,6 +52,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!start || !end) return NextResponse.json({ error: "Giờ phải có dạng HH:MM, ví dụ 19:00" }, { status: 400 });
     if (end <= start) {
       return NextResponse.json({ error: "Giờ kết thúc phải sau giờ bắt đầu" }, { status: 400 });
+    }
+    // TUT-lich-keo-tha: ghi chú <= 200 ký tự và tối đa 14 khung ĐANG BẬT/lớp (khung tắt không tính; chỉ cho lần ghi mới, không đụng dữ liệu cũ).
+    const ne = noteError(note);
+    if (ne) return NextResponse.json({ error: ne }, { status: 400 });
+    if (await prisma.classSchedule.count({ where: { courseId, active: true } }) >= SCHEDULES_MAX_PER_COURSE) {
+      return NextResponse.json({ error: `Một lớp có tối đa ${SCHEDULES_MAX_PER_COURSE} khung giờ. Xoá bớt khung không dùng rồi thêm lại.` }, { status: 400 });
     }
     const join = normalizeJoinUrl(joinUrl);
     if (!join.ok) return NextResponse.json({ error: "Link vào lớp phải là địa chỉ http(s) hợp lệ" }, { status: 400 });
