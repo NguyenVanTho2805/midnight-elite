@@ -1,9 +1,11 @@
 // MD-02 / MD-17 — quyền và đọc dữ liệu Bản ghi của lớp (phần chạm DB). Quy tắc thuần ở classRecordings.ts.
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session";
+import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { isSuspended, SUSPENDED_CONTENT_MESSAGE, contactTutorHref } from "@/lib/suspendedContent";
 
-export type RecordingRole = "manager" | "student";
+// "helper" = đồng giảng / bộ môn đang hiệu lực (TUT-dong-giang): chỉ XEM; thêm / xoá bản ghi vẫn chỉ "manager".
+export type RecordingRole = "manager" | "student" | "helper";
 export type RecordingAccess =
   | { ok: true; role: RecordingRole; course: { id: string; name: string; ownerId: string | null } }
   | { ok: false; status: 401 | 403 | 404; error: string; suspended?: true; contactHref?: string };
@@ -23,6 +25,7 @@ export async function recordingAccess(session: SessionPayload | null, courseId: 
     const elevated = session.adminRole === "admin_super" || session.adminRole === "admin_content";
     const owner = session.adminRole === "teacher" && course.ownerId !== null && course.ownerId === session.userId;
     if (elevated || owner) return { ok: true, role: "manager", course };
+    if (session.adminRole === "teacher" && await isActiveHelperOfCourse(session, courseId, course.ownerId)) return { ok: true, role: "helper", course };
     return { ok: false, status: 403, error: "Đây không phải lớp của bạn" };
   }
   const enr = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } }, select: { status: true } });

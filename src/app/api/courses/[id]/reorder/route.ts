@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccess, roleForbidden } from "@/lib/courseAccessServer";
+import { canDo } from "@/lib/courseAccess";
 
 const MAX_ITEMS = 1000;
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id: courseId } = await params;
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-  if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
-  if (!ownsResource(auth, course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  // TUT-dong-giang: chủ / quản trị / đồng giảng sắp xếp mọi mục; giáo viên bộ môn chỉ BÀI trong nhóm giao cho mình (kiểm bên dưới).
+  const acc = await requireCourseAccess(courseId, "content.edit.own");
+  if (!acc.ok) return acc.res;
+  const onlyOwnGroups = !canDo(acc.role, "content.edit.any");
 
   const body = await req.json().catch(() => null) as { type?: unknown; items?: unknown } | null;
   const type = body?.type;
@@ -44,6 +40,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   ]);
   if (owned.length !== ids.length || (type === "section" && parents.length) || ownedParents.length !== parents.length)
     return NextResponse.json({ error: "Mục không thuộc lớp này" }, { status: 403 });
+  if (onlyOwnGroups) {
+    if (type !== "lesson") return roleForbidden();
+    const me = acc.session.userId;
+    const [lessonsOk, parentsOk] = await Promise.all([
+      prisma.lesson.count({ where: { id: { in: ids }, chapter: { teacherId: me } } }),
+      parents.length ? prisma.chapter.count({ where: { id: { in: parents }, teacherId: me } }) : Promise.resolve(0),
+    ]);
+    if (lessonsOk !== ids.length || parentsOk !== parents.length) return roleForbidden();
+  }
 
   try {
     await prisma.$transaction(

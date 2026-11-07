@@ -22,6 +22,7 @@ import { dayOfWeekOfKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSe
 import { JOIN_SOURCE_LABEL, KIND_LABEL, MODE_LABEL, NOTE_MAX, buildSessionShareMessage, isClosed, sessionStatusLabel, type SessionKind } from "@/lib/sessionBook";
 import { openZalo } from "@/lib/zaloShare";
 import type { SessionDetail } from "@/lib/sessionBookServer";
+import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
 
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const dmy = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
@@ -35,7 +36,10 @@ const toForm = (d: SessionDetail): Form => ({
 });
 
 /** perSessionFee: lớp tính học phí theo buổi/theo giờ (bấm Đã dạy xong là lúc sinh phí); false = lớp cũ hoặc theo khoá. */
-export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }: { courseId: string; dateKey: string; perSessionFee?: boolean }) {
+/** viewRole (TUT-dong-giang): đồng giảng / giáo viên bộ môn không chốt buổi, không thấy chữ về học phí, không chia sẻ Zalo; thay nút "Đã dạy xong" bằng "Đề nghị chủ chốt buổi". Vắng = chủ lớp. */
+export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, viewRole }: { courseId: string; dateKey: string; perSessionFee?: boolean; viewRole?: ViewRole }) {
+  const mgr = canManageRole(viewRole);
+  const askKey = `kin-de-nghi-chot:${courseId}:${dateKey}`;
   const notify = useNotify();
   const { ask, dialog } = useKinConfirm();
   const [detail, setDetail] = useState<SessionDetail | null>(null);
@@ -45,6 +49,9 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
   const [saving, setSaving] = useState(false);
   const [closing, setClosing] = useState(false);
   const [share, setShare] = useState<string | null>(null);
+  const [asked, setAsked] = useState(false); // đã báo chủ chốt buổi (vô hiệu 1 ngày, nhớ trong máy)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { try { const t = Number(localStorage.getItem(askKey)); if (t && Date.now() - t < 86_400_000) setAsked(true); } catch { /* không có localStorage */ } }, [askKey]);
   const url = `/api/courses/${courseId}/sessions/${dateKey}`;
 
   const load = useCallback(async (quiet = false) => {
@@ -100,6 +107,16 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
       : c.skipped === "preview" ? "Bản xem trước không tính học phí."
       : c.created + c.updated > 0 ? `Đã tính học phí cho ${c.created + c.updated} em.` : "Chưa có em nào có mặt hoặc đi muộn nên chưa có khoản học phí.";
     notify.ok(detail ? `Đã ghi: buổi đã dạy xong. ${detail}` : "Đã ghi: buổi đã dạy xong.");
+  }
+
+  async function requestClose() {
+    if (closing || asked) return;
+    setClosing(true);
+    const r = await callApi<{ code?: string }>(`/api/tutor/lop/${encodeURIComponent(courseId)}/buoi/${dateKey}/de-nghi-chot`, { method: "POST" });
+    setClosing(false);
+    if (!r.ok) { notify.err(r.status === 409 ? "Buổi cần có điểm danh rồi mới đề nghị chốt." : r.status === 403 ? "Chỉ báo chủ lớp được với buổi cô dạy." : (r.data.error ?? "Chưa báo được, thử lại nhé.")); return; }
+    try { localStorage.setItem(askKey, String(Date.now())); } catch { /* bỏ qua */ }
+    setAsked(true); notify.ok("Đã báo chủ lớp.");
   }
 
   async function reopen() {
@@ -158,11 +175,11 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
         </>}
         actions={<>
           {detail.join && <a href={detail.join.url} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở link học online</a>}
-          <KinButton variant="secondary" onClick={() => void openShare()}>Chia sẻ báo cáo buổi</KinButton>
+          {mgr && <KinButton variant="secondary" onClick={() => void openShare()}>Chia sẻ báo cáo buổi</KinButton>}
         </>}
       />
 
-      {!closed && past && !detail.cancelled && (
+      {mgr && !closed && past && !detail.cancelled && (
         <KinCallout title="Buổi đã qua nhưng chưa chốt" className="mb-6">
           Khi dạy xong, bấm <b>Đã dạy xong</b> ở khung bên cạnh để ghi lại trạng thái.{" "}
           {perSessionFee
@@ -170,6 +187,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
             : "Việc này không tạo hay sửa học phí."}
         </KinCallout>
       )}
+      {!mgr && closed && <KinCallout title="Buổi đã chốt" className="mb-6" ><span data-bu-da-chot>Buổi đã chốt, nhờ chủ lớp mở lại nếu cần sửa.</span></KinCallout>}
       {detail.cancelled && <KinCallout title="Buổi này đã huỷ trên Lịch" className="mb-6">Bạn vẫn xem và ghi chép được, nhưng buổi huỷ không cần chốt.</KinCallout>}
 
       <KinTwoCol>
@@ -177,7 +195,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
           <section aria-labelledby="bu-dd" id="diem-danh">
             <KinSectionHead id="bu-dd" title="Điểm danh và nhận xét từng em" />
             <div className="pt-4">
-              <DiemDanhPanel courseId={courseId} embedded fixedDate={dateKey} onChanged={() => void load(true)} />
+              <DiemDanhPanel courseId={courseId} embedded fixedDate={dateKey} onChanged={() => void load(true)} limited={!mgr} />
             </div>
           </section>
 
@@ -230,11 +248,16 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false }
             {closed && detail.session?.closedAt && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã chốt lúc {vnWhen(detail.session.closedAt)}.</p>}
             {!closed && detail.session?.reopenedAt && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đã mở lại lúc {vnWhen(detail.session.reopenedAt)}.</p>}
             <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Có mặt {detail.tally.present + detail.tally.late}/{detail.rosterCount} · Vắng {detail.tally.absent} · Có phép {detail.tally.excused} · Chưa điểm danh {Math.max(0, detail.rosterCount - detail.tally.total)}</p>
-            {closed
+            {!mgr ? (closed ? null : (
+              <>
+                <KinButton onClick={() => void requestClose()} loading={closing} loadingLabel="Đang báo..." disabled={asked || !past || detail.cancelled}>{asked ? "Đã báo chủ lớp" : "Đề nghị chủ chốt buổi"}</KinButton>
+                <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Cô điểm danh xong thì báo chủ lớp chốt buổi. Chỉ chủ lớp chốt và mở lại buổi.</p>
+              </>
+            )) : closed
               ? <KinButton variant="secondary" onClick={() => void reopen()} loading={closing} loadingLabel="Đang mở lại...">Mở lại buổi</KinButton>
               : <KinButton onClick={() => void close()} loading={closing} loadingLabel="Đang chốt..." disabled={!past || detail.cancelled}>Đã dạy xong</KinButton>}
-            {!past && !closed && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Buổi này chưa tới ngày nên chưa chốt được.</p>}
-            <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>
+            {mgr && !past && !closed && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Buổi này chưa tới ngày nên chưa chốt được.</p>}
+            {mgr && <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>}
           </KinPanel>
 
           <section aria-labelledby="bu-truoc" className="space-y-2" data-bu-previous>

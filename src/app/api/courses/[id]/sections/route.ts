@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccess } from "@/lib/courseAccessServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
-
   const { id: courseId } = await params;
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-  if (!course) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
-  if (!ownsResource(auth, course.ownerId)) {
-    return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
-  }
+  // TUT-dong-giang: chủ / quản trị / đồng giảng (content.edit.any). Giáo viên bộ môn: 403 ROLE_FORBIDDEN (không tạo phần).
+  const acc = await requireCourseAccess(courseId, "content.edit.any");
+  if (!acc.ok) return acc.res;
 
   const { title, order } = await req.json();
   if (!title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });

@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
-import { PERMISSIONS } from "@/lib/permissions";
+import { requireCourseAccessBy, roleForbidden } from "@/lib/courseAccessServer";
+import { canEditChapter } from "@/lib/courseAccess";
 
 // GET /api/lessons/[id]/azota-status — gia sư xem học sinh nào của lớp đã bấm "Em đã làm xong" bài Azota, học sinh nào chưa. Chỉ chủ lớp / quản trị.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requirePermission(PERMISSIONS.MANAGE_CURRICULUM);
-  if (isNextResponse(auth)) return auth;
   const { id: lessonId } = await params;
-
-  const lesson = await prisma.lesson.findUnique({
-    where: { id: lessonId },
-    select: { chapter: { select: { section: { select: { courseId: true, course: { select: { ownerId: true } } } } } } },
-  });
-  if (!lesson) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-  if (!ownsResource(auth, lesson.chapter.section.course.ownerId)) return NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 });
+  // TUT-dong-giang: chấm / xem trạng thái nộp Azota = `grade` (chủ, quản trị, đồng giảng; bộ môn chỉ bài trong nhóm của mình).
+  const acc = await requireCourseAccessBy(async () => (await prisma.lesson.findUnique({ where: { id: lessonId }, select: { chapter: { select: { section: { select: { courseId: true } } } } } }))?.chapter.section.courseId ?? null, "Không tìm thấy bài học", "grade");
+  if (!acc.ok) return acc.res;
+  const lesson = (await prisma.lesson.findUnique({ where: { id: lessonId }, select: { chapter: { select: { teacherId: true, section: { select: { courseId: true } } } } } }))!;
+  if (!canEditChapter(acc.role, acc.session.userId, lesson.chapter.teacherId)) return roleForbidden();
 
   const courseId = lesson.chapter.section.courseId;
   const [students, subs] = await Promise.all([

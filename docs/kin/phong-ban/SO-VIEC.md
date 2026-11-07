@@ -32,6 +32,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | GOP-0711 | COO | Gộp 9 PR Điều hướng A/B (quản trị, học sinh, gia sư) + email mã 6 số + ô chọn (#132–#140) | claude/gop-dieu-huong | (PR tích hợp) | xong | L · 07/11/2026 · bốn chuỗi chồng gộp sạch; `ui-role-everything` 38/0, `ui-links-everywhere` 7/0; sửa 3 chỗ bài kiểm; #139 hai nguồn "đã thu" và #133 thư thật chưa kiểm vẫn mở (xem `bao-cao/gop-dieu-huong-07-11-2026.md`) |
 | TUT-001 | TUT | Gộp cửa tạo lớp về TaoLop; sửa chữ buổi học | | | moi | S · TIỀN = trình bày · chờ chủ xác nhận mặc định per_session |
 | TUT-003 | TUT | Hộp việc: câu hỏi học sinh trong lớp chưa trả lời | claude/tut-003-hop-viec | #114 | xong | M · 04/11/2026 · thông báo cho gia sư khi có câu hỏi mới đã có sẵn (thread_new_class) |
+| TUT-dong-giang | TUT | Đồng giảng GVCN / giáo viên bộ môn (CourseTeacher): mời bằng email, nhận/từ chối/gỡ/rời, ma trận quyền, ẩn tiền + liên hệ phụ huynh + điểm | claude/gia-su-dong-giang | (chưa mở) | cho-gop-pr | L · 07/11/2026 · TIỀN + TRẺ EM = có, chờ Thọ Q1–Q5; gộp cùng PR lịch kéo thả (xung đột nhẹ LopChiTiet, LopHoc, tutorRoutes, class-schedules); đặc tả `phong-ban/dac-ta/TUT-dong-giang.md` |
 | STU-004 | STU | generateMetadata trang khách + sitemap + lọc thi thử theo ghi danh | | | moi | L · làm chung BU-07 |
 | CHỦ-01 | chủ | Đổi feeMode lớp cũ sang per_session; hai hệ phí một phiếu | | | dung | TIỀN = có — chờ Thọ |
 | CHỦ-02 | chủ | Coin ẩn hẳn hay giữ; bật cổng ≥17 + hỏi ngày sinh | | | dung | chờ Thọ |

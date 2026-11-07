@@ -1,5 +1,6 @@
 // QZ-04 / QZ-05 / QZ-07 — phần CÓ DB của việc gia sư soạn quiz, nhập đề và phiên bản. Phần luật thuần: quizQuestion.ts, quizVersion.ts.
 // Mọi hàm ở đây giả định người gọi đã qua requireTutor(); quyền theo từng đề kiểm ở loadOwnedQuiz (đề của gia sư khác → 403, không có → 404).
+import { tutorMayAssignToCourse } from "@/lib/courseAccessServer";
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -74,8 +75,7 @@ export function blockIfHasAttempts(attemptCount: number): NextResponse | null {
 
 /** Gia sư có sở hữu lớp này không (Course.ownerId). Lớp của người khác / không có → false. */
 export async function tutorOwnsCourse(tutorId: string, courseId: string): Promise<boolean> {
-  const c = await prisma.course.findUnique({ where: { id: courseId }, select: { ownerId: true } });
-  return !!c && c.ownerId === tutorId;
+  return tutorMayAssignToCourse(tutorId, courseId); // TUT-dong-giang: chủ lớp hoặc đồng giảng đang hiệu lực
 }
 
 // ── Câu hỏi ───────────────────────────────────────────────────────────────────────────────────────
