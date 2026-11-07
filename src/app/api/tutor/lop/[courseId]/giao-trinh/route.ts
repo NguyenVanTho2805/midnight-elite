@@ -10,6 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cou
   const { courseId } = await params;
   const acc = await requireCourseAccess(courseId, "course.view"); // TUT-dong-giang: đồng giảng / bộ môn xem được
   if (!acc.ok) return acc.res;
+  if (acc.role === "admin") return NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE }); // như trước: màn của gia sư
   const snap = await loadGiaoTrinh(courseId);
   if (!snap) return NextResponse.json({ error: "Không tìm thấy lớp" }, { status: 404, headers: NO_STORE });
   return NextResponse.json(snap, { headers: NO_STORE });
