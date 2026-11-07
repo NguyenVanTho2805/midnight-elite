@@ -33,7 +33,7 @@ export interface GtEntry {
   selfSubmitCount: number;
   publishBlock: string | null;         // null = đăng được; còn lại là câu tiếng Việt vì sao chưa đăng được
 }
-export interface GtGroup { id: string; title: string }   // chương có tên, theo thứ tự cây. Rỗng = lớp không dùng nhóm
+export interface GtGroup { id: string; title: string; teacherId: string | null }   // teacherId: userId giáo viên bộ môn được giao nhóm (chỉ id, không tên/email); null = chủ/đồng giảng soạn   // chương có tên, theo thứ tự cây. Rỗng = lớp không dùng nhóm
 
 export interface GiaoTrinhSnapshot {
   courseId: string; courseName: string;
@@ -46,7 +46,7 @@ export interface GiaoTrinhSnapshot {
 
 /** Cây thô (đã đọc từ DB) để dựng danh sách phẳng. Chỉ các cột cần. */
 export interface TreeLesson extends LessonRow { id: string; title: string; type?: string; status: string }
-export interface TreeChapter { id: string; title: string; isImplicit?: boolean; lessons: TreeLesson[] }
+export interface TreeChapter { id: string; title: string; isImplicit?: boolean; teacherId?: string | null; lessons: TreeLesson[] }
 export interface TreeSection { id: string; title: string; isImplicit?: boolean; chapters: TreeChapter[] }
 
 /** Các cột của Lesson mà phần thuần cần (id có thể vắng khi chưa tạo bài). */
@@ -347,7 +347,7 @@ export function buildEntries(sections: readonly TreeSection[], extra: { assignme
   const groups: GtGroup[] = [];
   for (const sec of sections) for (const ch of sec.chapters) {
     const isGroup = !generic && !ch.isImplicit;
-    if (isGroup) groups.push({ id: ch.id, title: sec.isImplicit ? ch.title : `${sec.title} · ${ch.title}` });
+    if (isGroup) groups.push({ id: ch.id, title: sec.isImplicit ? ch.title : `${sec.title} · ${ch.title}`, teacherId: ch.teacherId ?? null });
     for (const l of ch.lessons) {
       const selfSubmitCount = extra.assignmentsByLesson[l.id] ?? 0;
       const items = deriveItems(l, { assignments: selfSubmitCount });

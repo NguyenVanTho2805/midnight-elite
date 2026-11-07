@@ -382,6 +382,8 @@ section("buildEntries — danh sách phẳng, nhóm, thứ tự, trạng thái")
   ] }];
   const e = buildEntries(mix, { assignmentsByLesson: {} });
   check('ngầm + có tên ⇒ khối "chưa nhóm" đứng TRƯỚC dù chương ngầm nằm sau trong cây; tiêu đề nhóm của phần ngầm chỉ là tên chương', e.entries.map(x => x.id).join() === "u1,u2,n1" && e.groups.length === 1 && e.groups[0].title === "Hình học" && e.entries[0].groupId === null && e.entries[2].groupId === "cn");
+  const tg = buildEntries([{ id: "s", title: "N", isImplicit: true, chapters: [{ id: "g1", title: "Của bộ môn", teacherId: "u-bm", lessons: [] }, { id: "g2", title: "Của chủ", lessons: [] }, { id: "g3", title: "Null", teacherId: null, lessons: [] }] }], { assignmentsByLesson: {} }).groups;
+  check("groups[].teacherId = userId được giao, thiếu/null ⇒ null, chỉ có id/title/teacherId", JSON.stringify(tg.map(g => g.teacherId)) === JSON.stringify(["u-bm", null, null]) && tg.every(g => Object.keys(g).sort().join() === "id,teacherId,title"));
   check("nhóm trống vẫn có trong groups (để vẽ tiêu đề / đổi tên)", buildEntries([{ id: "s", title: "N", isImplicit: true, chapters: [{ id: "ce", title: "Trống", lessons: [] }] }], { assignmentsByLesson: {} }).groups.length === 1);
   // trạng thái lạ + mục rỗng + bài tập
   const odd = buildEntries([{ id: "s0", title: "N", isImplicit: true, chapters: [{ id: "ci", title: "B", isImplicit: true, lessons: [lsn("o1", "Published"), lsn("o2", "published"), lsn("o3", "draft", { videoUrl: "javascript:alert(1)" }), lsn("o4", "hidden", {})] }] }], { assignmentsByLesson: { o4: 2 } });

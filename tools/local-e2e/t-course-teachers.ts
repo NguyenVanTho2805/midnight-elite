@@ -203,6 +203,18 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   const assignB = await api("PATCH", `/api/tutor/lop/${K1.id}/giao-trinh/chuong/${J(chB).id}`, { as: O, body: { teacherId: S.id } });
   check("(chủ) giao nhóm Vật lý cho S ⇒ 200, Chapter.teacherId = S", assignB.status === 200 && (await prisma.chapter.findUnique({ where: { id: J(chB).id } }))?.teacherId === S.id, assignB.json);
   check("giao nhóm cho người KHÔNG thuộc lớp ⇒ 400", (await api("PATCH", `/api/tutor/lop/${K1.id}/giao-trinh/chuong/${J(chA).id}`, { as: O, body: { teacherId: X.id } })).status === 400);
+  // MÁY CHỦ trả đủ cho giao diện chọn giáo viên (ca phá: bỏ `userId` khỏi select/map ở listCourseTeachers, bỏ `self.userId` ở route, hoặc trả userId cho non-manager ⇒ đỏ)
+  const gvO = await api("GET", `/api/tutor/lop/${K1.id}/giao-vien`, { as: O });
+  const gvC = await api("GET", `/api/tutor/lop/${K1.id}/giao-vien`, { as: C });
+  const gvS = await api("GET", `/api/tutor/lop/${K1.id}/giao-vien`, { as: S });
+  check("MÁY CHỦ trả đủ: chủ thấy userId của từng giáo viên và self.userId của mình", gvO.status === 200 && J(gvO).self?.userId === O.id && (J(gvO).teachers as any[]).some(t => t.userId === S.id) && (J(gvO).teachers as any[]).every(t => typeof t.userId === "string"), gvO.json);
+  check("MÁY CHỦ trả đủ: đồng giảng / bộ môn có self.userId của CHÍNH mình, KHÔNG thấy userId người khác", J(gvC).self?.userId === C.id && J(gvS).self?.userId === S.id
+    && (J(gvC).teachers as any[]).every(t => !("userId" in t)) && (J(gvS).teachers as any[]).every(t => !("userId" in t)), [gvC.json, gvS.json]);
+  const gtO = await api("GET", `/api/tutor/lop/${K1.id}/giao-trinh`, { as: O });
+  const gtC = await api("GET", `/api/tutor/lop/${K1.id}/giao-trinh`, { as: C });
+  const grp = (r: { json: unknown }, id: string) => (J(r).groups as any[] | undefined)?.find(g => g.id === id);
+  check("MÁY CHỦ trả đủ: groups[].teacherId = S cho nhóm Vật lý, null cho nhóm chung (chủ và đồng giảng đều thấy)", grp(gtO, J(chB).id)?.teacherId === S.id && grp(gtO, J(chA).id)?.teacherId === null && grp(gtC, J(chB).id)?.teacherId === S.id, J(gtO).groups);
+  check("groups[] chỉ có id/title/teacherId — không tên, không email", (J(gtO).groups as any[]).every(g => Object.keys(g).sort().join() === "id,teacherId,title") && !JSON.stringify(J(gtO).groups).includes(S.email), J(gtO).groups);
   const schO = await api("POST", `/api/courses/${K1.id}/class-schedules`, { as: O, body: { dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } });
   check("(chủ) tạo khung của chủ ⇒ 201, teacherId null", schO.status === 201 && J(schO).teacherId === null, schO.json);
   const feeRows0 = await moneySnapshot();

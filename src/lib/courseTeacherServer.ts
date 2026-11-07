@@ -210,19 +210,19 @@ export async function changeTeacherRole(
 
 // ── Bộ đọc ──────────────────────────────────────────────────────────────────────────────────────
 
-export interface TeacherListItem { id: string; role: string; subjects: string[]; status: TeacherStatus; since: string; name?: string; email?: string }
+export interface TeacherListItem { id: string; userId?: string; role: string; subjects: string[]; status: TeacherStatus; since: string; name?: string; email?: string }
 
 /** Danh sách giáo viên của lớp. `name` chỉ khi `active`. `email` chỉ owner/admin. Đồng giảng / bộ môn chỉ thấy người đang `active` (không thấy lời mời chờ, từ chối, đã gỡ). */
 export async function listCourseTeachers(courseId: string, viewer: { isManager: boolean }): Promise<TeacherListItem[]> {
   const rows = await prisma.courseTeacher.findMany({
     where: { courseId, status: viewer.isManager ? { in: ["invited", "active", "declined"] } : "active" },
     orderBy: { createdAt: "asc" },
-    select: { id: true, role: true, subjects: true, status: true, createdAt: true, respondedAt: true, user: { select: { name: true, email: true } } },
+    select: { id: true, userId: true, role: true, subjects: true, status: true, createdAt: true, respondedAt: true, user: { select: { name: true, email: true } } },
   });
   return rows.map((r) => ({
     id: r.id, role: r.role, subjects: r.subjects, status: r.status as TeacherStatus, since: (r.respondedAt ?? r.createdAt).toISOString(),
     ...(r.status === "active" ? { name: r.user.name } : {}),
-    ...(viewer.isManager ? { email: r.user.email } : {}),
+    ...(viewer.isManager ? { email: r.user.email, userId: r.userId } : {}),   // userId chỉ chủ/admin (đồng giảng/bộ môn không thấy id người khác)
   }));
 }
 

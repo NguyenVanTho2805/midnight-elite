@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cou
   if (!acc.ok) return acc.res;
   const isManager = canDo(acc.role, "teacher.invite");
   const teachers = await listCourseTeachers(courseId, { isManager });
-  return NextResponse.json({ self: { role: acc.role, label: ROLE_LABEL[acc.role] }, teachers, limit: MAX_TEACHERS_PER_COURSE }, { headers: NO_STORE });
+  return NextResponse.json({ self: { userId: acc.session.userId, role: acc.role, label: ROLE_LABEL[acc.role] }, teachers, limit: MAX_TEACHERS_PER_COURSE }, { headers: NO_STORE });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {

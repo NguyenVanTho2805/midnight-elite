@@ -31,7 +31,7 @@ const TREE_SELECT = {
   id: true, title: true, isImplicit: true,
   chapters: {
     orderBy: { order: "asc" as const },
-    select: { id: true, title: true, isImplicit: true, lessons: { orderBy: { order: "asc" as const }, select: { ...LESSON_COLS, _count: { select: { assignments: { where: { mode: { not: "azota" } } } } } } } },
+    select: { id: true, title: true, isImplicit: true, teacherId: true, lessons: { orderBy: { order: "asc" as const }, select: { ...LESSON_COLS, _count: { select: { assignments: { where: { mode: { not: "azota" } } } } } } } },
   },
 };
 
@@ -50,7 +50,7 @@ export async function loadGiaoTrinh(courseId: string): Promise<GiaoTrinhSnapshot
   const tree: TreeSection[] = course.sections.map(sec => ({
     id: sec.id, title: sec.title, isImplicit: sec.isImplicit,
     chapters: sec.chapters.map(ch => ({
-      id: ch.id, title: ch.title, isImplicit: ch.isImplicit,
+      id: ch.id, title: ch.title, isImplicit: ch.isImplicit, teacherId: ch.teacherId,
       lessons: ch.lessons.map(l => { assignmentsByLesson[l.id] = l._count.assignments; return l; }),
     })),
   }));
