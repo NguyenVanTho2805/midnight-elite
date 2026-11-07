@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
+import { NOT_ANONYMIZED } from "@/lib/accountDelete";
 import { requireCenterAdmin, PENDING_TUTOR_WHERE } from "@/lib/tutorApplicationGuard";
 
 // GET /api/admin/tutor-applications?status=pending|approved|rejected (BE-051)
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   else return NextResponse.json({ error: "status phải là pending | approved | rejected" }, { status: 400 });
 
   const applications = await prisma.user.findMany({
-    where,
+    where: { AND: [where, NOT_ANONYMIZED] },
     orderBy: { tutorAppliedAt: "asc" },
     select: {
       id: true, name: true, email: true, phone: true, city: true, emailVerified: true,

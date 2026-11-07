@@ -8,6 +8,7 @@ import { NOT_SYSTEM_ACCOUNT } from "@/lib/adminSystemAccounts"; // BU-08: tài k
 import { computeCompletion, computeGpa, computeAssignmentAverage } from "@/lib/gpa";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { signupBonusOps } from "@/lib/wallet";
+import { isAnonEmail } from "@/lib/accountDelete";
 import { generateResetToken, hashResetToken } from "@/lib/passwordReset";
 
 export async function GET(req: NextRequest) {
@@ -102,7 +103,9 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const visible = includeHidden ? result : result.filter(r => r.deletedAt === null);
+    // Tài khoản đã xoá (ẩn danh hoá) không bao giờ được liệt kê; lọc SAU khi gán SBD để SBD các em khác không nhảy.
+    const live = result.filter(r => !isAnonEmail(r.email));
+    const visible = includeHidden ? live : live.filter(r => r.deletedAt === null);
 
     // Trả kèm pagination metadata khi có params
     if (paginate) {
