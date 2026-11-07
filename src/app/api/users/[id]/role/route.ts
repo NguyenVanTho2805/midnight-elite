@@ -30,10 +30,14 @@ export async function PUT(
   try {
     const target = await prisma.user.findUnique({
       where: { id },
-      select: { adminRole: true, role: true },
+      select: { adminRole: true, role: true, deletedAt: true },
     });
     if (!target) {
       return NextResponse.json({ error: "Không tìm thấy user" }, { status: 404 });
+    }
+
+    if (target.deletedAt) {
+      return NextResponse.json({ error: "Tài khoản đã bị xóa, không đổi quyền được", code: "account_deleted" }, { status: 409 });
     }
 
     // Không cho phép thao tác nếu đây là super admin duy nhất

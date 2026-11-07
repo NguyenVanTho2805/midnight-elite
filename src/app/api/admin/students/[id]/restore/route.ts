@@ -6,6 +6,7 @@ import { requirePermission, isNextResponse } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { logAction } from "@/lib/auditLog";
+import { isAnonEmail } from "@/lib/accountDelete";
 
 export async function POST(
   _req: NextRequest,
@@ -17,11 +18,13 @@ export async function POST(
   const { id } = await params;
 
   try {
-    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, deletedAt: true } });
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true, deletedAt: true, email: true } });
     if (!user) return NextResponse.json({ error: "Không tìm thấy học sinh" }, { status: 404 });
     if (user.role !== "student") {
       return NextResponse.json({ error: "Chỉ khôi phục được tài khoản học sinh", code: "not_student" }, { status: 403 });
     }
+    // Đã ẩn danh (xoá vĩnh viễn) → không khôi phục được.
+    if (isAnonEmail(user.email)) return NextResponse.json({ error: "Tài khoản đã xóa vĩnh viễn, không khôi phục được", code: "account_deleted" }, { status: 409 });
     // Đang hiện rồi → không đổi gì, không ghi nhật ký.
     if (!user.deletedAt) return NextResponse.json({ ok: true, alreadyVisible: true });
 

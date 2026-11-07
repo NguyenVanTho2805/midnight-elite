@@ -114,6 +114,7 @@ const ACTION_LABEL: Record<string, string> = {
   // ADM-001 (01/11/2026) — Tin tức và ẩn / khôi phục học sinh (mục 7.1 đặc tả).
   "article.create": "Tạo bài viết", "article.update": "Sửa bài viết", "article.publish": "Đăng bài viết", "article.unpublish": "Gỡ đăng bài viết (về nháp)", "article.delete": "Xoá bài viết",
   "student.hide": "Ẩn học sinh", "student.restore": "Khôi phục học sinh đã ẩn",
+  "account.delete": "Xoá tài khoản (ẩn danh hoá)", "student.promote_tutor": "Chuyển học sinh thành gia sư", "student.lookup_email": "Tìm học sinh theo email",
   // ADM-001 — mã đang được logAction trong api/admin/** nhưng chưa có nhãn (mục 7.2, bắt buộc). Bài t-adm-001-lib quét nguồn để nhãn không thiếu lại.
   "admission_score.create": "Thêm dòng điểm chuẩn", "admission_score.update": "Sửa dòng điểm chuẩn", "admission_score.delete": "Xoá dòng điểm chuẩn",
   "admission_score.import": "Nhập điểm chuẩn hàng loạt", "admission_score.seed": "Nạp điểm chuẩn khởi đầu",
@@ -292,7 +293,7 @@ export function groupTodayItems(items: TodayItem[]): { key: TodayGroupKey; label
 const PERMISSION_LABEL: Record<Permission, string> = {
   VIEW_REVENUE: "Xem doanh thu", MANAGE_REVENUE: COIN_VISIBLE ? "Quản lý gói, nạp Coin và tiền" : "Quản lý gói và tiền", VIEW_STUDENTS: "Xem học sinh", MANAGE_STUDENTS: "Quản lý hồ sơ học sinh",
   MANAGE_COURSES: "Quản lý khoá học", MANAGE_CURRICULUM: "Quản lý đề thi và ngân hàng câu hỏi", MANAGE_HONOR: "Quản lý bảng vinh danh",
-  MANAGE_ADMINS: "Đổi vai và xem nhật ký", MANAGE_NEWS: "Quản lý tin tức, blog, điểm chuẩn", MANAGE_COMMUNITY: "Kiểm duyệt cộng đồng", MANAGE_TUTORS: "Duyệt hồ sơ gia sư và hỗ trợ gia sư",
+  MANAGE_ADMINS: "Đổi vai và xem nhật ký", MANAGE_NEWS: "Quản lý tin tức, blog, điểm chuẩn", MANAGE_COMMUNITY: "Kiểm duyệt cộng đồng", MANAGE_TUTORS: "Duyệt hồ sơ gia sư và hỗ trợ gia sư", DELETE_ACCOUNTS: "Xoá tài khoản học sinh và gia sư",
 };
 export interface RoleSummary { role: AdminRole; label: string; who: string; can: string[] }
 /** Bảng vai đọc THẲNG từ ROLE_PERMISSIONS (một nguồn): thêm quyền ở permissions.ts là bảng đổi theo. Không tự bịa quyền. */

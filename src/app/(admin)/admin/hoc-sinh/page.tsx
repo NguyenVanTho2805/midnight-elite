@@ -5,6 +5,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Search } from "griddy-icons";
 import type { CourseFull } from "@/lib/api";
+import { DeleteAccountBlock, PromoteTutorBlock } from "@/components/admin/AccountActions";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Student {
@@ -415,6 +416,14 @@ function DetailModal({ student, dbCourses, onClose, onRefresh, onDone }: {
               )}
             </div>
           )}
+
+          {/* Chuyển thành gia sư (chỉ TK chưa ẩn) + Xoá tài khoản (người có quyền, cả TK đã ẩn). Hai bước ngay trong panel. */}
+          {!hidden && (
+            <PromoteTutorBlock userId={student.userId} enrolledCount={enrolledIds.length}
+              onPromoted={msg => { onRefresh(); onDone(msg, true); }} />
+          )}
+          <DeleteAccountBlock kind="students" userId={student.userId}
+            onDeleted={msg => { onRefresh(); onDone(msg, true); }} />
 
           {toast && (
             <div className="px-4 py-2.5 rounded-xl text-sm font-semibold text-[var(--kin-chu-tren-nut-chinh)] text-center"
