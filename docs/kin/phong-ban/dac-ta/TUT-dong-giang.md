@@ -694,3 +694,10 @@ Phản hồi các route "M" khi người xem là đồng giảng / bộ môn (đ
 - Ghi danh: `POST /api/tutor/lop/[courseId]/yeu-cau/[id]/duyet` có thêm kết quả `?duyet=khong-phai-hs` (người xin vào nay đã là gia sư; đơn bị huỷ, lượt dùng mã được trả). `POST .../hoc-sinh` trả 403 `is_teacher_of_course` khi thêm chính giáo viên của lớp. UI cần ánh xạ thông điệp này ở LopChiTiet.
 
 Mã `code` thông báo (link luôn là đường dẫn, không tên, không tiền): `co_teacher_invited` → `/lop-cua-toi/dong-giang`; `co_teacher_accepted|declined|left` → `/lop-cua-toi/[courseId]?tab=giao-vien`; `co_teacher_removed`, `co_teacher_role_changed` → `/lop-cua-toi/dong-giang`; `session_close_request` → `/lop-cua-toi/buoi/[courseId]/[dateKey]`.
+
+### Bổ sung lượt 2 (08/11/2026)
+- `GET /api/tutor/lop/[courseId]/giao-vien`: `teachers[].userId` chỉ trả cho chủ lớp / admin; thêm `self.userId` (id của chính người gọi) cho mọi vai.
+- `GET /api/tutor/lop/[courseId]/giao-trinh`: `groups[].teacherId` chỉ chủ lớp thấy; người khác nhận `groups[].assignedTo` = `me` | `owner` | `other` (không lộ id đồng nghiệp). Muốn hiện tên giáo viên được giao cần thêm `groups[].teacherName` (chưa làm).
+- Bộ môn: sửa/xoá bài tập ngoài nhóm mình bị khoá (403). `results` / `submissions` ngoài nhóm: tên học sinh thay bằng nhãn 'Học viên XXXXX' (băm ổn định, cùng học sinh cùng nhãn). `textAnswer` tự luận chưa ẩn; `submissions` còn dùng `...x`, chưa whitelist.
+- `quiz-cham` / `de-thi`: tác giả đã bị gỡ hoặc đổi vai không còn xem được tên (403) — vá P1.
+- Điểm danh buổi đã chốt: chỉ-đọc với đồng giảng/bộ môn; có nút 'Đề nghị chủ lớp chốt' gọi `de-nghi-chot` như trên. Menu 'Giao cho…' (`GiaoChoNhom.tsx`) gọi `PATCH .../giao-trinh/chuong/[chapterId]` với `teacherId`.
