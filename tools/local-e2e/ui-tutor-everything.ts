@@ -125,7 +125,7 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
 // Chuyển hướng CÓ CHỦ ĐÍCH cho gia sư: trang chủ / đăng nhập / đăng ký → Hộp việc; /admin/* → bí danh /lop-cua-toi/… (BU-00 bước 3, src/lib/tutorRoutes.ts),
 // không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
 const HOME = COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
-const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
+const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (/^\/admin(\/|$)/.test(reqPath)) {
