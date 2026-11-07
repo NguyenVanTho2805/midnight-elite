@@ -22,6 +22,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
   const bO = await sch(1, "18:00", "19:30", null);       // Thứ Hai: chủ lớp
   const bC = await sch(2, "18:00", "19:30", C.id);       // Thứ Ba: đồng giảng
   const bS = await sch(3, "18:00", "19:30", S.id);       // Thứ Tư: bộ môn
+  const bX = await sch(4, "18:00", "19:30", X.id);       // Thứ Năm: giáo viên ĐÃ RỜI lớp (phá cố ý: ô chọn không được âm thầm đổi người dạy)
   const url = `/lop-cua-toi/quan-lop/${K.id}/lich-hoc`;
 
   await launch();
@@ -43,7 +44,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
   const row = (id: string) => prisma.classSchedule.findUnique({ where: { id } });
   const ready = async (p: Page) => { await p.goto(`${BASE}${url}`, GOTO); await p.locator("[data-week-editor]").waitFor({ timeout: 120000 }); await p.locator("[data-rule-list] li").first().waitFor({ timeout: 60000 }); await p.waitForTimeout(800); };
 
-  for (const [w, h] of [[1280, 900], [390, 844]] as const) {
+  for (const [w, h] of [[1280, 900], [390, 844], [320, 700]] as const) {
     const tag = `${w}px`;
     // ───────── S1: chủ lớp ─────────
     section(`S1. Chủ lớp (${tag})`);
@@ -57,6 +58,21 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
       return a.includes("chủ lớp") && b.includes("Cô Đồng Giảng");
     }, 30000);
     await shot(po, `schedule-teacher-owner-${w}`);
+    // Khối của giáo viên đã rời lớp: nhãn + ô chọn thống nhất, Lưu không âm thầm đổi người dạy.
+    if (w < 640) await po.locator(`[data-pick-day="4"]`).click();
+    const lx = (await po.locator(`[data-block-id="${bX.id}"] [data-teacher-label]`).allInnerTexts()).join();
+    check(`${tag} khối của người đã rời lớp: nhãn "Dạy: giáo viên đã rời lớp"`, lx.includes("giáo viên đã rời lớp"), lx);
+    check(`${tag} nhãn "Dạy: …" không tràn khối/ngang`, await noOverflow(po) && await po.locator(`[data-block-id="${bX.id}"] [data-teacher-label]`).evaluate(e => e.scrollWidth <= e.clientWidth + 1 || getComputedStyle(e).textOverflow === "ellipsis"));
+    await open(po, bX.id, 4);
+    const selX = po.locator("[data-block-panel] [data-teacher-select]");
+    const optsX = await selX.locator("option").allInnerTexts();
+    check(`${tag} ô chọn có "Giáo viên đã rời lớp" và đang chọn nó (không rơi về Chủ lớp)`, optsX.includes("Giáo viên đã rời lớp") && (await selX.evaluate(e => (e as HTMLSelectElement).selectedOptions[0]?.text)) === "Giáo viên đã rời lớp", optsX);
+    check(`${tag} ô chọn người đã rời không tràn ngang, ≥ 44px`, await noOverflow(po) && (await small(po, "[data-block-panel]")).length === 0, await small(po, "[data-block-panel]"));
+    await po.locator("[data-block-panel] input[maxlength]").fill("Ghi chú thử");
+    await po.locator("[data-block-panel]").getByRole("button", { name: "Lưu", exact: true }).click();
+    await po.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 30000 });
+    await eventually(`${tag} Lưu giữ nguyên teacherId của người đã rời (và ghi chú đã lưu)`, async () => { const r = await row(bX.id); return r?.teacherId === X.id && r?.note === "Ghi chú thử"; }, 30000);
+    await prisma.classSchedule.update({ where: { id: bX.id }, data: { note: null } });
     await open(po, bO.id, 1);
     const sel = po.locator("[data-block-panel] [data-teacher-select]");
     const opts = await sel.locator("option").allInnerTexts();
@@ -78,7 +94,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     await po.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 30000 });
     await eventually(`${tag} khung mới giao cho Thầy Bộ Môn → DB teacherId = bộ môn`, async () => (await prisma.classSchedule.count({ where: { courseId: K.id, teacherId: S.id } })) === 2, 30000);
     await po.context().close();
-    await prisma.classSchedule.deleteMany({ where: { courseId: K.id, id: { notIn: [bO.id, bC.id, bS.id] } } });
+    await prisma.classSchedule.deleteMany({ where: { courseId: K.id, id: { notIn: [bO.id, bC.id, bS.id, bX.id] } } });
 
     // ───────── S2: đồng giảng ─────────
     section(`S2. Đồng giảng (${tag})`);
@@ -98,7 +114,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     check(`${tag} khung người khác: nhãn "giáo viên khác", không lộ tên "Thầy Bộ Môn", chỉ xem`, tS.includes("giáo viên khác") && !(await pc.locator("body").innerText()).includes("Thầy Bộ Môn") && await pc.locator("[data-block-panel]").getByRole("button", { name: "Lưu", exact: true }).count() === 0, tS);
     await closePanel(pc);
     const off = await pc.locator("[data-rule-list] button").evaluateAll(bs => bs.map(b => (b as HTMLButtonElement).disabled));
-    check(`${tag} danh sách khung: nút Tắt chỉ bật ở khung của mình (1 bật, 2 tắt)`, off.filter(d => !d).length === 1 && off.filter(d => d).length === 2, off);
+    check(`${tag} danh sách khung: nút Tắt chỉ bật ở khung của mình (1 bật, 3 tắt)`, off.filter(d => !d).length === 1 && off.filter(d => d).length === 3, off);
     await pc.locator("[data-add-block]").click();
     await pc.locator("[data-block-panel]").waitFor({ timeout: 30000 });
     check(`${tag} khung mới: nhãn "Người dạy: bạn", không ô chọn`, (await pc.locator("[data-teacher-text]").innerText()).includes("bạn") && await pc.locator("[data-teacher-select]").count() === 0);
@@ -107,7 +123,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     await eventually(`${tag} khung đồng giảng thêm → DB teacherId = chính họ`, async () => (await prisma.classSchedule.count({ where: { courseId: K.id, teacherId: C.id } })) === 2, 30000);
     check(`${tag} không tràn ngang`, await noOverflow(pc));
     await pc.context().close();
-    await prisma.classSchedule.deleteMany({ where: { courseId: K.id, id: { notIn: [bO.id, bC.id, bS.id] } } });
+    await prisma.classSchedule.deleteMany({ where: { courseId: K.id, id: { notIn: [bO.id, bC.id, bS.id, bX.id] } } });
 
     // ───────── S3: bộ môn ─────────
     section(`S3. Giáo viên bộ môn (${tag})`);
@@ -119,7 +135,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     check(`${tag} kể cả khung của mình: chỉ xem (không Lưu), không ô chọn`, await ps.locator("[data-block-panel]").getByRole("button", { name: "Lưu", exact: true }).count() === 0 && await ps.locator("[data-teacher-select]").count() === 0);
     await closePanel(ps);
     const off2 = await ps.locator("[data-rule-list] button").evaluateAll(bs => bs.map(b => (b as HTMLButtonElement).disabled));
-    check(`${tag} danh sách khung: mọi nút Tắt đều tắt (${off2.length} nút)`, off2.length === 3 && off2.every(Boolean), off2);
+    check(`${tag} danh sách khung: mọi nút Tắt đều tắt (${off2.length} nút)`, off2.length === 4 && off2.every(Boolean), off2);
     check(`${tag} không tràn ngang`, await noOverflow(ps));
     await ps.context().close();
   }

@@ -723,6 +723,7 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, teacher, accent, 
           <label className={lab}>Người dạy
             <select value={teacherId} disabled={readOnly} onChange={e => setTeacherId(e.target.value)} className={`${field} mt-1`} data-teacher-select>
               <option value="">Chủ lớp</option>
+              {block.teacherId && !teacher.options.some(o => o.id === block.teacherId) && <option value={block.teacherId}>Giáo viên đã rời lớp</option>}
               {teacher.options.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           </label>

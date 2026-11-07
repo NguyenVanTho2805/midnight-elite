@@ -42,8 +42,12 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   const alias = useRef(new Map<string, string>());           // id tạm (khung mới) -> id máy chủ (sau khi POST xong khối đổi sang id thật)
   const queues = useRef(new Map<string, Promise<unknown>>()); // hàng đợi ghi theo từng khung
   const seq = useRef(0);
-  // Vai của người xem + danh sách giáo viên đang dạy (GET .../giao-vien). Lỗi tải: không chặn, quay về giao diện cũ (máy chủ vẫn kiểm quyền).
-  const [who, setWho] = useState<{ role: ViewRole; userId: string; teachers: { id: string; label: string }[] } | null>(null);                                       // chống lời giải đến muộn khi đổi lớp
+  // Vai của người xem + danh sách giáo viên đang dạy (GET .../giao-vien), gắn với lớp đã tải: đổi lớp thì vai lớp trước không áp sang lớp mới
+  // (whoState.courseId != current => đang chờ: lưới chỉ-đọc, không ô chọn). Lỗi tải: info = null, không chặn, quay về giao diện cũ (máy chủ vẫn kiểm quyền).
+  type WhoInfo = { role: ViewRole; userId: string; teachers: { id: string; label: string }[] };
+  const [whoState, setWhoState] = useState<{ courseId: string; info: WhoInfo | null } | null>(null);
+  const whoPending = !!current && whoState?.courseId !== current;
+  const who = whoPending ? null : whoState?.info ?? null;
 
   const courseName = courses?.find(c => c.id === current)?.name ?? "Lớp này";
   const accent = classAccentFor(current ?? "", courses?.find(c => c.id === current)?.color);
@@ -93,10 +97,10 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
       const r = await jfetch(`/api/tutor/lop/${encodeURIComponent(current)}/giao-vien`, { method: "GET" });
       if (!live) return;
       const self = r.json?.self as { role?: string; userId?: string } | undefined;
-      if (!r.ok || !self?.role || !self.userId) { setWho(null); return; }
+      if (!r.ok || !self?.role || !self.userId) { setWhoState({ courseId: current, info: null }); return; }
       const rows = Array.isArray(r.json?.teachers) ? r.json.teachers as { userId?: string; name?: string; status?: string }[] : [];
       const teachers = rows.filter(t => t.status === "active" && typeof t.userId === "string").map((t, i) => ({ id: t.userId as string, label: t.name?.trim() || `Giáo viên ${i + 1}` }));
-      setWho({ role: self.role as ViewRole, userId: self.userId, teachers });
+      setWhoState({ courseId: current, info: { role: self.role as ViewRole, userId: self.userId, teachers } });
     })();
     return () => { live = false; };
   }, [current]);
@@ -106,7 +110,7 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   const shown = useMemo(() => blocks.map(b => {
     if (!who || (manager && who.teachers.length === 0)) return { ...b, courseName };   // lớp chỉ có chủ: không cần nhãn người dạy
     const tid = b.teacherId ?? null;
-    const label = manager ? (tid ? who.teachers.find(t => t.id === tid)?.label ?? "giáo viên khác" : "chủ lớp") : tid === null ? "chủ lớp" : tid === who.userId ? "bạn" : "giáo viên khác";
+    const label = manager ? (tid ? who.teachers.find(t => t.id === tid)?.label ?? "giáo viên đã rời lớp" : "chủ lớp") : tid === null ? "chủ lớp" : tid === who.userId ? "bạn" : "giáo viên khác";
     return { ...b, courseName, teacherLabel: label };
   }), [blocks, courseName, who, manager]);
   const ghosts = useMemo(() => ghostRules.filter(g => g.courseId !== current), [ghostRules, current]);
@@ -208,8 +212,8 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   const editor = (
     <WeekScheduleEditor blocks={shown} ghosts={ghosts} accent={accent} remote courseLabel={courseName}
       teacher={!who ? undefined : manager ? { mode: "select", options: who.teachers } : { mode: "text", selfId: who.userId }}
-      canAdd={!who || canDo(who.role, "schedule.add.own")}
-      canEdit={who ? (b => canEditSchedule(who.role, who.userId, b.teacherId ?? null)) : undefined}
+      canAdd={whoPending ? false : !who || canDo(who.role, "schedule.add.own")}
+      canEdit={whoPending ? (() => false) : who ? (b => canEditSchedule(who.role, who.userId, b.teacherId ?? null)) : undefined}
       state={phase === "ready" ? "ready" : phase === "error" ? "error" : "loading"}
       onRetry={() => current && void load(current)} onOp={onOp}
       emptyNote={<>Học sinh sẽ không thấy buổi nào trong lịch cho tới khi lớp có khung giờ.</>} />
@@ -253,7 +257,7 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
                         {b.teacherLabel && <span data-rule-teacher className="block text-[var(--kin-chu-mo)]">Người dạy: {b.teacherLabel}</span>}
                         {b.active === false && <KinStatus tone="mo">Đã tắt</KinStatus>}
                       </span>
-                      <button type="button" disabled={!!who && !canEditSchedule(who.role, who.userId, b.teacherId ?? null)} onClick={() => void toggle(b)} className={kinButtonClass("secondary")} aria-label={`${b.active === false ? "Bật lại" : "Tắt"} khung ${WEEKDAY_NAMES[b.dayOfWeek]} ${hm(b.startMin)}`}>{b.active === false ? "Bật lại" : "Tắt"}</button>
+                      <button type="button" disabled={whoPending || (!!who && !canEditSchedule(who.role, who.userId, b.teacherId ?? null))} onClick={() => void toggle(b)} className={kinButtonClass("secondary")} aria-label={`${b.active === false ? "Bật lại" : "Tắt"} khung ${WEEKDAY_NAMES[b.dayOfWeek]} ${hm(b.startMin)}`}>{b.active === false ? "Bật lại" : "Tắt"}</button>
                     </li>
                   ))}
                 </ul>
