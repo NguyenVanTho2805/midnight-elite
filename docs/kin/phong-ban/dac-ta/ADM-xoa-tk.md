@@ -1,4 +1,4 @@
-# ADM-xoa-tk-len-gia-su — Xoá (ẩn danh hoá) tài khoản + chuyển học sinh thành gia sư
+# ADM-xoa-tk — Xoá (ẩn danh hoá) tài khoản + chuyển học sinh thành gia sư
 
 Trạng thái: đặc tả, quyết định A–F đã chốt bởi chủ. Cờ: TIỀN (chặn khi còn tiền), TRẺ EM (xoá PII), ĐỔI NỀN (không).
 
