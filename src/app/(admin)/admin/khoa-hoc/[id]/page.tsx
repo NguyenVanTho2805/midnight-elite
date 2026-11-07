@@ -2298,7 +2298,7 @@ function TabLichHoc({ courseSlug }: { courseSlug: string }) {
 // ─── PAGE ─────────────────────────────────────────────────────────────────────
 const TABS: { id: TabId; label: string }[] = [
   { id: "cai-dat",    label: "Cài đặt" },
-  { id: "chuong-bai", label: "Danh sách chương bài" },
+  { id: "chuong-bai", label: "Chương bài" },
   { id: "lich-hoc",   label: "Lịch học" },
   { id: "hoc-vien",   label: "Học viên đăng ký" },
 ];
