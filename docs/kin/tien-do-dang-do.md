@@ -816,3 +816,21 @@ Nhánh `claude/dieu-huong-b-hoc-sinh`, chồng lên PR #135 (base = `claude/dieu
 - **B3:** `ModuleRail` thêm prop `mobileMore` (mặc định tắt) — commit riêng `0201de4a`. Chỉ `StudentShell` bật: thanh dưới = 3 module + Khác = 4 ô (không cần phương án thay thế).
 - **B6 HS-9:** chip "Đang theo dõi (N)" trong `/khoa-hoc` cho người đã đăng nhập, trỏ `/khoa-hoc-da-luu` (lối duy nhất). **HS-7:** không đổi. **B5 HS-12:** `/ban-do` mục Học viên khớp vỏ hiện tại, không xoá trang.
 - **Nợ P3 mới:** chưa có bài 320px riêng cho Việc của tôi / chip; chip HS-9 hiện cho cả gia sư/quản trị đã đăng nhập; chưa có bài cho `/ban-do` mục Học viên.
+
+
+## TUT-lich-keo-tha (07/11/2026) — Lịch lớp kéo-thả như Google Calendar, lịch bắt buộc khi tạo lớp — XONG PHẦN MÃ (chưa làm C7, C3)
+Nhánh `claude/lich-lop-keo-tha`. Đặc tả: `phong-ban/dac-ta/TUT-lich-keo-tha.md`. Cờ: TIỀN không đổi (chứng minh bằng test) · TRẺ EM không · ĐỔI NỀN không (không đổi schema). Chưa mở PR; mô tả PR soạn sẵn.
+- **Vì sao:** gia sư phải gõ tay từng khung giờ, tạo lớp được mà không có lịch, nên học sinh không đặt chỗ được.
+- **Đã làm (commit):**
+  - `0e81963c` `scheduleDrag.ts` — logic thuần lưới khung giờ: snap, kẹp, giao nhau, dời / đổi dài, đảo thao tác.
+  - `3f774fd4` máy chủ — `schedules[]` khi tạo lớp, duplicate chép khung bật, `GET tutor/khung-gio`, PATCH, ghi chú ≤200, trần 14 khung, Hộp việc `noSchedule`.
+  - `5e39518c` UI — `WeekScheduleEditor` (kéo-thả; chuột thật 1280 + chạm 390), bước "Lịch học" BẮT BUỘC ở Tạo lớp (lối thoát "buổi lẻ" qua `KinConfirm`), 2 trang mới, callout chưa lịch, nút "Đặt lịch".
+  - `e24175f8` sửa P2 của rà soát: trần 14 chỉ đếm khung đang bật.
+- **Quyết định đã áp:** máy chủ KHÔNG từ chối tạo lớp thiếu lịch (vỡ ≥4 bài test và luồng admin) — chỉ từ chối khi wizard gửi `requireSchedule`. Lớp cũ không lịch: nhắc mạnh. Xoá nhanh = tắt khung, có hoàn tác. Trùng giờ cảnh báo bằng chữ, không chặn. Đổi khung không đổi `FeeCharge`/`TuitionInvoice`.
+- **Test chạy sau cùng, xanh:** `t-schedule-drag-lib` 85/0 · `t-schedule-drag-api` 120/0 · `t-schedule-api` 26/0 · `t-tutor-inbox` 37/0 · `t-tutor-inbox-lib` 49/0 · `t-course-validate` 34/0 · `t-free-class-fee` 33/0 · `t-hocphi-dashboard` 41/0.
+- **Test chạy trước đó, xanh:** `ui-schedule-drag` 69/0 · `ui-tao-lop-wizard` 40/0 · `ui-tao-lop-per-session` 20/0 · `ui-journey-new-tutor` 53/0 · `ui-lop` 20/0 · `ui-hocphi-fee` 13/0 · `ui-join-request` 45/0 · `ui-tutor-shell` 92/0 · `ui-tutor-dash` 62/0 · `ui-schedule-fit` 19/0 · `ui-student-schedule-link` 22/0 · `t-no-hex` 16/0 · `t-tut-003` 28/0 · `t-join-request` 120/0 · `t-session-book` 86/0 · `t-hocphi-fee` 80/0.
+- **Lỗi có sẵn (đỏ, chưa đối chiếu trên main nên chưa khẳng định không do PR):** `t-course-ids` 7/1 (`RESERVED_COURSE_IDS` thiếu thư mục bai-dang, ho-so, hoc-phi, lich, lop...) · `ui-schedule` 58/1 (badge Hộp việc nhân đôi ở vỏ) · `t-links` 11/1 (/hoc-vien, robots.ts, AdminShell.tsx) · `ui-tutor-everything` 18/4 · `ui-ht02-forms` 1 · `ui-links-everywhere` 2/5, toàn 500, nghi thiếu module `ts-fsrs`. `tsc` chỉ lỗi `ts-fsrs`.
+- **Giới hạn còn lại:** chưa làm C7 (kéo dời một buổi trong `LichGrid`) và C3 (báo học sinh khi đổi giờ). Chưa chạy thử trên trình duyệt của người dùng, chỉ Chromium trong bộ test cục bộ. `WeekScheduleEditor` chừa slot `teacherLabel`. Nợ P3: flush phím gộp 400ms khi unmount; chú thích cũ đầu `TaoLop.tsx`; trần 14 là đếm-rồi-tạo, không nguyên tử; duplicate chép `joinUrl`.
+- **Lưu ý khi gộp:** tab "Lịch học" trỏ trang `/lich-hoc` mới, nên `tutorRoutes` và trang gộp cùng lúc. Hai PR cùng sửa `LopChiTiet.tsx`, `LopHoc.tsx`, `tutorRoutes.ts`, routes `class-schedules` (PR đồng giảng thêm `teacherId`/quyền) — giải xung đột khi gộp.
+- **Việc của Thọ:** C1 giữ lối thoát "buổi lẻ"? · C2 sửa khung áp mọi tuần hay "từ ngày X" (cần cột `effectiveFrom` = đổi nền) · C3 báo học sinh qua Zalo khi đổi giờ · C4 chấp nhận số đỏ Hộp việc tăng (lớp cũ không lịch) · C6 Delete tắt hay xoá cứng · C7 kéo dời một buổi. Kiểm tay trên điện thoại: tạo lớp có lịch, kéo-thả khung, lớp cũ bấm "Đặt lịch".
+- **Mục D cho COO:** D1 `admin/khoa-hoc/[id]` `TabLichHoc` thay bằng `LichKhung` + `CreateCourseDrawer` nhắc + toast nhân bản (adm-dev). D2 `PHAM-VI` giao `api/class-schedules/**` cho tut-code.
