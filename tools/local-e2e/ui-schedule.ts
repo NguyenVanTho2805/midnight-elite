@@ -51,7 +51,8 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.keyboard.press("Escape");
   await khac.waitFor({ state: "hidden" });
   check("Lịch là mục đang chọn (aria-current)", (await nav.getByRole("link", { name: /^Lịch/ }).first().getAttribute("aria-current")) === "page");
-  const lichBadge = nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem");
+  // Thanh module vẽ HAI lần trong cùng <nav> (thanh hẹp có số đỏ + nhóm "Làm việc hằng ngày" của thanh rộng, đóng/mở bằng CSS) — cả hai cùng một số; lấy cái đầu.
+  const lichBadge = nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").first();
   await lichBadge.waitFor({ timeout: 10000 });
   const nDue = hasH1 ? 4 : 2; // tin tới hạn của em An (phụ huynh+học sinh); em Bình đã báo nghỉ nên không có
   check(`Hộp việc tắt: việc hiện thành số đỏ trên Lịch (= 1 báo nghỉ + ${nDue} tin nhắc)`, (await lichBadge.innerText()) === String(1 + nDue) && (await lichBadge.getAttribute("aria-label")) === `${1 + nDue} việc cần xử lý`, await lichBadge.innerText());
@@ -127,7 +128,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await page.getByRole("heading", { name: "Hộp việc", level: 1 }).waitFor({ timeout: 60000 });
   await page.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 60000 }).catch(() => {}); // NC2-004
   check("Hộp việc bật: mở Hộp việc (trang dọc), không còn chuyển về Lịch", page.url().endsWith("/lop-cua-toi"));
-  check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) === 1 && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
+  check("badge của Hộp việc (không còn badge ở Lịch)", (await nav.locator("a", { hasText: "Hộp việc" }).locator(".kin-badge-dem").count()) >= 1 /* thanh hẹp + nhóm thanh rộng = 2 bản cùng số */ && (await nav.locator("a", { hasText: "Lịch" }).locator(".kin-badge-dem").count()) === 0);
   check("Hộp việc chỉ còn việc thật: báo nghỉ đã xử lý nên không còn dòng đó; tin nhắc còn lại = nDue − 1 (một tin đã mở Zalo)", await page.getByRole("link", { name: /báo nghỉ sát giờ/ }).count() === 0 && await page.getByRole("link", { name: new RegExp(`${nDue - 1} tin nhắc lịch đã tới hạn`) }).isVisible(), await page.getByRole("list", { name: "Việc cần cô xử lý" }).allInnerTexts());
 
   section("Lưu theo tài khoản, không theo máy");
