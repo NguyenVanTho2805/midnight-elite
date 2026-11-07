@@ -164,11 +164,11 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   await open(s, "/cong-dong?tab=da-luu");
   await s.getByText("Bài chung: ai cũng thấy").waitFor({ timeout: 60000 });
   check("'Đã lưu' thấy bài vừa lưu", true);
-  const sh = await s.locator('a[href="/student/cong-dong"]').first().getAttribute("aria-current").catch(() => null);
+  const sh = await s.locator('a[href="/cong-dong"]').first().getAttribute("aria-current").catch(() => null);
   check("mục 'Cộng đồng' của vỏ học sinh vẫn sáng ở ?tab=da-luu", sh === "page", sh);
   await open(s, `/cong-dong/ho-so/${T.id}`);
   await s.getByRole("heading", { name: "Cô Lan", level: 1 }).waitFor({ timeout: 60000 });
-  check("mục 'Cộng đồng' vẫn sáng ở /cong-dong/ho-so/<id>", (await s.locator('a[href="/student/cong-dong"]').first().getAttribute("aria-current").catch(() => null)) === "page");
+  check("mục 'Cộng đồng' vẫn sáng ở /cong-dong/ho-so/<id>", (await s.locator('a[href="/cong-dong"]').first().getAttribute("aria-current").catch(() => null)) === "page");
 
   section("Chi tiết bài: trả lời lồng 1 cấp, gia sư có danh tính");
   await open(s, `/cong-dong/${q.id}`);

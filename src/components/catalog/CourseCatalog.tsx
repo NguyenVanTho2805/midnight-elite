@@ -89,7 +89,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled, isPendingCo
 export default function CourseCatalog({ cards, categories, initial }: { cards: PublicCard[]; categories: string[]; initial: CatalogFilters }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { isFollowing, follow, unfollow } = useFollowedCourses();
+  const { items: followedItems, loading: followedLoading, isFollowing, follow, unfollow } = useFollowedCourses();
   const { enrolledIds, pendingConsentIds, suspendedIds } = useEnrollments();
   const [f, setF] = useState<CatalogFilters>(initial);
 
@@ -135,6 +135,14 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
               </button>
             );
           })}
+          {/* Điều hướng B6/HS-9 (08/11/2026): MỘT lối vào duy nhất tới "Lớp đang theo dõi" (trang /khoa-hoc-da-luu) — Navbar không hiện với người đã đăng nhập nên trước đây không còn chỗ nào bấm tới. */}
+          {user && !followedLoading && (
+            <Link href="/khoa-hoc-da-luu" data-followed-chip
+              className="flex-shrink-0 inline-flex items-center min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-tron)] border px-[var(--kin-kc-7)] text-[length:var(--kin-co-goc)] font-medium whitespace-nowrap"
+              style={{ background: "var(--kin-nen-trang)", color: "var(--kin-nhan-link)", borderColor: "var(--kin-vien-o-nhap)" }}>
+              Đang theo dõi <span style={{ opacity: 0.75 }}>&nbsp;({followedItems.length})</span>
+            </Link>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-[var(--kin-kc-5)]">

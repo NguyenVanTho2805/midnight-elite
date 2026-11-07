@@ -130,6 +130,16 @@ import { prisma } from "@/lib/prisma";
   check("3 thẻ còn lại vẫn có nút 'Theo dõi lớp'", (await lp.getByRole("button", { name: /Theo dõi lớp/ }).count()) === 3);
   check("khách và em chờ phụ huynh không thấy nhãn 'đã nghỉ'", (await pg.locator("[data-suspended-enrollment]").count()) === 0 && (await wp.locator("[data-suspended-enrollment]").count()) === 0);
 
+  section("HS-9 (B6, 08/11/2026): MỘT lối vào 'Đang theo dõi' ở /khoa-hoc cho người đã đăng nhập");
+  check("khách không thấy chip 'Đang theo dõi'", (await pg.locator("[data-followed-chip]").count()) === 0);
+  const fchip = lp.locator("[data-followed-chip]");
+  await fchip.waitFor({ timeout: 30000 });
+  check("học sinh thấy ĐÚNG MỘT chip, trỏ /khoa-hoc-da-luu, cao ≥ 44px", (await lp.locator("[data-followed-chip]").count()) === 1 && (await fchip.getAttribute("href")) === "/khoa-hoc-da-luu" && (await fchip.boundingBox())!.height >= 44);
+  check("chip không lẫn vào các chip danh mục (data-chip vẫn là all + danh mục)", (await lp.locator("[data-chip]").count()) === 3);
+  await fchip.click();
+  await lp.waitForURL(/\/khoa-hoc-da-luu$/, { timeout: 30000 });
+  check("bấm chip → trang 'Lớp đang theo dõi' (nơi xem lại / bỏ theo dõi)", await lp.getByRole("heading", { name: /Lớp đang theo dõi/ }).first().isVisible());
+
   check("không lỗi JS trang", errors.length === 0, errors.slice(0, 3));
   check("gõ tìm / chọn chip / đổi lọc không gây cảnh báo React 'cập nhật Router khi đang dựng' (replaceState ngoài hàm cập nhật state)", reactWarns.length === 0, reactWarns.slice(0, 2));
   await closeAll();
