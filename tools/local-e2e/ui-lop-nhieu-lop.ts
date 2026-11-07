@@ -189,7 +189,8 @@ const H = 3_600_000;
   await rail.waitFor({ timeout: 90000 });
   check("thanh bên KHÔNG còn mục 'Hỏi đáp'", (await rail.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
   check("đứng ở Cộng đồng (tab Hỏi đáp) → chỉ mục 'Cộng đồng' sáng, không xung đột", (await rail.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("aria-current")) === "page" && (await rail.locator('a[aria-current="page"]').count()) === 1);
-  check("trang vẫn có tab 'Hỏi đáp' bên trong Cộng đồng", await pw.getByRole("button", { name: /Hỏi đáp/ }).first().isVisible());
+  // BU-05: "Hỏi đáp" nay là liên kết (<Link>) trong điều hướng trái của Cộng đồng (LeftNav), không còn là nút tab.
+  check("trang vẫn có mục 'Hỏi đáp' bên trong Cộng đồng (điều hướng trái, liên kết ?tab=hoi-dap-qa)", await pw.getByRole("link", { name: "Hỏi đáp", exact: true }).first().waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false));
   await cw.close();
   // Thanh HẸP (mặc định của các bài ui-*): mục nằm trong bảng "Khác". ui-student-shell kiểm chỗ này nhưng đang hỏng sẵn ở bản gốc (strict mode 'HỌC SINH' khớp 2 phần tử), nên kiểm lại ở đây.
   const cn = await ctxFor(S, { width: 1280, height: 800 });
@@ -199,7 +200,8 @@ const H = 3_600_000;
   await railN.getByRole("button", { name: /^Khác/ }).click({ timeout: 120000 });
   const dlg = pn.getByRole("dialog", { name: "Các mục khác" });
   await dlg.waitFor({ timeout: 60000 });
-  check("bảng 'Khác' (thanh hẹp): có 'Cộng đồng', 'Thi thử', 'Thư viện' và KHÔNG có 'Hỏi đáp'", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thi thử", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thư viện", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
+  // BU-00 bước 6: Thi thử / Thư viện / Hỏi đáp đã rút khỏi bảng "Khác" (Thi thử nằm trong "Việc của tôi"); bảng chỉ còn Khám phá + Tự học.
+  check("bảng 'Khác' (thanh hẹp): có 'Cộng đồng' và KHÔNG có 'Hỏi đáp', 'Thi thử', 'Thư viện' (đã rút ở BU-00)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thi thử", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Thư viện", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
   await cn.close();
 
   section("Rà soát độc lập 28/10 — ca biên: đổi lớp khi mạng chậm, API lỗi, ?course= lạ, cô lập, tạm dừng, gia sư 'KiN'");
