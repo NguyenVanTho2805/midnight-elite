@@ -864,3 +864,16 @@ Nhánh `claude/lich-lop-keo-tha`. Đặc tả: `phong-ban/dac-ta/TUT-lich-keo-th
 - **Lưu ý khi gộp:** tab "Lịch học" trỏ trang `/lich-hoc` mới, nên `tutorRoutes` và trang gộp cùng lúc. Hai PR cùng sửa `LopChiTiet.tsx`, `LopHoc.tsx`, `tutorRoutes.ts`, routes `class-schedules` (PR đồng giảng thêm `teacherId`/quyền) — giải xung đột khi gộp.
 - **Việc của Thọ:** C1 giữ lối thoát "buổi lẻ"? · C2 sửa khung áp mọi tuần hay "từ ngày X" (cần cột `effectiveFrom` = đổi nền) · C3 báo học sinh qua Zalo khi đổi giờ · C4 chấp nhận số đỏ Hộp việc tăng (lớp cũ không lịch) · C6 Delete tắt hay xoá cứng · C7 kéo dời một buổi. Kiểm tay trên điện thoại: tạo lớp có lịch, kéo-thả khung, lớp cũ bấm "Đặt lịch".
 - **Mục D cho COO:** D1 `admin/khoa-hoc/[id]` `TabLichHoc` thay bằng `LichKhung` + `CreateCourseDrawer` nhắc + toast nhân bản (adm-dev). D2 `PHAM-VI` giao `api/class-schedules/**` cho tut-code.
+
+## ADM-sau-143-144 (08/11/2026) — D4a, D1, mã chặn co_teaching_active, nhãn nhật ký — LÀM MỘT PHẦN (mã xong; 4 bài chưa chạy)
+Nhánh `claude/admin-sau-143-144` (rẽ từ #142, merge cục bộ #143 và #144). Commit: `ebb7e581` (D4a + mã chặn + nhãn), `78ff19f9` (D1), `177970f2` (bỏ check luôn đạt ở `ui-admin-lich-khung`). Chưa mở PR; mô tả soạn sẵn. Không đụng `src/` ở lượt ghi sổ này. TIỀN không đổi · TRẺ EM không · schema không đổi.
+- **Vì sao:** các mục D của #143/#144 giao lại cho quản trị: H3 `admin/enrollments` chưa chặn tài khoản gia sư; xoá tài khoản chưa biết đồng giảng; tab Lịch học admin vẫn là bản cũ, không dùng khung giờ của #144; nhật ký thiếu nhãn.
+- **Đã làm:**
+  - **D4a:** `api/admin/enrollments` trả 409 `tutor_account` khi ghi danh tài khoản gia sư.
+  - **D1:** tab Lịch học admin dùng `LichKhung`; `CreateCourseDrawer` nhắc khung giờ; toast nhân bản kèm `schedulesCopied`.
+  - Mã chặn xoá tài khoản `co_teaching_active`; nhật ký `account.delete_blocked`; nhãn `adminOps` (kèm 9 nhãn `course_teacher.*` / `attendance_session.request_close` của #143 còn thiếu).
+- **Test đã chạy:** `t-adm-xoa-tk-lib` 62/0 · `t-adm-001-lib` 31/1 · `t-links` 11/1 · `t-no-hex` xanh · `tsc` không lỗi mới.
+- **Lỗi có sẵn:** `t-adm-001-lib` đỏ sẵn (29/3 trước khi sửa, còn 1 ca "ba ngôi") · `t-links` 11/1 y hệt main sạch.
+- **CHƯA CHẠY:** `t-adm-enroll-tutor`, `t-adm-xoa-tk` mục 30, `ui-admin-lich-khung`, `ui-prefs-makeup`. Lý do: Next dev lỗi ws `bufferUtil.mask` khi `node_modules` là symlink. D4a và D1 vì vậy chưa có bằng chứng chạy thật; chưa chạy thử trên trình duyệt.
+- **Giới hạn còn lại / nợ P3:** lời mời `invited` treo vào tài khoản đã ẩn danh; chưa rà hết lối ghi danh khác (invites redeem); `LichKhung` nhúng trong vỏ admin lặp header + link về `/lop-cua-toi` (cần prop `embedded`, thuộc tut-dev); tên prop `courseSlug`.
+- **Việc của Thọ:** gộp theo thứ tự #142 → #143 → #144 → PR này (gộp PR này trước thì kéo theo cả ba); chạy lại 4 bài trên môi trường không symlink trước khi tin D4a/D1; kiểm tay tab Lịch học admin và ghi danh thử tài khoản gia sư (phải 409).
