@@ -273,22 +273,24 @@ export async function decideJoinRequestsBulk(
   action: "duyet" | "tu-choi",
   tutorId: string,
   rawNote?: unknown,
-): Promise<{ done: number; blocked: boolean; closed: boolean; noteError: boolean; suspended: number }> {
+): Promise<{ done: number; blocked: boolean; closed: boolean; noteError: boolean; suspended: number; notStudent: number }> {
   const rows = await prisma.classJoinRequest.findMany({
     where: { id: { in: ids }, courseId: course.id, status: "pending" }, orderBy: { createdAt: "asc" }, select: { id: true },
   });
   let done = 0;
   let blocked = false;
   let closed = false;
+  let notStudent = 0; // người xin vào nay không còn là học sinh: đơn tự huỷ, đếm riêng (không tính vào done)
   let suspended = 0; // yêu cầu của học sinh đang tạm dừng: bỏ qua (vẫn pending), KHÔNG chặn các yêu cầu còn lại
   for (const r of rows) {
     const o = await decideJoinRequest(course, r.id, action, tutorId, rawNote);
-    if (o === "loi-ghi-chu") return { done, blocked, closed, noteError: true, suspended };
+    if (o === "loi-ghi-chu") return { done, blocked, closed, noteError: true, suspended, notStudent };
     if (o === "da-nghi") suspended++;
+    else if (o === "khong-phai-hs") notStudent++;
     else if (o === "ok" || o === "tuchoi") done++;
     else if (o === "day" || o === "dong" || o === "goi") { blocked = true; if (o === "dong") closed = true; if (action === "duyet") break; }
   }
-  return { done, blocked, closed, noteError: false, suspended };
+  return { done, blocked, closed, noteError: false, suspended, notStudent };
 }
 
 // ── Bộ đọc cho trang / route ────────────────────────────────────────────────────────────────────

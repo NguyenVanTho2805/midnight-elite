@@ -17,7 +17,7 @@
 // xoá buổi, thì buổi bù được trả lại.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAttendanceSessionAccess, sessionTeacherOf, markDeniedResponse, roleForbidden, isHelperRole } from "@/lib/courseAccessServer";
+import { requireAttendanceSessionAccess, hasAssignmentInCourse, sessionTeacherOf, markDeniedResponse, roleForbidden, isHelperRole } from "@/lib/courseAccessServer";
 import { canDo, canMarkSession } from "@/lib/courseAccess";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
@@ -54,6 +54,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (r.res) return r.res;
   const session = r.session!;
   const withContact = canDo(r.acc!.role, "roster.contact"); // đồng giảng / bộ môn: không tên-SĐT phụ huynh, không nhận xét chia sẻ, không buổi bù (TRẺ EM / TIỀN)
+
+  // Bộ môn chưa được giao gì trong lớp (không buổi / khung / nhóm): chỉ thấy SĨ SỐ, không tên (như route students — TRẺ EM).
+  const namesVisible = r.acc!.role !== "subject_teacher" || (await hasAssignmentInCourse(session.courseId, r.auth!.userId));
 
   // Danh sách học viên active của lớp + record (nếu có). "pending_consent"
   // không hiện vì chưa học — nếu gia sư ghi được là ngụ ý em đó đi học.
@@ -99,6 +102,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     } : {}),
   }));
 
+  if (!namesVisible) return NextResponse.json({ session, roster: [], total: roster.length, namesHidden: true, course: { name: course?.name ?? "", zaloGroupUrl: null } });
   return NextResponse.json({ session, roster, course: { name: course?.name ?? "", zaloGroupUrl: withContact ? course?.zaloGroupUrl ?? null : null } });
 }
 

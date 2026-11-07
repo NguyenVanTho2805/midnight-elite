@@ -8,7 +8,8 @@
 // ở `/api/users/me/attendance` (sẽ làm sau khi UI phụ huynh/học viên dùng).
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireCourseAccess, checkMarkSession, createdByFor, taughtByFor, isHelperRole } from "@/lib/courseAccessServer";
+import { requireCourseAccess, checkMarkSession, createdByFor, taughtByFor, isHelperRole, roleForbidden } from "@/lib/courseAccessServer";
+import { canDo } from "@/lib/courseAccess";
 import { normalizeAttendanceDate } from "@/lib/attendance";
 import { logAction } from "@/lib/auditLog";
 
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const note = typeof body.note === "string" ? body.note.trim().slice(0, 500) : null;
 
+  // Đồng giảng tạo buổi phải có quyền session.add.own trong ma trận (đồng bộ ma trận ⇒ đổi ma trận là đổi cả route).
+  if (acc.role === "co_teacher" && !canDo(acc.role, "session.add.own")) return roleForbidden();
   if (acc.role === "subject_teacher") {
     // bộ môn không tự lập buổi (session.add.own ✘): chỉ khi khung lịch của ngày đó đã giao cho mình
     const denied = await checkMarkSession(acc, null, date);

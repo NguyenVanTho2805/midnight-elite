@@ -135,6 +135,8 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("…và KHÔNG tạo thêm dòng CourseTeacher nào", (await prisma.courseTeacher.count({ where: { courseId: KG.id } })) === before);
   check("P chờ duyệt không có dòng CourseTeacher", (await prisma.courseTeacher.count({ where: { userId: P.id } })) === 0);
   const self = await api("POST", `/api/tutor/lop/${K1.id}/giao-vien`, { as: O, body: { email: O.email, role: "co_teacher" } });
+  const ownerInv = await api("POST", `/api/tutor/lop/${K1.id}/giao-vien`, { as: ADM, body: { email: O.email, role: "co_teacher" } });
+  check("quản trị mời CHỦ lớp ⇒ 200 cùng body chung (không 409 ALREADY_IN_COURSE: chống dò)", ownerInv.status === 200 && JSON.stringify(ownerInv.json) === ref, ownerInv.json);
   check("chủ mời chính mình ⇒ 409 ALREADY_IN_COURSE (người gọi chính là chủ nên không lộ gì)", self.status === 409 && J(self).code === "ALREADY_IN_COURSE", self.json);
   check("email sai định dạng ⇒ 400; vai sai ⇒ 400; môn quá dài ⇒ 400",
     (await api("POST", `/api/tutor/lop/${K1.id}/giao-vien`, { as: O, body: { email: "abc", role: "co_teacher" } })).status === 400
@@ -227,6 +229,9 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("…roster KHÔNG có parentName / parentPhone / zaloOpenedAt / parentVisible; course.zaloGroupUrl = null",
     J(att).roster.every((r: any) => !("parentName" in r) && !("parentPhone" in r) && !("zaloOpenedAt" in r) && !("parentVisible" in r)) && J(att).course.zaloGroupUrl === null && !SECRETS.some(s => att.text.includes(s)), att.json);
   check("(đối chứng) chủ thấy parentName / parentPhone", J(await api("GET", `/api/attendance-sessions/${sessO.id}`, { as: O })).roster.every((r: any) => r.parentName && r.parentPhone));
+  const attS2 = await api("GET", `/api/attendance-sessions/${sessO.id}`, { as: S2 });
+  check("S2 (bộ môn CHƯA được giao gì) GET buổi ⇒ 200 nhưng roster rỗng, namesHidden, chỉ có sĩ số, không tên học sinh nào trong body",
+    attS2.status === 200 && J(attS2).roster.length === 0 && J(attS2).namesHidden === true && J(attS2).total === 3 && !stu.some((u: any) => u.name && attS2.text.includes(u.name)), attS2.json);
   const sd = await api("GET", `/api/courses/${K1.id}/sessions/${D2}`, { as: C });
   check("C GET sessions/[dateKey] ⇒ 200, reopenWarning = null, không link Zalo", sd.status === 200 && J(sd).reopenWarning === null && J(sd).course.zaloGroupUrl === null, sd.json);
   const cal = await api("GET", `/api/courses/${K1.id}/calendar`, { as: C });
@@ -353,7 +358,7 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("C giao đề CỦA C vào K1 ⇒ không còn 403 NOT_YOUR_CLASS (đồng giảng được giao)", asC.status !== 403 && J(asC).code !== "NOT_YOUR_CLASS", asC.json);
   check("C giao đề của CHỦ ⇒ 403; C giao đề của C vào K2 ⇒ 403 NOT_YOUR_CLASS", (await api("PATCH", `/api/tutor/de-thi/de-o/giao`, { as: C, body: { courseId: K1.id } })).status === 403
     && J(await api("PATCH", `/api/tutor/de-thi/de-c/giao`, { as: C, body: { courseId: K2.id } })).code === "NOT_YOUR_CLASS");
-  check("S (bộ môn) giao đề vào K1 ⇒ 403 (vòng 1 chỉ đồng giảng)", J(await api("PATCH", `/api/tutor/de-thi/de-c/giao`, { as: S, body: { courseId: K1.id } })).code !== undefined || true);
+  check("S (bộ môn) giao đề vào K1 ⇒ 403 (vòng 1 chỉ đồng giảng)", (await api("PATCH", `/api/tutor/de-thi/de-c/giao`, { as: S, body: { courseId: K1.id } })).status === 403);
 
   section("G — route chỉ chủ: đồng giảng, bộ môn, gia sư lạ, chờ duyệt, bị khoá, học sinh, khách");
   const G: [string, string, unknown?][] = [

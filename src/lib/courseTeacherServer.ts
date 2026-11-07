@@ -39,7 +39,8 @@ export async function inviteCoTeacher(
 
     const target = await tx.user.findFirst({ where: { email: { equals: i.email, mode: "insensitive" } }, select: { id: true, ...USER_FLAGS } });
     if (!target) return { outcome: "skip" };
-    if (target.id === inviter.userId || target.id === course.ownerId) return { outcome: "self" };
+    if (target.id === inviter.userId) return { outcome: "self" }; // chính người gọi: không lộ gì về người khác
+    if (target.id === course.ownerId) return { outcome: "skip" }; // quản trị mời CHỦ lớp: cùng câu chung, không phân biệt với email lạ (chống dò)
     if (!canBeInvitedAsTeacher(target)) return { outcome: "skip" }; // chờ duyệt / học sinh / khoá / đã xoá: cùng câu trả lời
     const isStudent = await tx.enrollment.findUnique({ where: { userId_courseId: { userId: target.id, courseId: course.id } }, select: { id: true } });
     if (isStudent) return { outcome: "skip" }; // is_student_of_course: không tạo dòng
