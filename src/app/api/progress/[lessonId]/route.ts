@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { requireStudentRole } from "@/lib/studentOnly";
 import { prisma } from "@/lib/prisma";
 import { LESSON_REWARD, COIN_REASONS, DEFAULT_SOURCE_TYPE_FOR_REASON } from "@/lib/wallet-constants";
 import { isEnrollmentActive } from "@/lib/enrollment";
@@ -19,8 +19,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { lessonId } = await params;
   const body = await req.json().catch(() => ({}));
@@ -92,8 +92,8 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { lessonId } = await params;
   const body = await req.json().catch(() => ({}));
@@ -134,8 +134,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ lessonId: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { lessonId } = await params;
 

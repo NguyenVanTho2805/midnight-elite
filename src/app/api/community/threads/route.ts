@@ -7,7 +7,7 @@ import { THREAD_REWARD, MAX_THREAD_REWARDS_PER_DAY, COIN_REASONS } from "@/lib/w
 import { canAccessClass, visibleThreadScope } from "@/lib/classThreadAccess";
 import { notify } from "@/lib/notify";
 import { cleanText, notificationText, publicName } from "@/lib/communityRules";
-import { communityError, publishedThreadWhere, withLock, NO_STORE, AUTHOR_SELECT, isCenterAdmin } from "@/lib/communityServer";
+import { communityError, publishedThreadWhere, withLock, NO_STORE, AUTHOR_SELECT, isCenterAdmin, helperAuthorsToHide, HELPER_AUTHOR } from "@/lib/communityServer";
 import { threadToFeedItem } from "@/lib/communityFeed";
 
 const ALLOWED_CATEGORIES = ["hoi-dap", "kinh-nghiem", "tai-lieu", "goc-vui"] as const;
@@ -85,7 +85,13 @@ export async function GET(req: NextRequest) {
 
   // Tên: quản trị thấy tên đầy đủ (kiểm duyệt); người khác thấy tên rút gọn (học sinh) — TRẺ EM.
   const fullNames = isCenterAdmin(session);
-  return NextResponse.json({ threads: combined.map(t => toDTO(userId, t, fullNames)), nextCursor }, { headers: NO_STORE });
+  // Q5: học viên / khách không thấy tên đồng giảng của lớp.
+  const hide = await helperAuthorsToHide(session, combined.map(t => ({ courseId: t.course?.id ?? null, authorId: t.author.id })));
+  const threads = combined.map(t => {
+    const dto = toDTO(userId, t, fullNames);
+    return t.course && hide.has(`${t.course.id}:${t.author.id}`) ? { ...dto, author: { id: null, name: HELPER_AUTHOR.label, isTeacher: true } } : dto;
+  });
+  return NextResponse.json({ threads, nextCursor }, { headers: NO_STORE });
 }
 
 export async function POST(req: NextRequest) {

@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { activeHelperCourseIds } from "@/lib/classThreadAccess";
 
 export async function GET() {
   const session = await getSession();
@@ -26,10 +27,17 @@ export async function GET() {
         orderBy: { name: "asc" },
       });
       for (const c of owned) scopes.push({ ...c, role: "teacher" });
+      // TUT-dong-giang D7: lớp đang đồng giảng (hiệu lực) cũng là phạm vi cộng đồng.
+      const helpIds = await activeHelperCourseIds(session.userId);
+      if (helpIds.length) {
+        const helping = await prisma.course.findMany({ where: { id: { in: helpIds }, NOT: { ownerId: session.userId } }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+        for (const c of helping) scopes.push({ ...c, role: "teacher" });
+      }
     }
   } else {
+    // H4: chỉ học sinh THẬT mới có phạm vi "lớp tôi học" (ghi danh cũ của tài khoản đã đổi vai không tính).
     const enrolled = await prisma.enrollment.findMany({
-      where:   { userId: session.userId, status: ENROLLMENT_STATUS.ACTIVE },
+      where:   { userId: session.userId, status: ENROLLMENT_STATUS.ACTIVE, user: { role: "student" } },
       select:  { course: { select: { id: true, name: true } } },
       orderBy: { course: { name: "asc" } },
     });

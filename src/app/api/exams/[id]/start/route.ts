@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
+import { requireStudentRole } from "@/lib/studentOnly";
 import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
@@ -36,8 +36,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
+  const session = await requireStudentRole();
+  if (session instanceof NextResponse) return session;
 
   const { id: requestedId } = await params;
 

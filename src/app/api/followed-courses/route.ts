@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { isStudentInDb } from "@/lib/studentOnly";
 
 // GET /api/followed-courses — danh sách lớp học viên đang theo dõi (BE-079).
 // Bảng vẫn là cart_items (xem comment model CartItem trong schema).
@@ -8,6 +9,7 @@ export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ items: [] });
+    if (session.role !== "student" || !(await isStudentInDb(session.userId))) return NextResponse.json({ items: [] });   // H4
 
     const items = await prisma.cartItem.findMany({
       where: { userId: session.userId },
