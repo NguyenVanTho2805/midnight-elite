@@ -135,13 +135,14 @@ const TUTOR_PAGES = /^\/lop-cua-toi\/(lich|lop|tong-quan|ho-so|cai-dat|kiem-duye
 const TUTOR_MONEY = /^\/lop-cua-toi\/(hoc-phi|doanh-thu)$/;                                                                             // học phí / doanh thu của gia sư: học sinh được đưa sang Học phí của mình
 // BU-00 (31/10/2026): bí danh NỘI DUNG của gia sư (/lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* — thay /admin/thi-thu*, /admin/khoa-hoc*). Học sinh mở thẳng,
 // hoặc đi qua /dang-nhap?redirect=<bí danh> (vd "Quản khoá" ở /ban-do, trước trỏ /admin/khoa-hoc), đều được layout (noi-dung) đưa về "Lớp của tôi".
-const TUTOR_CONTENT = /^\/lop-cua-toi\/(de-thi|quan-lop)(\/|$)/;
+// Điều hướng A/B (07/11/2026): "Quản khoá" ở /ban-do và mọi lối "Lớp" của gia sư nay trỏ thẳng /lop-cua-toi/lop (danh sách Lớp, thay /lop-cua-toi/quan-lop) → thêm `lop`.
+const TUTOR_CONTENT = /^\/lop-cua-toi\/(de-thi|quan-lop|lop)(\/|$)/;
 const notes = new Map<string, string>();   // đổi đích CÓ CHỦ ĐÍCH đã xem xét (in ra cuối phần A để người đọc soát lại, không nuốt im lặng)
 // Trả về lý do nếu việc đổi đích reqPath → finPath là CÓ CHỦ ĐÍCH, ngược lại null.
 function expected(reqPath: string, finPath: string, redir = ""): string | null {
   if (ROLE === "guest") return null;
-  if (TUTOR_CONTENT.test(reqPath) && finPath === "/lop-cua-toi") return "bí danh nội dung của GIA SƯ (de-thi / quan-lop): học sinh được đưa về danh sách lớp của mình";
-  if (reqPath === "/dang-nhap" && TUTOR_CONTENT.test(redir) && finPath === "/lop-cua-toi") return "liên kết của GIA SƯ trỏ /dang-nhap?redirect=<bí danh de-thi / quan-lop> (vd 'Quản khoá' ở /ban-do): học sinh được đưa về danh sách lớp của mình";
+  if (TUTOR_CONTENT.test(reqPath) && finPath === "/lop-cua-toi") return "bí danh nội dung của GIA SƯ (de-thi / quan-lop / lop): học sinh được đưa về danh sách lớp của mình";
+  if (reqPath === "/dang-nhap" && TUTOR_CONTENT.test(redir) && finPath === "/lop-cua-toi") return "liên kết của GIA SƯ trỏ /dang-nhap?redirect=<bí danh de-thi / quan-lop / lop> (vd 'Quản khoá' ở /ban-do): học sinh được đưa về danh sách lớp của mình";
   if (STUDENT_ALIASES[reqPath] === finPath) return "bí danh của vỏ học sinh trỏ sang trang công khai (mở trong khung thanh bên)";
   let m = reqPath.match(/^\/student\/cong-dong\/([^/]+)$/);
   if (m && finPath === `/cong-dong/${m[1]}`) return "bí danh chi tiết bài viết của vỏ học sinh";
@@ -368,10 +369,11 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     // xong chỉ còn nút Back của trình duyệt (trang không có liên kết nào).
     for (const [what, examId] of [["màn kết quả (đã thi)", w.E1.id], ["màn chuẩn bị vào thi", w.E2.id]] as const) {
       const r = await open(p, `${MAIN}/student/thi-thu/${examId}`);
-      const exit = await p.locator('a[href="/student/thi-thu"]:visible').count();
+      const EXIT = 'a[href="/thi-thu"]:visible, a[href="/student/thi-thu"]:visible';   // Điều hướng A6d (#135): ResultView trỏ thẳng /thi-thu; vẫn nhận bí danh cũ
+      const exit = await p.locator(EXIT).count();
       check(`phòng thi — ${what}: không có thanh module (đúng thiết kế) nhưng có lối "← Về danh sách đề thi"`, !r.shell && exit > 0, { shell: r.shell, exit });
       if (exit > 0) {
-        await p.locator('a[href="/student/thi-thu"]:visible').first().click();
+        await p.locator(EXIT).first().click();
         // /student/thi-thu chỉ là bí danh chuyển hướng phía máy chủ (→ /thi-thu) và đây là chuyển trang PHÍA TRÌNH DUYỆT: `waitForLoadState` trả về ngay vì tài liệu đã nạp xong,
         // còn `settle` thấy URL đứng yên ~0,7 giây thì dừng — mà chuyển hướng mất ~1 giây ⇒ đỏ giả (đo riêng 3/3 lần đều tới /thi-thu sau ~1,1 giây). Đợi đích thật trước.
         await p.waitForURL(u => u.pathname === "/thi-thu", { timeout: 20000 }).catch(() => {});
