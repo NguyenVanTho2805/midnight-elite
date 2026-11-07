@@ -54,7 +54,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   check("giữa 540–600", main.width >= 540 && main.width <= 600, main);
   check("phải ≥280", rail.width >= 280, rail);
   check("thứ tự trái < giữa < phải (đúng 3 cột)", nav.x + nav.width <= main.x + 1 && main.x + main.width <= rail.x + 1);
-  const navItems = await g.locator("[data-kc-nav] .kc-nav-item").allInnerTexts();
+  const navItems = await g.locator("[data-kc-nav] .kc-nav-list > .kc-nav-item").allInnerTexts();
   check("khách: ba mục (Bảng tin, Hỏi đáp, Đã lưu); 'Lớp của tôi' ẩn", navItems.join("|") === "Bảng tin|Hỏi đáp|Đã lưu" && (await g.locator("#community-scope").count()) === 0, navItems);
   const card = g.locator("[data-feed-card]").first();
   const cs = await card.evaluate((el: Element) => { const s = getComputedStyle(el); return { shadow: s.boxShadow, top: s.borderTopWidth, left: s.borderLeftWidth, bottom: s.borderBottomWidth }; });
@@ -127,7 +127,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
   await s.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ timeout: 90000 });
   const n3 = await box(s.locator("[data-kc-nav]")), m3 = await box(s.locator(".kc-main")), r3 = await box(s.locator(".kc-rail"));
   check("vỏ thu gọn: đủ 3 cột, trái 220±2, giữa 540–600, phải ≥280", Math.abs(n3.width - 220) <= 2 && m3.width >= 540 && m3.width <= 600 && r3.width >= 280 && n3.x < m3.x && m3.x < r3.x, { n3, m3, r3 });
-  check("học sinh: đủ bốn mục điều hướng (Lớp của tôi hiện vì có lớp)", (await s.locator("#community-scope").count()) === 1 && (await s.locator("[data-kc-nav] .kc-nav-item").allInnerTexts()).join("|") === "Bảng tin|Hỏi đáp|Đã lưu");
+  check("học sinh: đủ bốn mục điều hướng (Lớp của tôi hiện vì có lớp)", (await s.locator("#community-scope").count()) === 1 && (await s.locator("[data-kc-nav] .kc-nav-list > .kc-nav-item").allInnerTexts()).join("|") === "Bảng tin|Hỏi đáp|Đã lưu");
   check("thấy cả bài lớp và bài chung", await s.getByText("Bài chung: ai cũng thấy").isVisible());
   check("không cuộn ngang", await noOverflow(s));
   await shot(s, "cong-dong-1280-hoc-sinh");
@@ -229,7 +229,7 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
     const hs = await mp.locator("[data-feed-card]").first().locator(".kc-act:visible").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
     check("nút hành động cao ≥44", hs.length >= 3 && hs.every((h: number) => h >= 44), hs);
     check("'Báo cáo' ẩn dưới dấu '…' (nút Thêm hiện)", !(await mp.locator("[data-feed-card] [data-act=report]").first().isVisible()) && (await mp.locator("[data-feed-card]", { hasText: "Bài của lớp: chỉ lớp thấy" }).getByRole("button", { name: "Thêm" }).isVisible()));
-    const chips = await mp.locator("[data-kc-nav] .kc-nav-item, [data-kc-nav] select").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
+    const chips = await mp.locator("[data-kc-nav] .kc-nav-item").evaluateAll((els: Element[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
     check("chip điều hướng cao ≥44", chips.length >= 3 && chips.every((h: number) => h >= 44), chips);
     check("không tràn ngang", await noOverflow(mp));
     await mp.addStyleTag({ content: "html{font-size:130% !important}" });
@@ -250,6 +250,49 @@ const FORBIDDEN = /Bảng xếp hạng|\bVí\b|Coin|\bxu\b|Thư viện|Tin tức
     await mp.locator(".kc-pgrid").first().waitFor({ timeout: 60000 }); // hồ sơ gia sư có bài chung → lưới; không có bài thì chỉ có dòng "Chưa có bài viết"
     check("hồ sơ: lưới 3 cột, không tràn ngang", (await mp.locator(".kc-pgrid").evaluate((el: Element) => getComputedStyle(el).gridTemplateColumns.split(" ").length)) === 3 && (await noOverflow(mp)));
     await shot(mp, `cong-dong-${width}-ho-so`);
+  }
+
+  // ───────────────────────────── 07/11: "Lớp của tôi" là radiogroup (nút), cột trái không còn chữ bị cắt
+  section("Cột trái 'Lớp của tôi': không chữ bị cắt, không tràn ngang (1280 và 390)");
+  const LONG_NAME = "Luyện thi vào lớp 10 chuyên Toán nhóm cuối tuần nâng cao Cô Lan 2026";
+  const longCourse = await mkCourse(T.id, { name: LONG_NAME });
+  await prisma.enrollment.create({ data: { userId: S.id, courseId: longCourse.id, status: "active" } });
+  // Đo từng nút trong radiogroup + từng mục điều hướng: scrollWidth <= clientWidth (trừ tên lớp dài: được cắt bằng "…", nhưng title phải đủ chữ).
+  const measureLeft = (p: any) => p.evaluate(`(() => {
+    var grp = document.querySelector("#community-scope");
+    var rows = [];
+    var all = Array.prototype.slice.call(document.querySelectorAll("[data-kc-nav] .kc-nav-item, [data-kc-nav] .kc-nav-scope-text, [data-kc-nav] .kc-nav-group-label"));
+    all.forEach(function (e) { var r = e.getBoundingClientRect(); if (r.width > 0) rows.push({ cls: e.className, text: (e.textContent || "").trim(), title: e.getAttribute("title") || (e.parentElement && e.parentElement.getAttribute("title")) || "", sw: e.scrollWidth, cw: e.clientWidth, h: Math.round(r.height) }); });
+    var nav = document.querySelector("[data-kc-nav]");
+    var radios = grp ? Array.prototype.slice.call(grp.querySelectorAll('[role="radio"]')).map(function (b) { return { t: b.getAttribute("title") || "", checked: b.getAttribute("aria-checked"), h: Math.round(b.getBoundingClientRect().height), sw: b.scrollWidth, cw: b.clientWidth }; }) : [];
+    return { rows: rows, radios: radios, group: grp ? grp.getAttribute("role") : null, hasSelect: !!document.querySelector("[data-kc-nav] select"), docOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1, navOverflowX: nav ? nav.scrollWidth > nav.clientWidth + 1 : null };
+  })()`) as Promise<{ rows: { cls: string; text: string; title: string; sw: number; cw: number; h: number }[]; radios: { t: string; checked: string; h: number; sw: number; cw: number }[]; group: string | null; hasSelect: boolean; docOverflow: boolean; navOverflowX: boolean | null }>;
+  for (const [vw, vh] of [[1280, 900], [390, 844]] as const) {
+    const lp = await (await ctxFor(S, { width: vw, height: vh, rail: "mo" })).newPage(); watch(lp);
+    await open(lp, "/cong-dong");
+    await lp.locator("#community-scope").waitFor({ timeout: 90000 });
+    await lp.getByText("Bài của lớp: chỉ lớp thấy").waitFor({ timeout: 90000 });
+    const m = await measureLeft(lp);
+    check(`${vw}px: 'Lớp của tôi' là radiogroup, không còn <select> trong cột trái`, m.group === "radiogroup" && !m.hasSelect, { group: m.group, hasSelect: m.hasSelect });
+    check(`${vw}px: 4 nút = Tất cả, Chỉ chung, 2 lớp; đúng 1 nút aria-checked`, m.radios.length === 4 && m.radios.filter(r => r.checked === "true").length === 1 && m.radios[0].t === "Tất cả" && m.radios[0].checked === "true" && m.radios[1].t === "Chỉ chung", m.radios);
+    // chữ không bị cắt: mọi mục/nhãn ngắn có scrollWidth <= clientWidth; chỉ tên lớp dài được phép có "…"
+    const clipped = m.rows.filter(r => r.sw > r.cw + 1);
+    const clippedOther = clipped.filter(r => !r.text.includes("Luyện thi vào lớp 10"));
+    check(`${vw}px: không chữ nào bị cắt ngoài tên lớp dài (scrollWidth<=clientWidth)`, clippedOther.length === 0, clippedOther);
+    const longRow = m.rows.find(r => r.text.includes("Luyện thi vào lớp 10"));
+    check(`${vw}px: tên lớp dài rút bằng '…' nhưng nút có title đủ chữ để đọc`, !!longRow && m.radios.some(r => r.t === `Học · ${LONG_NAME}`), { longRow, radios: m.radios.map(r => r.t) });
+    const short = m.rows.filter(r => /^(Tất cả|Chỉ chung|Học · Toán 9 Cô Lan)$/.test(r.text));
+    check(`${vw}px: 3 lựa chọn ngắn hiện ĐỦ chữ (không "…")`, short.length >= 3 && short.every(r => r.sw <= r.cw + 1), short);
+    check(`${vw}px: nút chọn lớp cao ≥44`, m.radios.every(r => r.h >= 44), m.radios.map(r => r.h));
+    check(`${vw}px: không tràn ngang trang`, !m.docOverflow);
+    if (vw === 1280) check("1280px: cột trái không tràn ngang", m.navOverflowX === false, m.navOverflowX);
+    // bấm 1 lựa chọn vẫn đổi phạm vi + aria-checked chuyển theo
+    await lp.getByRole("radio", { name: "Chỉ chung" }).click();
+    await eventually(`${vw}px: bấm 'Chỉ chung' ⇒ scope=common và aria-checked chuyển`, async () => lp.url().includes("scope=common") && (await lp.getByRole("radio", { name: "Chỉ chung" }).getAttribute("aria-checked")) === "true" && (await lp.getByRole("radio", { name: "Tất cả" }).getAttribute("aria-checked")) === "false");
+    await lp.getByRole("radio", { name: "Tất cả" }).click();
+    await eventually(`${vw}px: bấm 'Tất cả' về lại`, async () => !lp.url().includes("scope=common") || lp.url().includes("scope=all"));
+    await lp.locator("[data-kc-nav]").screenshot({ path: `${process.env.SHOTS ?? "scratchpad/shots"}/cong-dong-${vw}-cot-trai.png` });
+    await shot(lp, `cong-dong-${vw}-cot-trai-toan-trang`);
   }
 
   // ───────────────────────────── Quét tĩnh + lỗi trang

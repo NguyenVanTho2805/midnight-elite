@@ -175,6 +175,32 @@ async function gridColumns(page: Page) {
       await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
       check("lọc giá: gia sư không công khai giá bị loại, Thầy Khang không còn", (await page.locator("[data-tutor-card]", { hasText: "Thầy Khang" }).count()) === 0);
       check("nhãn 'tự khai' xuất hiện ở cột lọc", /do gia sư tự khai/.test(await left.innerText()));
+
+      // 07/11: Môn học là dải nút role=radio (ChipPicker) thay ô thả xuống: bấm chip lọc đúng, bấm lại chip đang chọn ⇒ "Tất cả môn".
+      section("1600px — chip Môn học (radiogroup)");
+      await page.goto(`${BASE}/giang-vien`, { waitUntil: "domcontentloaded" });
+      await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
+      await settle(page);
+      const monGroup = left.getByRole("radiogroup", { name: "Môn học" });
+      await monGroup.waitFor({ timeout: 30000 });
+      check("Môn học là radiogroup, KHÔNG còn <select> Môn học trong cột lọc", (await left.locator("select[id$='mon']").count()) === 0 && (await monGroup.getByRole("radio").count()) >= 3, await monGroup.getByRole("radio").count());
+      check("mặc định chip 'Tất cả môn' đang chọn", (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "true");
+      const chipHoa = monGroup.getByRole("radio", { name: /^Hoá học/ });
+      await chipHoa.click();
+      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
+      await eventually("bấm chip Hoá học: mọi thẻ đều Hoá học", async () => { const t = await page.locator("[data-tutor-card]").allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
+      check("chip Hoá học aria-checked=true, 'Tất cả môn' = false", (await monGroup.getByRole("radio", { name: /^Hoá học/ }).getAttribute("aria-checked")) === "true" && (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "false");
+      check("URL có subject=Hoá học", decodeURIComponent(rel(page.url()).replace(/\+/g, " ")).includes("subject=Hoá học"), rel(page.url()));
+      await monGroup.getByRole("radio", { name: /^Hoá học/ }).click(); // bấm lại ⇒ về Tất cả môn
+      await page.waitForURL(u => !/subject=/.test(rel(u.toString())), { timeout: 30000 });
+      await eventually("bấm lại chip: về 'Tất cả môn' (có thẻ không phải Hoá học)", async () => { const t = await page.locator("[data-tutor-card]").allInnerTexts(); return t.some(x => !x.includes("Hoá học")); });
+      check("sau bấm lại: 'Tất cả môn' aria-checked=true", (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "true");
+      await monGroup.getByRole("radio", { name: /^Hoá học/ }).click();
+      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
+      await monGroup.getByRole("radio", { name: "Tất cả môn" }).click(); // bấm thẳng 'Tất cả môn' cũng bỏ lọc
+      await page.waitForURL(u => !/subject=/.test(rel(u.toString())), { timeout: 30000 });
+      check("bấm 'Tất cả môn' bỏ lọc môn", !/subject=/.test(rel(page.url())), rel(page.url()));
+      await shot(page, "tim-gia-su-1600-chip-mon");
     }
 
     // Ảnh + đo

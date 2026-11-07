@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
+import { clearSignupCode } from "@/lib/loginCodeServer";
 
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token");
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
 
   // Xóa token đã dùng
   await prisma.verifyToken.delete({ where: { token } });
+  await clearSignupCode(record.user.email); // mã 6 số còn lại (nếu có) vô nghĩa sau khi đã xác thực bằng link
 
   // Tạo session luôn (đăng nhập tự động)
   await createSession({

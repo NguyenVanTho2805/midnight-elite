@@ -9,7 +9,8 @@
 // được mô phỏng y hệt bằng bộ nhớ ("ghost") và KHÔNG gửi gì (cũng nghĩa là không ai bắt được hệ thống gửi SMS tốn tiền tới số lạ).
 // Người ngoài chỉ thấy cùng một dạng phản hồi.
 import { prisma } from "@/lib/prisma";
-import { sendLoginCodeEmail } from "@/lib/email";
+import { sendLoginCodeEmail, sendVerificationEmail } from "@/lib/email";
+import { randomBytes } from "node:crypto";
 import { SMS_SEND_FAILED, loginCodeSmsText, sendSms } from "@/lib/sms";
 import { phoneClaimKey, phoneLoginKey } from "@/lib/phone";
 import {
@@ -99,6 +100,47 @@ async function requestCode(
 export async function requestLoginCode(email: string, now: Date = new Date()): Promise<RequestResult> {
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true } });
   return requestCode(email, !!user, code => sendLoginCodeEmail(email, user?.name ?? "", code), MAIL_SEND_FAILED, now);
+}
+
+// ─── Xác thực email lúc đăng ký / từ băng vàng (07/11/2026) ───
+// Dùng lại đúng bảng LoginCode và lõi requestCode/verifyCode, chỉ khác KHOÁ: "verify:<email>". Khoá khác ⇒ băm khác (hashCode gắn khoá), nên mã đăng nhập
+// của một email không bao giờ xác thực được email và ngược lại. Không đổi schema.
+export const verifyKey = (email: string) => `verify:${email}`;
+const SIGNUP_LINK_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Gửi mã xác thực email. Chỉ tài khoản CÓ THẬT, CHƯA xác thực, KHÔNG bị khoá mới được gửi thư; mọi email khác chỉ được mô phỏng (cùng dạng phản hồi,
+ * không gửi gì) để không dò được email nào đã đăng ký. `token` = link dự phòng đã tạo sẵn lúc đăng ký; không truyền thì tạo link mới (link cũ vẫn dùng được).
+ */
+export async function requestSignupCode(email: string, opts: { token?: string } = {}, now: Date = new Date()): Promise<RequestResult> {
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, emailVerified: true, banned: true } });
+  const real = !!user && !user.emailVerified && !user.banned;
+  return requestCode(verifyKey(email), real, async code => {
+    let token = opts.token;
+    if (!token) {
+      token = randomBytes(32).toString("hex");
+      await prisma.verifyToken.deleteMany({ where: { userId: user!.id, expiresAt: { lt: now } } });
+      await prisma.verifyToken.create({ data: { token, userId: user!.id, expiresAt: new Date(now.getTime() + SIGNUP_LINK_TTL_MS) } });
+    }
+    await sendVerificationEmail(email, user!.name, token, code);
+  }, MAIL_SEND_FAILED, now);
+}
+
+export type SignupVerifyResult =
+  | { status: "ok"; user: UserRow }
+  | Exclude<CoreResult, { status: "ok" }>;
+
+/** Đổi mã lấy xác thực email. Email không có / đã xác thực / bị khoá đều đi nhánh mô phỏng ⇒ chỉ thấy "wrong"/"expired"/"locked" như nhau. */
+export async function verifySignupCode(email: string, code: string, now: Date = new Date()): Promise<SignupVerifyResult> {
+  const user = await prisma.user.findUnique({ where: { email } });
+  const real = !!user && !user.emailVerified && !user.banned;
+  const r = await verifyCode(verifyKey(email), code, real, now);
+  return r.status === "ok" ? (user ? { status: "ok", user } : { status: "expired" }) : r;
+}
+
+/** Xác thực bằng link xong thì mã còn lại vô nghĩa: xoá luôn. */
+export async function clearSignupCode(email: string): Promise<void> {
+  await prisma.loginCode.deleteMany({ where: { email: verifyKey(email) } });
 }
 
 const smsHost = () => { try { return process.env.NEXT_PUBLIC_APP_URL ? new URL(process.env.NEXT_PUBLIC_APP_URL).host : undefined; } catch { return undefined; } };
