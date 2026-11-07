@@ -94,4 +94,14 @@ check("BU-02: /giao-trinh-khac (tiền tố giả) KHÔNG làm sáng Giáo trìn
 check("BU-02: tao-moi vẫn không có dải tab", contentTabsFor("/lop-cua-toi/quan-lop/tao-moi/giao-trinh") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null);
 check("danh sách lớp, tao-moi, trang khác → không dải tab", contentTabsFor("/lop-cua-toi/quan-lop") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null && contentTabsFor("/lop-cua-toi/lich") === null && contentTabsFor("/admin/thi-thu") === null);
 
+section("TUT-lich-keo-tha — tab Lịch học là trang khung giờ kéo-thả");
+const lh = contentTabsFor("/lop-cua-toi/quan-lop/toan-9/lich-hoc");
+check("/quan-lop/<id>/lich-hoc → nhóm Quản lớp, chỉ 'Lịch học' sáng", lh?.label === "Quản lớp" && lh.tabs.filter(t => t.active).map(t => t.label).join() === "Lịch học", lh);
+check("tab 'Lịch học' trỏ trang /lich-hoc của đúng lớp (không còn ?tab=lich-hoc)", contentTabsFor("/lop-cua-toi/quan-lop/toan-9")?.tabs.find(t => t.label === "Lịch học")?.href === "/lop-cua-toi/quan-lop/toan-9/lich-hoc");
+check("liên kết cũ ?tab=lich-hoc vẫn làm sáng 'Lịch học'", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "lich-hoc")?.tabs.filter(t => t.active).map(t => t.label).join() === "Lịch học");
+check("toAdminPath(/lich-hoc) → /admin/khoa-hoc/<id>?tab=lich-hoc; giữ query khác", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc") === "/admin/khoa-hoc/toan-9?tab=lich-hoc" && toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1") === "/admin/khoa-hoc/toan-9?x=1&tab=lich-hoc", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1"));
+check("chiều xuôi không đổi: /admin/khoa-hoc/toan-9?tab=lich-hoc → /quan-lop/toan-9?tab=lich-hoc", toTutorPath("/admin/khoa-hoc/toan-9?tab=lich-hoc") === "/lop-cua-toi/quan-lop/toan-9?tab=lich-hoc");
+check("phá: tao-moi/danh-muc/đuôi lạ không map: /quan-lop/tao-moi/lich-hoc, /quan-lop/danh-muc/lich-hoc, /quan-lop/a/lich-hoc/x, /quan-lop/a/lich-hocx", ["/lop-cua-toi/quan-lop/tao-moi/lich-hoc", "/lop-cua-toi/quan-lop/danh-muc/lich-hoc", "/lop-cua-toi/quan-lop/a/lich-hoc/x", "/lop-cua-toi/quan-lop/a/lich-hocx"].every(p => toAdminPath(p) === null), ["/lop-cua-toi/quan-lop/tao-moi/lich-hoc", "/lop-cua-toi/quan-lop/a/lich-hoc/x"].map(toAdminPath));
+check("phá: 'Lịch học' KHÔNG sáng ở trang giáo trình", !contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh")?.tabs.some(t => t.active && t.label === "Lịch học"));
+
 done();
