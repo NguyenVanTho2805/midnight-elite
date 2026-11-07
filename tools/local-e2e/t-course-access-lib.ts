@@ -9,9 +9,11 @@
 //   (d) canDo trả true cho hành động lạ / vai lạ                  → ca "mặc định từ chối" đỏ
 //   (e) bỏ kiểm `closed` trong canMarkSession                     → ca "đồng giảng × buổi đã chốt" đỏ
 //   (f) cho subject_teacher sửa nhóm có teacherId null            → ca "nhóm chưa giao → bộ môn ✘" đỏ
+//   (h) cho bộ môn thấy tên khi nhóm không phải của mình          → ca "studentNamesVisible: bộ môn ngoài nhóm ẩn" đỏ
+//   (i) canEditAssignment cho tác giả ngoài nhóm sửa                → ca "canEditAssignment: tác giả ngoài nhóm ✘" đỏ
 //   (g) sửa thứ tự ưu tiên taughtBy > khung > chủ                  → các ca effectiveSessionTeacher đỏ
 import {
-  canDo, canMarkSession, canEditChapter, canEditSchedule, effectiveSessionTeacher, isCoTeacherUsable, redactCourseForRole, redactContactRow,
+  canDo, canMarkSession, canEditChapter, canEditAssignment, canGradeAssignment, studentNamesVisible, anonymousStudentLabel, canEditSchedule, effectiveSessionTeacher, isCoTeacherUsable, redactCourseForRole, redactContactRow,
   nextTeacherStatus, normalizeInviteEmail, normalizeSubjects, canBeInvitedAsTeacher, ROLE_LABEL, MAX_TEACHERS_PER_COURSE, isTeacherRole,
   type CourseAction, type CourseRole, type CoTeacherUserRow, type TeacherStatus, type TeacherEvent,
 } from "@/lib/courseAccess";
@@ -121,6 +123,19 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
   check("subject_teacher chỉ nhóm teacherId === me", canEditChapter("subject_teacher", ME, ME) === true && canEditChapter("subject_teacher", ME, OTHER) === false);
   check("nhóm chưa giao (teacherId null) → bộ môn ✘", canEditChapter("subject_teacher", ME, null) === false);
   check("none ✘", canEditChapter("none", ME, ME) === false);
+
+  section("Bài tập: sửa / chấm / tên học sinh theo nhóm (ca phá h, i)");
+  check("canEditAssignment: bộ môn chỉ khi nhóm chứa bài giao cho mình", canEditAssignment("subject_teacher", ME, ME) && !canEditAssignment("subject_teacher", ME, OTHER) && !canEditAssignment("subject_teacher", ME, null));
+  check("canEditAssignment: owner / admin / co_teacher mọi nhóm; none ✘", canEditAssignment("owner", ME, OTHER) && canEditAssignment("admin", ME, null) && canEditAssignment("co_teacher", ME, OTHER) && !canEditAssignment("none", ME, ME));
+  check("canGradeAssignment: bộ môn nhóm mình ✔", canGradeAssignment("subject_teacher", ME, { assignmentOwnerId: OTHER, chapterTeacherId: ME }));
+  check("canGradeAssignment: bộ môn tác giả ngoài nhóm ✔ (chấm được)", canGradeAssignment("subject_teacher", ME, { assignmentOwnerId: ME, chapterTeacherId: OTHER }));
+  check("canGradeAssignment: bộ môn không tác giả, ngoài nhóm ✘", !canGradeAssignment("subject_teacher", ME, { assignmentOwnerId: OTHER, chapterTeacherId: OTHER }) && !canGradeAssignment("subject_teacher", ME, { assignmentOwnerId: null, chapterTeacherId: null }));
+  check("canGradeAssignment: co_teacher mọi bài; none ✘", canGradeAssignment("co_teacher", ME, { assignmentOwnerId: OTHER, chapterTeacherId: null }) && !canGradeAssignment("none", ME, { assignmentOwnerId: ME, chapterTeacherId: ME }));
+  check("studentNamesVisible: owner / admin / co_teacher luôn thấy", studentNamesVisible("owner", ME, OTHER) && studentNamesVisible("admin", ME, null) && studentNamesVisible("co_teacher", ME, null));
+  check("studentNamesVisible: bộ môn trong nhóm mình thấy", studentNamesVisible("subject_teacher", ME, ME));
+  check("studentNamesVisible: bộ môn ngoài nhóm / nhóm chưa giao ẩn", !studentNamesVisible("subject_teacher", ME, OTHER) && !studentNamesVisible("subject_teacher", ME, null));
+  check("studentNamesVisible: vai lạ ẩn", !studentNamesVisible("none", ME, ME));
+  check("anonymousStudentLabel: 'Học viên N' 1-based", anonymousStudentLabel(0) === "Học viên 1" && anonymousStudentLabel(9) === "Học viên 10");
 
   section("canEditSchedule");
   check("owner sửa khung bất kỳ", canEditSchedule("owner", ME, null) && canEditSchedule("owner", ME, OTHER));

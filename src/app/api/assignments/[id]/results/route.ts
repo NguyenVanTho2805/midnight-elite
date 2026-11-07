@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAssignmentAccess } from "@/lib/courseAccessServer";
+import { anonymousStudentLabel } from "@/lib/courseAccess";
 
 // GET /api/assignments/[id]/results — giáo viên xem % hoàn thiện + bài làm của
 // TỪNG học viên đã ghi danh khoá học (kể cả học viên chưa mở bài — 0%), dùng
@@ -58,7 +59,9 @@ export async function GET(
     }
 
     const totalPoints = assignment.questions.reduce((s, q) => s + q.points, 0);
-    const students = enrollments.map(({ user }) => {
+    // Giáo viên bộ môn xem bài NGOÀI nhóm mình: ẩn tên + mã học sinh (nhãn "Học viên N", xếp theo id để không lộ thứ tự chữ cái), vẫn chấm được qua userId.
+    const rows = acc.namesVisible ? enrollments : [...enrollments].sort((a, b) => a.user.id.localeCompare(b.user.id));
+    const students = rows.map(({ user }, idx) => {
       const mine = byUser.get(user.id) ?? [];
       const byQuestion = new Map(mine.map(a => [a.questionId, a]));
       let answered = 0, score = 0;
@@ -76,7 +79,9 @@ export async function GET(
         }
       }
       return {
-        userId: user.id, name: user.name, studentId: user.studentId,
+        userId: user.id,
+        name: acc.namesVisible ? user.name : anonymousStudentLabel(idx),
+        studentId: acc.namesVisible ? user.studentId : null,
         completion: { answered, total: assignment.questions.length },
         score, answers: answersOut,
       };

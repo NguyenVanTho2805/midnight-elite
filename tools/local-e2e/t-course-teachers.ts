@@ -336,6 +336,28 @@ const moneySnapshot = async () => `${await prisma.feeCharge.count()}/${await pri
   check("C xem kết quả / bài nộp / sửa BT của CHỦ trong cùng lớp ⇒ 200", (await api("GET", `/api/assignments/${J(aO).id}/submissions`, { as: C })).status === 200 && (await api("PUT", `/api/assignments/${J(aO).id}`, { as: C, body: { title: "BT chủ (C sửa)" } })).status === 200);
   check("chủ sửa BT do C soạn ⇒ 200", (await api("PUT", `/api/assignments/${J(aC).id}`, { as: O, body: { title: "BT của C (chủ sửa)" } })).status === 200);
   check("S xem bài nộp của BT ngoài nhóm (do chủ soạn) ⇒ 403", (await api("GET", `/api/assignments/${J(aO).id}/submissions`, { as: S })).status === 403);
+  section("M — chấm bài: tên học sinh theo nhóm được giao (bộ môn)");
+  const due = new Date(Date.now() + 7 * 86400000).toISOString();
+  const quiz = (t: string) => ({ title: t, mode: "interactive", dueDate: due, questions: [{ text: "1+1=?", type: "MC", points: 1, options: [{ text: "2", isCorrect: true }, { text: "3" }] }] });
+  const aInGroup = await api("POST", `/api/lessons/${J(lB).id}/assignments`, { as: O, body: quiz("BT tương tác nhóm Lý") });
+  const aOutGroup = await api("POST", `/api/lessons/${J(lA).id}/assignments`, { as: O, body: quiz("BT tương tác nhóm chung") });
+  const resIn = await api("GET", `/api/assignments/${J(aInGroup).id}/results`, { as: S });
+  check("S xem kết quả bài TRONG nhóm mình ⇒ 200, thấy tên + mã học sinh", resIn.status === 200 && stu.every(u => resIn.text.includes(u.name)), resIn.status);
+  check("S xem kết quả bài NGOÀI nhóm (do chủ soạn) ⇒ 403", (await api("GET", `/api/assignments/${J(aOutGroup).id}/results`, { as: S })).status === 403);
+  // Bộ môn tự soạn bài trong nhóm mình, rồi chủ rút nhóm khỏi bộ môn ⇒ bài nằm NGOÀI nhóm nhưng S vẫn là tác giả: chấm được, nhưng tên bị ẩn; sửa thì 403.
+  const aS = await api("POST", `/api/lessons/${J(lB).id}/assignments`, { as: S, body: quiz("BT của S") });
+  check("S tạo BT tương tác trong nhóm mình ⇒ 201", aS.status === 201, aS.json);
+  await prisma.chapter.update({ where: { id: J(chB).id }, data: { teacherId: null } });
+  const resOut = await api("GET", `/api/assignments/${J(aS).id}/results`, { as: S });
+  check("S (tác giả, bài ngoài nhóm) xem kết quả ⇒ 200 nhưng KHÔNG có tên / mã học sinh nào", resOut.status === 200 && J(resOut).students.length === stu.length && !stu.some(u => resOut.text.includes(u.name) || (u.email && resOut.text.includes(u.email))), resOut.status);
+  check("…nhãn ẩn danh 'Học viên N', studentId null, vẫn có userId để chấm", J(resOut).students.every((x: any) => /^Học viên \d+$/.test(x.name) && x.studentId === null && typeof x.userId === "string"));
+  const subOut = await api("GET", `/api/assignments/${J(aS).id}/submissions`, { as: S });
+  check("S xem bài nộp ngoài nhóm ⇒ 200 và không lộ tên", subOut.status === 200 && !stu.some(u => subOut.text.includes(u.name)), subOut.status);
+  check("S sửa / xoá BT do mình soạn nhưng nhóm đã rút ⇒ 403", (await api("PUT", `/api/assignments/${J(aS).id}`, { as: S, body: { title: "x" } })).status === 403 && (await api("DELETE", `/api/assignments/${J(aS).id}`, { as: S })).status === 403 && !!(await prisma.assignment.findUnique({ where: { id: J(aS).id } })));
+  check("C (đồng giảng) vẫn thấy tên ở mọi bài", (await api("GET", `/api/assignments/${J(aS).id}/results`, { as: C })).text.includes(stu[0].name));
+  await prisma.chapter.update({ where: { id: J(chB).id }, data: { teacherId: S.id } });
+  check("trả nhóm lại cho S ⇒ S thấy tên lại", (await api("GET", `/api/assignments/${J(aS).id}/results`, { as: S })).text.includes(stu[0].name));
+
   const lK2 = await (async () => {
     const sx = await api("POST", `/api/courses/${K2.id}/sections`, { as: X, body: { title: "P" } });
     const cx = await api("POST", `/api/sections/${J(sx).id}/chapters`, { as: X, body: { title: "N" } });

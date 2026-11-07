@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAssignmentAccess } from "@/lib/courseAccessServer";
+import { anonymousStudentLabel } from "@/lib/courseAccess";
 
 // GET /api/assignments/[id]/submissions — danh sách bài học viên đã nộp, để
 // giáo viên chấm. Chỉ chủ sở hữu bài tập (hoặc admin_content/admin_super) xem được.
@@ -25,7 +26,10 @@ export async function GET(
       include: { user: { select: { id: true, name: true, studentId: true } } },
     });
 
-    return NextResponse.json(submissions);
+    if (acc.namesVisible) return NextResponse.json(submissions);
+    // Bộ môn ngoài nhóm: ẩn tên + mã học sinh, nhãn theo thứ tự ổn định của người nộp (không theo bảng chữ cái).
+    const order = [...new Set(submissions.map(x => x.userId))].sort();
+    return NextResponse.json(submissions.map(x => ({ ...x, user: { id: x.user.id, name: anonymousStudentLabel(order.indexOf(x.userId)), studentId: null } })));
   } catch (e) {
     console.error("[GET /api/assignments/[id]/submissions]", assignmentId, e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

@@ -91,6 +91,30 @@ export function canEditChapter(r: CourseRole, me: string, chapterTeacherId: stri
   return !!chapterTeacherId && chapterTeacherId === me;
 }
 
+/** Soạn / sửa / xoá BÀI TẬP của một bài giảng: cùng khoá nhóm như `canEditChapter` (bộ môn chỉ khi nhóm chứa bài giao cho MÌNH; tự soạn bài tập mà nhóm không phải của mình thì KHÔNG đủ). */
+export function canEditAssignment(r: CourseRole, me: string, chapterTeacherId: string | null): boolean {
+  return canEditChapter(r, me, chapterTeacherId);
+}
+
+/** Chấm / xem bài nộp: ai soạn bài tập hoặc có quyền soạn nhóm chứa bài; bộ môn thêm điều kiện `grade` (hàng 15 ma trận). */
+export function canGradeAssignment(r: CourseRole, me: string, i: { assignmentOwnerId: string | null; chapterTeacherId: string | null }): boolean {
+  if (!canDo(r, "grade")) return false;
+  if (canDo(r, "content.edit.any")) return true;
+  return (!!i.chapterTeacherId && i.chapterTeacherId === me) || (!!i.assignmentOwnerId && i.assignmentOwnerId === me);
+}
+
+/** Tên học sinh trong kết quả / bài nộp: chủ, quản trị, đồng giảng thấy; giáo viên bộ môn CHỈ thấy khi bài nằm trong nhóm được giao cho mình (mặc định an toàn = ẩn). */
+export function studentNamesVisible(r: CourseRole, me: string, chapterTeacherId: string | null): boolean {
+  if (r === "owner" || r === "admin" || r === "co_teacher") return true;
+  if (r === "subject_teacher") return !!chapterTeacherId && chapterTeacherId === me;
+  return false;
+}
+
+/** Nhãn ẩn danh ổn định theo thứ tự (1-based) — vẫn chấm được từng em, không lộ tên / mã học sinh. */
+export function anonymousStudentLabel(index: number): string {
+  return `Học viên ${index + 1}`;
+}
+
 /** Khung lịch: sửa / xoá khung của MÌNH (teacherId = me) hoặc, nếu có quyền `schedule.edit.other`, khung bất kỳ. Khung teacherId null là của chủ lớp. */
 export function canEditSchedule(r: CourseRole, me: string, scheduleTeacherId: string | null): boolean {
   if (canDo(r, "schedule.edit.other")) return true;

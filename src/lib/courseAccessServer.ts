@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionChecked, type SessionPayload } from "@/lib/session";
 import {
-  canDo, canMarkSession, canEditChapter as canEditChapterRole, effectiveSessionTeacher, isCoTeacherUsable, redactCourseForRole, ROLE_LABEL, ROLE_FORBIDDEN_MESSAGE, NOT_IN_COURSE_MESSAGE,
+  canDo, canMarkSession, canEditChapter as canEditChapterRole, canEditAssignment, canGradeAssignment, studentNamesVisible, effectiveSessionTeacher, isCoTeacherUsable, redactCourseForRole, ROLE_LABEL, ROLE_FORBIDDEN_MESSAGE, NOT_IN_COURSE_MESSAGE,
   type CourseAction, type CourseRole, type MarkDenied, type TeacherRole,
 } from "@/lib/courseAccess";
 
@@ -237,19 +237,23 @@ export async function isActiveHelperOfCourse(session: SessionPayload | null, cou
 }
 
 /** Cổng cho route theo `assignmentId` (sửa / xoá / chấm / xem bài nộp). Bài thuộc lớp nào do BÀI GIẢNG chứa nó quyết định. Chủ lớp / quản trị / đồng giảng: mọi bài của lớp;
- *  giáo viên bộ môn: bài do chính mình soạn HOẶC bài trong nhóm giao cho mình. Lớp khác ⇒ 403 (người lạ), bài không có ⇒ 404. */
-export async function requireAssignmentAccess(assignmentId: string, action: "content.edit.own" | "grade"): Promise<CourseAccess> {
+ *  giáo viên bộ môn: SỬA/XOÁ chỉ khi bài nằm trong nhóm giao cho mình (403 nếu ngoài nhóm); CHẤM thêm được bài do chính mình soạn. Lớp khác ⇒ 403, bài không có ⇒ 404.
+ *  `namesVisible`: có được thấy tên / mã học sinh trong kết quả hay không (bộ môn: chỉ nhóm mình). */
+export async function requireAssignmentAccess(assignmentId: string, action: "content.edit.own" | "grade"): Promise<(Extract<CourseAccess, { ok: true }> & { namesVisible: boolean }) | Extract<CourseAccess, { ok: false }>> {
   const acc = await requireCourseAccessBy(
     async () => (await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } } }))?.lesson.chapter.section.courseId ?? null,
     "Không tìm thấy bài tập", action,
   );
   if (!acc.ok) return acc;
-  if (acc.role === "subject_teacher") {
-    const a = await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { ownerId: true, lesson: { select: { chapter: { select: { teacherId: true } } } } } });
-    const me = acc.session.userId;
-    if (!a || (a.ownerId !== me && a.lesson.chapter.teacherId !== me)) return { ok: false, res: roleForbidden() };
-  }
-  return acc;
+  const a = await prisma.assignment.findUnique({ where: { id: assignmentId }, select: { ownerId: true, lesson: { select: { chapter: { select: { teacherId: true } } } } } });
+  if (!a) return { ok: false, res: NextResponse.json({ error: "Không tìm thấy bài tập", code: "NOT_FOUND" }, { status: 404, headers: NO_STORE }) };
+  const me = acc.session.userId;
+  const chapterTeacherId = a.lesson.chapter.teacherId;
+  const allowed = action === "grade"
+    ? canGradeAssignment(acc.role, me, { assignmentOwnerId: a.ownerId, chapterTeacherId })
+    : canEditAssignment(acc.role, me, chapterTeacherId);
+  if (!allowed) return { ok: false, res: roleForbidden() };
+  return { ...acc, namesVisible: studentNamesVisible(acc.role, me, chapterTeacherId) };
 }
 
 /** Giao đề / quiz CỦA MÌNH vào lớp: chủ lớp, hoặc ĐỒNG GIẢNG đang hiệu lực (quiz.assign). Giáo viên bộ môn chưa (điều kiện nhóm cần thiết kế riêng) ⇒ false. Đề vẫn của tác giả. */
