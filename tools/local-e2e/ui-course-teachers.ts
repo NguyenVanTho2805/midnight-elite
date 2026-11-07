@@ -108,6 +108,8 @@ const CONTENT = ".kin-chu-than > .flex-1 > :nth-child(n+2)";
   await shot(px, "dong-giang-loi-moi-1280");
   await card.getByRole("button", { name: "Nhận lời" }).click();
   await px.locator("[data-dg-note=ok]").waitFor({ timeout: 60000 });
+  await px.getByText(/Đã nhận lời dạy lớp «Lý 8 thử»/).waitFor({ timeout: 60000 });
+  await px.getByText("Bạn chưa có lời mời nào").waitFor({ timeout: 60000 }).catch(() => {});   // danh sách tải lại sau khi nhận: chờ, không đọc ngay (từng đỏ ngẫu nhiên do chạy đua)
   check("nhận lời → DB active; thẻ biến mất; trang nói 'Đã nhận lời'", await prisma.courseTeacher.count({ where: { id: xCt.id, status: "active" } }) === 1 && await card.count() === 0 && await px.getByText(/Đã nhận lời dạy lớp «Lý 8 thử»/).isVisible());
   check("hết lời mời → câu rỗng 'Bạn chưa có lời mời nào'", await px.getByText("Bạn chưa có lời mời nào").isVisible());
   await px.goto(`${BASE}/lop-cua-toi`, GOTO);

@@ -1,6 +1,6 @@
 // TUT-dong-giang — "Giao cho…" ở mỗi nhóm/chương của giáo trình.
 // Chủ lớp / quản trị: ô chọn giáo viên bộ môn đang dạy lớp (hoặc "Chủ lớp / không giao"); gọi PATCH .../giao-trinh/chuong/[chapterId] { teacherId }.
-// Đồng giảng / bộ môn: chỉ nhãn chỉ-đọc "Giao cho <tên hiển thị>". Bộ môn thấy nhóm của người khác bị khoá bằng chữ rõ ràng (máy chủ vẫn chặn 403 song song).
+// Đồng giảng / bộ môn: chỉ nhãn chỉ-đọc "Giao cho giáo viên khác" (máy chủ không trả userId đồng nghiệp ⇒ không có tên) / "Giao cho bạn" / "Giao cho chủ lớp". Bộ môn thấy nhóm của người khác bị khoá bằng chữ rõ ràng (máy chủ vẫn chặn 403 song song).
 // Hợp đồng dữ liệu máy chủ mong đợi (thiếu thì UI lùi về an toàn: không hiện ô chọn / khoá nhóm có người được giao):
 //   GET giao-vien: self.userId (người xem), teachers[].userId (khoá để giao); GET giao-trinh: groups[].teacherId.
 "use client";
@@ -47,13 +47,14 @@ export default function GiaoChoNhom({ courseId, chapterId, teacherId, info, onCh
   if (info.phase !== "ready") return null;
   const manage = canManageRole(info.role ?? undefined);
   const owner = info.active.find(t => t.userId && t.userId === teacherId);
-  const nameOf = owner?.name ?? (teacherId ? "giáo viên bộ môn" : "chủ lớp");
+  // Đồng giảng / bộ môn không nhận userId người khác ⇒ không tra được tên: nhóm của chính mình = "bạn", nhóm giao người khác = "giáo viên khác" (không tên).
+  const nameOf = owner?.name ?? (!teacherId ? "chủ lớp" : teacherId === info.selfUserId ? "bạn" : manage ? "giáo viên bộ môn" : "giáo viên khác");
 
   if (!manage) {
     const khoa = nhomBiKhoa(info, teacherId);
     return (
       <p data-gt-giao-cho={chapterId} data-gt-khoa={khoa ? "1" : undefined} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-        {khoa ? <>Nhóm của giáo viên khác. Giao cho {nameOf}; bạn chỉ xem được.</> : <>Giao cho {nameOf}</>}
+        {khoa ? <>Nhóm của giáo viên khác{teacherId ? "" : ` (giao cho ${nameOf})`}; bạn chỉ xem được.</> : <>Giao cho {nameOf}</>}
       </p>
     );
   }

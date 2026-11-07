@@ -1,6 +1,6 @@
 // TUT-dong-giang (giao diện, đợt 2) — 1280 và 390.
 //   H1  giáo trình: chủ lớp có ô "Giao cho" ở mỗi nhóm (chọn bộ môn → DB chapter.teacherId; "Chủ lớp / không giao" → null);
-//       đồng giảng chỉ thấy nhãn "Giao cho <tên>"; bộ môn: nhóm của mình mở, nhóm khác bị khoá bằng chữ "Nhóm của giáo viên khác" và nút tắt.
+//       đồng giảng chỉ thấy nhãn "Giao cho giáo viên khác" (không tên); bộ môn: nhóm của mình mở, nhóm khác bị khoá bằng chữ "Nhóm của giáo viên khác" và nút tắt.
 //   H2  điểm danh buổi đã chốt: đồng giảng / bộ môn thấy "Buổi đã chốt: chỉ chủ lớp sửa được.", mọi nút điểm danh + ghi chú + Lưu tắt, KHÔNG "Đề nghị chủ lớp chốt";
 //       chủ lớp vẫn sửa được; buổi chưa chốt mình dạy → có nút đề nghị; buổi người khác dạy → không có; 409 SESSION_CLOSED_OWNER_ONLY lọt qua → báo bằng chữ.
 // Bẻ X thì ca Y đỏ: bỏ `disabled={locked}` ở nút trạng thái (DiemDanh RosterRowView) → H2 "nút điểm danh tắt"; bỏ `disabled={khoa}` ở fieldset nhóm (GiaoTrinh) → H1 "nhóm khác bị khoá".
@@ -43,8 +43,8 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
   };
   const noOverflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   const small = (p: Page, root: string) => p.evaluate((sel) => [...document.querySelectorAll(`${sel} button:not([disabled]), ${sel} select:not([disabled])`)].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.height < 43.5; }).map(e => (e.textContent ?? "").trim().slice(0, 30)), root);
-  // Máy chủ (tut-code) cần trả: giao-vien → teachers[].userId + self.userId; giao-trinh → groups[].teacherId. Nếu thiếu, bài này BỔ SUNG đúng ba trường đó
-  // từ DB ở lớp mạng (để kiểm phần giao diện) và ghi nhận khoảng trống; cuối bài ca "máy chủ trả đủ ba trường" đỏ nếu còn thiếu.
+  // Máy chủ trả: giao-vien → teachers[].userId (CHỈ chủ/admin) + self.userId (mọi vai); giao-trinh → groups[].teacherId. Shim bù trường CHỈ áp cho chủ lớp;
+  // đồng giảng / bộ môn chạy thẳng không shim (không có userId đồng nghiệp, không phải gap). Cuối bài ca "máy chủ trả đủ" đỏ nếu chủ lớp còn thiếu.
   const gaps = { teacherUserId: false, selfUserId: false, groupTeacherId: false };
   const shim = async (p: Page, me: string) => {
     await p.route("**/api/tutor/lop/*/giao-vien", async r => {
@@ -89,13 +89,13 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     check(`${tag} chủ lớp: không tràn ngang`, await noOverflow(po));
     if (w === 1280) await shot(po, "dong-giang-giao-cho-chu-1280"); else await shot(po, "dong-giang-giao-cho-chu-390");
 
-    const pc = await (await ctxFor(C, { width: w, height: h })).newPage(); watch(pc); await shim(pc, C.id);
+    const pc = await (await ctxFor(C, { width: w, height: h })).newPage(); watch(pc);
     await pc.goto(`${BASE}${GT}`, GOTO);
     await pc.locator(`[data-gt-giao-cho="${chA.id}"]`).waitFor({ timeout: 90000 });
-    check(`${tag} đồng giảng: chỉ nhãn "Giao cho Thầy Bộ Môn", không có ô chọn`, (await pc.locator(`[data-gt-giao-cho="${chA.id}"]`).innerText()).includes("Giao cho Thầy Bộ Môn") && await pc.locator("[data-gt-giao-cho] select").count() === 0);
+    check(`${tag} đồng giảng: chỉ nhãn "Giao cho giáo viên khác" (không tên đồng nghiệp), không có ô chọn`, (await pc.locator(`[data-gt-giao-cho="${chA.id}"]`).innerText()).includes("Giao cho giáo viên khác") && await pc.locator("[data-gt-giao-cho] select").count() === 0);
     check(`${tag} đồng giảng: nhãn không lộ email/số điện thoại`, !/@|\b0\d{9}\b/.test(await pc.locator("[data-gt-giao-cho]").first().innerText()));
 
-    const ps = await (await ctxFor(S, { width: w, height: h })).newPage(); watch(ps); await shim(ps, S.id);
+    const ps = await (await ctxFor(S, { width: w, height: h })).newPage(); watch(ps);
     await ps.goto(`${BASE}${GT}`, GOTO);
     await ps.locator(`[data-gt-giao-cho="${chB.id}"]`).waitFor({ timeout: 90000 });
     const blockB = ps.locator(`[data-gt-nhom="${chB.id}"]`), blockA = ps.locator(`[data-gt-nhom="${chA.id}"]`);
