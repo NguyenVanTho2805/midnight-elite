@@ -15,3 +15,15 @@ export CRON_SECRET="test-cron-secret-test-cron-secret"   # /api/cron/* bắt bu�
 # export VAPID_SUBJECT=mailto:test@example.com
 # Máy Mac (không có /opt/pw-browsers): dùng Chrome cài sẵn cho các bài ui-*.ts.
 # export CHROMIUM_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Đăng nhập Google (t-google-auth, ui-google-button): test dựng Google GIẢ ngay trong bài; máy chủ dev cần các biến này (khởi động dev SAU khi source).
+# Ngoài production, GOOGLE_AUTH_URL / GOOGLE_TOKEN_URL trỏ vào máy chủ Google giả của bài test (cổng 3199). Bỏ GOOGLE_CLIENT_* thì nút ẩn (ui-google-button kiểm cả hai trạng thái).
+# export GOOGLE_CLIENT_ID=test-client-id.apps.googleusercontent.com
+# export GOOGLE_CLIENT_SECRET=test-client-secret
+# export GOOGLE_AUTH_URL=http://localhost:3199/auth
+# export GOOGLE_TOKEN_URL=http://localhost:3199/token
+# Facebook (t-facebook-auth, ui-social-buttons): Facebook GIẢ ở cổng 3198.
+# export FACEBOOK_APP_ID=test-app-id
+# export FACEBOOK_APP_SECRET=test-app-secret
+# export FACEBOOK_AUTH_URL=http://localhost:3198/auth
+# export FACEBOOK_TOKEN_URL=http://localhost:3198/token
+# export FACEBOOK_GRAPH_URL=http://localhost:3198/me

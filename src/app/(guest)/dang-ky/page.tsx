@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, CloseCircle } from "griddy-icons";
 import { AuthFrame, AuthAsideBlock } from "@/components/guest/AuthFrame";
+import { SocialButtons } from "@/components/guest/SocialButtons";
 import { KinCallout } from "@/components/kin/Callout";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinInput } from "@/components/kin/Input";
@@ -252,6 +253,8 @@ export default function DangKyPage() {
 
           {/* ── BƯỚC 1 ── */}
           {step === 1 && (
+            <div className="space-y-4">
+            {role === "student" && <SocialButtons consent />}
             <form ref={form1Ref} onSubmit={goNext} noValidate className="space-y-4">
               {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin.
                   Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ dẫn
@@ -373,6 +376,7 @@ export default function DangKyPage() {
                 Tiếp theo →
               </button>
             </form>
+            </div>
           )}
 
           {/* ── BƯỚC 2 ── */}

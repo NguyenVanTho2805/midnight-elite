@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
+import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { normalizeCodeInput, normalizeEmail } from "@/lib/loginCode";
 import { verifySignupCode } from "@/lib/loginCodeServer";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
@@ -23,8 +24,7 @@ export async function POST(req: Request) {
     switch (r.status) {
       case "ok": {
         const u = r.user;
-        await prisma.user.update({ where: { id: u.id }, data: { emailVerified: true } });
-        await prisma.verifyToken.deleteMany({ where: { userId: u.id } });
+        await prisma.$transaction([markEmailVerifiedOp(u.id), prisma.verifyToken.deleteMany({ where: { userId: u.id } })]); // gỡ googleSub/facebookId của kẻ chiếm trước (src/lib/verifyEmail.ts)
         await createSession({
           userId: u.id,
           role: u.role as "student" | "admin",

@@ -930,6 +930,10 @@ model User {
   adminRole     String? // "admin_super" | "admin_content" | "teacher"
   emailVerified Boolean  @default(false)
   banned        Boolean  @default(false)
+  // 08/11/2026: mã người dùng Google (claim `sub`, không đổi dù người đó đổi email) — để lần đăng nhập Google sau khớp theo sub, không chỉ theo email. null = chưa liên kết Google.
+  googleSub     String?  @unique
+  // 08/11/2026: mã người dùng Facebook (Graph `id`). Chỉ gắn khi tài khoản được TẠO bằng Facebook; Facebook không bao giờ tự nối vào tài khoản có sẵn theo email.
+  facebookId    String?  @unique
   // ADM-001 (01/11/2026): học sinh "đã ẩn" khỏi quản trị — thay cho xoá cứng. Giữ nguyên mọi bản ghi con (ghi danh, điểm danh, ví, bài làm)
   // làm bằng chứng. Khi ẩn, `banned` cũng được đặt true để chặn đăng nhập mà không sửa loginSession/sessionVerify (tệp chung).
   // Ẩn ⇒ khoá; khoá ⇏ ẩn. Chỉ route /api/admin/students/[id] (DELETE, restore) được ghi cột này.

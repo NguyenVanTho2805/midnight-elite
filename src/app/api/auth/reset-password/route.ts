@@ -1,6 +1,7 @@
 // GET  ?token=… → { valid } : trang đặt lại hỏi trước khi người dùng gõ mật khẩu (link hết hạn thì báo ngay, khỏi gõ rồi mới biết).
 // POST { token, password } → đặt mật khẩu mới, huỷ mọi link của tài khoản, xoá bộ đếm đăng nhập sai, gửi thư báo, đăng nhập luôn.
 // Quy tắc thuần ở src/lib/passwordReset.ts; cơ sở dữ liệu chỉ lưu băm của link.
+import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -62,8 +63,11 @@ export async function POST(req: Request) {
 
     // Đổi mật khẩu + huỷ MỌI link của tài khoản trong một giao dịch: không để link bị dùng lại nếu dừng giữa chừng.
     // Link đã mở được từ hộp thư nghĩa là người này kiểm soát hộp thư → coi email đã xác thực.
+    // Email chuyển false→true ở đây thì mọi liên kết Google/Facebook có từ trước là của người chưa chứng minh được hộp thư (kẻ đăng ký trước bằng email người khác): gỡ cùng giao dịch.
+    // markEmailVerifiedOp (src/lib/verifyEmail.ts) là chỗ duy nhất làm việc đó, dùng chung cả ba đường xác minh.
     await prisma.$transaction([
-      prisma.user.update({ where: { id: record.userId }, data: { password: hashed, emailVerified: true } }),
+      markEmailVerifiedOp(record.userId),
+      prisma.user.update({ where: { id: record.userId }, data: { password: hashed } }),
       prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
     ]);
 

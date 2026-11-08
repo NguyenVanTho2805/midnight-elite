@@ -154,6 +154,22 @@ const age = (userId: string, ms: number) => prisma.passwordResetToken.updateMany
   await reset(tokenIn(resetMails(N.email)[0]), "MatKhauMoi#2026");
   check("emailVerified chuyển thành true", (await prisma.user.findUnique({ where: { id: N.id }, select: { emailVerified: true } }))?.emailVerified === true);
 
+  section("CA PHÁ (P1-1): kẻ đăng ký trước giữ googleSub / facebookId → nạn nhân đặt lại mật khẩu thì liên kết của kẻ đó BỊ GỠ");
+  const Z = await mkUser({ name: "Kẻ chiếm trước", emailVerified: false });
+  await prisma.user.update({ where: { id: Z.id }, data: { googleSub: `g-atk-${Date.now()}`, facebookId: `fb-atk-${Date.now()}` } });
+  await forgot(Z.email);
+  const rz = await reset(tokenIn(resetMails(Z.email)[0]), "MatKhauMoi#2026");
+  const zu = await prisma.user.findUnique({ where: { id: Z.id } });
+  check("đặt lại thành công, emailVerified=true", rz.status === 200 && zu?.emailVerified === true, rz.json);
+  check("googleSub và facebookId của kẻ chiếm trước bị gỡ (không còn lối vào bằng mạng xã hội)", zu?.googleSub === null && zu?.facebookId === null, zu);
+  section("Đối chứng: tài khoản ĐÃ xác minh email đặt lại mật khẩu thì liên kết của chủ thật được GIỮ");
+  const Y = await mkUser({ name: "Chủ thật", emailVerified: true });
+  await prisma.user.update({ where: { id: Y.id }, data: { googleSub: `g-real-${Date.now()}`, facebookId: `fb-real-${Date.now()}` } });
+  await forgot(Y.email);
+  await reset(tokenIn(resetMails(Y.email)[0]), "MatKhauMoi#2026");
+  const yu = await prisma.user.findUnique({ where: { id: Y.id } });
+  check("googleSub và facebookId còn nguyên", !!yu?.googleSub && !!yu?.facebookId, yu);
+
   section("Gia sư và quản trị: vào đúng trang của vai (trước đây gia sư bị đưa nhầm)");
   const T = await mkTutor("Cô Lan");
   await forgot(T.email);

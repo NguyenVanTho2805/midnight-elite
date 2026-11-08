@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
+import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { clearSignupCode } from "@/lib/loginCodeServer";
 
 export async function GET(req: Request) {
@@ -21,13 +22,11 @@ export async function GET(req: Request) {
   if (record.user.emailVerified)        return NextResponse.json({ already: true });
 
   // Xác thực email
-  await prisma.user.update({
-    where: { id: record.userId },
-    data:  { emailVerified: true },
-  });
-
-  // Xóa token đã dùng
-  await prisma.verifyToken.delete({ where: { token } });
+  // false→true: gỡ liên kết Google/Facebook có từ trước (của người chưa chứng minh được hộp thư), cùng giao dịch với việc xoá token.
+  await prisma.$transaction([
+    markEmailVerifiedOp(record.userId),
+    prisma.verifyToken.deleteMany({ where: { token } }),
+  ]);
   await clearSignupCode(record.user.email); // mã 6 số còn lại (nếu có) vô nghĩa sau khi đã xác thực bằng link
 
   // Tạo session luôn (đăng nhập tự động)
