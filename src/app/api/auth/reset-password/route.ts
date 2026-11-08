@@ -1,6 +1,7 @@
 // GET  ?token=… → { valid } : trang đặt lại hỏi trước khi người dùng gõ mật khẩu (link hết hạn thì báo ngay, khỏi gõ rồi mới biết).
 // POST { token, password } → đặt mật khẩu mới, huỷ mọi link của tài khoản, xoá bộ đếm đăng nhập sai, gửi thư báo, đăng nhập luôn.
 // Quy tắc thuần ở src/lib/passwordReset.ts; cơ sở dữ liệu chỉ lưu băm của link.
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -65,9 +66,13 @@ export async function POST(req: Request) {
     // Link đã mở được từ hộp thư nghĩa là người này kiểm soát hộp thư → coi email đã xác thực.
     // Email chuyển false→true ở đây thì mọi liên kết Google/Facebook có từ trước là của người chưa chứng minh được hộp thư (kẻ đăng ký trước bằng email người khác): gỡ cùng giao dịch.
     // markEmailVerifiedOp (src/lib/verifyEmail.ts) là chỗ duy nhất làm việc đó, dùng chung cả ba đường xác minh.
+    // Đổi mật khẩu → mọi phiên cũ hết hiệu lực (sessionsValidAfter); phiên mới cấp ở createSession bên dưới vẫn dùng được.
+    // Thông báo đẩy của phiên cũ cũng thu hồi (cùng cách với nhánh chiếm lại ở socialAuth): kẻ giữ phiên cũ không còn nhận "có việc" qua máy hắn.
+    const mark = commitMark(); // sát giao dịch, sau mọi bước chậm
     await prisma.$transaction([
-      markEmailVerifiedOp(record.userId),
-      prisma.user.update({ where: { id: record.userId }, data: { password: hashed } }),
+      markEmailVerifiedOp(record.userId, mark),
+      prisma.user.update({ where: { id: record.userId }, data: { password: hashed, sessionsValidAfter: mark } }),
+      prisma.pushSubscription.updateMany({ where: { userId: record.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
       prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
     ]);
 
@@ -81,7 +86,7 @@ export async function POST(req: Request) {
       userId: record.userId,
       role: record.user.role as "student" | "admin",
       ...(record.user.adminRole ? { adminRole: record.user.adminRole as "admin_super" | "admin_content" | "teacher" } : {}),
-    });
+    }, { iat: iatForMark(mark) });
 
     // BU-00 bước 5: gia sư chờ duyệt đặt lại mật khẩu xong cũng về trang chờ duyệt (cùng cách tính với đăng nhập).
     return NextResponse.json({ success: true, role: record.user.role, adminRole: record.user.adminRole, next: landingPath(record.user.role, record.user.adminRole, tutorPendingOf(record.user)) });

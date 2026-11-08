@@ -14,6 +14,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { signupBonusOps } from "@/lib/wallet";
 import { requestSignupCode } from "@/lib/loginCodeServer";
 
@@ -84,8 +85,9 @@ const toExisting = (p: Provider, r: Row | null): ExistingUser | null => (r ? { .
 /** CHỈ gỡ LỐI VÀO của kẻ chiếm trước: số đã xác minh bằng SMS (nếu để lại, hắn vẫn đăng nhập được bằng mã SMS). KHÔNG đụng dữ liệu khai (ngày sinh, bằng chứng đồng ý selfConsentAt, tên/số phụ huynh,
  *  trường, thành phố, ảnh, Zalo/Facebook URL, `phone` tự khai): quy tắc kho "không sửa dữ liệu trẻ em" và chủ thật có thể đã tự điền hồ sơ rồi bấm Google khi chưa xác minh. Mật khẩu + googleSub/facebookId đặt riêng bên dưới. */
 const RECLAIM_ENTRY_WIPE = { phoneE164: null, phoneVerifiedAt: null } as const;
+// Phiên JWT cũ (kẻ chiếm trước còn cookie tới 30 ngày) bị thu hồi bằng mốc sessionsValidAfter, đặt ở chính câu lệnh chiếm lại bên dưới.
 
-export type Resolved = { ok: true; userId: string; role: string; adminRole: string | null } | { ok: false; reason: DenyReason | "failed" };
+export type Resolved = { ok: true; userId: string; role: string; adminRole: string | null; /** Có khi vừa chiếm lại: cookie mới PHẢI cấp với iat này (iatForMark) để khỏi bị chính mốc thu hồi đá. */ sessionIat?: number } | { ok: false; reason: DenyReason | "failed" };
 
 /** Tìm / tạo / liên kết người dùng cho một lượt đăng nhập mạng xã hội đã được nhà cung cấp xác nhận. Tạo mới = học sinh; Google: emailVerified=true, KHÔNG VerifyToken, KHÔNG thư; Facebook: emailVerified=false + VerifyToken + thư xác minh (như register);
  *  ví + xu khởi đầu cùng giao dịch (signupBonusOps, như /api/auth/register). Không thu gì ngoài tên + email + mã nhà cung cấp. */
@@ -129,23 +131,30 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
   // Quyết định "chiếm lại" dựa trên emailVerified đọc ở bước trước; giữa hai bước chủ thật có thể đã xác minh (hoặc một lượt Google song song đã chiếm lại xong) nên
   // câu lệnh chiếm lại tự mang điều kiện emailVerified:false và kiểm số dòng. Trúng 0 dòng → đọc lại, quyết định lại (tối đa 2 lần), không đoán.
   let user: { id: string; role: string; adminRole: string | null } | null = null;
+  let reclaimedMark: Date | null = null;
   for (let attempt = 0; attempt < 2 && !user; attempt++) {
     const link = d.kind === "create" || (d.kind === "login" && d.link);
     const reclaim = d.kind === "login" && d.reclaim;
     const data: Record<string, unknown> = { ...(provider === "google" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) };
     if (reclaim) Object.assign(data, RECLAIM_ENTRY_WIPE, { password: await bcrypt.hash(randomBytes(32).toString("hex"), 10), facebookId: provider === "facebook" ? p.id : null }); // chỉ Google tới được đây
     const uid = userId;
+    let txMark: Date | null = null;
     user = await prisma.$transaction(async tx => {
       if (!reclaim) return tx.user.update({ where: { id: uid }, data, select: { id: true, role: true, adminRole: true } });
       const r = await tx.user.updateMany({ where: { id: uid, emailVerified: false }, data });
       if (r.count === 0) return null;
       await tx.verifyToken.deleteMany({ where: { userId: uid } });
       await tx.passwordResetToken.deleteMany({ where: { userId: uid } });
+      // Đăng ký nhận thông báo của kẻ chiếm trước: thu hồi (thông báo đẩy không tên/số tiền nhưng vẫn báo "có việc" tới máy hắn).
+      await tx.pushSubscription.updateMany({ where: { userId: uid, revokedAt: null }, data: { revokedAt: new Date() } });
       // Link xem sổ không cần đăng nhập (portalToken) là lối vào: gỡ. TUYỆT ĐỐI không đổi status/bản ghi ParentLink (đổi trạng thái liên kết phụ huynh = chờ chủ quyết).
       await tx.parentLink.updateMany({ where: { studentId: uid, portalToken: { not: null } }, data: { portalToken: null } });
+      // Mốc thu hồi đặt Ở CÂU LỆNH GHI CUỐI, tính SAU bcrypt và các xoá ở trên: cookie kẻ chiếm cấp trước lúc commit đều có iat < mốc (xem commitMark).
+      txMark = commitMark();
+      await tx.user.update({ where: { id: uid }, data: { sessionsValidAfter: txMark } });
       return tx.user.findUnique({ where: { id: uid }, select: { id: true, role: true, adminRole: true } });
     });
-    if (user) break;
+    if (user) { if (reclaim) reclaimedMark = txMark; break; }
     const [s3, e3] = await Promise.all([
       prisma.user.findUnique({ where: { [f]: p.id } as never, select: sel }),
       p.email ? prisma.user.findUnique({ where: { email: p.email }, select: sel }) : Promise.resolve(null),
@@ -158,7 +167,7 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
   if (verifyToken) {
     try { await requestSignupCode(p.email!, { token: verifyToken }); } catch (err) { console.error("[social] không gửi được thư xác minh:", (err as Error).message); }
   }
-  return { ok: true, userId: user.id, role: user.role, adminRole: user.adminRole };
+  return { ok: true, userId: user.id, role: user.role, adminRole: user.adminRole, ...(reclaimedMark ? { sessionIat: iatForMark(reclaimedMark) } : {}) };
 }
 
 export { SOCIAL_NOTICES } from "@/lib/socialNotices";

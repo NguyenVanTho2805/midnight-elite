@@ -4,7 +4,7 @@
 import type { SocialProfile } from "@/lib/socialAuth";
 
 type Env = Record<string, string | undefined>;
-// v26.0 (phát hành 29/07/2026, theo developers.facebook.com/docs/graph-api/changelog/versions); v19.0 đã hết hạn 04/02/2025. CHƯA kiểm với Graph thật.
+// v26.0 (theo developers.facebook.com/docs/graph-api/changelog/versions). CHƯA kiểm với Graph thật; ngày phát hành/hết hạn các bản không ghi ở đây vì hai nguồn không khớp.
 const V = "v26.0";
 export const FACEBOOK_COOKIE = "kin_facebook";
 

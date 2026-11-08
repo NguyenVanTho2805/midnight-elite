@@ -4,6 +4,7 @@ import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { clearSignupCode } from "@/lib/loginCodeServer";
 
 export async function GET(req: Request) {
@@ -23,8 +24,9 @@ export async function GET(req: Request) {
 
   // Xác thực email
   // false→true: gỡ liên kết Google/Facebook có từ trước (của người chưa chứng minh được hộp thư), cùng giao dịch với việc xoá token.
+  const mark = commitMark(); // sát giao dịch, sau mọi bước chậm
   await prisma.$transaction([
-    markEmailVerifiedOp(record.userId),
+    markEmailVerifiedOp(record.userId, mark),
     prisma.verifyToken.deleteMany({ where: { token } }),
   ]);
   await clearSignupCode(record.user.email); // mã 6 số còn lại (nếu có) vô nghĩa sau khi đã xác thực bằng link
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
     ...(record.user.adminRole
       ? { adminRole: record.user.adminRole as "admin_super" | "admin_content" }
       : {}),
-  });
+  }, { iat: iatForMark(mark) }); // mốc thu hồi cũng đã đặt: cookie của chính người xác minh phải cấp lại với iat >= mốc
 
   // `landing`: trang đầu của vai này (cùng nguồn với đăng nhập: src/lib/landing.ts) — trang xác thực chuyển người dùng tới đó. Trước đây trang cứng /student/hoc-tap.
   // NC2-029: gia sư vừa đăng ký (chưa duyệt) — trang xác thực cần biết để không hứa "Dashboard". BU-00 bước 5: trang đầu của họ là trang chờ duyệt

@@ -12,8 +12,30 @@ export function isWriteMethod(method: string | null | undefined): boolean {
 }
 
 export interface TokenSession { userId: string; role: "student" | "admin"; adminRole?: "admin_super" | "admin_content" | "teacher"; iat?: number; exp?: number }
-export interface DbAuthState { role: string; adminRole: string | null; banned: boolean }
-export type DenyReason = "gone" | "banned" | "expired";
+export interface DbAuthState { role: string; adminRole: string | null; banned: boolean; sessionsValidAfter?: Date | null }
+export type DenyReason = "gone" | "banned" | "expired" | "revoked";
+
+/** Phiên cấp trước mốc thu hồi (User.sessionsValidAfter) là phiên cũ. Mốc null/không có → không thu hồi gì. Token thiếu iat mà có mốc → coi là cũ.
+ *  So theo GIÂY (iat của JWT là giây nguyên): phiên cấp ngay sau khi đặt mốc, cùng giây, vẫn dùng được. */
+export function isRevokedByMark(iat: number | undefined, mark: Date | null | undefined): boolean {
+  if (!mark) return false;
+  return typeof iat !== "number" || iat < Math.floor(mark.getTime() / 1000);
+}
+/** Mốc thu hồi cho mọi chỗ ĐẶT sessionsValidAfter: giây nguyên kế tiếp (strictly sau `now`). Cookie của kẻ chiếm cấp ở bất kỳ mili-giây nào của giây hiện tại
+ *  có iat < mốc → chắc chắn bị thu hồi. Phiên hợp lệ cấp NGAY SAU đó phải mang iat = iatForMark(mốc) (createSession(..., { iat })) thì mới sống; phiên mới đăng nhập
+ *  sau đó tự nhiên có iat >= mốc. Cửa sổ đổi lại: một lượt đăng nhập khác chạy trong đúng giây đó (iat < mốc) cũng bị đá — hướng sai an toàn, chỉ phải đăng nhập lại. */
+export function revocationMark(nowMs: number = Date.now()): Date {
+  return new Date((Math.floor(nowMs / 1000) + 1) * 1000);
+}
+/** Mốc cho chỗ đặt sessionsValidAfter trong/ngay trước giao dịch commit (tính SAU mọi bước chậm như bcrypt, sát câu lệnh ghi cuối). Cộng thêm 1 giây đệm so với revocationMark:
+ *  cookie của kẻ chiếm cấp ở mili-giây bất kỳ từ lúc tính mốc tới lúc commit có iat <= giây(lúc tính)+1 < mốc, nên bị thu hồi dù ranh giới giây rơi vào giữa chừng.
+ *  Cửa sổ còn lại chỉ khi khoảng "tính mốc → commit" dài hơn ~1 giây (một vòng tới DB). Đổi lại phiên hợp lệ khác cấp trong ~2 giây quanh đó cũng phải đăng nhập lại (hướng an toàn). */
+export function commitMark(nowMs: number = Date.now()): Date {
+  return revocationMark(nowMs + 1000);
+}
+export function iatForMark(mark: Date): number {
+  return Math.floor(mark.getTime() / 1000);
+}
 export type Verdict = { ok: true; session: TokenSession } | { ok: false; reason: DenyReason };
 
 /**
@@ -24,6 +46,7 @@ export type Verdict = { ok: true; session: TokenSession } | { ok: false; reason:
 export function reconcileSession(token: TokenSession, db: DbAuthState | null, nowMs: number): Verdict {
   if (!db) return { ok: false, reason: "gone" };
   if (db.banned) return { ok: false, reason: "banned" };
+  if (isRevokedByMark(token.iat, db.sessionsValidAfter)) return { ok: false, reason: "revoked" };
   const role: TokenSession["role"] = db.role === "admin" ? "admin" : "student";
   const adminRole = db.adminRole === "admin_super" || db.adminRole === "admin_content" || db.adminRole === "teacher" ? db.adminRole : undefined;
   if (token.role === role && (token.adminRole ?? undefined) === adminRole) return { ok: true, session: token };
