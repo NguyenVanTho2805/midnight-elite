@@ -4,6 +4,7 @@ import http from "node:http";
 import { readdirSync, mkdirSync } from "node:fs";
 import { BASE, mkUser, mkTutor, mkSuper, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
+import { hashCode } from "@/lib/loginCode";
 
 const APP = "test-app-id", SECRET = "test-app-secret", PORT = 3198;
 const RUN = Math.floor(Math.random() * 900000) + 100000;
@@ -147,6 +148,25 @@ const fbId = () => `fbid-${RUN}-${++n}`;
   check("token xác minh đã bị xoá", (await prisma.verifyToken.count({ where: { userId: atk2Row!.id } })) === 0);
   const atk2Again = await flow({ id: atkFb2, name: "Kẻ tấn công 2", email: v2 });
   check("kẻ tấn công đăng nhập lại bằng Facebook cũ → KHÔNG phiên (email-exists)", !hasSession(atk2Again.r) && path(atk2Again.loc) === "/dang-nhap?facebook=email-exists", atk2Again.loc);
+
+  section("CA PHÁ (P1, đường thứ ba): kẻ có Facebook tạo tài khoản bằng email nạn nhân; nạn nhân xác minh bằng MÃ 6 SỐ → facebookId BỊ GỠ");
+  const v3 = emailOf(); const atkFb3 = fbId();
+  const atk3 = await flow({ id: atkFb3, name: "Kẻ tấn công 3", email: v3 });
+  const atk3Row = await prisma.user.findUnique({ where: { email: v3 } });
+  check("tiền đề: có facebookId, emailVerified=false", hasSession(atk3.r) && atk3Row?.facebookId === atkFb3 && atk3Row.emailVerified === false);
+  const CODE6 = "483920";
+  await prisma.loginCode.deleteMany({ where: { email: `verify:${v3}` } });
+  await prisma.loginCode.create({ data: { email: `verify:${v3}`, codeHash: hashCode(`verify:${v3}`, CODE6, process.env.SESSION_SECRET!), expiresAt: new Date(Date.now() + 600_000) } });
+  const cf = await fetch(`${BASE}/api/auth/email-verify/confirm`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: v3, code: CODE6 }) });
+  const v3Row = await prisma.user.findUnique({ where: { id: atk3Row!.id } });
+  check("mã 6 số đúng: 200, emailVerified=true và facebookId = null, googleSub = null", cf.status === 200 && v3Row?.emailVerified === true && v3Row.facebookId === null && v3Row.googleSub === null, [cf.status, v3Row]);
+  const atk3Again = await flow({ id: atkFb3, name: "Kẻ tấn công 3", email: v3 });
+  check("kẻ tấn công đăng nhập lại bằng Facebook cũ → KHÔNG phiên (email-exists)", !hasSession(atk3Again.r) && path(atk3Again.loc) === "/dang-nhap?facebook=email-exists", atk3Again.loc);
+  const real = await mkUser({ name: "Chủ thật đã xác minh" });
+  await prisma.user.update({ where: { id: real.id }, data: { facebookId: `fb-real3-${RUN}`, emailVerified: true } });
+  await prisma.loginCode.create({ data: { email: `verify:${real.email}`, codeHash: hashCode(`verify:${real.email}`, CODE6, process.env.SESSION_SECRET!), expiresAt: new Date(Date.now() + 600_000) } });
+  await fetch(`${BASE}/api/auth/email-verify/confirm`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: real.email, code: CODE6 }) });
+  check("tài khoản ĐÃ xác minh từ trước: mã 6 số không gỡ facebookId của chủ thật (điều kiện emailVerified:false)", (await prisma.user.findUnique({ where: { id: real.id } }))?.facebookId === `fb-real3-${RUN}`);
 
   section("Gia sư / quản trị / đơn gia sư / khoá");
   const T = await mkTutor("Cô Lan"), A = await mkSuper("Quản trị"), P = await mkUser({ name: "Chờ duyệt" }), B = await mkUser({ name: "Bị khoá" });

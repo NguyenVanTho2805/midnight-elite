@@ -117,7 +117,7 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
 
   section("CA PHÁ: kẻ đăng ký trước bằng email nạn nhân (emailVerified=false + mật khẩu + facebookId) → nạn nhân vào bằng Google");
   const atk = await mkUser({ name: "Kẻ chiếm trước", emailVerified: false }); // mật khẩu "Passw0rd!" do kẻ đó đặt
-  await prisma.user.update({ where: { id: atk.id }, data: { facebookId: `fb-atk-${RUN}`, phone: "0901234567", phoneE164: `+8490${RUN}`, phoneVerifiedAt: new Date(), parentPhone: "0911111111", parentName: "Kẻ gian", school: "Trường kẻ gian", highSchool: "THPT kẻ gian", zaloPhone: "0922222222" } });
+  await prisma.user.update({ where: { id: atk.id }, data: { facebookId: `fb-atk-${RUN}`, phone: "0901234567", phoneE164: `+8490${RUN}`, phoneVerifiedAt: new Date(), parentPhone: "0911111111", parentName: "Kẻ gian", school: "Trường kẻ gian", highSchool: "THPT kẻ gian", zaloPhone: "0922222222", city: "Hà Nội", avatarBase64: "AVATAR", dateOfBirth: new Date("2005-03-04"), selfConsentAt: new Date("2026-10-01") } });
   const atkParent = await mkUser({ name: "Phụ huynh do kẻ gian dựng" });
   await prisma.parentLink.create({ data: { parentId: atkParent.id, studentId: atk.id, status: "verified", verifiedAt: new Date(), portalToken: `ptok-${RUN}` } });
   await prisma.verifyToken.create({ data: { token: `vt-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
@@ -133,9 +133,11 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   check("mật khẩu đã đổi sang băm bcrypt khác băm của kẻ chiếm trước", /^\$2[aby]\$/.test(ua!.password) && ua!.password !== oldHash, ua!.password);
   check("VerifyToken + PasswordResetToken cũ bị xoá", (await prisma.verifyToken.count({ where: { userId: atk.id } })) === 0 && (await prisma.passwordResetToken.count({ where: { userId: atk.id } })) === 0);
   check("facebookId của kẻ chiếm trước bị gỡ", ua?.facebookId === null, ua?.facebookId);
-  check("số điện thoại (kể cả số đã xác minh SMS) + tên phụ huynh + trường kẻ chiếm trước điền bị xoá", !!ua && ua.phone === null && ua.phoneE164 === null && ua.phoneVerifiedAt === null && ua.parentPhone === null && ua.parentName === null && ua.school === null && ua.highSchool === null && ua.zaloPhone === null, ua);
+  check("LỐI VÀO bị gỡ: phoneE164 + phoneVerifiedAt (đăng nhập bằng mã SMS) về null", !!ua && ua.phoneE164 === null && ua.phoneVerifiedAt === null, ua);
+  check("DỮ LIỆU KHAI GIỮ NGUYÊN (quy tắc không sửa dữ liệu trẻ em): ngày sinh, bằng chứng đồng ý, phụ huynh, trường, thành phố, ảnh, Zalo, phone",
+    !!ua && ua.dateOfBirth?.toISOString().slice(0, 10) === "2005-03-04" && ua.selfConsentAt?.toISOString().slice(0, 10) === "2026-10-01" && ua.parentPhone === "0911111111" && ua.parentName === "Kẻ gian" && ua.school === "Trường kẻ gian" && ua.highSchool === "THPT kẻ gian" && ua.city === "Hà Nội" && ua.avatarBase64 === "AVATAR" && ua.zaloPhone === "0922222222" && ua.phone === "0901234567", ua);
   const pl = await prisma.parentLink.findFirst({ where: { studentId: atk.id } });
-  check("liên kết phụ huynh do kẻ chiếm trước dựng bị thu hồi, link xem sổ không cần đăng nhập bị gỡ", pl?.status === "revoked" && pl.portalToken === null, pl);
+  check("ParentLink: link xem sổ không cần đăng nhập (portalToken) bị gỡ; status KHÔNG đổi (vẫn 'verified', bản ghi còn)", pl?.portalToken === null && pl.status === "verified" && !!pl.verifiedAt, pl);
   const sameAgain = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
   check("lần Google sau (đã liên kết) vẫn vào, mật khẩu không bị đổi lần nữa", hasSession(sameAgain.r) && (await prisma.user.findUnique({ where: { id: atk.id } }))!.password === ua!.password);
 

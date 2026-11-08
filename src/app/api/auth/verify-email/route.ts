@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
+import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { clearSignupCode } from "@/lib/loginCodeServer";
 
 export async function GET(req: Request) {
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   // Xác thực email
   // false→true: gỡ liên kết Google/Facebook có từ trước (của người chưa chứng minh được hộp thư), cùng giao dịch với việc xoá token.
   await prisma.$transaction([
-    prisma.user.updateMany({ where: { id: record.userId, emailVerified: false }, data: { emailVerified: true, googleSub: null, facebookId: null } }),
+    markEmailVerifiedOp(record.userId),
     prisma.verifyToken.deleteMany({ where: { token } }),
   ]);
   await clearSignupCode(record.user.email); // mã 6 số còn lại (nếu có) vô nghĩa sau khi đã xác thực bằng link

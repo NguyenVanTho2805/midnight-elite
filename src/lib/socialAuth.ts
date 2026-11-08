@@ -5,7 +5,8 @@
 //   chung     : bị khoá/ẩn → từ chối; gia sư / quản trị / người có đơn gia sư → KHÔNG vào bằng mạng xã hội ("đăng nhập bằng mật khẩu", chống chiếm quyền).
 //   google    : Google có cờ email_verified (đã kiểm trước khi tới đây) → email trùng học sinh cũ thì vào và gắn googleSub.
 //               Nếu tài khoản cũ CHƯA xác minh email (ai cũng đăng ký được bằng email của người khác) thì coi là chiếm trước: lúc liên kết ĐỔI mật khẩu sang băm ngẫu nhiên,
-//               xoá VerifyToken, gỡ facebookId (kẻ chiếm trước không giữ lối vào nào). Tài khoản đã xác minh thì giữ nguyên mọi thứ.
+//               gỡ phoneE164 + phoneVerifiedAt + facebookId + portalToken, xoá VerifyToken / PasswordResetToken (kẻ chiếm trước không giữ lối vào nào) — nhưng GIỮ NGUYÊN mọi dữ liệu khai
+//               (ngày sinh, bằng chứng đồng ý, phụ huynh, trường...) và status ParentLink. Tài khoản đã xác minh thì giữ nguyên mọi thứ.
 //   facebook  : Facebook KHÔNG có cờ đó và có thể không trả email → KHÔNG tự liên kết theo email. Chỉ vào được khi facebookId đã khớp; email đã có tài khoản mà chưa liên kết
 //               → "email-exists"; không có email → "no-email"; email mới → tạo học sinh với emailVerified=FALSE + VerifyToken + thư xác minh như /api/auth/register
 //               (Facebook không chứng minh người đó sở hữu hộp thư, nên không đặt true).
@@ -80,8 +81,9 @@ const sel = { id: true, role: true, adminRole: true, banned: true, deletedAt: tr
 type Row = { id: string; role: string; adminRole: string | null; banned: boolean; deletedAt: Date | null; tutorAppliedAt: Date | null; tutorVerified: boolean; emailVerified: boolean; googleSub: string | null; facebookId: string | null };
 const toExisting = (p: Provider, r: Row | null): ExistingUser | null => (r ? { ...r, linkedId: r[FIELD[p]] } : null);
 
-/** Mọi thứ kẻ chiếm trước có thể đã điền vào tài khoản (tự khai + số đã xác minh bằng SMS → nếu để lại, hắn vẫn đăng nhập được bằng mã SMS). Chỉ ĐẶT về trạng thái trống như tài khoản mới. */
-const RECLAIM_WIPE = { phone: null, phoneE164: null, phoneVerifiedAt: null, parentPhone: null, parentName: null, school: null, highSchool: null, city: null, zaloPhone: null, facebookUrl: null, avatarBase64: null, dateOfBirth: null, selfConsentAt: null } as const;
+/** CHỈ gỡ LỐI VÀO của kẻ chiếm trước: số đã xác minh bằng SMS (nếu để lại, hắn vẫn đăng nhập được bằng mã SMS). KHÔNG đụng dữ liệu khai (ngày sinh, bằng chứng đồng ý selfConsentAt, tên/số phụ huynh,
+ *  trường, thành phố, ảnh, Zalo/Facebook URL, `phone` tự khai): quy tắc kho "không sửa dữ liệu trẻ em" và chủ thật có thể đã tự điền hồ sơ rồi bấm Google khi chưa xác minh. Mật khẩu + googleSub/facebookId đặt riêng bên dưới. */
+const RECLAIM_ENTRY_WIPE = { phoneE164: null, phoneVerifiedAt: null } as const;
 
 export type Resolved = { ok: true; userId: string; role: string; adminRole: string | null } | { ok: false; reason: DenyReason | "failed" };
 
@@ -131,7 +133,7 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
     const link = d.kind === "create" || (d.kind === "login" && d.link);
     const reclaim = d.kind === "login" && d.reclaim;
     const data: Record<string, unknown> = { ...(provider === "google" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) };
-    if (reclaim) Object.assign(data, RECLAIM_WIPE, { password: await bcrypt.hash(randomBytes(32).toString("hex"), 10), facebookId: provider === "facebook" ? p.id : null }); // chỉ Google tới được đây
+    if (reclaim) Object.assign(data, RECLAIM_ENTRY_WIPE, { password: await bcrypt.hash(randomBytes(32).toString("hex"), 10), facebookId: provider === "facebook" ? p.id : null }); // chỉ Google tới được đây
     const uid = userId;
     user = await prisma.$transaction(async tx => {
       if (!reclaim) return tx.user.update({ where: { id: uid }, data, select: { id: true, role: true, adminRole: true } });
@@ -139,8 +141,8 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
       if (r.count === 0) return null;
       await tx.verifyToken.deleteMany({ where: { userId: uid } });
       await tx.passwordResetToken.deleteMany({ where: { userId: uid } });
-      // Liên kết phụ huynh do kẻ chiếm trước dựng: thu hồi (giữ bản ghi), gỡ link xem sổ không cần đăng nhập.
-      await tx.parentLink.updateMany({ where: { studentId: uid, status: { not: "revoked" } }, data: { status: "revoked", portalToken: null } });
+      // Link xem sổ không cần đăng nhập (portalToken) là lối vào: gỡ. TUYỆT ĐỐI không đổi status/bản ghi ParentLink (đổi trạng thái liên kết phụ huynh = chờ chủ quyết).
+      await tx.parentLink.updateMany({ where: { studentId: uid, portalToken: { not: null } }, data: { portalToken: null } });
       return tx.user.findUnique({ where: { id: uid }, select: { id: true, role: true, adminRole: true } });
     });
     if (user) break;
