@@ -135,6 +135,10 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   const vic = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
   const ua = await prisma.user.findUnique({ where: { id: atk.id } });
   check("nạn nhân vào được bằng Google, emailVerified=true, googleSub gắn", hasSession(vic.r) && ua?.emailVerified === true && ua.googleSub === `sub-victim-${RUN}`, [vic.loc, ua?.emailVerified]);
+  const ownerCk = /midnight_session=([^;]+)/.exec(vic.r.headers.get("set-cookie") ?? "")?.[1];
+  check("cookie do chính callback chiếm lại cấp cho chủ thật dùng được ngay (GET /me, cùng giây với mốc)", !!ownerCk && ((await (await fetch(`${BASE}/api/auth/me`, { headers: { cookie: `midnight_session=${ownerCk}` } })).json()) as { id?: string } | null)?.id === atk.id);
+  const sameSec = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" }, { iat: Math.floor(Date.now() / 1000) })}` };
+  check("cookie kẻ chiếm cấp ở giây hiện tại (sát reclaim) cũng bị thu hồi ở GET API", (await fetch(`${BASE}/api/student/viec-cua-toi`, { headers: sameSec })).status === 401);
   const loginAfter = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: atk.email, password: "Passw0rd!" }) });
   check("mật khẩu cũ của kẻ chiếm trước KHÔNG đăng nhập được nữa", loginAfter.status === 401 || loginAfter.status === 400 || loginAfter.status === 403, loginAfter.status);
   check("mật khẩu đã đổi sang băm bcrypt khác băm của kẻ chiếm trước", /^\$2[aby]\$/.test(ua!.password) && ua!.password !== oldHash, ua!.password);
@@ -150,7 +154,7 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   check("sessionsValidAfter được đặt khi chiếm lại", !!uk?.sessionsValidAfter && Date.now() - uk.sessionsValidAfter.getTime() < 60_000, uk);
   check("cookie phiên CŨ của kẻ chiếm trước: route ghi → 401", (await atkWrite()).status === 401);
   check("cookie phiên cũ: /api/auth/me → null (không lộ hồ sơ)", (await atkMe()) === null);
-  const freshCookie = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" })}` };
+  const freshCookie = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" }, { iat: Math.floor(uk!.sessionsValidAfter!.getTime() / 1000) })}` }; // đúng như callback cấp: iat = mốc (xem revocationMark)
   check("phiên cấp SAU mốc (chủ thật) vẫn dùng được", (await fetch(`${BASE}/api/auth/change-password`, { method: "POST", headers: { ...freshCookie, "content-type": "application/json" }, body: "{}" })).status !== 401 && ((await (await fetch(`${BASE}/api/auth/me`, { headers: freshCookie })).json()) as { id?: string } | null)?.id === atk.id);
   const sameAgain = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
   check("lần Google sau (đã liên kết) vẫn vào, mật khẩu không bị đổi lần nữa", hasSession(sameAgain.r) && (await prisma.user.findUnique({ where: { id: atk.id } }))!.password === ua!.password);

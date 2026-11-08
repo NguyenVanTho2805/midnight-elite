@@ -6,6 +6,7 @@ import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
+import { revocationMark, iatForMark } from "@/lib/sessionVerify";
 import { normalizeCodeInput, normalizeEmail } from "@/lib/loginCode";
 import { verifySignupCode } from "@/lib/loginCodeServer";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
@@ -24,12 +25,13 @@ export async function POST(req: Request) {
     switch (r.status) {
       case "ok": {
         const u = r.user;
-        await prisma.$transaction([markEmailVerifiedOp(u.id), prisma.verifyToken.deleteMany({ where: { userId: u.id } })]); // gỡ googleSub/facebookId của kẻ chiếm trước (src/lib/verifyEmail.ts)
+        const mark = revocationMark();
+        await prisma.$transaction([markEmailVerifiedOp(u.id, mark), prisma.verifyToken.deleteMany({ where: { userId: u.id } })]); // gỡ googleSub/facebookId của kẻ chiếm trước (src/lib/verifyEmail.ts)
         await createSession({
           userId: u.id,
           role: u.role as "student" | "admin",
           ...(u.adminRole ? { adminRole: u.adminRole as "admin_super" | "admin_content" } : {}),
-        });
+        }, { iat: iatForMark(mark) });
         const tutorPending = u.role === "student" && !u.adminRole && tutorApplicationStatus(u) === "pending";
         return NextResponse.json({ success: true, name: u.name, landing: landingPath(u.role, u.adminRole, tutorPending), tutorPending });
       }

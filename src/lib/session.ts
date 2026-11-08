@@ -1,6 +1,7 @@
 ﻿import { SignJWT, jwtVerify } from "jose";
 import { cookies, headers } from "next/headers";
-import { METHOD_HEADER, isWriteMethod, reconcileSession, type DbAuthState, type DenyReason } from "@/lib/sessionVerify";
+import { cache } from "react";
+import { METHOD_HEADER, isWriteMethod, isRevokedByMark, reconcileSession, type DbAuthState, type DenyReason } from "@/lib/sessionVerify";
 import { isPastMaxAge, sessionLifetimeMs, shouldRenew } from "@/lib/sessionPolicy";
 
 // Cookie giữ tên cũ "midnight_session" để không đăng xuất mọi người khi đổi mốc (Figma 33:2 gọi là kin_s; đổi tên là việc riêng).
@@ -74,17 +75,22 @@ export async function deleteSession() {
   store.delete(COOKIE_NAME);
 }
 
-// NC2-033: yêu cầu GHI (POST/PUT/PATCH/DELETE) được đối chiếu với DB MỘT lần (cache theo yêu cầu): bị xoá/bị khoá → từ chối + xoá cookie;
-// vai DB lệch token → dùng vai DB. Yêu cầu đọc giữ nguyên hành vi cũ (chỉ tin token, /api/auth/me tự đồng bộ).
-// React cache() KHÔNG khử trùng trong route handler (đã đo: 3 lần gọi = 3 truy vấn), nên nhớ theo đối tượng headers() của chính yêu cầu.
+// NC2-033: yêu cầu GHI (POST/PUT/PATCH/DELETE) được đối chiếu đầy đủ với DB MỘT lần (cache theo yêu cầu): bị xoá/bị khoá → từ chối + xoá cookie;
+// vai DB lệch token → dùng vai DB. Yêu cầu ĐỌC (trang server, API GET) chỉ kiểm mốc thu hồi User.sessionsValidAfter (chiếm lại tài khoản / đặt lại mật khẩu /
+// xác minh email): cookie cấp trước mốc → như chưa đăng nhập. Cùng một truy vấn nhớ theo yêu cầu, nên mỗi lượt có phiên thêm đúng tối đa 1 truy vấn theo khoá chính.
+// Đặt ở getSession (không ở proxy/edge vì không dùng được Prisma): MỌI trang và API đều đi qua đây. Hạ vai/xoá người dùng ở yêu cầu đọc vẫn như cũ (/api/auth/me đồng bộ).
+// React cache() KHÔNG khử trùng trong route handler (đã đo: 3 lần gọi = 3 truy vấn), nên nhớ theo đối tượng headers() của chính yêu cầu; cache() bọc thêm cho cây render server.
 const authStateMemo = new WeakMap<object, Map<string, Promise<DbAuthState | null>>>();
+
+const fetchAuthState = cache((userId: string): Promise<DbAuthState | null> =>
+  import("@/lib/prisma").then(({ prisma }) => prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, banned: true, sessionsValidAfter: true } })));
 
 async function loadAuthState(req: object, userId: string): Promise<DbAuthState | null> {
   let perReq = authStateMemo.get(req);
   if (!perReq) { perReq = new Map(); authStateMemo.set(req, perReq); }
   let p = perReq.get(userId);
   if (!p) {
-    p = import("@/lib/prisma").then(({ prisma }) => prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, banned: true, sessionsValidAfter: true } }));
+    p = fetchAuthState(userId);
     perReq.set(userId, p);
   }
   return p;
@@ -99,7 +105,15 @@ export async function getSessionChecked(): Promise<CheckedSession> {
   const session = await decrypt(token);
   if (!session) return { session: null };
   const reqHeaders = await headers();
-  if (!isWriteMethod(reqHeaders.get(METHOD_HEADER))) return { session };
+  if (!isWriteMethod(reqHeaders.get(METHOD_HEADER))) {
+    let db: DbAuthState | null;
+    try { db = await loadAuthState(reqHeaders, session.userId); } catch { return { session: null }; } // DB lỗi: không tin cookie, nhưng không xoá nó và không ném 500
+    if (db && isRevokedByMark(session.iat, db.sessionsValidAfter)) {
+      try { store.delete(COOKIE_NAME); } catch { /* ngữ cảnh không ghi được cookie (trang server): vẫn từ chối */ }
+      return { session: null, denied: "revoked" };
+    }
+    return { session };
+  }
   const verdict = reconcileSession(session, await loadAuthState(reqHeaders, session.userId), Date.now());
   if (verdict.ok) return { session: verdict.session };
   try { store.delete(COOKIE_NAME); } catch { /* ngữ cảnh không ghi được cookie: vẫn từ chối */ }

@@ -5,6 +5,8 @@
 import { prisma } from "@/lib/prisma";
 
 /** Trả PrismaPromise (lười) để đặt vào prisma.$transaction([...]) cùng việc xoá token / đổi mật khẩu. */
-export function markEmailVerifiedOp(userId: string) {
-  return prisma.user.updateMany({ where: { id: userId, emailVerified: false }, data: { emailVerified: true, googleSub: null, facebookId: null } });
+/** `mark` (revocationMark() của sessionVerify): cũng thu hồi MỌI cookie cấp trước (của kẻ đăng ký trước bằng email này). Điều kiện emailVerified:false nằm trong câu lệnh nên
+ *  chỉ chuyển false→true mới đặt mốc. Người gọi PHẢI cấp lại cookie của chính người vừa xác minh bằng createSession(..., { iat: iatForMark(mark) }) trong cùng phản hồi. */
+export function markEmailVerifiedOp(userId: string, mark: Date) {
+  return prisma.user.updateMany({ where: { id: userId, emailVerified: false }, data: { emailVerified: true, googleSub: null, facebookId: null, sessionsValidAfter: mark } });
 }

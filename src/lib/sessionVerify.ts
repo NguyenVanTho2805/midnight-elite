@@ -21,6 +21,15 @@ export function isRevokedByMark(iat: number | undefined, mark: Date | null | und
   if (!mark) return false;
   return typeof iat !== "number" || iat < Math.floor(mark.getTime() / 1000);
 }
+/** Mốc thu hồi cho mọi chỗ ĐẶT sessionsValidAfter: giây nguyên kế tiếp (strictly sau `now`). Cookie của kẻ chiếm cấp ở bất kỳ mili-giây nào của giây hiện tại
+ *  có iat < mốc → chắc chắn bị thu hồi. Phiên hợp lệ cấp NGAY SAU đó phải mang iat = iatForMark(mốc) (createSession(..., { iat })) thì mới sống; phiên mới đăng nhập
+ *  sau đó tự nhiên có iat >= mốc. Cửa sổ đổi lại: một lượt đăng nhập khác chạy trong đúng giây đó (iat < mốc) cũng bị đá — hướng sai an toàn, chỉ phải đăng nhập lại. */
+export function revocationMark(nowMs: number = Date.now()): Date {
+  return new Date((Math.floor(nowMs / 1000) + 1) * 1000);
+}
+export function iatForMark(mark: Date): number {
+  return Math.floor(mark.getTime() / 1000);
+}
 export type Verdict = { ok: true; session: TokenSession } | { ok: false; reason: DenyReason };
 
 /**

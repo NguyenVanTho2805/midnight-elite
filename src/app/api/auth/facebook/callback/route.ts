@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 
     const r = await resolveSocialUser("facebook", profile);
     if (!r.ok) return fail(r.reason);
-    await createSession({ userId: r.userId, role: r.role as "student" | "admin" });
+    await createSession({ userId: r.userId, role: r.role as "student" | "admin" }, r.sessionIat ? { iat: r.sessionIat } : {});
     return done(safeRedirect(flow.redirect) ?? landingPath(r.role, r.adminRole));
   } catch (e) {
     console.error("[facebook/callback]", (e as Error).message);
