@@ -1,5 +1,7 @@
 // BE-064/065 (1.4.6) — mã mời lớp.
 //   POST /api/courses/[id]/invites — gia sư tạo mã mời
+//     Body { ensure: true } (BU-01, "Cách học sinh vào lớp"): đảm bảo lớp có ĐÚNG MỘT mã lớp dài hạn (không giới hạn lượt, không hết hạn, chưa thu hồi) —
+//     đã có thì trả lại mã đó (200, existing: true), chưa có mới tạo (201). Gọi hai lần không sinh hai mã (khoá tư vấn theo lớp trong giao dịch).
 //   GET  /api/courses/[id]/invites — xem danh sách mã mời của lớp
 //
 // Scope: `ownsResource` → gia sư chỉ thấy/tạo mã mời cho LỚP CỦA MÌNH;
@@ -30,8 +32,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (r.res) return r.res;
   const auth = r.auth!;
 
-  let body: { maxUses?: unknown; expiresAt?: unknown } = {};
+  let body: { maxUses?: unknown; expiresAt?: unknown; ensure?: unknown } = {};
   try { body = await req.json(); } catch { /* không bắt buộc có body */ }
+  const ensure = body.ensure === true;
+
+  if (ensure) return ensureClassCode(id, auth.userId, r.ownerId ?? null);
 
   // Validate maxUses: null | số nguyên dương
   let maxUses: number | null = null;
@@ -98,4 +103,35 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ items: list });
+}
+
+/** Mã lớp dài hạn của lớp (không giới hạn lượt, không hết hạn, chưa thu hồi) — "mã lớp" gia sư thấy ở khối Cách học sinh vào lớp. */
+async function ensureClassCode(courseId: string, userId: string, ownerId: string | null) {
+  const permanent = { courseId, kind: "class", revoked: false, maxUses: null, expiresAt: null };
+  const found = await prisma.classInvite.findFirst({ where: permanent, orderBy: { createdAt: "asc" } });
+  if (found) return NextResponse.json({ ...found, existing: true });
+  const gate = await assertCanAddStudent(ownerId, { feature: "invite", add: 1 });
+  if (!gate.allow) {
+    return NextResponse.json({ error: tutorLimitMessage(gate, 1), code: PLAN_LIMIT_CODE, quota: gate.decision?.quota }, { status: 409 });
+  }
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateInviteCode();
+    try {
+      const out = await prisma.$transaction(async tx => {
+        // Khoá tư vấn theo lớp: hai lần gọi cùng lúc xếp hàng, lần sau thấy mã của lần trước.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"class_code:" + courseId}))`;
+        const again = await tx.classInvite.findFirst({ where: permanent, orderBy: { createdAt: "asc" } });
+        if (again) return { inv: again, existing: true };
+        const inv = await tx.classInvite.create({ data: { courseId, code, maxUses: null, expiresAt: null, createdBy: userId, kind: "class", boundUserId: null } });
+        return { inv, existing: false };
+      });
+      if (!out.existing) await logAction(userId, "class_invite.create", "ClassInvite", out.inv.id, { courseId, code: out.inv.code, maxUses: null, expiresAt: null, ensure: true });
+      return NextResponse.json({ ...out.inv, existing: out.existing }, { status: out.existing ? 200 : 201 });
+    } catch (e: unknown) {
+      if ((e as { code?: string })?.code === "P2002") continue;
+      console.error("[POST /api/courses/[id]/invites ensure]", e);
+      return NextResponse.json({ error: "Tạo mã lớp thất bại" }, { status: 500 });
+    }
+  }
+  return NextResponse.json({ error: "Không sinh được mã lớp (thử lại sau)" }, { status: 503 });
 }
