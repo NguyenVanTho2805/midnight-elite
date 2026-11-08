@@ -220,8 +220,13 @@ const verified = async (email: string) => (await prisma.user.findUnique({ where:
   check("bấm lại ngay → 429 wait (không gửi thêm thư)", rv2.status === 429 && rv2.json.code === "wait" && mails(old.email).length === 1, rv2);
   const ok2 = await confirm(old.email, co);
   check("nhập mã → verified", ok2.status === 200 && (await verified(old.email)) === true);
+  // #150: xác minh email đặt mốc thu hồi phiên ở GIÂY NGUYÊN kế tiếp; cookie do bài tự ký ngay sau đó (cùng giây) mang iat < mốc nên bị coi là phiên cũ (401).
+  // Người thật nhận phiên mới từ chính bước xác minh (iat = mốc); bài này tự ký cookie nên chờ qua mốc.
+  const rv3early = await post("/api/auth/resend-verification", {}, { cookie: await cookieFor(old) });
+  check("cùng giây với lúc xác minh: cookie ký trước mốc thu hồi → 401 (phiên cũ bị đá)", rv3early.status === 401, rv3early.status);
+  await new Promise(r => setTimeout(r, 2100));
   const rv3 = await post("/api/auth/resend-verification", {}, { cookie: await cookieFor(old) });
-  check("đã xác thực rồi → 400", rv3.status === 400);
+  check("đã xác thực rồi → 400", rv3.status === 400, rv3.status);
   check("chưa đăng nhập → 401", (await post("/api/auth/resend-verification", {})).status === 401);
 
   section("Thông báo không lộ tên / email người khác");

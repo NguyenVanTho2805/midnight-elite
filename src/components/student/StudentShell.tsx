@@ -28,6 +28,9 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 // NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
 const MORE_GROUPS: MoreGroup[] = [
   { title: "Khám phá", links: [
+    // Lối tìm lớp (chủ phản ánh 08/11/2026 "không thấy lớp free ở đâu"): BU-00 đã rút "Khóa học" nên học sinh không còn đường tới /khoa-hoc. Chỉ thêm lối vào, không đổi luồng:
+    // trang công khai lọc sẵn Miễn phí; `also` để mục vẫn sáng ở chi tiết lớp /khoa-hoc/<id>.
+    { label: "Lớp miễn phí", href: "/khoa-hoc?gia=free", also: ["/khoa-hoc"], icon: "lop" },
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
     { label: "Cộng đồng", href: "/cong-dong", also: ["/student/cong-dong"], icon: "nguoi" },
     { label: "Tin tức", href: "/tin-tuc", also: ["/student/tin-tuc"], icon: "hop-thu" },

@@ -25,7 +25,7 @@ import { courseRoleForPage } from "@/lib/courseAccessServer";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string; duyet?: string; n?: string }> };
+type Props = { params: Promise<{ courseId: string }>; searchParams: Promise<{ tab?: string; moi?: string; lich?: string; them?: string; duyet?: string; n?: string; ma?: string }> };
 const TABS: LopTab[] = ["diem-danh", "hoc-sinh", "giao-vien", "ma-moi", "hoc-phi", "cong-dong"];
 
 export default async function LopPage({ params, searchParams }: Props) {
@@ -75,7 +75,6 @@ export default async function LopPage({ params, searchParams }: Props) {
 
   // Gia sư (chủ lớp hoặc quản trị): trang chi tiết lớp theo Figma 299:112581. Học sinh giữ vỏ cũ.
   if (roleView === "tutor") {
-    const now = new Date();
     const co = coRole !== null;
     // BU-01: hàng chờ duyệt qua enrollServer (trang không gọi prisma.classJoinRequest). Lỗi tải chỉ làm khối này báo lỗi, danh sách em vẫn hiện.
     let pending: PendingJoinRequest[] = [], pendingFailed = false;
@@ -84,12 +83,12 @@ export default async function LopPage({ params, searchParams }: Props) {
     } catch { pendingFailed = true; }
     const hasFeeRate = co ? false : (await prisma.courseFeeRate.count({ where: { courseId } })) > 0; // đồng giảng không đọc cấu hình học phí
     const feeInfo = { price: course.price, tag: course.tag, hasFeeRate };
-    const [students, rules, sessions, taught, invites] = await Promise.all([
+    const [students, rules, sessions, taught, classCodeRow] = await Promise.all([
       prisma.enrollment.findMany({ where: { courseId, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { createdAt: "asc" } }),
       prisma.classSchedule.findMany({ where: { courseId, active: true }, select: { dayOfWeek: true, startTime: true, endTime: true } }),
       prisma.attendanceSession.findMany({ where: co ? { courseId, taughtBy: session.userId } : { courseId }, orderBy: { date: "desc" }, take: 5, select: { id: true, date: true, note: true, _count: { select: { records: true } } } }),
       prisma.attendanceSession.count({ where: co ? { courseId, taughtBy: session.userId } : { courseId } }),
-      co ? Promise.resolve([]) : prisma.classInvite.findMany({ where: { courseId, revoked: false, kind: "class" }, orderBy: { createdAt: "desc" }, take: 10, select: { code: true, maxUses: true, usedCount: true, expiresAt: true } }),
+      co ? Promise.resolve(null) : prisma.classInvite.findFirst({ where: { courseId, revoked: false, kind: "class", maxUses: null, expiresAt: null }, orderBy: { createdAt: "asc" }, select: { code: true } }),
     ]);
     // Giáo viên bộ môn chưa được giao gì (khung, nhóm bài, buổi) chỉ thấy số học sinh (ma trận 4.3, điều kiện a).
     const rosterHidden = coRole === "subject_teacher"
@@ -98,14 +97,15 @@ export default async function LopPage({ params, searchParams }: Props) {
         prisma.chapter.count({ where: { section: { courseId }, teacherId: session.userId } }),
         prisma.attendanceSession.count({ where: { courseId, taughtBy: session.userId } }),
       ])).every(c => c === 0);
-    const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
+    // Mã lớp = mã dài hạn (không giới hạn lượt, không hết hạn, chưa thu hồi), tra riêng nên không bị đẩy ra ngoài bởi các mã giới hạn tạo sau.
+    const usable = classCodeRow;
     return <LopChiTiet d={{
       courseId: course.id, courseName: course.name, category: course.category, viewerName, isTeacher,
       schedule: formatScheduleRules(rules),
       students: rosterHidden ? [] : students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })), studentCount: students.length, rosterHidden, viewRole: coRole ?? undefined,
       history: sessions.map(s => ({ id: s.id, dateKey: vnDateKeyOf(s.date), note: s.note, marked: s._count.records })),
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
-      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi",
+      initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", codeFailed: sp.ma === "loi",
       // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
       joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
       pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),

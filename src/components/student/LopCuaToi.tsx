@@ -188,8 +188,8 @@ function Content() {
     if (enrollmentsLoading || progressLoading || classes.length === 1) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
     if (classes.length === 0) {
       return wrap(<>{head()}
-        <KinEmptyState title="Bạn chưa vào lớp nào" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
-          Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây.
+        <KinEmptyState title="Bạn chưa vào lớp nào" action={<span className="flex flex-wrap gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link><Link href="/khoa-hoc?gia=free" data-lop-mien-phi className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link></span>}>
+          Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây. Chưa có mã thì xem các lớp miễn phí đang mở.
         </KinEmptyState>
         <PendingJoinBlock className="pt-8" /></>);
     }
@@ -412,8 +412,11 @@ function JoinAnotherClass({ className = "" }: { className?: string }) {
   return (
     <section aria-labelledby="lop-join" className={className}>
       <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
-      <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp.</p>
-      <Link href="/student/nhap-ma-lop" className={`${kinButtonClass("secondary")} mt-4`}>Nhập mã lớp</Link>
+      <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp, hoặc xem các lớp miễn phí đang mở.</p>
+      <div className="flex flex-wrap gap-3 mt-4">
+        <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp</Link>
+        <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>
+      </div>
     </section>
   );
 }

@@ -1,7 +1,10 @@
 // Đăng nhập (Figma "Nền móng" 464:9828; màn nhập mã 6 số cũ: 32:27).
 // 25/10/2026 (Thọ chọn "Theo Figma"): màn đầu có hai tab "Gia sư | Học sinh" cùng một biểu mẫu tài khoản + mật khẩu → /api/auth/login. Tab chỉ đổi phần
 //   phụ (tab Học sinh có nút "Tôi có mã mời vào lớp") và vai mà link "Tạo tài khoản KiN" mang sang /dang-ky; KHÔNG giới hạn ai đăng nhập ở tab nào.
-//   "Quên mật khẩu?" và "Tạo tài khoản KiN" là nút viền như Figma. Chưa làm: nút Google, ô "Ghi nhớ trên thiết bị này" (chờ Thọ quyết).
+//   "Quên mật khẩu?" và "Tạo tài khoản KiN" là nút viền như Figma. Chưa làm: ô "Ghi nhớ trên thiết bị này" (chờ Thọ quyết).
+//   08/11/2026: tab Học sinh có nút "Tiếp tục với Google" và "Tiếp tục với Facebook" (SocialButtons; mỗi nút tự ẩn nếu thiếu cặp biến GOOGLE_CLIENT_ID/SECRET hoặc FACEBOOK_APP_ID/SECRET)
+//   → /api/auth/{google,facebook}/start; callback đưa về đây với ?google=<mã> hoặc ?facebook=<mã> (SOCIAL_NOTICES: gia sư/quản trị → "đăng nhập bằng mật khẩu", bị khoá, email đã có tài khoản,
+//   Facebook không trả email…). Học sinh vào bằng Google/Facebook không cần xác nhận email.
 // Mã một lần (14/10, Thọ) KHÔNG còn là tab: Figma không vẽ. Giữ làm lối phụ, API nguyên vẹn: /dang-nhap?cach=ma mở thẳng, và nút "Đăng nhập bằng mã một lần"
 //   trong thông báo bị chặn tạm (sai mật khẩu nhiều lần). Nhập email (hoặc số điện thoại) → KiN gửi mã 6 số (sống 10 phút, dùng một lần, sai 5 lần khoá 15 phút,
 //   gửi lại sau 60 giây) → nhập mã là vào.
@@ -26,6 +29,8 @@ import { LockCountdown } from "@/components/kin/LockCountdown";
 import { replayClass } from "@/lib/replayClass";
 import { KinTabs } from "@/components/kin/Tabs";
 import { safeRedirect } from "@/lib/safeRedirect";
+import { SocialButtons } from "@/components/guest/SocialButtons";
+import { SOCIAL_NOTICES } from "@/lib/socialNotices";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
 import { landingPath } from "@/lib/landing";
 import { isAdminHost, mainLoginUrl } from "@/lib/hostRouting";
@@ -71,7 +76,10 @@ function DangNhapForm() {
   const [showPass, setShowPass]     = useState(false);
   const [code, setCode]             = useState("");
   const [invalid, setInvalid]       = useState(false);
-  const [notice, setNotice]         = useState<Notice | null>(null);
+  const [notice, setNotice]         = useState<Notice | null>(() => {
+    const g = SOCIAL_NOTICES[searchParams.get("google") ?? searchParams.get("facebook") ?? ""]; // lỗi từ /api/auth/{google,facebook}/callback
+    return g ? { kind: "error", title: g.title, body: g.body } : null;
+  });
   // Mốc được gửi lại (ms) + đồng hồ cập nhật mỗi 0,5 giây khi đang đếm ngược.
   const [resendAt, setResendAt]     = useState<number | null>(null);
   const [now, setNow]               = useState(0);
@@ -274,6 +282,7 @@ function DangNhapForm() {
             </div>
 
             <div role="tabpanel" id={`dn-panel-${vai}`} aria-labelledby={`dn-tab-${vai}`} className="flex flex-col gap-4">
+            {method === "mat-khau" && vai === "hoc-sinh" && <div data-chi-khach className="contents"><SocialButtons redirect={redirectTo} /></div>}
             {method === "mat-khau" && (
               <form ref={pwFormRef} onSubmit={submitPassword} noValidate className="flex flex-col gap-4">
                 <KinInput id="dn-id-pw" size="lg" label={idLabel} type={phoneOn ? "text" : "email"} inputMode={phoneOn ? "text" : "email"} autoComplete="username"

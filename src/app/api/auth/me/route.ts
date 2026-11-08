@@ -13,6 +13,7 @@ export async function GET() {
     select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, parentPhone: true, parentName: true, school: true, highSchool: true, city: true, studentId: true, facebookUrl: true, zaloPhone: true, emailVerified: true, banned: true, phoneVerifiedAt: true, tutorAppliedAt: true, tutorVerified: true, tutorRejectedAt: true },
   });
   if (!user) return NextResponse.json(null);
+  // Mốc thu hồi (chiếm lại / đặt lại mật khẩu / xác minh email) đã được getSession() kiểm cho yêu cầu GET này (getSessionChecked) → ở đây không kiểm lại.
 
   // Đồng bộ vai: vai trong phiên (đã qua kiểm chữ ký + hạn) lệch vai trong DB (gia sư mới được duyệt, quản trị bị gỡ vai…)
   // → cấp lại cookie theo DB. Chỉ lấy vai từ DB; giữ NGUYÊN mốc iat nên không kéo dài phiên. Tài khoản bị khoá: không cấp gì.
