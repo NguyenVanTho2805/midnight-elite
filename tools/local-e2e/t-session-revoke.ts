@@ -1,6 +1,6 @@
 // Thu hồi phiên bằng User.sessionsValidAfter: chặn cả ĐỌC (trang server + API GET) lẫn ghi; mốc cùng giây; reset-password thu hồi push; xác minh email cấp lại cookie.
 import { encrypt } from "@/lib/session";
-import { revocationMark, iatForMark, isRevokedByMark } from "@/lib/sessionVerify";
+import { revocationMark, commitMark, iatForMark, isRevokedByMark } from "@/lib/sessionVerify";
 import { prisma } from "@/lib/prisma";
 import { api, mkUser, mkTutor, wipe, check, section, done, BASE } from "./h";
 import { hashResetToken } from "@/lib/passwordReset";
@@ -31,13 +31,27 @@ const mark = (id: string, m: Date | null) => prisma.user.update({ where: { id },
   check("phiên đăng nhập sau đó (iat > mốc) sống", !isRevokedByMark(M + 5, m));
   check("mốc null → không thu hồi", !isRevokedByMark(1, null));
 
+  section("Khe đua lúc chiếm lại: cookie cấp giữa lúc tính mốc và commit vẫn bị thu hồi");
+  // Mốc tính (commitMark) SAU bcrypt, sát commit. Kẻ chiếm đăng nhập ở mili-giây bất kỳ trong ~1 giây kế sau lúc tính (kể cả vắt qua ranh giới giây) → iat < mốc.
+  let raceOk = true, firstLive = -1;
+  for (const base of [Date.UTC(2026, 10, 8, 5, 0, 0, 0), Date.UTC(2026, 10, 8, 5, 0, 0, 1), Date.UTC(2026, 10, 8, 5, 0, 0, 999)]) {
+    const cm = commitMark(base);
+    for (let dt = 0; dt < 1000; dt += 7) {
+      const iat = Math.floor((base + dt) / 1000); // cookie kẻ chiếm cấp tại base+dt (sau lúc tính mốc, trước commit)
+      if (!isRevokedByMark(iat, cm)) { raceOk = false; firstLive = dt; }
+    }
+  }
+  check("mọi cookie cấp trong 1 giây sau lúc tính mốc (qua ranh giới giây) có iat < mốc", raceOk, firstLive);
+  check("đối chứng: revocationMark trần (không đệm) để lọt cookie cấp ở giây kế → lý do có commitMark", !isRevokedByMark(Math.floor((Date.UTC(2026, 10, 8, 5, 0, 0, 999) + 5) / 1000), revocationMark(Date.UTC(2026, 10, 8, 5, 0, 0, 999))));
+  check("phiên hợp lệ cấp lại với iat = iatForMark(commitMark) sống", !isRevokedByMark(iatForMark(commitMark(t0)), commitMark(t0)));
+
   section("GET trang server + GET API với cookie cũ / mới / cột null");
   const u = await mkUser({ name: "Em An" });
   const oldTok = await tokFor(u.id, nowS() - 10);
   const tu = await mkTutor("Cô Lan");
   const tOld = await tutTok(tu.id, nowS() - 10);
   check("cột null: trang qua (không chuyển /dang-nhap)", !(await page(tOld)).toLogin);
-  check("cột null: GET /api/student/viec-cua-toi không 401", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(oldTok) })).status !== 401);
+  check("cột null: GET /api/student/viec-cua-toi trả < 400", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(oldTok) })).status < 400);
   check("đối chứng: không cookie → trang chuyển /dang-nhap", (await page(null)).toLogin);
   const mk = revocationMark();
   await mark(u.id, mk); await mark(tu.id, mk);
@@ -50,7 +64,7 @@ const mark = (id: string, m: Date | null) => prisma.user.update({ where: { id },
   const newTok = await tokFor(u.id, iatForMark(mk));
   const np = await page(await tutTok(tu.id, iatForMark(mk)));
   check("cookie mới (iat = mốc): trang qua", !np.toLogin && np.status !== 500, np);
-  check("cookie mới: GET API không 401", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(newTok) })).status !== 401);
+  check("cookie mới: GET API không 401", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(newTok) })).status < 400);
   const edge = await tokFor(u.id, iatForMark(mk) - 1);
   check("biên: iat = mốc − 1 giây → bị từ chối", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(edge) })).status === 401);
   check("ghi với cookie cũ vẫn bị từ chối (không hồi quy)", (await api("POST", "/api/parent-consents", { headers: ck(oldTok), body: {} })).status === 401);
@@ -67,7 +81,7 @@ const mark = (id: string, m: Date | null) => prisma.user.update({ where: { id },
   check("PushSubscription bị thu hồi (revokedAt)", !!sub?.revokedAt);
   const fresh = /midnight_session=([^;]+)/.exec(rr.headers.get("set-cookie") ?? "")?.[1] ?? "";
   check("cookie cũ bị từ chối ở GET API", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(vOld) })).status === 401);
-  check("cookie vừa cấp trong phản hồi reset sống (cùng giây)", fresh !== "" && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(fresh) })).status !== 401);
+  check("cookie vừa cấp trong phản hồi reset sống (cùng giây)", fresh !== "" && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(fresh) })).status < 400);
 
   section("xác minh email: đặt mốc + cấp lại cookie, không đá người vừa xác minh");
   const w = await mkUser({ name: "Em Chi", emailVerified: false });
@@ -79,12 +93,23 @@ const mark = (id: string, m: Date | null) => prisma.user.update({ where: { id },
   const wRow = await prisma.user.findUnique({ where: { id: w.id }, select: { sessionsValidAfter: true, emailVerified: true } });
   check("emailVerified true + có mốc", wRow?.emailVerified === true && !!wRow.sessionsValidAfter);
   check("cookie cấp trước (kẻ đăng ký trước) bị từ chối", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(wOld) })).status === 401);
-  check("cookie mới trong phản hồi xác minh sống", wNew !== "" && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(wNew) })).status !== 401);
+  check("cookie mới trong phản hồi xác minh sống", wNew !== "" && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(wNew) })).status < 400);
   const ve2 = await fetch(BASE + "/api/auth/verify-email?token=tok-rev-1");
   check("xác minh lần hai không đặt lại mốc", ve2.status !== 500 && (await prisma.user.findUnique({ where: { id: w.id }, select: { sessionsValidAfter: true } }))?.sessionsValidAfter?.getTime() === wRow!.sessionsValidAfter!.getTime());
   const x = await mkUser({ name: "Em Dũng", emailVerified: true });
   const xTok = await tokFor(x.id, nowS() - 3);
-  check("tài khoản đã xác minh trước đó: không có mốc, cookie cũ sống", (await prisma.user.findUnique({ where: { id: x.id }, select: { sessionsValidAfter: true } }))?.sessionsValidAfter === null && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(xTok) })).status !== 401);
+  check("tài khoản đã xác minh trước đó: không có mốc, cookie cũ sống", (await prisma.user.findUnique({ where: { id: x.id }, select: { sessionsValidAfter: true } }))?.sessionsValidAfter === null && (await api("GET", "/api/student/viec-cua-toi", { headers: ck(xTok) })).status < 400);
+
+  section("Facebook: chủ thật xác minh email của tài khoản tạo bằng Facebook (ghi lại hành vi hiện tại)");
+  const fb = await mkUser({ name: "Em Phong", emailVerified: false });
+  await prisma.user.update({ where: { id: fb.id }, data: { facebookId: `fb-rev-${fb.id}` } });
+  const fbOld = await tokFor(fb.id, nowS() - 3);
+  await prisma.verifyToken.create({ data: { token: "tok-rev-fb", userId: fb.id, expiresAt: new Date(Date.now() + 3_600_000) } });
+  const vf = await fetch(BASE + "/api/auth/verify-email?token=tok-rev-fb");
+  const fbRow = await prisma.user.findUnique({ where: { id: fb.id }, select: { facebookId: true, emailVerified: true, sessionsValidAfter: true } });
+  check("verify-email → 200", vf.status === 200, vf.status);
+  check("hành vi hiện tại: facebookId bị gỡ, emailVerified true, có mốc", fbRow?.facebookId === null && fbRow.emailVerified === true && !!fbRow.sessionsValidAfter, fbRow);
+  check("thiết bị Facebook cũ bị đá (cookie cấp trước bị từ chối)", (await api("GET", "/api/student/viec-cua-toi", { headers: ck(fbOld) })).status === 401);
 
   done();
 })();

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSession, deleteSession, getSession, renewSessionIfDue, type SessionPayload } from "@/lib/session";
 import { isAdminSession, isPastMaxAge } from "@/lib/sessionPolicy";
-import { isRevokedByMark } from "@/lib/sessionVerify";
 import { prisma } from "@/lib/prisma";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 
@@ -11,11 +10,10 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, parentPhone: true, parentName: true, school: true, highSchool: true, city: true, studentId: true, facebookUrl: true, zaloPhone: true, emailVerified: true, banned: true, phoneVerifiedAt: true, tutorAppliedAt: true, tutorVerified: true, tutorRejectedAt: true, sessionsValidAfter: true },
+    select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, parentPhone: true, parentName: true, school: true, highSchool: true, city: true, studentId: true, facebookUrl: true, zaloPhone: true, emailVerified: true, banned: true, phoneVerifiedAt: true, tutorAppliedAt: true, tutorVerified: true, tutorRejectedAt: true },
   });
   if (!user) return NextResponse.json(null);
-  // Phiên cấp trước mốc thu hồi (chiếm lại tài khoản / đặt lại mật khẩu): bỏ cookie, coi như chưa đăng nhập. Dùng chính truy vấn này, không thêm truy vấn.
-  if (isRevokedByMark(session.iat, user.sessionsValidAfter)) { await deleteSession(); return NextResponse.json(null); }
+  // Mốc thu hồi (chiếm lại / đặt lại mật khẩu / xác minh email) đã được getSession() kiểm cho yêu cầu GET này (getSessionChecked) → ở đây không kiểm lại.
 
   // Đồng bộ vai: vai trong phiên (đã qua kiểm chữ ký + hạn) lệch vai trong DB (gia sư mới được duyệt, quản trị bị gỡ vai…)
   // → cấp lại cookie theo DB. Chỉ lấy vai từ DB; giữ NGUYÊN mốc iat nên không kéo dài phiên. Tài khoản bị khoá: không cấp gì.
@@ -40,8 +38,8 @@ export async function GET() {
   if (!user.banned) await renewSessionIfDue(effective);
 
   // NC2-029: chỉ MỘT cờ cho chính người dùng này — "đã nộp đơn gia sư, chưa được duyệt, chưa bị từ chối" (vẫn là role học viên). Không trả ngày/lý do.
-  const { banned: _banned, sessionsValidAfter: _sva, phoneVerifiedAt, tutorAppliedAt, tutorVerified, tutorRejectedAt, ...publicUser } = user;
-  void _banned; void _sva;
+  const { banned: _banned, phoneVerifiedAt, tutorAppliedAt, tutorVerified, tutorRejectedAt, ...publicUser } = user;
+  void _banned;
   const tutorPending = user.role === "student" && !user.adminRole && tutorApplicationStatus({ tutorAppliedAt, tutorVerified, tutorRejectedAt }) === "pending";
   // sessionRefreshed: báo cho trình duyệt dựng lại phần máy chủ (vỏ gia sư đọc cookie) ngay lần tải này.
   return NextResponse.json({ ...publicUser, phoneVerified: phoneVerifiedAt !== null, tutorPending, ...(roleSynced ? { sessionRefreshed: true } : {}) });

@@ -27,6 +27,12 @@ export function isRevokedByMark(iat: number | undefined, mark: Date | null | und
 export function revocationMark(nowMs: number = Date.now()): Date {
   return new Date((Math.floor(nowMs / 1000) + 1) * 1000);
 }
+/** Mốc cho chỗ đặt sessionsValidAfter trong/ngay trước giao dịch commit (tính SAU mọi bước chậm như bcrypt, sát câu lệnh ghi cuối). Cộng thêm 1 giây đệm so với revocationMark:
+ *  cookie của kẻ chiếm cấp ở mili-giây bất kỳ từ lúc tính mốc tới lúc commit có iat <= giây(lúc tính)+1 < mốc, nên bị thu hồi dù ranh giới giây rơi vào giữa chừng.
+ *  Cửa sổ còn lại chỉ khi khoảng "tính mốc → commit" dài hơn ~1 giây (một vòng tới DB). Đổi lại phiên hợp lệ khác cấp trong ~2 giây quanh đó cũng phải đăng nhập lại (hướng an toàn). */
+export function commitMark(nowMs: number = Date.now()): Date {
+  return revocationMark(nowMs + 1000);
+}
 export function iatForMark(mark: Date): number {
   return Math.floor(mark.getTime() / 1000);
 }

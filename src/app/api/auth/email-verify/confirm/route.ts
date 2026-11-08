@@ -6,7 +6,7 @@ import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
-import { revocationMark, iatForMark } from "@/lib/sessionVerify";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { normalizeCodeInput, normalizeEmail } from "@/lib/loginCode";
 import { verifySignupCode } from "@/lib/loginCodeServer";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     switch (r.status) {
       case "ok": {
         const u = r.user;
-        const mark = revocationMark();
+        const mark = commitMark(); // sát giao dịch, sau mọi bước chậm
         await prisma.$transaction([markEmailVerifiedOp(u.id, mark), prisma.verifyToken.deleteMany({ where: { userId: u.id } })]); // gỡ googleSub/facebookId của kẻ chiếm trước (src/lib/verifyEmail.ts)
         await createSession({
           userId: u.id,

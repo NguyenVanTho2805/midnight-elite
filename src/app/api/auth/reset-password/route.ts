@@ -1,7 +1,7 @@
 // GET  ?token=… → { valid } : trang đặt lại hỏi trước khi người dùng gõ mật khẩu (link hết hạn thì báo ngay, khỏi gõ rồi mới biết).
 // POST { token, password } → đặt mật khẩu mới, huỷ mọi link của tài khoản, xoá bộ đếm đăng nhập sai, gửi thư báo, đăng nhập luôn.
 // Quy tắc thuần ở src/lib/passwordReset.ts; cơ sở dữ liệu chỉ lưu băm của link.
-import { revocationMark, iatForMark } from "@/lib/sessionVerify";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     // markEmailVerifiedOp (src/lib/verifyEmail.ts) là chỗ duy nhất làm việc đó, dùng chung cả ba đường xác minh.
     // Đổi mật khẩu → mọi phiên cũ hết hiệu lực (sessionsValidAfter); phiên mới cấp ở createSession bên dưới vẫn dùng được.
     // Thông báo đẩy của phiên cũ cũng thu hồi (cùng cách với nhánh chiếm lại ở socialAuth): kẻ giữ phiên cũ không còn nhận "có việc" qua máy hắn.
-    const mark = revocationMark();
+    const mark = commitMark(); // sát giao dịch, sau mọi bước chậm
     await prisma.$transaction([
       markEmailVerifiedOp(record.userId, mark),
       prisma.user.update({ where: { id: record.userId }, data: { password: hashed, sessionsValidAfter: mark } }),

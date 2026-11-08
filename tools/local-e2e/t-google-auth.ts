@@ -137,8 +137,9 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   check("nạn nhân vào được bằng Google, emailVerified=true, googleSub gắn", hasSession(vic.r) && ua?.emailVerified === true && ua.googleSub === `sub-victim-${RUN}`, [vic.loc, ua?.emailVerified]);
   const ownerCk = /midnight_session=([^;]+)/.exec(vic.r.headers.get("set-cookie") ?? "")?.[1];
   check("cookie do chính callback chiếm lại cấp cho chủ thật dùng được ngay (GET /me, cùng giây với mốc)", !!ownerCk && ((await (await fetch(`${BASE}/api/auth/me`, { headers: { cookie: `midnight_session=${ownerCk}` } })).json()) as { id?: string } | null)?.id === atk.id);
-  const sameSec = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" }, { iat: Math.floor(Date.now() / 1000) })}` };
-  check("cookie kẻ chiếm cấp ở giây hiện tại (sát reclaim) cũng bị thu hồi ở GET API", (await fetch(`${BASE}/api/student/viec-cua-toi`, { headers: sameSec })).status === 401);
+  const markSec = Math.floor((await prisma.user.findUnique({ where: { id: atk.id }, select: { sessionsValidAfter: true } }))!.sessionsValidAfter!.getTime() / 1000);
+  const sameSec = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" }, { iat: markSec - 1 })}` }; // iat cố định = mốc − 1 (giây sát reclaim), không phụ thuộc đồng hồ lúc chạy
+  check("cookie kẻ chiếm cấp ở giây sát reclaim (iat = mốc − 1) cũng bị thu hồi ở GET API", (await fetch(`${BASE}/api/student/viec-cua-toi`, { headers: sameSec })).status === 401);
   const loginAfter = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: atk.email, password: "Passw0rd!" }) });
   check("mật khẩu cũ của kẻ chiếm trước KHÔNG đăng nhập được nữa", loginAfter.status === 401 || loginAfter.status === 400 || loginAfter.status === 403, loginAfter.status);
   check("mật khẩu đã đổi sang băm bcrypt khác băm của kẻ chiếm trước", /^\$2[aby]\$/.test(ua!.password) && ua!.password !== oldHash, ua!.password);

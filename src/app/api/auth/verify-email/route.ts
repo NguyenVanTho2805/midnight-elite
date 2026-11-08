@@ -4,7 +4,7 @@ import { createSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
 import { markEmailVerifiedOp } from "@/lib/verifyEmail";
-import { revocationMark, iatForMark } from "@/lib/sessionVerify";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { clearSignupCode } from "@/lib/loginCodeServer";
 
 export async function GET(req: Request) {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
   // Xác thực email
   // false→true: gỡ liên kết Google/Facebook có từ trước (của người chưa chứng minh được hộp thư), cùng giao dịch với việc xoá token.
-  const mark = revocationMark();
+  const mark = commitMark(); // sát giao dịch, sau mọi bước chậm
   await prisma.$transaction([
     markEmailVerifiedOp(record.userId, mark),
     prisma.verifyToken.deleteMany({ where: { token } }),

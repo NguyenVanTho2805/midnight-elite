@@ -14,7 +14,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { revocationMark, iatForMark } from "@/lib/sessionVerify";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { signupBonusOps } from "@/lib/wallet";
 import { requestSignupCode } from "@/lib/loginCodeServer";
 
@@ -135,10 +135,10 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
   for (let attempt = 0; attempt < 2 && !user; attempt++) {
     const link = d.kind === "create" || (d.kind === "login" && d.link);
     const reclaim = d.kind === "login" && d.reclaim;
-    const reclaimMark = revocationMark();
     const data: Record<string, unknown> = { ...(provider === "google" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) };
-    if (reclaim) Object.assign(data, RECLAIM_ENTRY_WIPE, { sessionsValidAfter: reclaimMark, password: await bcrypt.hash(randomBytes(32).toString("hex"), 10), facebookId: provider === "facebook" ? p.id : null }); // chỉ Google tới được đây
+    if (reclaim) Object.assign(data, RECLAIM_ENTRY_WIPE, { password: await bcrypt.hash(randomBytes(32).toString("hex"), 10), facebookId: provider === "facebook" ? p.id : null }); // chỉ Google tới được đây
     const uid = userId;
+    let txMark: Date | null = null;
     user = await prisma.$transaction(async tx => {
       if (!reclaim) return tx.user.update({ where: { id: uid }, data, select: { id: true, role: true, adminRole: true } });
       const r = await tx.user.updateMany({ where: { id: uid, emailVerified: false }, data });
@@ -149,9 +149,12 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
       await tx.pushSubscription.updateMany({ where: { userId: uid, revokedAt: null }, data: { revokedAt: new Date() } });
       // Link xem sổ không cần đăng nhập (portalToken) là lối vào: gỡ. TUYỆT ĐỐI không đổi status/bản ghi ParentLink (đổi trạng thái liên kết phụ huynh = chờ chủ quyết).
       await tx.parentLink.updateMany({ where: { studentId: uid, portalToken: { not: null } }, data: { portalToken: null } });
+      // Mốc thu hồi đặt Ở CÂU LỆNH GHI CUỐI, tính SAU bcrypt và các xoá ở trên: cookie kẻ chiếm cấp trước lúc commit đều có iat < mốc (xem commitMark).
+      txMark = commitMark();
+      await tx.user.update({ where: { id: uid }, data: { sessionsValidAfter: txMark } });
       return tx.user.findUnique({ where: { id: uid }, select: { id: true, role: true, adminRole: true } });
     });
-    if (user) { if (reclaim) reclaimedMark = reclaimMark; break; }
+    if (user) { if (reclaim) reclaimedMark = txMark; break; }
     const [s3, e3] = await Promise.all([
       prisma.user.findUnique({ where: { [f]: p.id } as never, select: sel }),
       p.email ? prisma.user.findUnique({ where: { email: p.email }, select: sel }) : Promise.resolve(null),
