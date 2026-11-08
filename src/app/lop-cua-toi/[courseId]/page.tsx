@@ -98,7 +98,9 @@ export default async function LopPage({ params, searchParams }: Props) {
         prisma.chapter.count({ where: { section: { courseId }, teacherId: session.userId } }),
         prisma.attendanceSession.count({ where: { courseId, taughtBy: session.userId } }),
       ])).every(c => c === 0);
-    const usable = invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
+    // Mã lớp dài hạn (không giới hạn lượt, không hết hạn) đứng trước; chưa có thì lấy mã còn dùng được mới nhất.
+    const usable = invites.find(i => i.maxUses == null && !i.expiresAt)
+      ?? invites.find(i => (!i.expiresAt || i.expiresAt > now) && (i.maxUses == null || i.usedCount < i.maxUses));
     return <LopChiTiet d={{
       courseId: course.id, courseName: course.name, category: course.category, viewerName, isTeacher,
       schedule: formatScheduleRules(rules),

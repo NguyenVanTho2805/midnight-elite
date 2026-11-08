@@ -128,7 +128,7 @@ const POLICY_OPTIONS: { value: JoinPolicy; title: string; hint: string }[] = [
 ];
 
 /** BU-01: ô "Cách vào lớp" (lưu bằng PATCH /api/courses/<id>) + link trang lớp để gửi cho học sinh. */
-export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending }: { courseId: string; policy: JoinPolicy; isFree: boolean; canOpen: boolean; pending: number }) {
+export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending, onChanged }: { courseId: string; policy: JoinPolicy; isFree: boolean; canOpen: boolean; pending: number; onChanged?: (next: JoinPolicy) => void }) {
   const notify = useNotify();
   const [value, setValue] = useState<JoinPolicy>(policy);
   const [asking, setAsking] = useState<JoinPolicy | null>(null);
@@ -141,6 +141,7 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending }: { 
     if (!r.ok) { notify.err(r.data.error ?? "Chưa đổi được cách vào lớp, thử lại sau."); return; }
     setValue(next);
     notify.ok("Đã đổi cách vào lớp.");
+    onChanged?.(next);
   }
   function choose(next: JoinPolicy) {
     if (next === value || busy) return;
@@ -167,13 +168,6 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending }: { 
           );
         })}
       </fieldset>
-      {(value === "open" || value === "approve") && (
-        <div className="mt-3 flex items-center gap-2 flex-wrap text-sm" style={{ color: "var(--kin-chu-phu)" }}>
-          <span>Link trang lớp để gửi học sinh:</span>
-          <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`}
-            onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép link trang lớp." : "Không sao chép được.")}>Sao chép link trang lớp</KinCopyButton>
-        </div>
-      )}
       <KinConfirm
         open={asking !== null}
         title="Đổi cách vào lớp?"
@@ -188,11 +182,64 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending }: { 
   );
 }
 
+
+/** Câu giải thích theo cách vào lớp — một nguồn cho khối "Cách học sinh vào lớp" (tab Mã mời, đầu trang lớp). */
+export function joinHowText(policy: JoinPolicy, hasCode: boolean): string {
+  if (policy === "open") return "Học sinh mở link trang lớp, bấm Vào lớp là vào ngay, không cần mã và không cần cô duyệt.";
+  if (policy === "approve") return hasCode
+    ? "Học sinh nhập mã lớp (ở Lớp của tôi, mục Nhập mã lớp) hoặc mở link trang lớp rồi bấm Xin vào lớp. Cô duyệt từng em ở tab Học sinh."
+    : "Học sinh mở link trang lớp rồi bấm Xin vào lớp, hoặc nhập mã lớp. Cô duyệt từng em ở tab Học sinh.";
+  return "Chỉ ai có mã lớp mới vào được. Cô gửi mã này cho học sinh; em nhập ở Lớp của tôi, mục Nhập mã lớp là vào lớp ngay.";
+}
+
+/**
+ * Khối "Cách học sinh vào lớp": mã lớp có sẵn (đọc từ ClassInvite, tự tạo một lần khi tạo lớp), link trang lớp, nút sao chép và câu giải thích.
+ * Lớp cũ chưa có mã: nút "Tạo mã lớp" gọi POST /api/courses/<id>/invites {ensure:true} (idempotent), xong làm mới trang.
+ */
+export function ClassJoinHowTo({ courseId, policy, code, onChanged }: { courseId: string; policy: JoinPolicy; code: string | null; onChanged: () => void }) {
+  const notify = useNotify();
+  const [busy, setBusy] = useState(false);
+  const needsCode = policy !== "open";
+  async function make() {
+    setBusy(true);
+    const r = await callApi<{ error?: string }>(`/api/courses/${courseId}/invites`, { method: "POST", body: JSON.stringify({ ensure: true }) });
+    setBusy(false);
+    if (!r.ok) { notify.err(r.data.error ?? "Chưa tạo được mã lớp, thử lại sau."); return; }
+    onChanged();
+  }
+  const done = (what: string) => (ok: boolean) => notify[ok ? "ok" : "err"](ok ? `Đã sao chép ${what}.` : "Không sao chép được.");
+  return (
+    <section className="rounded-xl p-4" style={CARD_STYLE} aria-labelledby="chv-title" data-join-howto data-policy={policy}>
+      <p id="chv-title" className="font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Cách học sinh vào lớp</p>
+      <p className="mt-1 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-join-howto-text>{joinHowText(policy, !!code)}</p>
+      {needsCode && (
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Mã lớp</span>
+          {code ? (<>
+            <span className="text-xl font-mono font-medium tracking-wider tabular-nums" style={{ color: "var(--kin-chu-chinh)" }} data-class-code>{code}</span>
+            <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép mã lớp" text={code} onResult={done("mã lớp")}>Sao chép mã</KinCopyButton>
+            <KinCopyButton appearance="button" buttonVariant="ghost" label="Sao chép link vào lớp bằng mã" text={() => `${window.location.origin}/student/nhap-ma-lop?code=${code}`} onResult={done("link nhập mã")}>Sao chép link nhập mã</KinCopyButton>
+          </>) : (
+            <KinButton variant="secondary" loading={busy} loadingLabel="Đang tạo…" onClick={() => void make()}>Tạo mã lớp</KinButton>
+          )}
+        </div>
+      )}
+      <div className="mt-3 flex items-center gap-3 flex-wrap">
+        <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Link trang lớp</span>
+        <KinCopyButton appearance="button" buttonVariant={needsCode ? "ghost" : "secondary"} label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`} onResult={done("link trang lớp")}>Sao chép link trang lớp</KinCopyButton>
+      </div>
+    </section>
+  );
+}
+
 // Khối đầy đủ cho Hộp việc của lớp.
-export default function ClassInvitesPanel({ courseId, courseName, tutorName, join }: {
+export default function ClassInvitesPanel({ courseId, courseName, tutorName, join, classCode, onChanged }: {
   courseId: string; courseName?: string; tutorName?: string | null;
-  /** BU-01: có thì hiện ô "Cách vào lớp" ở đầu khối. */
+  /** BU-01: có thì hiện khối "Cách học sinh vào lớp" (mã lớp có sẵn) rồi ô "Cách vào lớp" ở đầu. */
   join?: { policy: JoinPolicy; isFree: boolean; canOpen: boolean; pending: number };
+  classCode?: string | null;
+  /** Mã vừa tạo/thu hồi hoặc cách vào lớp vừa đổi: nơi gọi làm mới trang để khối trên đầu đọc lại. */
+  onChanged?: () => void;
 }) {
   const [items, setItems] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,12 +263,13 @@ export default function ClassInvitesPanel({ courseId, courseName, tutorName, joi
 
   return (
     <div className="space-y-4">
-      {join && <JoinPolicyBox courseId={courseId} policy={join.policy} isFree={join.isFree} canOpen={join.canOpen} pending={join.pending} />}
-      <ClassInviteForm courseId={courseId} onCreated={() => load()} />
-      {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => load()} /> : null}
+      {join && <ClassJoinHowTo courseId={courseId} policy={join.policy} code={classCode ?? null} onChanged={() => onChanged?.()} />}
+      {join && <JoinPolicyBox courseId={courseId} policy={join.policy} isFree={join.isFree} canOpen={join.canOpen} pending={join.pending} onChanged={() => onChanged?.()} />}
+      <ClassInviteForm courseId={courseId} onCreated={() => { void load(); onChanged?.(); }} />
+      {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => { void load(); onChanged?.(); }} /> : null}
       {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />
         : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-medium" onClick={load}>Thử lại</button></div>
-        : <ClassInviteList items={items} onChanged={load} />}
+        : <ClassInviteList items={items} onChanged={() => { void load(); onChanged?.(); }} />}
     </div>
   );
 }

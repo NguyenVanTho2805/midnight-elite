@@ -182,6 +182,10 @@ export default function TaoLop() {
       const r = await jfetch(`/api/tutor/lop/${slug}/hoc-sinh`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ userIds: students }) });
       if (r.ok) added = r.json?.added ?? 0; else addFailed = true;
     }
+    // "Cách học sinh vào lớp": lớp dùng mã (Chỉ mã mời / Cô duyệt) có sẵn MỘT mã lớp ngay khi tạo (idempotent: ensure). Lỗi thì không chặn, trang lớp có nút "Tạo mã lớp".
+    if (policy !== "open") {
+      try { await jfetch(`/api/courses/${slug}/invites`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ensure: true }) }); } catch { /* trang lớp có nút Tạo mã lớp */ }
+    }
     const qs = new URLSearchParams({ tab: "ma-moi", moi: "1" });
     if (added !== null) qs.set("them", String(added));
     if (addFailed) qs.set("them", "loi");

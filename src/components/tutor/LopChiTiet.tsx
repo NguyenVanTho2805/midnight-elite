@@ -15,7 +15,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { KinCopyButton } from "@/components/kin/CopyButton";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_ROW } from "@/components/kin/PageLayout";
-import ClassInvitesPanel from "@/components/tutor/ClassInvites";
+import ClassInvitesPanel, { ClassJoinHowTo } from "@/components/tutor/ClassInvites";
 import JoinRequests, { type PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import type { JoinPolicy } from "@/lib/joinRequest";
 import DiemDanhPanel from "@/components/tutor/DiemDanh";
@@ -152,9 +152,9 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
       {mgr && d.justCreated && (
         <KinCallout title="Đã tạo lớp" className="mb-6">
-          {d.joinPolicy === "approve" ? "Học sinh xin vào lớp bằng mã hoặc link ở tab Mã mời; cô duyệt ở tab Học sinh."
-            : d.joinPolicy === "open" ? "Lớp miễn phí, học sinh bấm Vào lớp ở trang lớp là vào ngay. Link trang lớp có ở tab Mã mời."
-            : "Gửi mã mời ở tab Mã mời để học sinh tự vào lớp."}
+          {d.joinPolicy === "approve" ? "Học sinh xin vào lớp bằng mã lớp hoặc link trang lớp ở khối Cách học sinh vào lớp; cô duyệt ở tab Học sinh."
+            : d.joinPolicy === "open" ? "Lớp miễn phí: học sinh mở link trang lớp ở khối Cách học sinh vào lớp, bấm Vào lớp là vào ngay."
+            : "Mã lớp có sẵn ở khối Cách học sinh vào lớp. Cô gửi mã đó để học sinh tự vào lớp."}
         </KinCallout>
       )}
       {mgr && d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
@@ -163,6 +163,10 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-6">
           Cô thêm lại khung giờ ở <Link href={manage("?tab=lich-hoc")} className="underline text-[var(--kin-nhan-link)]">trang cài đặt lớp</Link>.
         </KinCallout>
+      )}
+
+      {mgr && tab !== "ma-moi" && (d.justCreated || n === 0) && (
+        <div className="mb-6"><ClassJoinHowTo courseId={d.courseId} policy={d.joinPolicy} code={d.inviteCode} onChanged={() => router.refresh()} /></div>
       )}
 
       <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Nội dung của lớp"
@@ -269,8 +273,8 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         {mgr && tab === "ma-moi" && (
           <section className="max-w-3xl">
             <KinSectionHead title="Mã mời vào lớp" />
-            <p className="py-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Gửi mã hoặc link cho học sinh; các em tự vào lớp, không cần cô thêm từng người.</p>
-            <ClassInvitesPanel courseId={d.courseId} courseName={d.courseName} tutorName={d.viewerName}
+            <p className="py-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mã lớp và link ở ngay bên dưới; các em tự vào lớp, không cần cô thêm từng người.</p>
+            <ClassInvitesPanel courseId={d.courseId} courseName={d.courseName} tutorName={d.viewerName} classCode={d.inviteCode} onChanged={() => router.refresh()}
               join={{ policy: d.joinPolicy, isFree: d.isFree, canOpen: d.canOpen, pending: d.pending.length }} />
           </section>
         )}

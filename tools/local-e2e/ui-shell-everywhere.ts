@@ -68,7 +68,7 @@ async function settled(p: Page) {
     // NC2-048 (28/10/2026): bỏ nhãn "Hỏi đáp" — gộp vào "Cộng đồng".
     // BU-00 bước 6 (31/10/2026): bỏ Thi thử, Bảng xếp hạng, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn khỏi danh sách — các mục này đã rời bảng "Khác"
     // (route vẫn chạy, kiểm ở vòng PATHS phía trên). Còn lại đúng các mục có trong bảng mới.
-    const labels = ["Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"]; // B2 (08/11/2026): "Chủ đề màu" rời bảng Khác (chỉ ở menu tài khoản; trang đó vẫn nằm trong PATHS phía trên)
+    const labels = ["Lớp miễn phí", "Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"]; // B2 (08/11/2026): "Chủ đề màu" rời bảng Khác (chỉ ở menu tài khoản; trang đó vẫn nằm trong PATHS phía trên)
     const lost: string[] = [];
     const seen: string[] = [];
     for (const label of labels) {
