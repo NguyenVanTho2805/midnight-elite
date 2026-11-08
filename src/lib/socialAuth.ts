@@ -1,0 +1,122 @@
+// Phần DÙNG CHUNG của "Tiếp tục với Google / Facebook" cho HỌC SINH (08/11/2026): cookie trạng thái chống CSRF, quyết định đăng nhập THUẦN theo nhà cung cấp,
+// và bước ghi DB + chọn người dùng. Chi tiết từng nhà (URL, id_token / Graph API) nằm ở googleAuth.ts và facebookAuth.ts.
+//
+// Luật quyết định (decideSocialSignIn):
+//   chung     : bị khoá/ẩn → từ chối; gia sư / quản trị / người có đơn gia sư → KHÔNG vào bằng mạng xã hội ("đăng nhập bằng mật khẩu", chống chiếm quyền).
+//   google    : Google có cờ email_verified (đã kiểm trước khi tới đây) → email trùng học sinh cũ thì vào và gắn googleSub.
+//   facebook  : Facebook KHÔNG có cờ đó và có thể không trả email → KHÔNG tự liên kết theo email. Chỉ vào được khi facebookId đã khớp; email đã có tài khoản mà chưa liên kết
+//               → "email-exists"; không có email → "no-email"; email mới → tạo học sinh.
+import { SignJWT, jwtVerify } from "jose";
+import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { signupBonusOps } from "@/lib/wallet";
+
+export type Provider = "google" | "facebook";
+export const COOKIE_NAME: Record<Provider, string> = { google: "kin_google", facebook: "kin_facebook" };
+export const COOKIE_PATH: Record<Provider, string> = { google: "/api/auth/google", facebook: "/api/auth/facebook" };
+export const STATE_TTL_SEC = 10 * 60;
+type Env = Record<string, string | undefined>;
+
+const b64url = (b: Buffer) => b.toString("base64url");
+export const randomToken = (bytes = 32) => b64url(randomBytes(bytes));
+export const pkceChallenge = (verifier: string) => b64url(createHash("sha256").update(verifier).digest());
+export function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a), y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+export interface FlowState { state: string; nonce: string; verifier: string; redirect: string | null }
+const key = (env: Env) => { if (!env.SESSION_SECRET) throw new Error("SESSION_SECRET chưa được cấu hình"); return new TextEncoder().encode(env.SESSION_SECRET); };
+const aud = (p: Provider) => `kin-${p}-flow`;
+
+/** Cookie ngắn hạn (10 phút): state (+ nonce, code_verifier cho Google) + trang định vào. Ký bằng SESSION_SECRET; mỗi nhà một `aud` nên cookie nhà này không dùng được cho nhà kia. */
+export async function signFlow(p: Provider, s: FlowState, env: Env = process.env): Promise<string> {
+  return new SignJWT({ ...s, redirect: s.redirect ?? "" }).setProtectedHeader({ alg: "HS256" }).setAudience(aud(p)).setIssuedAt().setExpirationTime(`${STATE_TTL_SEC}s`).sign(key(env));
+}
+export async function readFlow(p: Provider, token: string | undefined, env: Env = process.env): Promise<FlowState | null> {
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, key(env), { algorithms: ["HS256"], audience: aud(p) });
+    const { state, nonce, verifier, redirect } = payload as Record<string, unknown>;
+    if (typeof state !== "string" || typeof nonce !== "string" || typeof verifier !== "string") return null;
+    return { state, nonce, verifier, redirect: typeof redirect === "string" && redirect ? redirect : null };
+  } catch { return null; }
+}
+
+export interface ExistingUser {
+  id: string; role: string; adminRole: string | null; banned: boolean; deletedAt: Date | null;
+  tutorAppliedAt: Date | null; tutorVerified: boolean;
+  /** Mã người dùng của CHÍNH nhà cung cấp đang đăng nhập (googleSub hoặc facebookId) trên tài khoản này; null = chưa liên kết. */
+  linkedId: string | null;
+}
+export type DenyReason = "banned" | "password-only" | "sub-mismatch" | "email-exists" | "no-email";
+export type Decision =
+  | { kind: "create" }
+  | { kind: "login"; userId: string; link: boolean }
+  | { kind: "deny"; reason: DenyReason };
+
+export function decideSocialSignIn(o: { provider: Provider; id: string; email: string | null; bySub: ExistingUser | null; byEmail: ExistingUser | null }): Decision {
+  if (!o.email && !o.bySub) return { kind: "deny", reason: "no-email" };
+  const u = o.bySub ?? o.byEmail;
+  if (!u) return { kind: "create" };
+  if (u.banned || u.deletedAt) return { kind: "deny", reason: "banned" };
+  if (u.role !== "student" || u.adminRole || u.tutorAppliedAt || u.tutorVerified) return { kind: "deny", reason: "password-only" };
+  if (o.bySub) return { kind: "login", userId: u.id, link: false };           // đã liên kết đúng nhà này: vào, không cần email
+  if (o.provider === "facebook") return { kind: "deny", reason: "email-exists" }; // Facebook: không tự nhận theo email
+  if (u.linkedId && u.linkedId !== o.id) return { kind: "deny", reason: "sub-mismatch" };
+  return { kind: "login", userId: u.id, link: !u.linkedId };
+}
+
+export interface SocialProfile { id: string; email: string | null; name: string }
+const FIELD = { google: "googleSub", facebook: "facebookId" } as const;
+const sel = { id: true, role: true, adminRole: true, banned: true, deletedAt: true, tutorAppliedAt: true, tutorVerified: true, googleSub: true, facebookId: true } as const;
+type Row = { id: string; role: string; adminRole: string | null; banned: boolean; deletedAt: Date | null; tutorAppliedAt: Date | null; tutorVerified: boolean; googleSub: string | null; facebookId: string | null };
+const toExisting = (p: Provider, r: Row | null): ExistingUser | null => (r ? { ...r, linkedId: r[FIELD[p]] } : null);
+
+export type Resolved = { ok: true; userId: string; role: string; adminRole: string | null } | { ok: false; reason: DenyReason | "failed" };
+
+/** Tìm / tạo / liên kết người dùng cho một lượt đăng nhập mạng xã hội đã được nhà cung cấp xác nhận. Tạo mới = học sinh, emailVerified=true, KHÔNG VerifyToken, KHÔNG thư,
+ *  ví + xu khởi đầu cùng giao dịch (signupBonusOps, như /api/auth/register). Không thu gì ngoài tên + email + mã nhà cung cấp. */
+export async function resolveSocialUser(provider: Provider, p: SocialProfile): Promise<Resolved> {
+  const f = FIELD[provider];
+  const [s, e] = await Promise.all([
+    prisma.user.findUnique({ where: { [f]: p.id } as never, select: sel }),
+    p.email ? prisma.user.findUnique({ where: { email: p.email }, select: sel }) : Promise.resolve(null),
+  ]);
+  let d = decideSocialSignIn({ provider, id: p.id, email: p.email, bySub: toExisting(provider, s as Row | null), byEmail: toExisting(provider, e as Row | null) });
+  if (d.kind === "deny") return { ok: false, reason: d.reason };
+  let userId: string;
+  if (d.kind === "create") {
+    try {
+      const password = await bcrypt.hash(randomBytes(32).toString("hex"), 10); // cột bắt buộc: băm chuỗi ngẫu nhiên; "Quên mật khẩu" vẫn đặt được mật khẩu mới qua email
+      userId = await prisma.$transaction(async tx => {
+        const u = await tx.user.create({ data: { name: p.name, email: p.email!, password, role: "student", emailVerified: true, [f]: p.id } });
+        for (const op of signupBonusOps(tx, u.id)) await op;
+        return u.id;
+      }, { timeout: 15_000, maxWait: 10_000 });
+    } catch (err) {
+      if ((err as { code?: string })?.code !== "P2002") throw err;
+      // Hai lượt cùng lúc: bên thua khoá duy nhất → quyết định lại một lần theo dữ liệu đã có.
+      const [s2, e2] = await Promise.all([
+        prisma.user.findUnique({ where: { [f]: p.id } as never, select: sel }),
+        prisma.user.findUnique({ where: { email: p.email! }, select: sel }),
+      ]);
+      d = decideSocialSignIn({ provider, id: p.id, email: p.email, bySub: toExisting(provider, s2 as Row | null), byEmail: toExisting(provider, e2 as Row | null) });
+      if (d.kind !== "login") return { ok: false, reason: d.kind === "deny" ? d.reason : "failed" };
+      userId = d.userId;
+    }
+  } else {
+    userId = d.userId;
+  }
+  const link = d.kind === "create" || (d.kind === "login" && d.link);
+  // Google đã xác nhận hộp thư → học sinh cũ được đặt emailVerified=true. Facebook chỉ tới đây khi đã liên kết đúng facebookId hoặc vừa tạo mới.
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { ...(provider === "google" || d.kind === "create" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) },
+    select: { id: true, role: true, adminRole: true },
+  });
+  return { ok: true, userId: user.id, role: user.role, adminRole: user.adminRole };
+}
+
+export { SOCIAL_NOTICES } from "@/lib/socialNotices";
