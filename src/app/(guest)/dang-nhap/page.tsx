@@ -1,7 +1,8 @@
 // Đăng nhập (Figma "Nền móng" 464:9828; màn nhập mã 6 số cũ: 32:27).
 // 25/10/2026 (Thọ chọn "Theo Figma"): màn đầu có hai tab "Gia sư | Học sinh" cùng một biểu mẫu tài khoản + mật khẩu → /api/auth/login. Tab chỉ đổi phần
 //   phụ (tab Học sinh có nút "Tôi có mã mời vào lớp") và vai mà link "Tạo tài khoản KiN" mang sang /dang-ky; KHÔNG giới hạn ai đăng nhập ở tab nào.
-//   "Quên mật khẩu?" và "Tạo tài khoản KiN" là nút viền như Figma. Chưa làm: ô "Ghi nhớ trên thiết bị này" (chờ Thọ quyết).
+//   "Quên mật khẩu?" và "Tạo tài khoản KiN" là nút viền như Figma. 08/11/2026 (Thọ): "thêm tính năng tự động login, kiểu lưu tài khoản" → KHÔNG làm ô "Ghi nhớ" mà tự đăng nhập bằng thông tin trình duyệt đã lưu
+//   (Credential Management API; src/lib/savedLogin.ts): KiN không giữ mật khẩu. Học sinh/gia sư tự vào; QUẢN TRỊ không (mốc 12 giờ có chủ ý) — form được điền sẵn, người dùng tự bấm.
 //   08/11/2026: tab Học sinh có nút "Tiếp tục với Google" và "Tiếp tục với Facebook" (SocialButtons; mỗi nút tự ẩn nếu thiếu cặp biến GOOGLE_CLIENT_ID/SECRET hoặc FACEBOOK_APP_ID/SECRET)
 //   → /api/auth/{google,facebook}/start; callback đưa về đây với ?google=<mã> hoặc ?facebook=<mã> (SOCIAL_NOTICES: gia sư/quản trị → "đăng nhập bằng mật khẩu", bị khoá, email đã có tài khoản,
 //   Facebook không trả email…). Học sinh vào bằng Google/Facebook không cần xác nhận email.
@@ -34,6 +35,7 @@ import { SOCIAL_NOTICES } from "@/lib/socialNotices";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
 import { landingPath } from "@/lib/landing";
 import { isAdminHost, mainLoginUrl } from "@/lib/hostRouting";
+import { AUTO_NOT_ALLOWED, forgetSilentAccess, readSavedLogin } from "@/lib/savedLogin";
 
 type Step = "email" | "code";
 type Method = "mat-khau" | "ma";
@@ -84,6 +86,7 @@ function DangNhapForm() {
   const [resendAt, setResendAt]     = useState<number | null>(null);
   const [now, setNow]               = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [autoTrying, setAutoTrying] = useState(false); // đang tự đăng nhập bằng thông tin trình duyệt đã lưu
   const [ok, setOk]                 = useState(false); // đăng nhập thành công, đang chờ chuyển trang (nút hiện dấu tích, sáu ô mã đổi màu xong)
   const fv = useFieldValidation(PW_RULES);
   const pwFormRef = useRef<HTMLFormElement>(null);
@@ -99,6 +102,35 @@ function DangNhapForm() {
       router.replace(redirectTo ?? landingPath(user.role ?? "student", user.adminRole, user.tutorPending)); // BU-00 bước 5: gia sư chờ duyệt → trang chờ duyệt
     }
   }, [user, isLoading, router, redirectTo]);
+
+  // Tự đăng nhập bằng thông tin trình duyệt đã lưu (src/lib/savedLogin.ts): đúng MỘT lần mỗi lần mở trang, sau khi biết chắc chưa đăng nhập, và chỉ ở đường mật khẩu
+  // (không khi mở bằng ?cach=ma, không khi vừa bị đưa về từ lỗi Google/Facebook). Không dọn dẹp/huỷ trong effect: React Strict Mode ở dev chạy effect hai lần, ref giữ cho nó chỉ chạy một.
+  const triedAuto = useRef(false);
+  useEffect(() => {
+    if (triedAuto.current || isLoading || user) return;
+    triedAuto.current = true;
+    if (searchParams.get("cach") || searchParams.get("google") || searchParams.get("facebook")) return;
+    void (async () => {
+      const saved = await readSavedLogin();
+      if (!saved) return;
+      setAutoTrying(true); setSubmitting(true);
+      let r: Awaited<ReturnType<typeof login>>;
+      try { r = await login(saved.id, saved.password, { auto: true }); }
+      catch { setAutoTrying(false); setSubmitting(false); return; } // mất mạng: để form thủ công, không báo lỗi
+      if (r.success) { setOk(true); return; } // AuthContext chuyển trang
+      setAutoTrying(false); setSubmitting(false);
+      if (r.code === AUTO_NOT_ALLOWED) {
+        // Quản trị không tự vào (mốc 12 giờ có chủ ý): điền sẵn để chỉ còn bấm "Đăng nhập", trừ khi người dùng đã kịp gõ.
+        setEmail(cur => (cur === "" ? saved.id : cur)); setPassword(cur => (cur === "" ? saved.password : cur));
+        setNotice({ kind: "expired", title: "Tài khoản quản trị không tự đăng nhập", body: "Đã điền sẵn thông tin đã lưu. Bấm “Đăng nhập” để vào." });
+      } else if (r.code === "wait") {
+        setNotice({ kind: "locked", title: r.message ?? "Thử lại sau ít phút", offerCode: true, retryAfterSec: r.retryAfterSec });
+      } else {
+        void forgetSilentAccess(); // đã lưu nhưng không còn đúng (đổi mật khẩu, bị khoá…): đừng thử lại ở các lần mở trang sau
+        setNotice({ kind: "error", title: r.message ?? "Đăng nhập thất bại", body: "Đây là thông tin trình duyệt đã lưu. Nhập lại tài khoản và mật khẩu nếu bạn đã đổi mật khẩu." });
+      }
+    })();
+  }, [isLoading, user, searchParams, login]);
 
   useEffect(() => {
     fetch("/api/auth/code/methods").then(r => r.json()).then(d => setPhoneOn(d?.phone === true)).catch(() => {});
@@ -290,6 +322,7 @@ function DangNhapForm() {
                 <KinInput id="dn-pass" size="lg" label="Mật khẩu" type={showPass ? "text" : "password"} autoComplete="current-password"
                   value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" {...fv.bind("pass", password)}
                   suffix={<button type="button" onClick={() => setShowPass(!showPass)} aria-pressed={showPass} className="min-h-11 min-w-8 text-[length:var(--kin-co-caption)] font-medium text-[var(--kin-chu-mo)] hover:text-[var(--kin-chu-chinh)]">{showPass ? "Ẩn" : "Hiện"}</button>} />
+                {autoTrying && <p role="status" data-tu-dang-nhap className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Đang đăng nhập bằng tài khoản đã lưu…</p>}
                 {noticeBox}
                 <KinSubmitButton busy={submitting} ok={ok} busyLabel="Đang đăng nhập..." className={primaryBtn}>Đăng nhập</KinSubmitButton>
                 <Link href={email.includes("@") ? `/quen-mat-khau?email=${encodeURIComponent(email.trim())}` : "/quen-mat-khau"} className={outlineBtn}>Quên mật khẩu?</Link>
