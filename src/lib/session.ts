@@ -84,7 +84,7 @@ async function loadAuthState(req: object, userId: string): Promise<DbAuthState |
   if (!perReq) { perReq = new Map(); authStateMemo.set(req, perReq); }
   let p = perReq.get(userId);
   if (!p) {
-    p = import("@/lib/prisma").then(({ prisma }) => prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, banned: true } }));
+    p = import("@/lib/prisma").then(({ prisma }) => prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, banned: true, sessionsValidAfter: true } }));
     perReq.set(userId, p);
   }
   return p;

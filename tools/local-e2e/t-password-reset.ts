@@ -189,5 +189,19 @@ const age = (userId: string, ms: number) => prisma.passwordResetToken.updateMany
   const rbr = await reset("c".repeat(64), "MatKhauMoi#2026");
   check("dù có link hợp lệ, tài khoản khoá không đổi được mật khẩu / không được cấp phiên → 403", rbr.status === 403 && !hasSession(rbr), rbr);
 
+  section("Đặt lại mật khẩu thành công → phiên cũ hết hiệu lực, phiên mới (cấp ngay sau đó) dùng được");
+  const RS = await mkUser({ name: "Bạn Đổi Mật Khẩu" });
+  const { encrypt } = await import("@/lib/session");
+  const oldCk = { cookie: `midnight_session=${await encrypt({ userId: RS.id, role: "student" }, { iat: Math.floor(Date.now() / 1000) - 3600 })}` };
+  const cpw = (h: Record<string, string>) => fetch(BASE + "/api/auth/change-password", { method: "POST", headers: { ...h, "content-type": "application/json" }, body: "{}" });
+  check("trước khi đặt lại: cookie cũ ghi được (không 401)", (await cpw(oldCk)).status !== 401);
+  await forgot(RS.email);
+  const rsTok = tokenIn(resetMails(RS.email).at(-1));
+  const rsRes = await reset(rsTok, "MatKhauMoi#9");
+  check("đặt lại → 200 và cấp cookie mới", rsRes.status === 200 && hasSession(rsRes), rsRes.json);
+  check("cookie CŨ → 401 ở route ghi", (await cpw(oldCk)).status === 401);
+  const newCk = (rsRes.headers.get("set-cookie") ?? "").match(/midnight_session=[^;]+/)?.[0] ?? "";
+  check("cookie MỚI do chính lần đặt lại cấp → vẫn dùng được", !!newCk && (await cpw({ cookie: newCk })).status !== 401);
+
   await done();
 })();

@@ -1,5 +1,5 @@
 // NC2-033 — phần thuần src/lib/sessionVerify.ts: khi nào đối chiếu DB, và kết luận khi vai/khoá lệch token.
-import { METHOD_HEADER, isWriteMethod, reconcileSession, type TokenSession } from "@/lib/sessionVerify";
+import { METHOD_HEADER, isRevokedByMark, isWriteMethod, reconcileSession, type TokenSession } from "@/lib/sessionVerify";
 import { check, section, done } from "./h";
 
 const NOW = Date.UTC(2026, 9, 22, 5, 0, 0);
@@ -46,5 +46,15 @@ const bn3 = reconcileSession(tok("student", undefined), db("admin", "admin_super
 check("bị khoá + vai lệch → banned (không cấp quyền mới)", !bn3.ok && bn3.reason === "banned");
 const gone = reconcileSession(tok("admin", "admin_super"), null, NOW);
 check("không còn trong DB → gone", !gone.ok && gone.reason === "gone");
+
+section("Thu hồi phiên theo mốc sessionsValidAfter");
+const MARK = new Date(NOW);
+check("cột null/thiếu → không ảnh hưởng phiên hiện có", reconcileSession(tok("student", undefined), db("student", null), NOW).ok && reconcileSession(tok("student", undefined), { ...db("student", null), sessionsValidAfter: null }, NOW).ok);
+const rv = reconcileSession(tok("student", undefined, 1 * H), { ...db("student", null), sessionsValidAfter: MARK }, NOW);
+check("phiên cấp trước mốc → revoked", !rv.ok && rv.reason === "revoked", rv);
+check("phiên cấp sau mốc → dùng được", reconcileSession(tok("student", undefined, -1 * H), { ...db("student", null), sessionsValidAfter: MARK }, NOW).ok);
+check("cấp đúng giây của mốc (mốc có mili giây) → dùng được", isRevokedByMark(Math.floor(NOW / 1000), new Date(NOW + 700)) === false && isRevokedByMark(Math.floor(NOW / 1000) - 1, new Date(NOW + 700)) === true);
+check("token thiếu iat mà đã có mốc → revoked", isRevokedByMark(undefined, MARK) === true && isRevokedByMark(undefined, null) === false);
+check("vai lệch DB + phiên cũ → revoked (không cấp vai mới cho phiên đã thu hồi)", (() => { const r = reconcileSession(tok("student", undefined, 1 * H), { ...db("admin", "teacher"), sessionsValidAfter: MARK }, NOW); return !r.ok && r.reason === "revoked"; })());
 
 done();

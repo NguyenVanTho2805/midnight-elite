@@ -65,9 +65,10 @@ export async function POST(req: Request) {
     // Link đã mở được từ hộp thư nghĩa là người này kiểm soát hộp thư → coi email đã xác thực.
     // Email chuyển false→true ở đây thì mọi liên kết Google/Facebook có từ trước là của người chưa chứng minh được hộp thư (kẻ đăng ký trước bằng email người khác): gỡ cùng giao dịch.
     // markEmailVerifiedOp (src/lib/verifyEmail.ts) là chỗ duy nhất làm việc đó, dùng chung cả ba đường xác minh.
+    // Đổi mật khẩu → mọi phiên cũ hết hiệu lực (sessionsValidAfter); phiên mới cấp ở createSession bên dưới vẫn dùng được.
     await prisma.$transaction([
       markEmailVerifiedOp(record.userId),
-      prisma.user.update({ where: { id: record.userId }, data: { password: hashed } }),
+      prisma.user.update({ where: { id: record.userId }, data: { password: hashed, sessionsValidAfter: new Date() } }),
       prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
     ]);
 

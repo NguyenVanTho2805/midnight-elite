@@ -6,6 +6,7 @@ import { readdirSync, mkdirSync } from "node:fs";
 import { BASE, mkUser, mkTutor, mkSuper, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { resolveSocialUser } from "@/lib/socialAuth";
+import { encrypt } from "@/lib/session";
 
 const CID = "test-client-id", SECRET = "test-client-secret", PORT = 3199;
 const RUN = Math.floor(Math.random() * 900000) + 100000;
@@ -123,6 +124,12 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   await prisma.verifyToken.create({ data: { token: `vt-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
   await prisma.passwordResetToken.create({ data: { token: `pr-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
   const oldHash = (await prisma.user.findUnique({ where: { id: atk.id } }))!.password;
+  // Lối vào còn lại cần thu hồi: máy nhận thông báo đẩy của kẻ chiếm trước + cookie phiên (JWT 30 ngày) hắn đang giữ (cấp 1 giờ trước).
+  await prisma.pushSubscription.create({ data: { userId: atk.id, endpoint: `https://push.example/atk-${RUN}`, p256dh: "k", auth: "a" } });
+  const atkCookie = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" }, { iat: Math.floor(Date.now() / 1000) - 3600 })}` };
+  const atkWrite = () => fetch(`${BASE}/api/auth/change-password`, { method: "POST", headers: { ...atkCookie, "content-type": "application/json" }, body: "{}" });
+  const atkMe = async () => (await (await fetch(`${BASE}/api/auth/me`, { headers: atkCookie })).json()) as { id?: string } | null;
+  check("trước khi chiếm lại: cookie cũ của kẻ chiếm trước ghi được (không 401) và /me nhận ra hắn", (await atkWrite()).status !== 401 && (await atkMe())?.id === atk.id);
   const loginBefore = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: atk.email, password: "Passw0rd!" }) });
   check("trước khi nạn nhân vào: kẻ chiếm trước đăng nhập được bằng mật khẩu của hắn (xác nhận lỗ hổng có thật)", loginBefore.status === 200, loginBefore.status);
   const vic = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
@@ -138,6 +145,13 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
     !!ua && ua.dateOfBirth?.toISOString().slice(0, 10) === "2005-03-04" && ua.selfConsentAt?.toISOString().slice(0, 10) === "2026-10-01" && ua.parentPhone === "0911111111" && ua.parentName === "Kẻ gian" && ua.school === "Trường kẻ gian" && ua.highSchool === "THPT kẻ gian" && ua.city === "Hà Nội" && ua.avatarBase64 === "AVATAR" && ua.zaloPhone === "0922222222" && ua.phone === "0901234567", ua);
   const pl = await prisma.parentLink.findFirst({ where: { studentId: atk.id } });
   check("ParentLink: link xem sổ không cần đăng nhập (portalToken) bị gỡ; status KHÔNG đổi (vẫn 'verified', bản ghi còn)", pl?.portalToken === null && pl.status === "verified" && !!pl.verifiedAt, pl);
+  const uk = await prisma.user.findUnique({ where: { id: atk.id }, select: { sessionsValidAfter: true } });
+  check("PushSubscription của kẻ chiếm trước bị thu hồi (revokedAt đặt, không còn dòng đang sống)", (await prisma.pushSubscription.count({ where: { userId: atk.id, revokedAt: null } })) === 0 && (await prisma.pushSubscription.count({ where: { userId: atk.id, revokedAt: { not: null } } })) === 1);
+  check("sessionsValidAfter được đặt khi chiếm lại", !!uk?.sessionsValidAfter && Date.now() - uk.sessionsValidAfter.getTime() < 60_000, uk);
+  check("cookie phiên CŨ của kẻ chiếm trước: route ghi → 401", (await atkWrite()).status === 401);
+  check("cookie phiên cũ: /api/auth/me → null (không lộ hồ sơ)", (await atkMe()) === null);
+  const freshCookie = { cookie: `midnight_session=${await encrypt({ userId: atk.id, role: "student" })}` };
+  check("phiên cấp SAU mốc (chủ thật) vẫn dùng được", (await fetch(`${BASE}/api/auth/change-password`, { method: "POST", headers: { ...freshCookie, "content-type": "application/json" }, body: "{}" })).status !== 401 && ((await (await fetch(`${BASE}/api/auth/me`, { headers: freshCookie })).json()) as { id?: string } | null)?.id === atk.id);
   const sameAgain = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
   check("lần Google sau (đã liên kết) vẫn vào, mật khẩu không bị đổi lần nữa", hasSession(sameAgain.r) && (await prisma.user.findUnique({ where: { id: atk.id } }))!.password === ua!.password);
 

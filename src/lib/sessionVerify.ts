@@ -12,8 +12,15 @@ export function isWriteMethod(method: string | null | undefined): boolean {
 }
 
 export interface TokenSession { userId: string; role: "student" | "admin"; adminRole?: "admin_super" | "admin_content" | "teacher"; iat?: number; exp?: number }
-export interface DbAuthState { role: string; adminRole: string | null; banned: boolean }
-export type DenyReason = "gone" | "banned" | "expired";
+export interface DbAuthState { role: string; adminRole: string | null; banned: boolean; sessionsValidAfter?: Date | null }
+export type DenyReason = "gone" | "banned" | "expired" | "revoked";
+
+/** Phiên cấp trước mốc thu hồi (User.sessionsValidAfter) là phiên cũ. Mốc null/không có → không thu hồi gì. Token thiếu iat mà có mốc → coi là cũ.
+ *  So theo GIÂY (iat của JWT là giây nguyên): phiên cấp ngay sau khi đặt mốc, cùng giây, vẫn dùng được. */
+export function isRevokedByMark(iat: number | undefined, mark: Date | null | undefined): boolean {
+  if (!mark) return false;
+  return typeof iat !== "number" || iat < Math.floor(mark.getTime() / 1000);
+}
 export type Verdict = { ok: true; session: TokenSession } | { ok: false; reason: DenyReason };
 
 /**
@@ -24,6 +31,7 @@ export type Verdict = { ok: true; session: TokenSession } | { ok: false; reason:
 export function reconcileSession(token: TokenSession, db: DbAuthState | null, nowMs: number): Verdict {
   if (!db) return { ok: false, reason: "gone" };
   if (db.banned) return { ok: false, reason: "banned" };
+  if (isRevokedByMark(token.iat, db.sessionsValidAfter)) return { ok: false, reason: "revoked" };
   const role: TokenSession["role"] = db.role === "admin" ? "admin" : "student";
   const adminRole = db.adminRole === "admin_super" || db.adminRole === "admin_content" || db.adminRole === "teacher" ? db.adminRole : undefined;
   if (token.role === role && (token.adminRole ?? undefined) === adminRole) return { ok: true, session: token };
