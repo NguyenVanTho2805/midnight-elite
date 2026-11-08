@@ -33,9 +33,11 @@ export async function GET(req: Request) {
     if (!flow || !code || !state || !safeEqual(state, flow.state)) return fail("failed");
 
     const ep = facebookEndpoints();
-    const tok = new URL(ep.token);
-    tok.search = new URLSearchParams({ client_id: process.env.FACEBOOK_APP_ID!.trim(), client_secret: process.env.FACEBOOK_APP_SECRET!.trim(), redirect_uri: redirectUri, code }).toString();
-    const tokenRes = await fetch(tok, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    // client_secret nằm trong THÂN POST (không phải query GET) để không vào nhật ký truy cập / proxy.
+    const tokenRes = await fetch(ep.token, {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, cache: "no-store", signal: AbortSignal.timeout(10_000),
+      body: new URLSearchParams({ client_id: process.env.FACEBOOK_APP_ID!.trim(), client_secret: process.env.FACEBOOK_APP_SECRET!.trim(), redirect_uri: redirectUri, code }),
+    });
     if (!tokenRes.ok) return fail("failed");
     const accessToken = ((await tokenRes.json().catch(() => null)) as { access_token?: string } | null)?.access_token;
     if (!accessToken) return fail("failed");

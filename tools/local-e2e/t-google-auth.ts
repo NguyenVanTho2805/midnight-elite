@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, mkdirSync } from "node:fs";
 import { BASE, mkUser, mkTutor, mkSuper, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
+import { resolveSocialUser } from "@/lib/socialAuth";
 
 const CID = "test-client-id", SECRET = "test-client-secret", PORT = 3199;
 const RUN = Math.floor(Math.random() * 900000) + 100000;
@@ -116,7 +117,9 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
 
   section("CA PHÁ: kẻ đăng ký trước bằng email nạn nhân (emailVerified=false + mật khẩu + facebookId) → nạn nhân vào bằng Google");
   const atk = await mkUser({ name: "Kẻ chiếm trước", emailVerified: false }); // mật khẩu "Passw0rd!" do kẻ đó đặt
-  await prisma.user.update({ where: { id: atk.id }, data: { facebookId: `fb-atk-${RUN}` } });
+  await prisma.user.update({ where: { id: atk.id }, data: { facebookId: `fb-atk-${RUN}`, phone: "0901234567", phoneE164: `+8490${RUN}`, phoneVerifiedAt: new Date(), parentPhone: "0911111111", parentName: "Kẻ gian", school: "Trường kẻ gian", highSchool: "THPT kẻ gian", zaloPhone: "0922222222" } });
+  const atkParent = await mkUser({ name: "Phụ huynh do kẻ gian dựng" });
+  await prisma.parentLink.create({ data: { parentId: atkParent.id, studentId: atk.id, status: "verified", verifiedAt: new Date(), portalToken: `ptok-${RUN}` } });
   await prisma.verifyToken.create({ data: { token: `vt-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
   await prisma.passwordResetToken.create({ data: { token: `pr-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
   const oldHash = (await prisma.user.findUnique({ where: { id: atk.id } }))!.password;
@@ -130,6 +133,9 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   check("mật khẩu đã đổi sang băm bcrypt khác băm của kẻ chiếm trước", /^\$2[aby]\$/.test(ua!.password) && ua!.password !== oldHash, ua!.password);
   check("VerifyToken + PasswordResetToken cũ bị xoá", (await prisma.verifyToken.count({ where: { userId: atk.id } })) === 0 && (await prisma.passwordResetToken.count({ where: { userId: atk.id } })) === 0);
   check("facebookId của kẻ chiếm trước bị gỡ", ua?.facebookId === null, ua?.facebookId);
+  check("số điện thoại (kể cả số đã xác minh SMS) + tên phụ huynh + trường kẻ chiếm trước điền bị xoá", !!ua && ua.phone === null && ua.phoneE164 === null && ua.phoneVerifiedAt === null && ua.parentPhone === null && ua.parentName === null && ua.school === null && ua.highSchool === null && ua.zaloPhone === null, ua);
+  const pl = await prisma.parentLink.findFirst({ where: { studentId: atk.id } });
+  check("liên kết phụ huynh do kẻ chiếm trước dựng bị thu hồi, link xem sổ không cần đăng nhập bị gỡ", pl?.status === "revoked" && pl.portalToken === null, pl);
   const sameAgain = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
   check("lần Google sau (đã liên kết) vẫn vào, mật khẩu không bị đổi lần nữa", hasSession(sameAgain.r) && (await prisma.user.findUnique({ where: { id: atk.id } }))!.password === ua!.password);
 
@@ -224,6 +230,36 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   check("không lượt nào về trang lỗi server; có ít nhất một phiên", pr.every(x => x.r.status === 303) && pr.some(x => hasSession(x.r)), pr.map(x => x.loc));
   const ru = await prisma.user.findMany({ where: { email: rc }, include: { wallet: true } });
   check("đúng 1 User, 1 ví, 1 dòng xu", ru.length === 1 && !!ru[0].wallet && (await prisma.coinTransaction.count({ where: { userId: ru[0].id } })) === 1, ru.length);
+
+  section("Chiếm lại có điều kiện (P2-a): hai lượt Google song song cùng email của tài khoản chưa xác minh");
+  const rk = await mkUser({ name: "Kẻ chiếm trước 2", emailVerified: false });
+  const subRace = `sub-reclaim-race-${RUN}`;
+  const rr = await Promise.all([0, 1, 2].map(() => flow({ email: rk.email, sub: subRace })));
+  check("cả ba lượt về trang đăng nhập thành công (303, có phiên), không lượt nào 500 / từ chối", rr.every(x => x.r.status === 303 && hasSession(x.r) && path(x.loc) === "/student/viec-cua-toi"), rr.map(x => x.loc));
+  const rku = await prisma.user.findUnique({ where: { id: rk.id } });
+  check("một tài khoản, emailVerified=true, googleSub gắn", (await prisma.user.count({ where: { email: rk.email } })) === 1 && rku?.emailVerified === true && rku.googleSub === subRace);
+  const rkl = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: rk.email, password: "Passw0rd!" }) });
+  check("mật khẩu cũ của kẻ chiếm trước không còn dùng được", rkl.status !== 200, rkl.status);
+
+  section("Chiếm lại có điều kiện (P2-a, xác định): chủ thật xác minh email GIỮA lúc đọc và lúc ghi → KHÔNG bị chiếm lại");
+  const ow = await mkUser({ name: "Chủ thật", emailVerified: false });
+  const ownerHash = "$2b$10$ownerownerownerownerownerOwnerOwnerOwnerOwnerOwnerOwne";
+  const orig = prisma.user.findUnique.bind(prisma.user);
+  let flipped = false;
+  // @ts-expect-error — chèn đúng một lần: ngay sau lần đọc đầu tiên trả về tài khoản chưa xác minh, chủ thật đặt lại mật khẩu (emailVerified=true) và khai số điện thoại.
+  prisma.user.findUnique = (async (args: any) => {
+    const row = await orig(args);
+    if (!flipped && row && (row as any).id === ow.id && (row as any).emailVerified === false) {
+      flipped = true;
+      await prisma.user.update({ where: { id: ow.id }, data: { emailVerified: true, password: ownerHash, phone: "0933333333" } });
+    }
+    return row;
+  }) as any;
+  let rs: Awaited<ReturnType<typeof resolveSocialUser>>;
+  try { rs = await resolveSocialUser("google", { id: `sub-owner-${RUN}`, email: ow.email, name: "Chủ thật" }); } finally { prisma.user.findUnique = orig as any; }
+  const owu = await prisma.user.findUnique({ where: { id: ow.id } });
+  check("lượt Google vẫn thành công (đọc lại, thấy đã xác minh → liên kết thường)", flipped && rs.ok === true && owu?.googleSub === `sub-owner-${RUN}`, rs);
+  check("mật khẩu và số điện thoại mà chủ thật vừa đặt KHÔNG bị xoá / đổi", owu?.password === ownerHash && owu?.phone === "0933333333", owu);
 
   fake.close();
   await done();

@@ -62,7 +62,10 @@ export async function POST(req: Request) {
 
     // Đổi mật khẩu + huỷ MỌI link của tài khoản trong một giao dịch: không để link bị dùng lại nếu dừng giữa chừng.
     // Link đã mở được từ hộp thư nghĩa là người này kiểm soát hộp thư → coi email đã xác thực.
+    // Email chuyển false→true ở đây thì mọi liên kết Google/Facebook có từ trước là của người chưa chứng minh được hộp thư (kẻ đăng ký trước bằng email người khác): gỡ cùng giao dịch.
+    // Điều kiện emailVerified:false nằm TRONG câu lệnh (không dựa vào bản đã đọc) và phải chạy trước khi đặt emailVerified=true.
     await prisma.$transaction([
+      prisma.user.updateMany({ where: { id: record.userId, emailVerified: false }, data: { googleSub: null, facebookId: null } }),
       prisma.user.update({ where: { id: record.userId }, data: { password: hashed, emailVerified: true } }),
       prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
     ]);

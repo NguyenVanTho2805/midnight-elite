@@ -9,5 +9,6 @@ export const SOCIAL_NOTICES: Record<string, { title: string; body: string }> = {
   "no-email":      { title: "Facebook không cung cấp email", body: "KiN cần email để tạo tài khoản. Hãy cho phép quyền email khi đăng nhập Facebook, hoặc đăng ký bằng email và mật khẩu." },
   cancelled:       { title: "Bạn đã hủy đăng nhập", body: "Bạn có thể thử lại hoặc dùng email và mật khẩu." },
   "wrong-host":    { title: "Đây là cửa đăng nhập dành cho quản trị KiN", body: "Tài khoản học sinh vui lòng đăng nhập tại tên miền chính của KiN." },
+  reclaimed:       { title: "Mật khẩu cũ của tài khoản này đã bị vô hiệu", body: "Email này từng được đăng ký chưa xác minh nên KiN đã đổi mật khẩu cũ khi bạn vào bằng Google. Muốn dùng mật khẩu, chọn Quên mật khẩu." },
   failed:          { title: "Không đăng nhập được", body: "Phiên đăng nhập đã hết hạn hoặc có lỗi tạm thời. Thử lại sau ít phút." },
 };

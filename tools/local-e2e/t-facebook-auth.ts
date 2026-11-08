@@ -13,18 +13,24 @@ const emailOf = () => `fb${RUN}-${++n}@test.local`;
 type Scn = { me: Record<string, unknown> | null; tokenFail?: boolean; meFail?: boolean };
 const scenarios = new Map<string, Scn>(); // code → hồ sơ
 const tokens = new Map<string, Scn>();    // access_token → hồ sơ
-const seen: { secret?: string; appId?: string; code?: string; auth?: string }[] = [];
+const seen: { secret?: string; appId?: string; code?: string; auth?: string; method?: string; querySecret?: boolean }[] = [];
 const fake = http.createServer((req, res) => {
   const u = new URL(req.url ?? "/", `http://localhost:${PORT}`);
   const json = (code: number, o: unknown) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(o)); };
   if (u.pathname === "/token") {
-    const code = u.searchParams.get("code") ?? "";
-    seen.push({ secret: u.searchParams.get("client_secret") ?? "", appId: u.searchParams.get("client_id") ?? "", code });
-    const s = scenarios.get(code);
-    if (!s || s.tokenFail) return json(400, { error: { message: "bad code" } });
-    scenarios.delete(code);
-    const at = `at-${code}`; tokens.set(at, s);
-    return json(200, { access_token: at, token_type: "bearer" });
+    // P2-b: bí mật ứng dụng chỉ được nằm trong THÂN POST; GET / bí mật trong query bị từ chối (như một proxy ghi nhật ký URL sẽ thấy).
+    if (req.method !== "POST" || u.searchParams.has("client_secret")) { seen.push({ method: req.method, querySecret: u.searchParams.has("client_secret") }); return json(405, { error: { message: "POST only" } }); }
+    let body = ""; req.on("data", d => body += d); req.on("end", () => {
+      const p = new URLSearchParams(body);
+      const code = p.get("code") ?? "";
+      seen.push({ secret: p.get("client_secret") ?? "", appId: p.get("client_id") ?? "", code, method: "POST", querySecret: false });
+      const s = scenarios.get(code);
+      if (!s || s.tokenFail) return json(400, { error: { message: "bad code" } });
+      scenarios.delete(code);
+      const at = `at-${code}`; tokens.set(at, s);
+      return json(200, { access_token: at, token_type: "bearer" });
+    });
+    return;
   }
   if (u.pathname === "/me") {
     const at = String(req.headers.authorization ?? "").replace(/^Bearer /, "");
@@ -84,6 +90,7 @@ const fbId = () => `fbid-${RUN}-${++n}`;
   const sess = cookieHdr(a.r, "midnight_session")!.split(";")[0];
   const me = await (await fetch(`${BASE}/api/auth/me`, { headers: { cookie: sess } })).json().catch(() => null);
   check("phiên dùng được (/api/auth/me)", me?.email === e1 && me?.emailVerified === false, me);
+  check("đổi mã bằng POST, client_secret chỉ trong thân (không trong query/URL); mọi yêu cầu /token đều như vậy", seen.filter(x => x.method !== undefined).every(x => x.method === "POST" && x.querySecret === false) && seen.some(x => x.method === "POST"), seen.filter(x => x.method !== "POST" && x.method !== undefined));
   check("máy chủ gửi Facebook đúng client_secret; /me dùng Bearer token", seen.some(x => x.secret === SECRET && x.appId === APP && x.code === a.code) && seen.some(x => x.auth === `at-${a.code}`));
   const fp = await fetch(`${BASE}/api/auth/forgot-password`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: e1 }) });
   check("'Quên mật khẩu' vẫn dùng được", fp.status === 200 && (await prisma.passwordResetToken.count({ where: { userId: u1!.id } })) === 1);
@@ -127,6 +134,19 @@ const fbId = () => `fbid-${RUN}-${++n}`;
   const g = await mkUser({ name: "Em Có Google" });
   await prisma.user.update({ where: { id: g.id }, data: { googleSub: `g-${RUN}` } });
   check("học sinh đã gắn Google cũng không bị Facebook chiếm", !hasSession((await flow({ id: fbId(), name: "X", email: g.email })).r));
+
+  section("CA PHÁ (P1-1): kẻ có Facebook tạo tài khoản bằng email nạn nhân; nạn nhân bấm link xác minh email → facebookId BỊ GỠ");
+  const v2 = emailOf(); const atkFb2 = fbId();
+  const atk2 = await flow({ id: atkFb2, name: "Kẻ tấn công 2", email: v2 });
+  const atk2Row = await prisma.user.findUnique({ where: { email: v2 } });
+  const vt = await prisma.verifyToken.findFirst({ where: { userId: atk2Row!.id } });
+  check("tiền đề: tài khoản do Facebook tạo có facebookId, emailVerified=false, có VerifyToken", hasSession(atk2.r) && atk2Row?.facebookId === atkFb2 && atk2Row.emailVerified === false && !!vt);
+  const ve = await fetch(`${BASE}/api/auth/verify-email?token=${vt!.token}`);
+  const v2Row = await prisma.user.findUnique({ where: { id: atk2Row!.id } });
+  check("xác minh thành công: emailVerified=true và facebookId = null", ve.status === 200 && v2Row?.emailVerified === true && v2Row.facebookId === null, [ve.status, v2Row]);
+  check("token xác minh đã bị xoá", (await prisma.verifyToken.count({ where: { userId: atk2Row!.id } })) === 0);
+  const atk2Again = await flow({ id: atkFb2, name: "Kẻ tấn công 2", email: v2 });
+  check("kẻ tấn công đăng nhập lại bằng Facebook cũ → KHÔNG phiên (email-exists)", !hasSession(atk2Again.r) && path(atk2Again.loc) === "/dang-nhap?facebook=email-exists", atk2Again.loc);
 
   section("Gia sư / quản trị / đơn gia sư / khoá");
   const T = await mkTutor("Cô Lan"), A = await mkSuper("Quản trị"), P = await mkUser({ name: "Chờ duyệt" }), B = await mkUser({ name: "Bị khoá" });
