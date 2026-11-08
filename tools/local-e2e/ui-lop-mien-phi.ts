@@ -79,6 +79,16 @@ const overflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWi
   await p.locator("[data-class-code]").waitFor({ timeout: 60000 });
   check("bấm → hiện mã, DB 1 mã; nút biến mất", await p.getByRole("button", { name: "Tạo mã lớp" }).count() === 0 && (await prisma.classInvite.count({ where: { courseId: old.id } })) === 1);
 
+  section("Ca phá cố ý: 12 mã có giới hạn tạo SAU mã lớp vẫn không đẩy mã lớp ra khỏi khối");
+  const many = await mkCourse(T.id, { name: "Lop nhieu ma" });
+  await prisma.course.update({ where: { id: many.id }, data: { joinPolicy: "invite_only", tag: "Miễn phí" } });
+  const ens = await api("POST", `/api/courses/${many.id}/invites`, { as: T, body: { ensure: true } });
+  for (let i = 0; i < 12; i++) await api("POST", `/api/courses/${many.id}/invites`, { as: T, body: { maxUses: 3 + i } });
+  await p.goto(`${BASE}/lop-cua-toi/${many.id}?tab=ma-moi`, { waitUntil: "networkidle" });
+  await p.locator("[data-class-code]").waitFor({ timeout: 60000 });
+  check("12 mã giới hạn sau mã lớp: khối vẫn hiện ĐÚNG mã lớp, không có nút Tạo mã lớp, DB vẫn 13 mã", ens.status === 201 && (await p.locator("[data-class-code]").first().innerText()).trim() === ens.json.code && await p.getByRole("button", { name: "Tạo mã lớp" }).count() === 0 && (await prisma.classInvite.count({ where: { courseId: many.id } })) === 13);
+  check("có dòng nhắc thu hồi mã lộ", await p.locator("[data-code-leak-hint]").isVisible());
+
   section("Mã đang hiện dùng được: học sinh nhập → xin vào lớp 'Cô duyệt'");
   const rd = await api("POST", `/api/invites/${code1}/redeem`, { as: S });
   check("redeem mã lớp Cô duyệt → pending (chưa vào ngay)", rd.status === 200 && rd.json?.pending === true && (await prisma.enrollment.count({ where: { userId: S.id, courseId: c1.id } })) === 0, rd.json);

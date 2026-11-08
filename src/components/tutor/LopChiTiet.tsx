@@ -42,7 +42,7 @@ export interface LopChiTietData {
   inviteCode: string | null;
   initialTab: LopTab; justCreated: boolean; scheduleFailed: boolean;
   /** Wizard tạo lớp: số em đã thêm cùng lúc ("them=N") hoặc việc thêm em bị lỗi ("them=loi"). */
-  addedStudents?: number | null; addFailed?: boolean;
+  addedStudents?: number | null; addFailed?: boolean; codeFailed?: boolean;
   /** HP-15: hình thức học phí của lớp. Lớp cũ = "monthly_sessions". */
   feeMode: FeeMode;
   /** BU-00 (31/10/2026): gia sư thật → lối tắt đi bí danh /lop-cua-toi/quan-lop/…; quản trị xem lớp (roleView "tutor") → /admin/khoa-hoc/… như cũ. Vắng = gia sư. */
@@ -158,6 +158,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         </KinCallout>
       )}
       {mgr && d.addedStudents != null && d.addedStudents > 0 && <KinCallout title={`Đã thêm ${d.addedStudents} học sinh vào lớp`} className="mb-6">Em vào lớp từ danh sách học sinh của cô. Em mới thì gửi mã mời ở tab Mã mời.</KinCallout>}
+      {mgr && d.codeFailed && <KinCallout title="Lớp đã tạo, nhưng chưa có mã lớp" className="mb-6">Cô bấm Tạo mã lớp ở khối Cách học sinh vào lớp. Nếu vẫn chưa được, xem gói của cô còn chỗ cho học sinh không.</KinCallout>}
       {mgr && d.addFailed && <KinCallout title="Lớp đã tạo, nhưng chưa thêm được học sinh" className="mb-6">Cô thêm lại ở nút Thêm học sinh phía trên.</KinCallout>}
       {mgr && d.scheduleFailed && (
         <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-6">

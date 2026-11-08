@@ -224,6 +224,7 @@ export function ClassJoinHowTo({ courseId, policy, code, onChanged }: { courseId
           )}
         </div>
       )}
+      {needsCode && code && <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-code-leak-hint>Mã bị lộ ra ngoài thì cô thu hồi ở tab Mã mời, rồi bấm Tạo mã lớp để lấy mã mới.</p>}
       <div className="mt-3 flex items-center gap-3 flex-wrap">
         <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Link trang lớp</span>
         <KinCopyButton appearance="button" buttonVariant={needsCode ? "ghost" : "secondary"} label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`} onResult={done("link trang lớp")}>Sao chép link trang lớp</KinCopyButton>
