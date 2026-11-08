@@ -4,6 +4,7 @@ import { landingPath } from "@/lib/landing";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { syncShellHint } from "@/lib/shellHint";
+import { forgetSilentAccess, rememberLogin } from "@/lib/savedLogin";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type Permission, type AdminRole } from "@/lib/permissions";
 
 // Re-export for consumers that import from AuthContext
@@ -52,7 +53,8 @@ interface AuthContextType {
   user:      AuthUser | null;
   isLoading: boolean;
   /** Đăng nhập bằng tài khoản + mật khẩu. `identifier` là email hoặc số di động đã xác minh. `code` = "wait" khi bị chặn tạm vì sai nhiều lần. */
-  login:     (identifier: string, password: string) => Promise<{ success: boolean; message?: string; code?: string; retryAfterSec?: number }>;
+  /** `opts.auto` = trình duyệt tự đăng nhập bằng thông tin đã lưu (không phải người dùng bấm): máy chủ từ chối tài khoản quản trị (code "auto_not_allowed"). */
+  login:     (identifier: string, password: string, opts?: { auto?: boolean }) => Promise<{ success: boolean; message?: string; code?: string; retryAfterSec?: number }>;
   /** Đăng nhập bằng mã 6 số gửi qua email (TK-170). `code` = wrong | locked | expired | format khi thất bại. */
   loginWithCode: (emailOrPhone: string, code: string) => Promise<{ success: boolean; message?: string; code?: string; attemptsLeft?: number; retryAfterSec?: number }>;
   logout:    () => Promise<void>;
@@ -84,15 +86,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isLoading) syncShellHint(user);
   }, [user, isLoading]);
 
-  async function login(identifier: string, password: string) {
+  async function login(identifier: string, password: string, opts?: { auto?: boolean }) {
     const res = await fetch("/api/auth/login", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ identifier, password }),
+      body:    JSON.stringify(opts?.auto ? { identifier, password, auto: true } : { identifier, password }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { success: false, message: data.error ?? "Đăng nhập thất bại", code: data.code, retryAfterSec: data.retryAfterSec };
     setUser(toAuthUser(data));
+    // Đăng nhập thủ công đúng: nhờ trình duyệt lưu (và bật lại tự đăng nhập nếu trước đó người dùng đã đăng xuất). Lần tự đăng nhập thì thông tin đã nằm sẵn trong trình duyệt.
+    if (!opts?.auto) void rememberLogin(identifier, password);
     router.push(landingPath(data.role, data.adminRole, data.tutorPending === true)); // BU-00 bước 5: gia sư chờ duyệt → trang chờ duyệt
     return { success: true };
   }
@@ -114,6 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Đăng xuất có chủ ý: trình duyệt đừng tự đưa lại mật khẩu đã lưu để vào ngay trang đăng nhập (bật lại khi người dùng đăng nhập thủ công).
+    await forgetSilentAccess();
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     // Tải cứng về trang chủ chứ không router.push("/"): các trang có AuthGuard (cả khu học viên) thấy user = null sẽ tự router.replace("/dang-nhap?redirect=<trang đang xem>"),

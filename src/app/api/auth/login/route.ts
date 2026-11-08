@@ -6,6 +6,8 @@ import { signInResponse } from "@/lib/loginSession";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 import { loginThrottle } from "@/lib/loginThrottle";
 import { parsePasswordLogin, wrongMessage, waitMessage } from "@/lib/passwordLogin";
+import { isAdminSession } from "@/lib/sessionPolicy";
+import { AUTO_NOT_ALLOWED } from "@/lib/savedLogin";
 
 // Đăng nhập bằng "tài khoản + mật khẩu" (đường chính từ 14/10/2026; đăng nhập bằng mã 6 số là đường song song ở /api/auth/code/*).
 // Body: { identifier, password } — `identifier` là email hoặc số di động VN đã xác minh; tên cũ `email` vẫn được nhận.
@@ -25,7 +27,10 @@ export async function POST(req: Request) {
   if (blocked) return blocked;
 
   try {
-    const parsed = parsePasswordLogin(await req.json().catch(() => null));
+    const body = await req.json().catch(() => null);
+    // `auto: true` = trình duyệt tự đăng nhập bằng thông tin đã lưu (src/lib/savedLogin.ts), không phải người dùng bấm. Phải đúng kiểu boolean `true`.
+    const auto = (body as { auto?: unknown } | null)?.auto === true;
+    const parsed = parsePasswordLogin(body);
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
     const { target, password } = parsed;
 
@@ -55,6 +60,14 @@ export async function POST(req: Request) {
     }
 
     loginThrottle.ok(target.key);
+    // Quản trị chỉ sống 12 giờ và không tự gia hạn (sessionPolicy.ts): máy bỏ quên thì hết đường, muốn tiếp phải đăng nhập lại có chủ ý. Nếu trình duyệt tự đưa mật khẩu
+    // đã lưu để vào lại thì mốc 12 giờ mất tác dụng, nên từ chối ở đây (đã kiểm mật khẩu đúng, CHƯA cấp phiên) và để người dùng tự bấm "Đăng nhập".
+    if (auto && isAdminSession({ role: user.role, adminRole: user.adminRole })) {
+      return NextResponse.json(
+        { error: "Tài khoản quản trị không tự đăng nhập. Bấm “Đăng nhập” để vào.", code: AUTO_NOT_ALLOWED },
+        { status: 403, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     return await signInResponse(user, req);
   } catch (e) {
     console.error("[login]", e);
