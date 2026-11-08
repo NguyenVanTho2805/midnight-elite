@@ -114,6 +114,35 @@ const mails = () => { try { return readdirSync(process.env.EMAIL_SINK_DIR!).leng
   const c2 = await flow({ email: old.email, sub: "sub-khac" });
   check("email đã gắn Google KHÁC → từ chối 'sub-mismatch', không phiên", !hasSession(c2.r) && path(c2.loc) === "/dang-nhap?google=sub-mismatch", c2.loc);
 
+  section("CA PHÁ: kẻ đăng ký trước bằng email nạn nhân (emailVerified=false + mật khẩu + facebookId) → nạn nhân vào bằng Google");
+  const atk = await mkUser({ name: "Kẻ chiếm trước", emailVerified: false }); // mật khẩu "Passw0rd!" do kẻ đó đặt
+  await prisma.user.update({ where: { id: atk.id }, data: { facebookId: `fb-atk-${RUN}` } });
+  await prisma.verifyToken.create({ data: { token: `vt-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
+  await prisma.passwordResetToken.create({ data: { token: `pr-atk-${RUN}`, userId: atk.id, expiresAt: new Date(Date.now() + 3600_000) } });
+  const oldHash = (await prisma.user.findUnique({ where: { id: atk.id } }))!.password;
+  const loginBefore = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: atk.email, password: "Passw0rd!" }) });
+  check("trước khi nạn nhân vào: kẻ chiếm trước đăng nhập được bằng mật khẩu của hắn (xác nhận lỗ hổng có thật)", loginBefore.status === 200, loginBefore.status);
+  const vic = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
+  const ua = await prisma.user.findUnique({ where: { id: atk.id } });
+  check("nạn nhân vào được bằng Google, emailVerified=true, googleSub gắn", hasSession(vic.r) && ua?.emailVerified === true && ua.googleSub === `sub-victim-${RUN}`, [vic.loc, ua?.emailVerified]);
+  const loginAfter = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: atk.email, password: "Passw0rd!" }) });
+  check("mật khẩu cũ của kẻ chiếm trước KHÔNG đăng nhập được nữa", loginAfter.status === 401 || loginAfter.status === 400 || loginAfter.status === 403, loginAfter.status);
+  check("mật khẩu đã đổi sang băm bcrypt khác băm của kẻ chiếm trước", /^\$2[aby]\$/.test(ua!.password) && ua!.password !== oldHash, ua!.password);
+  check("VerifyToken + PasswordResetToken cũ bị xoá", (await prisma.verifyToken.count({ where: { userId: atk.id } })) === 0 && (await prisma.passwordResetToken.count({ where: { userId: atk.id } })) === 0);
+  check("facebookId của kẻ chiếm trước bị gỡ", ua?.facebookId === null, ua?.facebookId);
+  const sameAgain = await flow({ email: atk.email, sub: `sub-victim-${RUN}` });
+  check("lần Google sau (đã liên kết) vẫn vào, mật khẩu không bị đổi lần nữa", hasSession(sameAgain.r) && (await prisma.user.findUnique({ where: { id: atk.id } }))!.password === ua!.password);
+
+  section("Tài khoản ĐÃ xác minh email + có mật khẩu: Google vào KHÔNG đổi mật khẩu, không gỡ facebookId");
+  const okAcc = await mkUser({ name: "Đã xác minh", emailVerified: true });
+  await prisma.user.update({ where: { id: okAcc.id }, data: { facebookId: `fb-ok-${RUN}` } });
+  const before = await prisma.user.findUnique({ where: { id: okAcc.id } });
+  const okFlow = await flow({ email: okAcc.email, sub: `sub-ok-${RUN}` });
+  const after = await prisma.user.findUnique({ where: { id: okAcc.id } });
+  check("vào được; mật khẩu và facebookId giữ nguyên", hasSession(okFlow.r) && after?.password === before?.password && after?.facebookId === `fb-ok-${RUN}`, after);
+  const loginOk = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: okAcc.email, password: "Passw0rd!" }) });
+  check("mật khẩu cũ của chủ thật vẫn đăng nhập được", loginOk.status === 200, loginOk.status);
+
   section("Gia sư / quản trị / đơn gia sư: KHÔNG vào bằng Google");
   const T = await mkTutor("Cô Lan"), A = await mkSuper("Quản trị"), P = await mkUser({ name: "Chờ duyệt" });
   await prisma.user.update({ where: { id: P.id }, data: { tutorAppliedAt: new Date() } });

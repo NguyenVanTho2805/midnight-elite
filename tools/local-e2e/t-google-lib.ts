@@ -8,7 +8,7 @@ import {
 import { decideSocialSignIn, type ExistingUser } from "@/lib/socialAuth";
 
 const env = { SESSION_SECRET: "test-secret-test-secret-test-secret-123456" };
-const U = (o: Partial<ExistingUser> = {}): ExistingUser => ({ id: "u1", role: "student", adminRole: null, banned: false, deletedAt: null, tutorAppliedAt: null, tutorVerified: false, linkedId: null, ...o });
+const U = (o: Partial<ExistingUser> = {}): ExistingUser => ({ id: "u1", role: "student", adminRole: null, banned: false, deletedAt: null, tutorAppliedAt: null, tutorVerified: false, linkedId: null, emailVerified: true, ...o });
 const CID = "cid.apps.googleusercontent.com", NONCE = "n-123";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const jwt = (c: Record<string, unknown>) => `${b64({ alg: "RS256" })}.${b64(c)}.sig`;
@@ -34,6 +34,14 @@ const base = { iss: "https://accounts.google.com", aud: CID, exp: Math.floor(Dat
   ] as const) check(`${label} → 'password-only', không vào bằng Google`, (decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: null, byEmail: u }) as { reason?: string }).reason === "password-only");
   check("gia sư có googleSub trùng (bySub) cũng bị chặn", (decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: U({ role: "admin", adminRole: "teacher", linkedId: "s" }), byEmail: null }) as { reason?: string }).reason === "password-only");
   check("email đã gắn Google KHÁC → 'sub-mismatch'", (decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: null, byEmail: U({ linkedId: "khac" }) }) as { reason?: string }).reason === "sub-mismatch");
+
+  section("reclaim: tài khoản cũ CHƯA xác minh email bị nối Google → phải cắt lối cũ");
+  const rc1 = decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: null, byEmail: U({ emailVerified: false }) });
+  check("chưa xác minh + chưa liên kết → login, link, reclaim=true", rc1.kind === "login" && rc1.link === true && rc1.reclaim === true, rc1);
+  const rc2 = decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: null, byEmail: U({ emailVerified: true }) });
+  check("đã xác minh → reclaim=false (giữ nguyên mật khẩu)", rc2.kind === "login" && rc2.reclaim === false, rc2);
+  const rc3 = decideSocialSignIn({ provider: "google", id: "s", email: "a@b.c", bySub: U({ linkedId: "s", emailVerified: false }), byEmail: null });
+  check("đã liên kết Google đúng sub (dù cờ false) → không reclaim lại", rc3.kind === "login" && rc3.reclaim === false, rc3);
 
   section("profileFromIdToken — email_verified, iss, aud, exp, nonce");
   const ok = profileFromIdToken(jwt(base), { clientId: CID, nonce: NONCE });

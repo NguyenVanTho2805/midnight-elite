@@ -4,7 +4,7 @@ import { decideSocialSignIn, readFlow, signFlow, SOCIAL_NOTICES, type ExistingUs
 import { buildFacebookAuthUrl, facebookEnabled, facebookEndpoints, facebookRedirectUri, profileFromGraph } from "@/lib/facebookAuth";
 
 const env = { SESSION_SECRET: "test-secret-test-secret-test-secret-123456" };
-const U = (o: Partial<ExistingUser> = {}): ExistingUser => ({ id: "u1", role: "student", adminRole: null, banned: false, deletedAt: null, tutorAppliedAt: null, tutorVerified: false, linkedId: null, ...o });
+const U = (o: Partial<ExistingUser> = {}): ExistingUser => ({ id: "u1", role: "student", adminRole: null, banned: false, deletedAt: null, tutorAppliedAt: null, tutorVerified: false, linkedId: null, emailVerified: true, ...o });
 const dec = (provider: Provider, email: string | null, bySub: ExistingUser | null, byEmail: ExistingUser | null) => decideSocialSignIn({ provider, id: "fb1", email, bySub, byEmail });
 const reason = (d: ReturnType<typeof dec>) => (d.kind === "deny" ? d.reason : d.kind);
 

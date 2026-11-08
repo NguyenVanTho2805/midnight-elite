@@ -4,13 +4,17 @@
 // Luật quyết định (decideSocialSignIn):
 //   chung     : bị khoá/ẩn → từ chối; gia sư / quản trị / người có đơn gia sư → KHÔNG vào bằng mạng xã hội ("đăng nhập bằng mật khẩu", chống chiếm quyền).
 //   google    : Google có cờ email_verified (đã kiểm trước khi tới đây) → email trùng học sinh cũ thì vào và gắn googleSub.
+//               Nếu tài khoản cũ CHƯA xác minh email (ai cũng đăng ký được bằng email của người khác) thì coi là chiếm trước: lúc liên kết ĐỔI mật khẩu sang băm ngẫu nhiên,
+//               xoá VerifyToken, gỡ facebookId (kẻ chiếm trước không giữ lối vào nào). Tài khoản đã xác minh thì giữ nguyên mọi thứ.
 //   facebook  : Facebook KHÔNG có cờ đó và có thể không trả email → KHÔNG tự liên kết theo email. Chỉ vào được khi facebookId đã khớp; email đã có tài khoản mà chưa liên kết
-//               → "email-exists"; không có email → "no-email"; email mới → tạo học sinh.
+//               → "email-exists"; không có email → "no-email"; email mới → tạo học sinh với emailVerified=FALSE + VerifyToken + thư xác minh như /api/auth/register
+//               (Facebook không chứng minh người đó sở hữu hộp thư, nên không đặt true).
 import { SignJWT, jwtVerify } from "jose";
 import { randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signupBonusOps } from "@/lib/wallet";
+import { requestSignupCode } from "@/lib/loginCodeServer";
 
 export type Provider = "google" | "facebook";
 export const COOKIE_NAME: Record<Provider, string> = { google: "kin_google", facebook: "kin_facebook" };
@@ -49,11 +53,13 @@ export interface ExistingUser {
   tutorAppliedAt: Date | null; tutorVerified: boolean;
   /** Mã người dùng của CHÍNH nhà cung cấp đang đăng nhập (googleSub hoặc facebookId) trên tài khoản này; null = chưa liên kết. */
   linkedId: string | null;
+  /** Email đã được chứng minh sở hữu chưa (thư xác minh / đặt lại mật khẩu / Google). false = có thể do người khác đăng ký trước bằng email này. */
+  emailVerified: boolean;
 }
 export type DenyReason = "banned" | "password-only" | "sub-mismatch" | "email-exists" | "no-email";
 export type Decision =
   | { kind: "create" }
-  | { kind: "login"; userId: string; link: boolean }
+  | { kind: "login"; userId: string; link: boolean; /** tài khoản cũ chưa xác minh email được nối vào → phải cắt mọi lối vào cũ */ reclaim: boolean }
   | { kind: "deny"; reason: DenyReason };
 
 export function decideSocialSignIn(o: { provider: Provider; id: string; email: string | null; bySub: ExistingUser | null; byEmail: ExistingUser | null }): Decision {
@@ -62,21 +68,21 @@ export function decideSocialSignIn(o: { provider: Provider; id: string; email: s
   if (!u) return { kind: "create" };
   if (u.banned || u.deletedAt) return { kind: "deny", reason: "banned" };
   if (u.role !== "student" || u.adminRole || u.tutorAppliedAt || u.tutorVerified) return { kind: "deny", reason: "password-only" };
-  if (o.bySub) return { kind: "login", userId: u.id, link: false };           // đã liên kết đúng nhà này: vào, không cần email
+  if (o.bySub) return { kind: "login", userId: u.id, link: false, reclaim: false };           // đã liên kết đúng nhà này: vào, không cần email
   if (o.provider === "facebook") return { kind: "deny", reason: "email-exists" }; // Facebook: không tự nhận theo email
   if (u.linkedId && u.linkedId !== o.id) return { kind: "deny", reason: "sub-mismatch" };
-  return { kind: "login", userId: u.id, link: !u.linkedId };
+  return { kind: "login", userId: u.id, link: !u.linkedId, reclaim: !u.linkedId && !u.emailVerified };
 }
 
 export interface SocialProfile { id: string; email: string | null; name: string }
 const FIELD = { google: "googleSub", facebook: "facebookId" } as const;
-const sel = { id: true, role: true, adminRole: true, banned: true, deletedAt: true, tutorAppliedAt: true, tutorVerified: true, googleSub: true, facebookId: true } as const;
-type Row = { id: string; role: string; adminRole: string | null; banned: boolean; deletedAt: Date | null; tutorAppliedAt: Date | null; tutorVerified: boolean; googleSub: string | null; facebookId: string | null };
+const sel = { id: true, role: true, adminRole: true, banned: true, deletedAt: true, tutorAppliedAt: true, tutorVerified: true, emailVerified: true, googleSub: true, facebookId: true } as const;
+type Row = { id: string; role: string; adminRole: string | null; banned: boolean; deletedAt: Date | null; tutorAppliedAt: Date | null; tutorVerified: boolean; emailVerified: boolean; googleSub: string | null; facebookId: string | null };
 const toExisting = (p: Provider, r: Row | null): ExistingUser | null => (r ? { ...r, linkedId: r[FIELD[p]] } : null);
 
 export type Resolved = { ok: true; userId: string; role: string; adminRole: string | null } | { ok: false; reason: DenyReason | "failed" };
 
-/** Tìm / tạo / liên kết người dùng cho một lượt đăng nhập mạng xã hội đã được nhà cung cấp xác nhận. Tạo mới = học sinh, emailVerified=true, KHÔNG VerifyToken, KHÔNG thư,
+/** Tìm / tạo / liên kết người dùng cho một lượt đăng nhập mạng xã hội đã được nhà cung cấp xác nhận. Tạo mới = học sinh; Google: emailVerified=true, KHÔNG VerifyToken, KHÔNG thư; Facebook: emailVerified=false + VerifyToken + thư xác minh (như register);
  *  ví + xu khởi đầu cùng giao dịch (signupBonusOps, như /api/auth/register). Không thu gì ngoài tên + email + mã nhà cung cấp. */
 export async function resolveSocialUser(provider: Provider, p: SocialProfile): Promise<Resolved> {
   const f = FIELD[provider];
@@ -87,12 +93,17 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
   let d = decideSocialSignIn({ provider, id: p.id, email: p.email, bySub: toExisting(provider, s as Row | null), byEmail: toExisting(provider, e as Row | null) });
   if (d.kind === "deny") return { ok: false, reason: d.reason };
   let userId: string;
+  let verifyToken: string | null = null;
   if (d.kind === "create") {
     try {
       const password = await bcrypt.hash(randomBytes(32).toString("hex"), 10); // cột bắt buộc: băm chuỗi ngẫu nhiên; "Quên mật khẩu" vẫn đặt được mật khẩu mới qua email
       userId = await prisma.$transaction(async tx => {
-        const u = await tx.user.create({ data: { name: p.name, email: p.email!, password, role: "student", emailVerified: true, [f]: p.id } });
+        const u = await tx.user.create({ data: { name: p.name, email: p.email!, password, role: "student", emailVerified: provider === "google", [f]: p.id } });
         for (const op of signupBonusOps(tx, u.id)) await op;
+        if (provider !== "google") {
+          verifyToken = randomBytes(32).toString("hex");
+          await tx.verifyToken.create({ data: { token: verifyToken, userId: u.id, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } });
+        }
         return u.id;
       }, { timeout: 15_000, maxWait: 10_000 });
     } catch (err) {
@@ -110,12 +121,24 @@ export async function resolveSocialUser(provider: Provider, p: SocialProfile): P
     userId = d.userId;
   }
   const link = d.kind === "create" || (d.kind === "login" && d.link);
-  // Google đã xác nhận hộp thư → học sinh cũ được đặt emailVerified=true. Facebook chỉ tới đây khi đã liên kết đúng facebookId hoặc vừa tạo mới.
-  const user = await prisma.user.update({
-    where: { id: userId },
-    data: { ...(provider === "google" || d.kind === "create" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) },
-    select: { id: true, role: true, adminRole: true },
+  const reclaim = d.kind === "login" && d.reclaim;
+  // Google đã xác nhận hộp thư → học sinh cũ được đặt emailVerified=true. Facebook chỉ tới đây khi đã liên kết đúng facebookId hoặc vừa tạo mới (chưa xác minh).
+  const data: Record<string, unknown> = { ...(provider === "google" ? { emailVerified: true } : {}), ...(link ? { [f]: p.id } : {}) };
+  if (reclaim) {
+    // Tài khoản cũ chưa xác minh email: người đăng ký trước (có thể là kẻ khác) biết mật khẩu và có thể giữ facebookId. Cắt hết.
+    data.password = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
+    data.facebookId = provider === "facebook" ? p.id : null; // chỉ Google tới được đây (Facebook không tự liên kết)
+  }
+  const user = await prisma.$transaction(async tx => {
+    if (reclaim) {
+      await tx.verifyToken.deleteMany({ where: { userId } });
+      await tx.passwordResetToken.deleteMany({ where: { userId } });
+    }
+    return tx.user.update({ where: { id: userId }, data, select: { id: true, role: true, adminRole: true } });
   });
+  if (verifyToken) {
+    try { await requestSignupCode(p.email!, { token: verifyToken }); } catch (err) { console.error("[social] không gửi được thư xác minh:", (err as Error).message); }
+  }
   return { ok: true, userId: user.id, role: user.role, adminRole: user.adminRole };
 }
 

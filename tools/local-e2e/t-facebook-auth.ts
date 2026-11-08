@@ -70,20 +70,20 @@ const fbId = () => `fbid-${RUN}-${++n}`;
   check("cookie kin_facebook: HttpOnly, SameSite=Lax, Path hẹp, Max-Age ≤ 600", /HttpOnly/i.test(s0.setCookie) && /SameSite=lax/i.test(s0.setCookie) && /Path=\/api\/auth\/facebook/i.test(s0.setCookie) && Number(/Max-Age=(\d+)/i.exec(s0.setCookie)?.[1]) <= 600, s0.setCookie);
   check("không lộ app secret trong URL", !s0.loc.includes(SECRET));
 
-  section("Email MỚI: tạo học sinh, đã xác thực, không thư, ví + xu");
+  section("Email MỚI: tạo học sinh CHƯA xác minh email (Facebook không chứng minh hộp thư), VerifyToken + thư xác minh, ví + xu");
   const m0 = mails(); const e1 = emailOf(); const id1 = fbId();
   const a = await flow({ id: id1, name: "Trần Thị Mai", email: e1 });
   check("303 vào 'Việc của tôi' + cookie phiên HttpOnly", a.r.status === 303 && path(a.loc) === "/student/viec-cua-toi" && hasSession(a.r) && /HttpOnly/i.test(cookieHdr(a.r, "midnight_session")!), [a.r.status, a.loc]);
   check("cookie trạng thái bị xoá (Max-Age=0)", /Max-Age=0/i.test(cookieHdr(a.r, "kin_facebook") ?? ""));
   const u1 = await prisma.user.findUnique({ where: { email: e1 }, include: { wallet: true } });
-  check("student, emailVerified=true, facebookId gắn, không googleSub, tên từ Facebook", u1?.role === "student" && u1.emailVerified === true && u1.facebookId === id1 && !u1.googleSub && u1.name === "Trần Thị Mai", u1);
+  check("student, emailVerified=FALSE, facebookId gắn, không googleSub, tên từ Facebook", u1?.role === "student" && u1.emailVerified === false && u1.facebookId === id1 && !u1.googleSub && u1.name === "Trần Thị Mai", u1);
   check("không thu thêm SĐT/trường/ảnh/ngày sinh", !u1?.phone && !u1?.school && !u1?.avatarBase64 && !u1?.dateOfBirth);
   check("ví + đúng 1 dòng xu khởi đầu", !!u1?.wallet && u1.wallet.balance > 0 && (await prisma.coinTransaction.count({ where: { userId: u1.id } })) === 1);
-  check("KHÔNG VerifyToken, KHÔNG thư", (await prisma.verifyToken.count({ where: { userId: u1!.id } })) === 0 && mails() === m0);
+  check("có đúng 1 VerifyToken và 1 thư xác minh (đường của register)", (await prisma.verifyToken.count({ where: { userId: u1!.id } })) === 1 && mails() === m0 + 1, [mails(), m0]);
   check("mật khẩu = băm ngẫu nhiên", /^\$2[aby]\$/.test(u1!.password));
   const sess = cookieHdr(a.r, "midnight_session")!.split(";")[0];
   const me = await (await fetch(`${BASE}/api/auth/me`, { headers: { cookie: sess } })).json().catch(() => null);
-  check("phiên dùng được (/api/auth/me)", me?.email === e1 && me?.emailVerified === true, me);
+  check("phiên dùng được (/api/auth/me)", me?.email === e1 && me?.emailVerified === false, me);
   check("máy chủ gửi Facebook đúng client_secret; /me dùng Bearer token", seen.some(x => x.secret === SECRET && x.appId === APP && x.code === a.code) && seen.some(x => x.auth === `at-${a.code}`));
   const fp = await fetch(`${BASE}/api/auth/forgot-password`, { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": ip() }, body: JSON.stringify({ email: e1 }) });
   check("'Quên mật khẩu' vẫn dùng được", fp.status === 200 && (await prisma.passwordResetToken.count({ where: { userId: u1!.id } })) === 1);
@@ -101,6 +101,29 @@ const fbId = () => `fbid-${RUN}-${++n}`;
   const uo = await prisma.user.findUnique({ where: { id: old.id } });
   check("→ /dang-nhap?facebook=email-exists, không phiên", !hasSession(c.r) && path(c.loc) === "/dang-nhap?facebook=email-exists", c.loc);
   check("tài khoản cũ KHÔNG bị gắn facebookId, KHÔNG bị đặt emailVerified, tên giữ nguyên", uo?.facebookId === null && uo.emailVerified === false && uo.name === "Em Cũ", uo);
+  section("CA PHÁ: Facebook-rồi-Google — kẻ tấn công tạo tài khoản bằng Facebook với email nạn nhân, nạn nhân vào bằng Google");
+  const vEmail = emailOf(); const atkFb = fbId();
+  const atkRun = await flow({ id: atkFb, name: "Kẻ tấn công", email: vEmail });
+  const atkRow = await prisma.user.findUnique({ where: { email: vEmail } });
+  check("kẻ tấn công tạo được tài khoản bằng Facebook nhưng emailVerified=false (không được coi là chủ hộp thư)", hasSession(atkRun.r) && atkRow?.emailVerified === false && atkRow.facebookId === atkFb, atkRow);
+  const attackerSess = cookieHdr(atkRun.r, "midnight_session")!.split(";")[0];
+  // Google (nạn nhân thật, email_verified) liên kết vào cùng email: dùng đúng luật của resolveSocialUser, không cần máy chủ Google giả.
+  const { resolveSocialUser } = await import("@/lib/socialAuth");
+  const gv = await resolveSocialUser("google", { id: `g-victim-${RUN}`, email: vEmail, name: "Nạn nhân" });
+  const afterG = await prisma.user.findUnique({ where: { email: vEmail } });
+  check("Google liên kết được, nhưng facebookId của kẻ tấn công BỊ GỠ", gv.ok && afterG?.googleSub === `g-victim-${RUN}` && afterG.facebookId === null && afterG.emailVerified === true, afterG);
+  const again = await flow({ id: atkFb, name: "Kẻ tấn công", email: vEmail });
+  check("kẻ tấn công đăng nhập lại bằng Facebook cũ → không phiên (không còn facebookId; email đã có chủ)", !hasSession(again.r) && path(again.loc) === "/dang-nhap?facebook=email-exists", again.loc);
+  check("VerifyToken của tài khoản bị xoá khi nối Google", (await prisma.verifyToken.count({ where: { userId: afterG!.id } })) === 0);
+  void attackerSess; // phiên JWT đã cấp trước đó KHÔNG thu hồi được (không có cột thu hồi phiên) — giới hạn đã ghi trong mô tả PR
+
+  section("Facebook-rồi-Google trên tài khoản đã xác minh: facebookId của chủ thật được giữ");
+  const okU = await mkUser({ name: "Chủ thật", emailVerified: true });
+  await prisma.user.update({ where: { id: okU.id }, data: { facebookId: `fb-real-${RUN}` } });
+  const gk = await resolveSocialUser("google", { id: `g-real-${RUN}`, email: okU.email, name: "Chủ thật" });
+  const okAfter = await prisma.user.findUnique({ where: { id: okU.id } });
+  check("giữ facebookId của chủ thật, gắn thêm googleSub", gk.ok && okAfter?.facebookId === `fb-real-${RUN}` && okAfter.googleSub === `g-real-${RUN}`, okAfter);
+
   const g = await mkUser({ name: "Em Có Google" });
   await prisma.user.update({ where: { id: g.id }, data: { googleSub: `g-${RUN}` } });
   check("học sinh đã gắn Google cũng không bị Facebook chiếm", !hasSession((await flow({ id: fbId(), name: "X", email: g.email })).r));
