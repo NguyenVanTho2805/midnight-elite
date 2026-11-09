@@ -5,7 +5,7 @@
 **TIỀN = có. TRẺ EM = chạm nhẹ (tên học sinh trong tệp). ĐỔI NỀN = không.**
 **Việc chạm tiền nên CHỜ CHỦ DUYỆT đặc tả này trước khi tut-code/tut-dev bắt đầu.** Mục 9 liệt kê chính xác chỗ nào đổi luồng tiền.
 
-Figma: xem mục 5.4. **Khung CHƯA dựng được trong lượt này**: phiên của tut-rnd không có công cụ Figma. Mục 5.4 là danh sách khung + nội dung từng khung (tên giả) để dựng ngay khi có công cụ, vào trang Bigupdate của tệp `2orXvoHL2upkiGoMjlq8aX`.
+Figma: xem mục 5.4. **Khung đã dựng (COO, 09/11/2026)**, trang Bigupdate của tệp `2orXvoHL2upkiGoMjlq8aX`, section `720:5078`: desktop `720:5079` bảng tháng, `720:5413` bảng bậc, `720:5747` nhập Excel, `720:6081` xem trước, `720:6415` sửa một em, `720:6749` trạng thái, `720:7083` gia sư bộ môn; mobile là cặp tương ứng (ví dụ `720:5320` cho bảng tháng).
 
 Dữ liệu mẫu trong đặc tả: tên học sinh là **tên giả** (Mai Anh, Bảo Châu, Minh Khôi, Gia Hân, Tuấn Kiệt), không có số điện thoại, không chép gì từ bảng tính thật của chủ.
 
@@ -344,7 +344,7 @@ Trạng thái chung cho mọi màn: **tải** (khung xương `kin-skel`) · **l�
 - Tháng chưa nhập: "Tháng này chưa có học phí. Tải mẫu Excel hoặc nhập từng em."
 - Xem trước tệp trống / `fatal`: thẻ lỗi nêu lý do cụ thể (mục 4.2) + nút "Chọn tệp khác".
 
-**Khung Figma** (trang "Bigupdate (11/2026)" của tệp `2orXvoHL2upkiGoMjlq8aX`; mỗi khung một cặp 1600 × 1000 và 390 × 844; dùng thành phần/biến của Bản final 578:2 và thanh bên gia sư 578:11; **chưa dựng — thiếu công cụ**):
+**Khung Figma** (trang "Bigupdate (11/2026)" của tệp `2orXvoHL2upkiGoMjlq8aX`; mỗi khung một cặp 1600 × 1000 và 390 × 844; dùng thành phần/biến của Bản final 578:2 và thanh bên gia sư 578:11; **ĐÃ DỰNG (COO, 09/11/2026): section `720:5078`**, mỗi khung một cặp desktop + mobile):
 | Tên khung | Nội dung (tên giả) |
 |---|---|
 | `HP-LT / 1 Bảng học phí tháng` | bảng tháng 11/2026, 5 em ví dụ ở mục 3.2, dòng tổng 3.130.000đ, cột Phiếu có "Nháp", "Đã gửi · Còn lại 360.000đ", "Chưa lập phiếu" |

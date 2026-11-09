@@ -473,7 +473,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("GET lớp B (chia em X với lớp cách cũ A): 409 NOT_SHEET_MODE, canEnable false, enableBlockedReason SHARES_LEGACY_STUDENTS, sharedStudents 1 (số đếm, không tên)", gB.status === 409 && gB.json.code === "NOT_SHEET_MODE" && gB.json.canEnable === false && gB.json.enableBlockedReason === "SHARES_LEGACY_STUDENTS" && gB.json.sharedStudents === 1 &&!/Em Chia Hai Lớp|Em Chỉ Lớp B/.test(gB.text), gB.json);
     const cntB = await counts();
     const pB = await putCfg(Lb.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
-    check("PUT enable lớp B → 409 SHARES_LEGACY_STUDENTS + sharedStudents 1; message xưng 'cô', không tên em", pB.status === 409 && pB.json.code === "SHARES_LEGACY_STUDENTS" && pB.json.sharedStudents === 1 && /\bcô\b/.test(pB.json.error) && /1 em/.test(pB.json.error) && !/Em Chia Hai Lớp|Em Chỉ Lớp B/.test(pB.text), pB.json);
+    check("PUT enable lớp B → 409 SHARES_LEGACY_STUDENTS + sharedStudents 1; message xưng 'cô', không tên em", pB.status === 409 && pB.json.code === "SHARES_LEGACY_STUDENTS" && pB.json.sharedStudents === 1 && /(^|\s)cô(\s|[.,;]|$)/.test(pB.json.error) && /1 em/.test(pB.json.error) && !/Em Chia Hai Lớp|Em Chỉ Lớp B/.test(pB.text), pB.json);
     check("sau 409: feeMode lớp B giữ nguyên 'monthly_sessions', không CourseFeeTable, không audit / thông báo mới", (await prisma.course.findUniqueOrThrow({ where: { id: Lb.id } })).feeMode === "monthly_sessions" && (await prisma.courseFeeTable.count({ where: { courseId: Lb.id } })) === 0 && (await counts()) === cntB);
     check("phiếu / dòng phí / bậc / giảm giá / 9 bảng tiền của lớp A và em X: băm GIỐNG HỆT trước và sau", (await moneyHash()) === hBefore);
     const iX2 = await issue(CE, YM, [X.id]);
@@ -796,11 +796,11 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     const pl = await putRow(SW.C.id, hn1.id, SW.T, { sessions: { Toán: 1 } });
     check("em vừa rời → không sửa được nữa (404)", pl.status === 404);
     // P2-5: PUT không nới cho em đã rời, nhưng DELETE vẫn gỡ được dòng của em đã rời (chưa vào phiếu) — cùng FeeCharge chưa vào phiếu.
-    const hn1Row = await rowOf(SW.C.id, hn1.id);
-    const hn1Ch = hn1Row?.feeChargeId ? await prisma.feeCharge.findUnique({ where: { id: hn1Row.feeChargeId } }) : null;
+    const hn1RowL = await rowOf(SW.C.id, hn1.id);
+    const hn1ChL = hn1RowL?.feeChargeId ? await prisma.feeCharge.findUnique({ where: { id: hn1RowL.feeChargeId } }) : null;
     const dLeft = await delRow(SW.C.id, hn1.id, SW.T);
-    check("em ĐÃ RỜI còn dòng chưa vào phiếu: DELETE /dong → 200 deleted (gỡ dòng + FeeCharge chưa vào phiếu); GET không còn dòng của em", !!hn1Row && !!hn1Ch && hn1Ch.invoiceId === null && dLeft.status === 200 && dLeft.json.deleted === true && dLeft.json.chargeRemoved === true
-      && (await rowOf(SW.C.id, hn1.id)) === null && (await prisma.feeCharge.findUnique({ where: { id: hn1Ch!.id } })) === null && !((await getView(SW.C.id, SW.T)).json.rows as any[]).some(r => r.studentId === hn1.id), [dLeft.status, dLeft.json]);
+    check("em ĐÃ RỜI còn dòng chưa vào phiếu: DELETE /dong → 200 deleted (gỡ dòng + FeeCharge chưa vào phiếu); GET không còn dòng của em", !!hn1RowL && !!hn1ChL && hn1ChL.invoiceId === null && dLeft.status === 200 && dLeft.json.deleted === true && dLeft.json.chargeRemoved === true
+      && (await rowOf(SW.C.id, hn1.id)) === null && (await prisma.feeCharge.findUnique({ where: { id: hn1ChL!.id } })) === null && !((await getView(SW.C.id, SW.T)).json.rows as any[]).some(r => r.studentId === hn1.id), [dLeft.status, dLeft.json]);
   }
 
   // ════════════════════════════════ 9. Khoá ════════════════════════════════
