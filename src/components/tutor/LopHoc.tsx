@@ -23,7 +23,7 @@ function Skeleton() {
   return (
     <div aria-busy="true" aria-label="Đang tải danh sách lớp">
       <div className={`h-[73px] rounded ${sk}`} />
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1440px]:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map(i => <div key={i} className={`h-[300px] rounded-[var(--kin-bo-the)] ${sk}`} />)}
       </div>
     </div>

@@ -21,7 +21,7 @@ function Cover({ row }: { row: TutorClassRow }) {
   const [broken, setBroken] = useState(false);
   if (row.cover && !broken) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={row.cover} alt="" loading="lazy" onError={() => setBroken(true)} className="h-full w-full object-cover" />;
+    return <img src={row.cover} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} className="h-full w-full object-cover" />;
   }
   return (
     <span aria-hidden data-lop-bia-chu className="flex h-full w-full items-center justify-center bg-[var(--kin-nhan-nen-nhat)] text-[length:var(--kin-co-h1)] font-medium text-[var(--kin-nhan-link)]">
