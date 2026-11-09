@@ -323,6 +323,8 @@ export interface ParsedSheet {
   rows: ParsedRow[];
   /** Dòng ví dụ của bảng mẫu (bắt đầu bằng SHEET_EXAMPLE_MARK) bị bỏ qua. */
   exampleLines: number[];
+  /** Dòng chỉ có Mã em / Họ tên, mọi ô còn lại trống (bảng mẫu chưa điền): bỏ qua, KHÔNG ghi thành dòng 0đ. Em đó hiện ở "chưa nhập". */
+  blankLines?: number[];
   total: number;
 }
 
@@ -362,10 +364,13 @@ export function parseSheetGrid(grid: readonly (readonly string[])[], subjects: r
   // Dòng dữ liệu: mọi dòng sau tiêu đề có ít nhất một ô chữ. Dòng ví dụ của bảng mẫu bỏ qua và báo.
   const dataLines: { line: number; cells: string[] }[] = [];
   const exampleLines: number[] = [];
+  const blankLines: number[] = [];
   for (let r = firstIdx + 1; r < clean.length; r++) {
     const cells = clean[r].slice(0, SHEET_MAX_COLS);
     if (!cells.some(c => c)) continue;
     if (cells.some(c => c.startsWith(SHEET_EXAMPLE_MARK))) { exampleLines.push(r + 1); continue; }
+    // Mẫu xuất sẵn mọi em; em chưa điền gì thì không ghi dòng 0đ (an toàn: không tạo dòng tiền từ ô trống).
+    if (cells.every((c, j) => !c || colField[j] === "code" || colField[j] === "name")) { blankLines.push(r + 1); continue; }
     dataLines.push({ line: r + 1, cells });
   }
 
@@ -385,7 +390,7 @@ export function parseSheetGrid(grid: readonly (readonly string[])[], subjects: r
     const names = blocking.map(b => `“${b}”`).join(", ");
     return { fatal: `Cột ${names} có dữ liệu nhưng không khớp môn hay cột nào của lớp. Thêm môn vào bảng bậc hoặc xoá cột rồi chọn lại.`, columns: base, rows: [], exampleLines, total: dataLines.length };
   }
-  if (dataLines.length === 0) return { fatal: "Tệp chỉ có dòng tiêu đề, chưa có học sinh nào.", columns: base, rows: [], exampleLines, total: 0 };
+  if (dataLines.length === 0) return { fatal: blankLines.length ? "Chưa có em nào được điền số buổi. Điền số buổi vào bảng mẫu rồi chọn lại." : "Tệp chỉ có dòng tiêu đề, chưa có học sinh nào.", columns: base, rows: [], exampleLines, blankLines, total: 0 };
   if (dataLines.length > SHEET_MAX_ROWS) {
     return { fatal: `Tối đa ${SHEET_MAX_ROWS} dòng mỗi lần nhập (đang có ${dataLines.length}). Chia thành nhiều lần.`, columns: base, rows: [], exampleLines, total: dataLines.length };
   }
@@ -417,7 +422,7 @@ export function parseSheetGrid(grid: readonly (readonly string[])[], subjects: r
     if (!row.name && !row.code) row.errors.push(`Dòng ${line}: thiếu họ tên và mã em`);
     return row;
   });
-  return { fatal: null, columns: base, rows, exampleLines, total: rows.length };
+  return { fatal: null, columns: base, rows, exampleLines, blankLines, total: rows.length };
 }
 
 // ─── Khớp học sinh ───────────────────────────────────────────────────────────

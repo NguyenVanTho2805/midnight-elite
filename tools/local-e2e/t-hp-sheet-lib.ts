@@ -174,8 +174,16 @@ const err = (o: Partial<FeeInput>, tiers: Tier[] = T) => { const r = fee(o, tier
     return r.rows[0].name.startsWith("=HYPERLINK") && r.rows[0].note?.startsWith("@cmd") === true && r.rows[0].errors.length === 1 && r.rows[0].errors[0].includes("công thức");
   })());
   check("họ tên > 200 ký tự → lỗi (không lưu); ký tự NUL / chữ vô hình bị làm sạch; ghi chú > 300 → lỗi", (() => {
-    const r = parseSheetGrid([["Họ tên", "Ghi chú"], ["A".repeat(1001), ""], ["Mai\u0000​Anh", ""], ["B", "x".repeat(301)]], SUBJ);
+    const r = parseSheetGrid([["Họ tên", "Toán", "Ghi chú"], ["A".repeat(1001), "1", ""], ["Mai\u0000​Anh", "1", ""], ["B", "1", "x".repeat(301)]], SUBJ);
     return r.rows[0].errors.length === 1 && r.rows[0].name.length <= 40 && r.rows[1].name === "Mai Anh" && r.rows[1].errors.length === 0 && r.rows[2].errors.length === 1;
+  })());
+  check("hàng của mẫu xuất sẵn chỉ có Mã em / Họ tên, mọi ô còn lại trống → bỏ qua, báo ở blankLines, KHÔNG thành dòng 0đ (an toàn: không tạo tiền từ ô trống)", (() => {
+    const r = parseSheetGrid([["Mã em (đừng sửa)", "Họ tên", "Toán", "Ghi chú"], ["id1", "Mai Anh", "", ""], ["id2", "Bảo Châu", "8", ""], ["", "Minh Khôi", "", "nghỉ ốm"]], SUBJ);
+    return r.fatal === null && r.rows.length === 2 && r.rows[0].code === "id2" && r.rows[1].name === "Minh Khôi" && (r.blankLines ?? []).join() === "2";
+  })());
+  check("toàn bộ hàng đều trống → từ chối cả tệp, nói rõ 'chưa có em nào được điền'", (() => {
+    const r = parseSheetGrid([["Mã em (đừng sửa)", "Họ tên", "Toán"], ["id1", "Mai Anh", ""]], SUBJ);
+    return r.fatal !== null && r.fatal.includes("điền") && r.rows.length === 0;
   })());
   check("dòng không có họ tên lẫn mã → lỗi 'thiếu'", parseSheetGrid([["Họ tên", "Toán"], ["", "3"]], SUBJ).rows[0].errors[0].includes("thiếu"));
   check("không có cột Họ tên lẫn Mã em → fatal; chỉ có Mã em thì ok", parseSheetGrid([["Toán", "Sử"], ["1", "2"]], SUBJ).fatal !== null && parseSheetGrid([["Mã em", "Toán"], ["x", "1"]], SUBJ).fatal === null);
