@@ -1,9 +1,8 @@
-// "Lớp học" của gia sư (Figma "Gia sư · Lớp" 299:112349): H1 + dòng phụ + nút "Tạo lớp"; ô tìm + lọc môn/trạng thái;
-// bảng dạng danh sách liên kết (Lớp · Học sinh · Lịch cố định · Tiến độ · Thao tác); ghi chú cuối bảng; cột phải nhắc lớp chưa có học sinh.
-// Điện thoại: mỗi lớp là một khối một cột, nút ≥ 44px. Đang tải: khung xương. Lỗi: dải báo + "Thử lại". Rỗng: giải thích + đi tiếp.
+// "Lớp học" của gia sư: H1 + dòng phụ + nút "Tạo lớp"; ô tìm + lọc môn/trạng thái; THƯ VIỆN THẺ LỚP (ThuVienLop) thay bảng 5 cột (GS-LOP-GON 09/11/2026; trước đó
+// Figma "Gia sư · Lớp" 299:112349); dưới thư viện nhắc lớp chưa có học sinh → mời. Đã bỏ khối chữ "Điểm danh và học phí đi cùng nhau" (lặp ý với mục Học phí).
+// Điện thoại: một cột, nút ≥ 44px. Đang tải: khung xương. Lỗi: dải báo + "Thử lại". Rỗng: giải thích + đi tiếp.
 // Dữ liệu: /api/tutor/lop ({ rows, totalStudents }). KHÔNG có cột "Cách tính phí": KiN chưa lưu cách tính phí theo lớp (xem tutorClassTable.ts).
 "use client";
-import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
@@ -11,16 +10,25 @@ import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
-import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import DongGiangNhom from "@/components/tutor/DongGiangNhom";
-import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TWO_COL, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
+import { KinPage, KinPageHeader, KIN_FIELD } from "@/components/kin/PageLayout";
+import ThuVienLop from "@/components/tutor/ThuVienLop";
+import { classBase } from "@/lib/tutorClassRoutes";
 
 const FIELD = KIN_FIELD;
-const COLS = "md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-x-4";
 
+/** Khung xương thư viện: ô lọc + vài thẻ (cùng lưới với thư viện thật nên không nhảy bố cục). */
 function Skeleton() {
-  return <KinTableSkeleton label="Đang tải danh sách lớp" />;
+  const sk = "kin-skel kin-skel--soft";
+  return (
+    <div aria-busy="true" aria-label="Đang tải danh sách lớp">
+      <div className={`h-[73px] rounded ${sk}`} />
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1440px]:grid-cols-4">
+        {[0, 1, 2].map(i => <div key={i} className={`h-[300px] rounded-[var(--kin-bo-the)] ${sk}`} />)}
+      </div>
+    </div>
+  );
 }
 
 export default function LopHoc() {
@@ -60,7 +68,7 @@ export default function LopHoc() {
       {error && <ErrorStrip message="Không tải được danh sách lớp." onRetry={load} />}
       {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 ? (
         <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
-          Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp. Lớp có lịch và học sinh sẽ hiện thành bảng ở đây.
+          Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp. Lớp có lịch và học sinh sẽ hiện thành thẻ ở đây.
         </KinEmptyState>
       ) : (
         <>
@@ -82,56 +90,21 @@ export default function LopHoc() {
             </label>
           </div>
 
-          <KinPanel flush className="mt-6">
-            <div aria-hidden className={`hidden ${COLS} ${KIN_TABLE_HEAD}`}>
-              <span>Lớp</span><span>Học sinh</span><span>Lịch cố định</span><span>Tiến độ</span><span>Thao tác</span>
-            </div>
+          <div className="mt-6">
             {shown.length === 0 ? (
               <KinEmptyState title="Không có lớp nào khớp" action={<button type="button" className={kinButtonClass("secondary")} onClick={() => { setQ(""); setCategory(""); setStatus(""); }}>Xoá bộ lọc</button>}>
                 Thử đổi từ khoá, môn học hoặc trạng thái để thấy các lớp còn lại.
               </KinEmptyState>
-            ) : (
-              <ul aria-label="Danh sách lớp">
-                {shown.map(c => {
-                  const empty = c.students === 0;
-                  return (
-                    <li key={c.id} className={`${COLS} flex flex-col gap-1 ${KIN_TABLE_ROW} text-[var(--kin-chu-chinh)]`}>
-                      <div className="min-w-0">
-                        <Link href={`/lop-cua-toi/${c.id}`} className="inline-flex items-center min-h-11 md:min-h-0 font-medium break-words hover:underline">{c.name}</Link>
-                        {(c.classStatus !== "open" || c.hidden) && (
-                          <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{CLASS_STATUS_LABEL[c.classStatus] ?? c.classStatus}{c.hidden ? " · đang ẩn" : ""}</p>
-                        )}
-                      </div>
-                      <p className="tabular-nums"><span className="md:hidden text-[var(--kin-chu-mo)]">Học sinh: </span>{c.students}{c.capacity != null ? `/${c.capacity}` : ""}</p>
-                      {c.schedule
-                        ? <p className="tabular-nums">{c.schedule}</p>
-                        : <p className="text-[var(--kin-chu-mo)]">Chưa xếp lịch{" · "}
-                            <Link href={`/lop-cua-toi/quan-lop/${encodeURIComponent(c.id)}/lich-hoc`} aria-label={`Đặt lịch cho lớp ${c.name}`} className="inline-flex items-center min-h-11 md:min-h-0 text-[var(--kin-nhan-link)] hover:underline">Đặt lịch</Link></p>}
-                      <p className={c.sessionsTaught > 0 ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}>{c.sessionsTaught > 0 ? `${c.sessionsTaught} buổi đã điểm danh` : "Chưa bắt đầu"}</p>
-                      <div>
-                        {empty
-                          ? <Link href={`/lop-cua-toi/${c.id}?tab=ma-moi`} className="inline-flex items-center min-h-11 md:min-h-0 text-[var(--kin-nhan-link)] hover:underline">{`Mời học sinh →`}</Link>
-                          : <Link href={`/lop-cua-toi/${c.id}`} aria-label={`Mở lớp ${c.name}`} className="inline-flex items-center min-h-11 md:min-h-0 text-[var(--kin-nhan-link)] hover:underline">Mở lớp →</Link>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </KinPanel>
-
-          <div className={`mt-8 ${KIN_TWO_COL}`}>
-            <KinCallout title="Điểm danh và học phí đi cùng nhau">
-              Điểm danh được lưu riêng cho từng buổi. Mở một lớp để điểm danh, xem học sinh và mã mời của lớp đó; học phí theo dõi ở mục Học phí.
-            </KinCallout>
-            {noStudents && (
-              <section aria-labelledby="lop-empty">
-                <KinSectionHead id="lop-empty" title={`${noStudents.name} chưa có học sinh`} />
-                <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mời bằng mã lớp để học sinh tự vào, hoặc thêm từ danh sách để bắt đầu lên lịch.</p>
-                <Link href={`/lop-cua-toi/${noStudents.id}?tab=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mời học sinh vào {noStudents.name}</Link>
-              </section>
-            )}
+            ) : <ThuVienLop rows={shown} />}
           </div>
+
+          {noStudents && (
+            <section aria-labelledby="lop-empty" className="mt-8 max-w-xl">
+              <KinSectionHead id="lop-empty" title={`${noStudents.name} chưa có học sinh`} />
+              <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mời bằng mã lớp để học sinh tự vào, hoặc thêm từ danh sách để bắt đầu lên lịch.</p>
+              <Link href={`${classBase(noStudents.id)}/hoc-vien?muc=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mời học sinh vào {noStudents.name}</Link>
+            </section>
+          )}
           <p className="mt-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hiển thị {shown.length}/{all.length} lớp{filtering ? " theo bộ lọc" : ""}.</p>
         </>
       )}

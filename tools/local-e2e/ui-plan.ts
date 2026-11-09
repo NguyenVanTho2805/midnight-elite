@@ -126,11 +126,11 @@ import { prisma } from "@/lib/prisma";
   const li = page.getByRole("link", { name: /Hàm số bậc nhất/ });
   await li.waitFor({ timeout: 60000 });
   check("danh sách: lớp, 'đã soạn 4/4 hoạt động', 60 phút", /Toán 9/.test(await li.innerText()) && /đã soạn 4\/4 hoạt động/.test(await li.innerText()) && /60 phút/.test(await li.innerText()), await li.innerText());
-  // B1 (08/11/2026): dải Lối tắt của Tổng quan đã bỏ; lối vào Kế hoạch buổi là bảng Khác của vỏ.
+  // GS-LOP-GON (09/11/2026): "Kế hoạch buổi" đã rời thanh bên và bảng Khác (trang vẫn sống, đã mở ở trên bằng đường dẫn trực tiếp).
   await page.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /^Khác/ }).first().click();
-  await page.locator("#khac-bang").getByRole("link", { name: "Kế hoạch buổi", exact: true }).waitFor({ timeout: 60000 });
-  check("bảng Khác có 'Kế hoạch buổi'", true);
+  await page.locator("#khac-bang").waitFor({ timeout: 60000 });
+  check("bảng Khác KHÔNG còn 'Kế hoạch buổi'", (await page.locator("#khac-bang").getByRole("link", { name: "Kế hoạch buổi" }).count()) === 0);
 
   section("Xoá + học sinh không vào được");
   await page.goto(`${BASE}/lop-cua-toi/ke-hoach-buoi/${planId}`, { waitUntil: "networkidle" });

@@ -36,8 +36,8 @@ import { visibleModules } from "@/lib/adminNav";
   const gt = await groupsOf(pt, "Module của gia sư");
   check("năm nhóm đúng thứ tự Figma: Làm việc hằng ngày · Dạy học · Tiền · Giới thiệu · Tài khoản", gt.map(g => g.title).join("|") === "Làm việc hằng ngày|Dạy học|Tiền|Giới thiệu|Tài khoản", gt.map(g => g.title));
   check("tiêu đề nhóm hiện CHỮ HOA (LÀM VIỆC HẰNG NGÀY…) như Figma", gt.map(g => g.heading).join("|") === "LÀM VIỆC HẰNG NGÀY|DẠY HỌC|TIỀN|GIỚI THIỆU|TÀI KHOẢN", gt.map(g => g.heading));
-  check("chế độ gọn: nhóm đầu = Lịch + Học sinh (GS-09: Học sinh không phụ thuộc module Lớp); Tiền = Học phí + Doanh thu; Dạy học đủ 5 (có Tổng quan vì Hộp việc tắt); Giới thiệu 3 (+ Yêu cầu tìm gia sư); Tài khoản 3 (Gói của tôi, Cài đặt, + Thêm module khi còn module ẩn; B2: bỏ Liên hệ hỗ trợ)",
-    gt[0].items.join("|") === "Lịch|Học sinh" && gt[1].items.join("|") === "Tổng quan|Kế hoạch buổi|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
+  check("chế độ gọn: nhóm đầu = Lịch + Học sinh (GS-09: Học sinh không phụ thuộc module Lớp); Tiền = Học phí + Doanh thu; Dạy học đủ 4 (có Tổng quan; GS-LOP-GON: không còn Kế hoạch buổi vì Hộp việc tắt); Giới thiệu 3 (+ Yêu cầu tìm gia sư); Tài khoản 3 (Gói của tôi, Cài đặt, + Thêm module khi còn module ẩn; B2: bỏ Liên hệ hỗ trợ)",
+    gt[0].items.join("|") === "Lịch|Học sinh" && gt[1].items.join("|") === "Tổng quan|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
     && gt[3].items.join("|") === "Hồ sơ gia sư|Bài đăng tìm học sinh|Yêu cầu tìm gia sư" && gt[4].items.join("|") === "Gói của tôi|Cài đặt|Thêm module", gt);
   const lichItem = nav(pt, "Module của gia sư").first().getByRole("link", { name: "Lịch", exact: true });
   check("mục đang ở ('Lịch') có aria-current=page, nền 'đang chọn', chữ đậm", await lichItem.getAttribute("aria-current") === "page" && await lichItem.evaluate((e: any) => getComputedStyle(e).backgroundColor !== "rgba(0, 0, 0, 0)" && Number(getComputedStyle(e).fontWeight) >= 600));

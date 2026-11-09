@@ -88,14 +88,14 @@ async function mobileReport(page: Page) {
   section("Gia sư duyệt bằng biểu mẫu → 303 về đúng tab + thông báo");
   const tCtx = await ctxFor(T);
   const tp = await tCtx.newPage(); watch(tp);
-  await tp.goto(`${BASE}/lop-cua-toi/${A.id}?tab=hoc-sinh`, { waitUntil: "networkidle", timeout: 120000 });
+  await tp.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}/hoc-vien?muc=xin-vao`, { waitUntil: "networkidle", timeout: 120000 }); // GS-LOP-GON: hàng chờ duyệt là mục 'Xin vào lớp' của tab Học sinh
   await tp.getByRole("heading", { name: "Chờ duyệt · 1" }).waitFor({ timeout: 60000 });
-  check("thấy 'Chờ duyệt · 1', tên Em Mai, nhãn tab 'Học sinh · 0 · 1 chờ'", await tp.getByText("Em Mai").first().isVisible() && await tp.getByRole("tab", { name: /Học sinh · 0 · 1 chờ/ }).isVisible());
+  check("thấy 'Chờ duyệt · 1', tên Em Mai, nhãn mục 'Xin vào lớp (1)'", await tp.getByText("Em Mai").first().isVisible() && await tp.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Xin vào lớp (1)" }).isVisible());
   await shot(tp, "bu01-gs-cho-duyet-1280");
   await Promise.all([tp.waitForURL(/duyet=ok/, { timeout: 60000 }), tp.getByRole("button", { name: "Duyệt Em Mai", exact: true }).click()]);
-  check("303 về đúng lớp + tab Học sinh + duyet=ok", tp.url().includes(`/lop-cua-toi/${A.id}`) && tp.url().includes("tab=hoc-sinh"), tp.url());
+  check("303 về đúng lớp + tab Học sinh, mục Xin vào lớp + duyet=ok", tp.url().includes(`/lop-cua-toi/quan-lop/${A.id}/hoc-vien`) && tp.url().includes("muc=xin-vao"), tp.url());
   await tp.getByText("Đã duyệt, bạn ấy đã vào lớp.").waitFor({ timeout: 60000 });
-  check("thông báo hiện, tab Học sinh đang mở, em Mai nay nằm trong danh sách lớp", await tp.getByRole("tab", { name: /^Học sinh · 1/, selected: true }).isVisible());
+  check("thông báo hiện, tab Học sinh đang mở, em Mai nay nằm trong danh sách lớp (nhãn 'Học sinh' sáng, nút danh bạ 1 em)", (await tp.getByRole("navigation", { name: /^Trang của/ }).locator("[aria-current=page]").innerText()).trim() === "Học sinh" && await tp.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Danh bạ" }).isVisible());
   await shot(tp, "bu01-gs-da-duyet-1280");
   check("DB: Enrollment active + yêu cầu approved", (await prisma.enrollment.count({ where: { courseId: A.id, userId: S1.id, status: "active" } })) === 1
     && (await prisma.classJoinRequest.count({ where: { courseId: A.id, userId: S1.id, status: "approved" } })) === 1);
@@ -114,12 +114,12 @@ async function mobileReport(page: Page) {
   await s2.goto(`${BASE}/student/nhap-ma-lop?code=${code2}`, { waitUntil: "networkidle", timeout: 120000 });
   await s2.getByRole("button", { name: "Gửi yêu cầu vào lớp" }).click();
   await s2.getByText("Đã gửi yêu cầu — chờ gia sư duyệt").waitFor({ timeout: 60000 });
-  await tp.goto(`${BASE}/lop-cua-toi/${A.id}?tab=hoc-sinh`, { waitUntil: "networkidle" });
+  await tp.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}/hoc-vien?muc=xin-vao`, { waitUntil: "networkidle" });
   await tp.locator("summary", { hasText: "Từ chối" }).first().click();
   await tp.getByLabel(/Lời nhắn cho bạn/).first().fill("Cô chưa xếp được chỗ, em thử lại tuần sau nhé.");
   await Promise.all([tp.waitForURL(/duyet=tuchoi/, { timeout: 60000 }), tp.getByRole("button", { name: "Xác nhận từ chối" }).first().click()]);
   await tp.getByText("Đã từ chối.").waitFor({ timeout: 60000 });
-  check("gia sư thấy 'Đã từ chối.' ở đúng tab", tp.url().includes("tab=hoc-sinh"));
+  check("gia sư thấy 'Đã từ chối.' ở đúng tab (Học sinh, mục Xin vào lớp)", tp.url().includes("/hoc-vien") && tp.url().includes("muc=xin-vao"));
   await s2.goto(`${BASE}/student/nhap-ma-lop?code=${code2}`, { waitUntil: "networkidle" });
   await s2.locator("[data-join-rejected]").waitFor({ timeout: 60000 });
   const rej = await s2.locator("[data-join-rejected]").innerText();
@@ -174,7 +174,7 @@ async function mobileReport(page: Page) {
   check("miễn phí: 'Vào ngay' mở; mục gập 'Thêm sẵn em đã học lớp khác' còn đó", !(await openCard.isDisabled()) && await wz.locator("[data-wizard-students]").isVisible());
   await openCard.check();
   await shot(wz, "bu01-wizard-buoc3-1280");
-  await Promise.all([wz.waitForURL(/\/lop-cua-toi\/[^/]+\?.*moi=1/, { timeout: 90000 }), wz.getByRole("button", { name: /^Tạo lớp/ }).click()]);
+  await Promise.all([wz.waitForURL(/\/lop-cua-toi\/quan-lop\/[^/]+\/hoc-vien\?.*moi=1/, { timeout: 90000 }), wz.getByRole("button", { name: /^Tạo lớp/ }).click()]);
   const made = await prisma.course.findFirst({ where: { name: "Lớp thử wizard" } });
   check("DB: joinPolicy open, tag 'Miễn phí', không có đơn giá học phí", made?.joinPolicy === "open" && made?.tag === FREE_TAG && (await prisma.courseFeeRate.count({ where: { courseId: made?.id } })) === 0, { j: made?.joinPolicy, t: made?.tag });
 
@@ -224,7 +224,7 @@ async function mobileReport(page: Page) {
   check("hs-cho-duyet: không tràn ngang, nút >= 44px", !r3.overflow && r3.small.length === 0, r3);
   await shot(p3, "bu01-hs-cho-duyet-390");
   await c3.close();
-  await m(T, `/lop-cua-toi/${A.id}?tab=hoc-sinh`, "gs-cho-duyet", p => p.getByRole("heading", { name: "Chờ duyệt · 1" }).waitFor({ timeout: 60000 }));
+  await m(T, `/lop-cua-toi/quan-lop/${A.id}/hoc-vien?muc=xin-vao`, "gs-cho-duyet", p => p.getByRole("heading", { name: "Chờ duyệt · 1" }).waitFor({ timeout: 60000 }));
   await m(T, `/lop-cua-toi/${A.id}?tab=ma-moi`, "gs-cach-vao-lop", p => p.locator("[data-join-policy-box]").waitFor({ timeout: 60000 }));
   await m(T, "/lop-cua-toi/lop/tao", "wizard", p => p.getByLabel(/Tên lớp/).waitFor({ timeout: 60000 }));
   await m(S2, `/student/nhap-ma-lop?code=${code2}`, "hs-bi-tu-choi", p => p.locator("[data-join-rejected]").waitFor({ timeout: 60000 }));

@@ -28,8 +28,7 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   const clip = () => page.evaluate(() => navigator.clipboard.readText()).catch(() => "");
 
   section("Mở tab Mã mời của lớp");
-  await page.goto(`${BASE}/lop-cua-toi/${c.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("tab", { name: "Mã mời", exact: true }).click();
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${c.id}/hoc-vien?muc=ma-moi`, { waitUntil: "networkidle", timeout: 120000 }); // GS-LOP-GON: Mã mời là mục con của tab Học sinh
   const box = page.getByLabel("Danh sách em và số phụ huynh");
   await box.waitFor({ timeout: 90000 });
   const create = page.getByRole("button", { name: "Tạo mã mời và soạn tin" });
@@ -90,8 +89,7 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
   check("làm đợt mới: ô dán trống, danh sách phụ huynh mất", (await box.inputValue()) === "" && (await page.getByRole("list", { name: "Phụ huynh cần nhắn" }).count()) === 0);
 
   section("Tải lại: mã còn, số điện thoại không còn ở đâu cả");
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("tab", { name: "Mã mời", exact: true }).click();
+  await page.reload({ waitUntil: "networkidle" }); // vẫn ở ?muc=ma-moi
   await page.getByText(code, { exact: true }).waitFor({ timeout: 60000 });
   const html = await page.content();
   check("danh sách mã mời có mã vừa tạo, ghi 'Đã dùng 0/3 lượt'", (await page.locator("body").innerText()).replace(/\s+/g, " ").includes("Đã dùng 0/3 lượt"), (await page.locator("body").innerText()).slice(0, 300));
@@ -101,8 +99,7 @@ const hasPhone = (s: string) => SAMPLE_PHONES.some(p => s.includes(p));
 
   section("Điện thoại (390px)");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
-  await mp.goto(`${BASE}/lop-cua-toi/${c.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await mp.getByRole("tab", { name: "Mã mời", exact: true }).click();
+  await mp.goto(`${BASE}/lop-cua-toi/quan-lop/${c.id}/hoc-vien?muc=ma-moi`, { waitUntil: "networkidle", timeout: 120000 });
   const mbox = mp.getByLabel("Danh sách em và số phụ huynh");
   await mbox.waitFor({ timeout: 60000 });
   await mbox.fill("Bảo Châu, 0933111222");

@@ -5,6 +5,8 @@
 // chưa tách (để BU-02/BU-03), nên trang mỏng dưới src/app/lop-cua-toi/(tutor)/(noi-dung)/ re-export đúng trang gốc, chạy trong vỏ gia sư (TutorShell).
 // Proxy (src/lib/hostRouting.ts) thấy gia sư mở /admin/... thì 307 sang đường ở đây; link cũ trong thông báo đã lưu DB vẫn tới nhờ 307.
 //
+import { classBase } from "@/lib/tutorClassRoutes";
+
 // Quy tắc: `danh-muc` (danh mục khoá học) KHÔNG có bí danh — gia sư không có quyền; mọi /admin/... khác cũng → null (proxy đưa về /lop-cua-toi).
 
 /** Mỗi họ: gốc quản trị, gốc gia sư, các đuôi hợp lệ sau gốc (":id" = một segment bất kỳ; "" = chính trang gốc), segment cấm làm :id. */
@@ -81,7 +83,7 @@ export function contentHref(isTeacher: boolean, adminPath: string): string {
 /** BU-02: màn Giáo trình của một lớp. Gia sư: đường của gia sư. Quản trị không có màn này (đường mới là đường gia sư, không có bản /admin) nên về tab "Chương bài" (?tab=chuong-bai) của trang quản lớp. */
 export function giaoTrinhHref(courseId: string, isTeacher: boolean): string {
   const id = encodeURIComponent(courseId);
-  return isTeacher ? `/lop-cua-toi/quan-lop/${id}/giao-trinh` : `/admin/khoa-hoc/${id}?tab=chuong-bai`;
+  return isTeacher ? `${classBase(courseId)}/giao-trinh` : `/admin/khoa-hoc/${id}?tab=chuong-bai`; // classBase: như encodeURIComponent, thêm mã hoá "." / ".." (không thoát đường dẫn)
 }
 
 // ─── Dải tab của vỏ nội dung gia sư (src/components/tutor/TutorContentTabs.tsx) ────────────────────────────────────────────────
@@ -89,16 +91,21 @@ export interface ContentTab { label: string; href: string; active: boolean }
 export interface ContentTabGroup { label: string; tabs: ContentTab[] }
 
 const isUnder = (p: string, root: string) => p === root || p.startsWith(root + "/");
-const COURSE_TABS = ["cai-dat", "chuong-bai", "lich-hoc", "hoc-vien"] as const;
+
+/** Vai của người xem trong lớp (courseAccess.CourseRole rút gọn). Đồng giảng / giáo viên bộ môn chỉ có Giáo trình + Lịch học. */
+export type ContentTabRole = "owner" | "admin" | "co_teacher" | "subject_teacher" | null | undefined;
+const isHelper = (r: ContentTabRole) => r === "co_teacher" || r === "subject_teacher";
 
 /**
- * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang quản lớp (mặc định "cai-dat" như trang gốc).
+ * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang lớp.
  *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" (sáng theo tiền tố dài nhất).
- *  - /lop-cua-toi/quan-lop/[id]… → "Cài đặt · Giáo trình · Bài tập tự nộp · Lịch học · Danh bạ lớp · Điểm danh" (3 tab ?tab= của trang gốc + 3 trang con /giao-trinh (BU-02), /hoc-vien, /diem-danh).
- *    Tab ?tab=chuong-bai GIỮ NGUYÊN lối vào và chỉ đổi NHÃN thành "Bài tập tự nộp" (điều hướng A8): bài tập tự nộp (Assignment) chỉ soạn được ở đó cho tới khi BU-03.
+ *  - /lop-cua-toi/quan-lop/[id]… → GS-LOP-GON (09/11/2026) "Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt" — MỘT dải duy nhất của lớp.
+ *      Giáo trình / Học sinh / Điểm danh / Lịch học = trang con (…/giao-trinh, /hoc-vien, /diem-danh, /lich-hoc); Bài tập = ?tab=chuong-bai (cây Phần · Chương · Bài +
+ *      bài tập tự nộp), Cài đặt = ?tab=cai-dat. Không có ?tab= thì trang gốc đã chuyển sang Giáo trình nên KHÔNG tab nào sáng ở "gốc trần".
+ *      ?tab=lich-hoc / ?tab=hoc-vien (liên kết cũ) vẫn làm sáng đúng tab. `role` đồng giảng / bộ môn → chỉ "Giáo trình · Lịch học".
  *  - danh sách lớp, tao-moi, đường khác → null (không dải tab).
  */
-export function contentTabsFor(pathname: string, tab: string | null = null): ContentTabGroup | null {
+export function contentTabsFor(pathname: string, tab: string | null = null, role: ContentTabRole = null): ContentTabGroup | null {
   const DE_THI = "/lop-cua-toi/de-thi";
   if (isUnder(pathname, DE_THI)) {
     const defs = [
@@ -114,18 +121,16 @@ export function contentTabsFor(pathname: string, tab: string | null = null): Con
   if (!m || m[1] === "tao-moi") return null;
   const base = `/lop-cua-toi/quan-lop/${m[1]}`;
   const sub = m[2] ?? "";
-  const current = sub === "" ? ((COURSE_TABS as readonly string[]).includes(tab ?? "") ? tab : "cai-dat") : null;
-  return {
-    label: "Quản lớp",
-    tabs: [
-      { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: current === "cai-dat" },
-      { label: "Giáo trình", href: `${base}/giao-trinh`, active: sub === "giao-trinh" || sub.startsWith("giao-trinh/") },
-      { label: "Bài tập tự nộp", href: `${base}?tab=chuong-bai`, active: current === "chuong-bai" },
-      // TUT-lich-keo-tha: tab "Lịch học" của gia sư là lưới kéo-thả ở trang riêng /lich-hoc; ?tab=lich-hoc (liên kết cũ) vẫn sáng tab này.
-      { label: "Lịch học", href: `${base}/lich-hoc`, active: sub === "lich-hoc" || current === "lich-hoc" },
-      // "Danh bạ lớp" là trang danh bạ riêng (/hoc-vien, TK-171); ?tab=hoc-vien ("Học viên đăng ký") của trang gốc cũng sáng tab này. Mọi link tới /hoc-vien dùng đúng nhãn này.
-      { label: "Danh bạ lớp", href: `${base}/hoc-vien`, active: sub === "hoc-vien" || current === "hoc-vien" },
-      { label: "Điểm danh", href: `${base}/diem-danh`, active: sub === "diem-danh" || sub.startsWith("diem-danh/") },
-    ],
-  };
+  const onSub = (name: string) => sub === name || sub.startsWith(name + "/");
+  const onRoot = (name: string) => sub === "" && tab === name; // trang gốc ?tab=<name>
+  const all: ContentTab[] = [
+    { label: "Giáo trình", href: `${base}/giao-trinh`, active: onSub("giao-trinh") },
+    { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
+    { label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") },
+    { label: "Bài tập", href: `${base}?tab=chuong-bai`, active: onRoot("chuong-bai") },
+    // TUT-lich-keo-tha: "Lịch học" là lưới kéo-thả ở trang riêng /lich-hoc; ?tab=lich-hoc (liên kết cũ) vẫn sáng tab này.
+    { label: "Lịch học", href: `${base}/lich-hoc`, active: onSub("lich-hoc") || onRoot("lich-hoc") },
+    { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: onRoot("cai-dat") },
+  ];
+  return { label: "Quản lớp", tabs: isHelper(role) ? all.filter(t => t.label === "Giáo trình" || t.label === "Lịch học") : all };
 }

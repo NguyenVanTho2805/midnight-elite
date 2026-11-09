@@ -273,9 +273,10 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   check("trang quản khoá có nút 'Mở lớp' trỏ tới trang lớp", (await moLop.count()) === 1 && (await moLop.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
   await click(moLop);
   console.log("    (đường tới trang lớp: nút 'Mở lớp' ở trang quản khoá)");
-  await eventually("tới /lop-cua-toi/<lớp>", () => at().pathname === `/lop-cua-toi/${course.id}`, 120000);
-  await click(p.getByRole("tab", { name: "Mã mời", exact: true }));
-  sub("tab 'Mã mời' (có sẵn khối 'Mời cả lớp một lần')");
+  await eventually("tới /lop-cua-toi/quan-lop/<lớp>/giao-trinh (GS-LOP-GON: mở lớp vào Giáo trình)", () => at().pathname === `/lop-cua-toi/quan-lop/${course.id}/giao-trinh`, 120000);
+  await click(p.getByRole("navigation", { name: /^Trang của/ }).getByRole("link", { name: "Học sinh", exact: true }));
+  await click(p.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Mã mời", exact: true }));
+  sub("mục 'Mã mời' của tab Học sinh (có sẵn khối 'Mời cả lớp một lần')");
   const box = p.getByLabel("Danh sách em và số phụ huynh");
   await box.waitFor({ timeout: 90000 });
   const rInvite = await req(p, "mời cả lớp (ô dán danh sách)", "một ô dán 'tên em, số Zalo phụ huynh' (không có dấu *, nút tạo khoá tới khi có dòng hợp lệ)", undefined, 1);
@@ -319,7 +320,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await p.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 60000 });
   // Lớp CHƯA có học sinh thì dòng lớp hiện "Mời học sinh →" (LopHoc.tsx: empty ? Mời : "Mở lớp →" với aria-label "Mở lớp <tên>"), còn tên lớp luôn là liên kết tới /lop-cua-toi/<lớp>:
   // lớp của bài này mới tạo, chưa mời ai → kiểm theo liên kết tên lớp (cách cũ tìm "Mở lớp <tên>" nên đỏ ở bản nền #137 vì lớp trống).
-  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng liên kết tên lớp tới /lop-cua-toi/<lớp>", (await p.locator(`a[href="/lop-cua-toi/${course.id}"]`).first().getAttribute("href", { timeout: 15000 }).catch(() => null)) === `/lop-cua-toi/${course.id}`);
+  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng liên kết tên lớp tới trang lớp (Giáo trình)", (await p.locator(`a[href="/lop-cua-toi/quan-lop/${course.id}/giao-trinh"]`).first().getAttribute("href", { timeout: 15000 }).catch(() => null)) === `/lop-cua-toi/quan-lop/${course.id}/giao-trinh`);
   {
     const before = await prisma.course.count();
     const ac = await ctxFor(root, { width: 1280, height: 900 });
