@@ -38,18 +38,19 @@ export async function POST(
       return NextResponse.json(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), { status: 403 });
     }
 
-    const body = await req.json().catch(() => ({})) as { fileUrl?: string; fileName?: string; linkUrl?: string };
+    const body = await req.json().catch(() => ({})) as { linkUrl?: string };
 
     // MD-14: học sinh có thể nộp bằng LINK bài làm Azota thay vì tệp. Chỉ nhận link dạng chữ trên azota.vn; KHÔNG nhận ảnh bài làm
     // (em dưới 16 tuổi, chưa có ý kiến pháp lý: HIEN-CO-VA-DINH-VI.md mục 6.2) nên không có đường nào đưa ảnh vào đây qua `linkUrl`.
-    let fileUrl: string, fileName: string | null, kind: "file" | "link";
+    // BU-HS-NOP-TEP: đường này KHÔNG còn nhận `fileUrl`/`fileName` do trình duyệt gửi (trước đây tin nguyên chuỗi URL, tệp lên Cloudinary bằng preset không ký ⇒ công khai, nhận cả ảnh).
+    // Nộp tệp Word/PDF đi qua /api/media/nop-bai/* + POST /api/student/nop-bai/<bài>/nop (riêng tư, kiểm nội dung). Còn lại ở đây: link Azota. Bài nộp cũ kind "file" giữ nguyên (không đụng).
+    let fileUrl: string, fileName: string | null, kind: "link";
     if (typeof body.linkUrl === "string" && body.linkUrl.trim()) {
       const w = validateWorkLink(body.linkUrl);
       if (!w.ok || !w.url) return NextResponse.json({ error: w.error ?? "Link bài làm chưa đúng" }, { status: 400 });
       fileUrl = w.url; fileName = null; kind = "link";
     } else {
-      if (!body.fileUrl?.trim()) return NextResponse.json({ error: "Thiếu file bài làm" }, { status: 400 });
-      fileUrl = body.fileUrl.trim(); fileName = body.fileName?.trim() || null; kind = "file";
+      return NextResponse.json({ error: "Hãy dùng chức năng nộp tệp mới" }, { status: 400 });
     }
 
     const submission = await prisma.assignmentSubmission.upsert({

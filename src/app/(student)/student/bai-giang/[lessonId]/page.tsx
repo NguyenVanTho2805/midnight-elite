@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
@@ -8,8 +8,8 @@ import { parseLessonType } from "@/lib/types";
 import { formatStamp } from "@/lib/mediaLink";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { api, type AssignmentFull, type AssignmentAnswerData, type AssignmentAnswerView } from "@/lib/api";
-import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
-import { DropZone } from "@/components/DropZone";
+import { NopTepBox } from "@/components/student/nop-tep/NopTepBox";
+import { nopTepResultMessage } from "@/lib/nopTep";
 import { MathText } from "@/components/MathText";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
@@ -19,7 +19,6 @@ import {
 } from "griddy-icons";
 import { LessonVideo, type PlayerControl } from "@/components/media/LessonVideo";
 import { DocumentRows, AzotaPanel, StampedNotes, parseMaterials } from "@/components/media/StudentLessonPanels";
-import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline from "@/components/student/CourseOutline";
@@ -163,35 +162,12 @@ function fmtDue(d: string | null): string {
   return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
 }
 
-function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFull; onSubmitted: (a: AssignmentFull) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const { ask, dialog } = useKinConfirm();
-  const fileRef = useRef<HTMLInputElement>(null);
+// BU-HS-NOP-TEP: khối nộp bài là <NopTepBox> (kéo-thả Word/PDF, riêng tư, lưu 60 ngày). Thẻ này giữ tiêu đề, hướng dẫn, tệp đề bài, hạn và khối điểm/nhận xét.
+// Nộp bằng link Azota và "Em đã làm xong" vẫn nằm ở <AzotaPanel> phía trên danh sách, không đổi.
+function AssignmentCard({ assignment }: { assignment: AssignmentFull }) {
   const sub = assignment.mySubmission;
-
-  async function submitFile(file: File) {
-    if (sub && sub.gradedAt && !(await ask({ title: "Nộp lại bài đã chấm?", message: "Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại.", confirmLabel: "Nộp lại" }))) return;
-    setUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "assignments/submissions");
-      const updated = await api.assignments.submit(assignment.id, { fileUrl: result.url, fileName: file.name });
-      onSubmitted({ ...assignment, mySubmission: updated, submissionCount: assignment.submissionCount + (sub ? 0 : 1) });
-    } catch (err) {
-      alert("Nộp bài thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
-    } finally {
-      setUploading(false);
-    }
-  }
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) submitFile(file);
-  }
-
   return (
-    <DropZone onFiles={files => files[0] && submitFile(files[0])} disabled={uploading || !cloudinaryConfigured}
-      className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      {dialog}
+    <div data-bai-tap-the={assignment.id} className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{assignment.title}</p>
@@ -206,31 +182,21 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
 
       {assignment.fileUrl && (
         <a href={viewerHref(assignment.fileName || "de-bai", assignment.fileUrl)} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "var(--kin-tt-chu-xong)" }}>
+          className="inline-flex items-center gap-1.5 min-h-11 text-xs font-semibold mb-2" style={{ color: "var(--kin-tt-chu-xong)" }}>
           <FileDownload size={14} /> {assignment.fileName || "Tải đề bài"}
         </a>
       )}
 
-      {sub?.gradedAt ? (
-        <div className="p-3 rounded-lg mb-2" style={{ background: "var(--kin-tt-nen-xong)" }}>
+      {sub?.gradedAt && (
+        <div className="p-3 rounded-lg mb-3" style={{ background: "var(--kin-tt-nen-xong)" }}>
           <p className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Điểm: {sub.score}/{assignment.maxPoints}</p>
           {sub.comment && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-xong)" }}>Nhận xét: {sub.comment}</p>}
         </div>
-      ) : sub ? (
-        <p className="text-xs mb-2" style={{ color: "var(--kin-nhan-link)" }}>Đã nộp lúc {new Date(sub.submittedAt).toLocaleString("vi-VN")} — chờ chấm điểm.</p>
-      ) : null}
-
-      {cloudinaryConfigured && (
-        <>
-          <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg disabled:opacity-50"
-            style={{ background: "var(--kin-tt-cham-cho)" }}>
-            {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
-          </button>
-        </>
       )}
-    </DropZone>
+
+      <NopTepBox mode="student" assignmentId={assignment.id}
+        submission={sub ? { submittedAt: sub.submittedAt, fileUrl: sub.fileUrl, fileName: sub.fileName, gradedAt: sub.gradedAt } : null} />
+    </div>
   );
 }
 
@@ -410,7 +376,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
   );
 }
 
-function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUrl?: string; deadline?: string }) {
+function TabBaiTap({ lessonId, azotaUrl, deadline, nopCode }: { lessonId: string; azotaUrl?: string; deadline?: string; nopCode?: string | null }) {
   const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -419,19 +385,28 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
     api.assignments.listByLesson(lessonId).then(setAssignments).catch(() => setAssignments([])).finally(() => setLoading(false));
   }, [lessonId]);
 
+  const nopText = nopTepResultMessage(nopCode);
+
   if (!azotaUrl && !loading && assignments.length === 0) {
     return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Bài học này không có bài kiểm tra.</p>;
   }
 
   return (
     <div className="space-y-3">
+      {nopText && (
+        <p role={nopCode === "ok" ? "status" : "alert"} data-nop-tep-ket-qua={nopCode} className="px-4 py-3 rounded-xl text-sm font-medium"
+          style={nopCode === "ok"
+            ? { background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)", color: "var(--kin-tt-chu-xong)" }
+            : { background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)", color: "var(--kin-tt-chu-loi)" }}>
+          {nopText}
+        </p>
+      )}
       <AzotaPanel lessonId={lessonId} azotaUrl={azotaUrl} deadline={deadline} canSubmit />
 
       {assignments.map(a => a.mode === "interactive" ? (
         <InteractiveAssignmentCard key={a.id} assignment={a} />
       ) : (
-        <AssignmentCard key={a.id} assignment={a}
-          onSubmitted={updated => setAssignments(prev => prev.map(x => x.id === updated.id ? updated : x))} />
+        <AssignmentCard key={a.id} assignment={a} />
       ))}
     </div>
   );
@@ -548,7 +523,10 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const router = useRouter();
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<SidebarTabKey>("tailieu");
+  // ?nop=<mã> là đích của 303 sau khi bấm "Nộp bài": mở thẳng tab Bài tập và đọc kết quả (mã, không phải chữ người dùng).
+  const [nopCode] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("nop")));
+  const [firstLessonId] = useState(params.lessonId);
+  const [activeTab, setActiveTab] = useState<SidebarTabKey>(nopCode ? "baitap" : "tailieu");
   const { completedIds, watching, positions, markComplete, unmarkComplete } = useProgress();
   const [player, setPlayer] = useState<PlayerControl | null>(null);
   const [session, setSession] = useState<{ email?: string; role?: string } | null>(null);
@@ -557,7 +535,16 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     fetch("/api/auth/me", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => setSession(d?.user ?? d ?? null)).catch(() => {});
   }, []);
 
-  useEffect(() => { setActiveTab("tailieu"); }, [params.lessonId]);
+  useEffect(() => {
+    if (nopCode && params.lessonId === firstLessonId) return; // vừa nộp bài xong: giữ tab Bài tập
+    setActiveTab("tailieu");
+  }, [params.lessonId, nopCode, firstLessonId]);
+  useEffect(() => { // bỏ ?nop khỏi địa chỉ để tải lại trang không báo lại
+    if (!nopCode) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("nop");
+    window.history.replaceState(null, "", u.pathname + u.search + u.hash);
+  }, [nopCode]);
 
   useEffect(() => {
     const saved = localStorage.getItem("lessonSidebar");
@@ -812,7 +799,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </div>
             <div className="p-4">
               {activeTab === "tailieu" && <DocumentRows materials={lesson.materials} />}
-              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
+              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />}
               {activeTab === "ghichu"  && <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />}
             </div>
           </div>
