@@ -2,6 +2,7 @@
 // và bản xem trước trong quản trị (/admin/trang-chu/xem-truoc), nên KHÔNG hook, KHÔNG prisma, KHÔNG async: chỉ nhận `content` và `stats`.
 // Số liệu `stats` là số đếm thật do trang thật tải; bản xem trước truyền [] (khối số liệu tự ẩn, không bịa số mẫu).
 import Link from "next/link";
+import type { ComponentType, ReactNode } from "react";
 import { isExternalHref, type HomeContent } from "@/lib/siteContent";
 import { HOME_ICONS } from "./homeIcons";
 
@@ -17,13 +18,34 @@ const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounde
 
 export interface HomeStat { value: string; label: string }
 
-export default function HomeSections({ content: c, stats }: { content: HomeContent; stats: HomeStat[] }) {
+/** BU-HS-TRANG-CHU: các khối ĐỘNG của trang thật chen vào giữa. Bản xem trước quản trị không truyền gì → vẽ đúng như cũ.
+ *  `afterHero` = "Lớp của tôi" (chỉ học sinh); `afterWhyIntro` = bảng tin + quiz + tính điểm, đứng TRƯỚC "Học ở đây thì được gì?"; `CtaWrap` bọc CTA cuối (ẩn khi đã đăng nhập). */
+export interface HomeSlots { afterHero?: ReactNode; afterWhyIntro?: ReactNode; CtaWrap?: ComponentType<{ children: ReactNode }> }
+
+export default function HomeSections({ content: c, stats, slots }: { content: HomeContent; stats: HomeStat[]; slots?: HomeSlots }) {
   const titleLines = c.title.split("\n");
   const ICONS = HOME_ICONS;
+  const CtaWrap = slots?.CtaWrap;
+  const ctaBlock = (
+    <section data-home-cta-final className="bg-[var(--kin-nen-bang)] py-14 sm:py-[72px] px-4 sm:px-8">
+      <div className="mx-auto max-w-[760px] rounded-[20px] bg-[var(--kin-nhan-nen)] px-6 py-12 sm:px-10 sm:py-14 flex flex-col items-center text-center gap-3">
+        <h2 className="kin-chu-tieu-de max-w-[480px] text-balance font-semibold text-[length:var(--kin-co-h2)] leading-tight text-white">
+          {c.cta.title}
+        </h2>
+        <p className="max-w-[420px] text-[length:var(--kin-co-small)] leading-[1.6] text-white/[0.78]">
+          {c.cta.desc}
+        </p>
+        <div className="flex flex-wrap justify-center gap-3 pt-3">
+          <ContentLink href={c.cta.primary.href} className={`${btnOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.primary.label}</ContentLink>
+          <ContentLink href={c.cta.secondary.href} className={`${btnGhostOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.secondary.label}</ContentLink>
+        </div>
+      </div>
+    </section>
+  );
   return (
     <>
     {/* ── Hero ───────────────────────────────────────────────────────── */}
-    <section className="bg-[var(--kin-nhan-nen)] pt-12 pb-14 sm:pt-[72px] sm:pb-[88px]">
+    <section className="bg-[var(--kin-nhan-nen)] pt-10 pb-12">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-8 lg:px-20 flex flex-col lg:flex-row lg:items-center gap-10 lg:gap-14">
 
         <div className="flex-1 min-w-0 flex flex-col items-start gap-5">
@@ -72,8 +94,11 @@ export default function HomeSections({ content: c, stats }: { content: HomeConte
       </div>
     </section>
 
+    {slots?.afterHero}
+    {slots?.afterWhyIntro}
+
     {/* ── Học ở đây thì được gì? ─────────────────────────────────────── */}
-    <section className="bg-[var(--kin-nen-bang)] py-14 sm:py-[72px]">
+    <section className="bg-[var(--kin-nen-bang)] py-10">
       <div className="mx-auto max-w-[984px] px-4 sm:px-8">
         <div className="text-center mb-10 flex flex-col gap-2">
           <h2 className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">
@@ -100,7 +125,7 @@ export default function HomeSections({ content: c, stats }: { content: HomeConte
     </section>
 
     {/* ── Tìm gia sư (HOME-01): không dùng article / h3 trong khối; lối đăng ký gia sư là liên kết cố định, không sửa được từ quản trị ── */}
-    <section aria-labelledby="h-tim-gia-su" className="bg-[var(--kin-nen-trang)] py-14 sm:py-[72px]">
+    <section aria-labelledby="h-tim-gia-su" className="bg-[var(--kin-nen-trang)] py-10">
       <div className="mx-auto max-w-[760px] px-4 sm:px-8 flex flex-col items-center text-center gap-3">
         <h2 id="h-tim-gia-su" className="kin-chu-tieu-de font-semibold text-[length:var(--kin-co-h2)] leading-tight text-[var(--kin-chu-chinh)]">{c.findTutor.title}</h2>
         <p className="max-w-[560px] text-[length:var(--kin-co-small)] leading-[1.6] text-[var(--kin-chu-phu)]">{c.findTutor.desc}</p>
@@ -119,20 +144,7 @@ export default function HomeSections({ content: c, stats }: { content: HomeConte
     </section>
 
     {/* ── CTA ────────────────────────────────────────────────────────── */}
-    <section className="bg-[var(--kin-nen-bang)] py-14 sm:py-[72px] px-4 sm:px-8">
-      <div className="mx-auto max-w-[760px] rounded-[20px] bg-[var(--kin-nhan-nen)] px-6 py-12 sm:px-10 sm:py-14 flex flex-col items-center text-center gap-3">
-        <h2 className="kin-chu-tieu-de max-w-[480px] text-balance font-semibold text-[length:var(--kin-co-h2)] leading-tight text-white">
-          {c.cta.title}
-        </h2>
-        <p className="max-w-[420px] text-[length:var(--kin-co-small)] leading-[1.6] text-white/[0.78]">
-          {c.cta.desc}
-        </p>
-        <div className="flex flex-wrap justify-center gap-3 pt-3">
-          <ContentLink href={c.cta.primary.href} className={`${btnOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.primary.label}</ContentLink>
-          <ContentLink href={c.cta.secondary.href} className={`${btnGhostOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.secondary.label}</ContentLink>
-        </div>
-      </div>
-    </section>
+    {CtaWrap ? <CtaWrap>{ctaBlock}</CtaWrap> : ctaBlock}
     </>
   );
 }

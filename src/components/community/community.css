@@ -164,3 +164,9 @@
 .kc-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
 .kc-focus:focus-visible, .kc-act:focus-visible, .kc-nav-item:focus-visible { outline: 2px solid var(--kin-nhan-link); outline-offset: 1px; }
+
+/* Trang chủ (BU-HS-TRANG-CHU): bảng tin 600px nằm trong .kc-root hẹp (<880) nên mặc định giấu "Báo cáo" sau dấu "…". Ở mặt tiền, "Báo cáo" hiện thẳng trên hàng hành động
+   (Thích · Bình luận · Lưu · Báo cáo, theo đặc tả) và mọi nút cao ≥44px, cả ở chuột. */
+[data-home-feed] .kc-act { min-height: 44px; height: auto; }
+[data-home-feed] .kc-act-report { display: inline-flex; }
+[data-home-feed] .kc-act-more { display: none; }
