@@ -35,7 +35,7 @@ const toForm = (d: SessionDetail): Form => ({
   mode: d.session?.mode === "online" || d.session?.mode === "offline" ? d.session.mode : "", location: d.session?.location ?? "", joinUrl: d.session?.joinUrl ?? "",
 });
 
-/** perSessionFee: lớp tính học phí theo buổi/theo giờ (bấm Đã dạy xong là lúc sinh phí); false = lớp cũ hoặc theo khoá. */
+/** perSessionFee: lớp tính học phí theo buổi/theo giờ (bấm Đã dạy xong là lúc sinh phí); false = lớp cũ, theo khoá hoặc theo bảng học phí tháng (HP-LOP-TRUONG: chốt buổi không tạo hay sửa học phí). */
 /** viewRole (TUT-dong-giang): đồng giảng / giáo viên bộ môn không chốt buổi, không thấy chữ về học phí, không chia sẻ Zalo; thay nút "Đã dạy xong" bằng "Đề nghị chủ chốt buổi". Vắng = chủ lớp. */
 export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, viewRole }: { courseId: string; dateKey: string; perSessionFee?: boolean; viewRole?: ViewRole }) {
   const mgr = canManageRole(viewRole);

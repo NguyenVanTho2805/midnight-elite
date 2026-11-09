@@ -10,7 +10,7 @@ export type CourseAction =
   | "content.edit.any" | "content.edit.own" | "content.delete_section" | "quiz.assign" | "grade" | "score.write"
   | "course.edit" | "course.delete" | "student.invite" | "student.decide" | "student.remove" | "invite_code.rotate"
   | "teacher.invite" | "teacher.remove" | "teacher.role" | "teacher.leave"
-  | "schedule.add.own" | "schedule.edit.own" | "schedule.edit.other" | "money.view" | "attendance.export"
+  | "schedule.add.own" | "schedule.edit.own" | "schedule.edit.other" | "money.view" | "money.edit" | "attendance.export"
   | "community.post" | "community.moderate";
 
 export const ROLE_LABEL: Record<CourseRole, string> = {
@@ -36,7 +36,7 @@ export const NOT_IN_COURSE_MESSAGE = "Bạn không có quyền với lớp này"
 const OWNER_ONLY: CourseAction[] = [
   "roster.contact", "attendance.mark.other", "session.close", "session.reassign", "content.delete_section", "score.write",
   "course.edit", "course.delete", "student.invite", "student.decide", "student.remove", "invite_code.rotate",
-  "teacher.invite", "teacher.remove", "teacher.role", "schedule.edit.other", "money.view", "attendance.export", "community.moderate",
+  "teacher.invite", "teacher.remove", "teacher.role", "schedule.edit.other", "money.view", "money.edit", "attendance.export", "community.moderate",
 ];
 const SHARED: CourseAction[] = [
   "course.view", "roster.view", "attendance.mark.own", "session.note.own", "content.edit.any", "content.edit.own",

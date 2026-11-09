@@ -9,6 +9,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { vnd, monthLabel } from "@/components/tutor/shared";
 import { FEE_MODE_LABEL, normalizeFeeMode } from "@/lib/tuitionFee";
+import { SHEET_MODE_SHORT, isSheetFeeMode } from "@/components/tutor/bangHocPhiTypes";
 
 // ─── Kiểu dữ liệu theo hợp đồng 4.3 (4.4 thêm tutorId/tutorName/byTutor) ───────────────────────────
 export interface HocPhiThangRow {
@@ -54,7 +55,9 @@ function Tuition({ row }: { row: HocPhiThangRow }) {
   if (row.tuition == null) return <span className="text-[var(--kin-chu-mo)]">Chưa lập phiếu</span>;
   return <KinMoney>{moneyText(row.tuition)}</KinMoney>;
 }
-const modeLabel = (row: HocPhiThangRow) => (row.source === "invoice" ? "Cách cũ, theo phiếu" : FEE_MODE_LABEL[normalizeFeeMode(row.feeMode)]);
+// HP-LOP-TRUONG: lớp "theo bảng học phí tháng" nhập tay theo bảng, không có buổi đã chốt sinh phí → nhãn ngắn và ô "Buổi đã chốt" hiện "—" (không hứa số buổi nào).
+const isSheet = (row: HocPhiThangRow) => row.source !== "invoice" && isSheetFeeMode(row.feeMode);
+const modeLabel = (row: HocPhiThangRow) => (row.source === "invoice" ? "Cách cũ, theo phiếu" : isSheet(row) ? SHEET_MODE_SHORT : FEE_MODE_LABEL[normalizeFeeMode(row.feeMode)]);
 
 export interface HocPhiThangProps {
   state: "loading" | "error" | "ok";
@@ -147,7 +150,7 @@ export default function HocPhiThang(p: HocPhiThangProps) {
                   <th scope="row" className={`${td} text-left font-medium`}>{r.courseName}</th>
                   {p.showTutor && <td className={td}>{r.tutorName ?? ""}</td>}
                   <td className={`${td} text-[var(--kin-chu-mo)]`}>{modeLabel(r)}</td>
-                  <td className={tdR}>{r.closedSessions}</td>
+                  <td className={tdR}>{isSheet(r) ? <span className="text-[var(--kin-chu-mo)]">—</span> : r.closedSessions}</td>
                   <td className={tdR}>{r.students}</td>
                   <td className={`${tdR} font-medium`}><Tuition row={r} /></td>
                   <td className={tdR}><KinMoney>{moneyText(r.extra)}</KinMoney></td>
@@ -180,7 +183,7 @@ export default function HocPhiThang(p: HocPhiThangProps) {
               <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">{modeLabel(r)}{p.showTutor && r.tutorName ? ` · ${r.tutorName}` : ""}</p>
               <p className="pt-2 text-[length:var(--kin-co-tieu-de)] font-medium tabular-nums text-[var(--kin-chu-chinh)]"><Tuition row={r} /></p>
               <p className="pt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-                {r.closedSessions} buổi đã chốt · {r.students} học sinh{r.extra > 0 ? <> · phí khác <KinMoney>{moneyText(r.extra)}</KinMoney></> : null}
+                {isSheet(r) ? "Nhập từ bảng học phí tháng" : `${r.closedSessions} buổi đã chốt`} · {r.students} học sinh{r.extra > 0 ? <> · phí khác <KinMoney>{moneyText(r.extra)}</KinMoney></> : null}
               </p>
               <p className={`pt-1 text-[length:var(--kin-co-goc)] tabular-nums ${deltaTone(r.delta)}`}>
                 {r.delta == null ? "Tháng trước chưa có" : <>So với tháng trước: <KinMoney>{deltaText(r.delta, r.deltaPct)}</KinMoney></>}
@@ -208,7 +211,7 @@ export default function HocPhiThang(p: HocPhiThangProps) {
           {totals.inCancelledInvoice > 0 && <div><dt className="text-[var(--kin-chu-mo)]">Nằm trong phiếu đã huỷ</dt><dd className="tabular-nums text-[var(--kin-chu-chinh)]"><KinMoney>{moneyText(totals.inCancelledInvoice)}</KinMoney></dd></div>}
         </dl>
         <p className="mt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-          Tính từ các buổi đã chốt, trước học bổng và giảm giá.<br />Lớp cũ lấy theo phiếu đã lập.
+          Tính từ các buổi đã chốt, trước học bổng và giảm giá.<br />Lớp cũ lấy theo phiếu đã lập.<br />Lớp theo bảng học phí tháng lấy số cô đã nhập ở bảng, đã trừ học bổng và giảm trừ.
         </p>
       </div>
     );
