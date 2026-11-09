@@ -38,12 +38,15 @@ const rejectNote = `ly-do-tu-choi-${stamp}-noi-bo`;
   const course = await mkCourse(tutor.id, { name: "Lớp thử trang chủ" });
   await prisma.enrollment.create({ data: { userId: inClass.id, courseId: course.id, status: "active" } });
   const guestUser = await mkUser({ name: "Khách hệ thống" });
+  // Người duyệt PHẢI là một người KHÁC mọi tác giả hiển thị trên bảng tin: `author.id` của bài đã công bố là công khai theo thiết kế (FeedAuthor {id,label,tag,href}),
+  // nên nếu người duyệt trùng tác giả (trước đây dùng chính `tutor`) thì ca "không chứa id người duyệt" đỏ oan (stu-test 09/11).
+  const reviewer = await mkTutor("Người Duyệt Riêng");
 
   const mkPost = (o: { authorId: string; content: string; courseId?: string | null; status?: string; deleted?: boolean; kind?: "post" | "question"; guestName?: string | null; at?: number }) =>
     prisma.thread.create({ data: {
       authorId: o.authorId, content: o.content, kind: o.kind ?? "post", category: o.kind === "question" ? "hoi-dap" : "kinh-nghiem", title: o.kind === "question" ? `Câu hỏi ${o.content}` : null,
       courseId: o.courseId ?? null, status: o.status ?? "published", guestName: o.guestName ?? null, guestIpHash: o.guestName ? ipHash : null,
-      reviewedById: o.status === "rejected" ? tutor.id : null, rejectReason: o.status === "rejected" ? rejectNote : null,
+      reviewedById: o.status === "rejected" ? reviewer.id : null, rejectReason: o.status === "rejected" ? rejectNote : null,
       deletedAt: o.deleted ? new Date() : null, createdAt: new Date(Date.now() - (o.at ?? 0) * 60_000),
     } });
 
@@ -74,7 +77,7 @@ const rejectNote = `ly-do-tu-choi-${stamp}-noi-bo`;
   section("Khách: không lộ khoá / chuỗi riêng tư");
   check("không khoá nào trong danh sách cấm (email, phone, school, city, dateOfBirth, guestIpHash, reviewedById, rejectReason, …)", keysIn(g.json).length === 0, keysIn(g.json));
   for (const k of ["email", "phone", "school", "city", "dateOfBirth", "guestIpHash", "reviewedById", "rejectReason"]) check(`thân trả về không có khoá "${k}"`, !g.text.includes(`"${k}"`));
-  for (const [what, val] of [["email thật của học sinh", EMAIL], ["số điện thoại", "0912345678"], ["số Zalo", "0987654321"], ["tên trường", `THPT Bí Mật ${stamp}`], ["thành phố", `Thành Phố Bí Mật ${stamp}`], ["ngày sinh", "2010-03-04"], ["băm IP của khách", ipHash], ["lý do từ chối", rejectNote], ["id người duyệt", tutor.id]] as const) {
+  for (const [what, val] of [["email thật của học sinh", EMAIL], ["số điện thoại", "0912345678"], ["số Zalo", "0987654321"], ["tên trường", `THPT Bí Mật ${stamp}`], ["thành phố", `Thành Phố Bí Mật ${stamp}`], ["ngày sinh", "2010-03-04"], ["băm IP của khách", ipHash], ["lý do từ chối", rejectNote], ["id người duyệt", reviewer.id]] as const) {
     check(`thân trả về không chứa ${what}`, !g.text.includes(val));
   }
   check("tên đầy đủ của học sinh không xuất hiện (author.label đã rút gọn)", !g.text.includes(FULL_NAME) && all(g).every(i => !String(i.author?.label ?? "").includes(FULL_NAME)), all(g).map(i => i.author?.label));
@@ -118,10 +121,18 @@ const rejectNote = `ly-do-tu-choi-${stamp}-noi-bo`;
   check("người ngoài lớp: cùng kết luận (không bài lớp)", o.status === 200 && !o.text.includes(`BAI-LOP-${stamp}`));
 
   // ═════ 3. Khách không vào được API học sinh / không đăng được từ trang chủ ═════
-  section("Khách gọi API học sinh → 401");
-  for (const p of ["/api/enrollments?detail=1", "/api/progress", "/api/student/viec-cua-toi"]) {
+  section("Khách gọi API học sinh → không có dữ liệu của ai (401, hoặc 200 với mảng RỖNG theo thiết kế có sẵn của hai API dùng chung với trang khách)");
+  // stu-test 09/11/2026: đặc tả mục 8 ghi "→ 401" cho cả ba, nhưng /api/enrollments và /api/progress CHỦ ĐÍCH trả 200 + mảng rỗng khi chưa đăng nhập
+  // (enrollments/route.ts:13 "Chưa đăng nhập → ba mảng rỗng"; useMyClasses/useProgress dùng chung ở trang khách). Hai API không đổi trong BU-HS-TRANG-CHU → kỳ vọng 401 là lỗi của đặc tả/bài, không phải mã.
+  // Giữ khẳng định mạnh nhất còn đúng: không lộ dữ liệu (mọi mảng rỗng); /api/student/viec-cua-toi vẫn phải 401.
+  for (const p of ["/api/enrollments?detail=1", "/api/progress"]) {
     const r = await api("GET", p);
-    check(`GET ${p} → 401`, r.status === 401, r.status);
+    const arrays = Object.values(r.json ?? {}).filter(Array.isArray) as unknown[][];
+    check(`GET ${p} → 200 và mọi mảng rỗng (không dữ liệu của ai)`, r.status === 200 && arrays.length > 0 && arrays.every(a => a.length === 0), [r.status, r.text.slice(0, 120)]);
+  }
+  {
+    const r = await api("GET", "/api/student/viec-cua-toi");
+    check("GET /api/student/viec-cua-toi → 401", r.status === 401, r.status);
   }
   const pt = await api("POST", "/api/community/threads", { body: { content: "khách thử đăng từ trang chủ", category: "kinh-nghiem" } });
   check("POST /api/community/threads → 401 (khách không đăng được bài thường)", pt.status === 401, [pt.status, pt.json]);

@@ -61,7 +61,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const open = async (p: any, url = lessonUrl) => {
     await p.goto(url, { waitUntil: "networkidle", timeout: 120000 });
     await hide(p);
-    await p.getByRole("button", { name: "Bài tập" }).first().click();
+    await p.getByRole("button", { name: "Bài tập", exact: true }).first().click();
     await p.locator(BOX).waitFor({ timeout: 60000 });
   };
   const settled = async (p: any) => p.locator(`${BOX}:not([data-trang-thai="dang-tai"])`).waitFor({ timeout: 30000 });
@@ -77,9 +77,9 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   // đang tải: giữ phản hồi danh sách 1,5 giây
   let release: () => void = () => {};
   const hold = new Promise<void>(r => { release = r; });
-  await p1.route("**/api/media/nop-bai/danh-sach**", async r => { await hold; await r.continue(); });
+  await p1.route("**/api/media/nop-bai/danh-sach**", async r => { await hold; await r.continue().catch(() => {}); });
   await hide(p1);
-  await p1.getByRole("button", { name: "Bài tập" }).first().click();
+  await p1.getByRole("button", { name: "Bài tập", exact: true }).first().click();
   await p1.locator(BOX).waitFor({ timeout: 60000 });
   check("đang tải: khung xương, aria-busy, data-trang-thai=dang-tai", (await p1.locator(`${BOX}[data-trang-thai="dang-tai"] [aria-busy="true"]`).count()) === 1);
   await shot(p1, "nop-tep-1280-dang-tai");
@@ -88,7 +88,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   // lỗi tải danh sách: 500, có "Thử lại"; bấm thì tải lại được
   await p1.route("**/api/media/nop-bai/danh-sach**", r => r.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
   await p1.reload({ waitUntil: "networkidle" }); await hide(p1);
-  await p1.getByRole("button", { name: "Bài tập" }).first().click();
+  await p1.getByRole("button", { name: "Bài tập", exact: true }).first().click();
   await p1.locator('[data-nop-tep-loi-tai]').waitFor({ timeout: 30000 });
   check("lỗi tải: role=alert + chữ rõ + nút Thử lại ≥44px", (await p1.locator('[data-nop-tep-loi-tai]').getAttribute("role")) === "alert" && /Không tải được khối nộp bài/.test((await p1.locator('[data-nop-tep-loi-tai]').textContent()) ?? "")
     && (((await p1.locator('[data-nop-tep-loi-tai]').getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44));
@@ -136,7 +136,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   section("thả 1 .docx thật: tiến độ rồi 'sẵn sàng'");
   let releasePut: () => void = () => {};
   const putHold = new Promise<void>(r => { releasePut = r; });
-  await p1.route("**/api/media/nop-bai/dai/**", async r => { await putHold; await r.continue(); });
+  await p1.route("**/api/media/nop-bai/dai/**", async r => { await putHold; await r.continue().catch(() => {}); });
   await input.setInputFiles(f("Bai lam Toan.docx", docx("a")));
   await p1.locator(`${BOX} [data-nop-tep-hang][data-trang-thai="dang-tai"]`).waitFor({ timeout: 30000 });
   check("đang tải: có role=progressbar và aria-busy trên khối", (await p1.locator(`${BOX} [role="progressbar"]`).count()) === 1 && (await p1.locator(BOX).getAttribute("aria-busy")) === "true");
@@ -195,40 +195,55 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   await pT.goto(`${BASE}/lop-cua-toi/bai-tap`, { waitUntil: "networkidle", timeout: 120000 }); await hide(pT);
   check("thanh bên có nhãn vai gia sư (.kin-rail-role)", /gia sư/i.test(((await pT.locator("#kin-rail .kin-rail-role").first().textContent().catch(() => "")) ?? "").trim()));
   await pT.getByText("BT nộp tệp").first().click();
-  await pT.locator('[data-nop-tep-ds="co-tep"]').waitFor({ timeout: 60000 });
-  const tDl = pT.locator('[data-nop-tep-ds="co-tep"] [data-nop-tep-tai]');
-  check("gia sư thấy danh sách tệp học sinh nộp, mỗi tệp có 'Tải xuống' ≥44px; không còn 'Mở bài nộp gốc'", (await tDl.count()) === 2 && ((await tDl.first().boundingBox())?.height ?? 0) >= 44 && (await pT.getByText("Mở bài nộp gốc").count()) === 0);
-  check("nhắc bật chế độ xem bảo vệ của Word", /Protected View|xem bảo vệ/.test((await pT.locator('[data-nop-tep-ds="co-tep"]').textContent()) ?? ""));
-  const tBox = pT.locator('[data-nop-tep="tutor_return"]');
-  await tBox.waitFor({ timeout: 30000 });
-  check("khung 'Tệp trả bài (tuỳ chọn)' hiện với vùng thả nhỏ", /Tệp trả bài \(tuỳ chọn\)/.test((await tBox.textContent()) ?? "") && (await tBox.locator("[data-nop-tep-vung-tha]").count()) === 1);
-  const tInit = countInit(pT);
-  await tBox.locator("[data-nop-tep-input]").setInputFiles(f("phan-hoi.png", png(), "image/png"));
-  check("tệp trả bài sai loại ⇒ lỗi tại chỗ, không gọi init", /KiN không nhận ảnh/.test((await tBox.locator("[data-nop-tep-loi]").first().textContent()) ?? "") && tInit.n === 0);
-  await tBox.locator("[data-nop-tep-bo]").click();
-  await tBox.locator("[data-nop-tep-input]").setInputFiles(f("nhan-xet.docx", docx("tra")));
-  await tBox.locator('[data-nop-tep-hang][data-trang-thai="san-sang"]').waitFor({ timeout: 30000 });
-  await shot(pT, "nop-tep-1280-gia-su");
-  await pT.locator("#bt-score").fill("9");
-  await pT.locator("#bt-comment").fill("Em làm tốt, xem tệp đính kèm.");
-  await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
-  await eventually("'Gửi điểm & phản hồi' gọi grade rồi dinh-kem: điểm lưu + tệp trả gắn vào bài nộp", async () => {
-    const s = await prisma.assignmentSubmission.findUnique({ where: { id: subs[0].id } });
-    return s?.score === 9 && (await prisma.submissionFile.count({ where: { submissionId: subs[0].id, kind: "tutor_return", status: "ready" } })) === 1;
-  }, 30000);
-  check("thông báo thành công, không báo lỗi đính kèm", /Đã gửi điểm và phản hồi cho học sinh\./.test((await pT.locator("[role=status]").allTextContents()).join(" ")));
-  check("học sinh nhận thông báo 'Gia sư đã trả bài' đúng một dòng, không có tên/tên tệp", await (async () => { const n = await prisma.notification.findMany({ where: { userId: S.id, type: "submission_returned" } }); return n.length === 1 && !/nhan-xet|Cô Lan|Em An/.test(JSON.stringify(n)); })());
-  await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
-  await pT.getByText("BT nộp tệp").first().click();
-  await pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra]').waitFor({ timeout: 30000 });
-  check("mở lại bài đã chấm: tệp đã trả hiện kèm 'Gỡ tệp'", (await pT.locator('[data-nop-tep-tep-tra] [data-nop-tep-go]').count()) === 1);
-  await shot(pT, "nop-tep-1280-gia-su-da-tra");
-  await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() - 1000) } });
-  await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
-  await pT.getByText("BT nộp tệp").first().click();
-  await pT.locator('[data-nop-tep-ds="het-han"]').waitFor({ timeout: 30000 });
-  check("hết hạn phía gia sư: đúng câu, không nút tải tệp học sinh", (await pT.locator('[data-nop-tep-ds="het-han"]').textContent())?.trim() === EXPIRED_TEXT);
-  await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() + 59 * 86_400_000) } });
+  // Phía gia sư của khối nộp tệp được ghép vào components/tutor/BaiTap.tsx (phòng Gia sư). Nếu CHƯA ghép (không có [data-nop-tep-ds]) thì ghi MỘT ca đỏ rõ nguyên nhân,
+  // rồi dựng điểm + tệp trả bài bằng API để các ca phía học sinh bên dưới vẫn chạy được (không để cả bài sập ở đây).
+  const tutorUi = await pT.locator('[data-nop-tep-ds="co-tep"]').waitFor({ timeout: 20000 }).then(() => true, () => false);
+  check("gia sư: khối danh sách tệp học sinh nộp ([data-nop-tep-ds=co-tep]) đã được ghép vào trang chấm bài (components/tutor/BaiTap.tsx)", tutorUi);
+  if (tutorUi) {
+    const tDl = pT.locator('[data-nop-tep-ds="co-tep"] [data-nop-tep-tai]');
+    check("gia sư thấy danh sách tệp học sinh nộp, mỗi tệp có 'Tải xuống' ≥44px; không còn 'Mở bài nộp gốc'", (await tDl.count()) === 2 && ((await tDl.first().boundingBox())?.height ?? 0) >= 44 && (await pT.getByText("Mở bài nộp gốc").count()) === 0);
+    check("nhắc bật chế độ xem bảo vệ của Word", /Protected View|xem bảo vệ/.test((await pT.locator('[data-nop-tep-ds="co-tep"]').textContent()) ?? ""));
+    const tBox = pT.locator('[data-nop-tep="tutor_return"]');
+    await tBox.waitFor({ timeout: 30000 });
+    check("khung 'Tệp trả bài (tuỳ chọn)' hiện với vùng thả nhỏ", /Tệp trả bài \(tuỳ chọn\)/.test((await tBox.textContent()) ?? "") && (await tBox.locator("[data-nop-tep-vung-tha]").count()) === 1);
+    const tInit = countInit(pT);
+    await tBox.locator("[data-nop-tep-input]").setInputFiles(f("phan-hoi.png", png(), "image/png"));
+    check("tệp trả bài sai loại ⇒ lỗi tại chỗ, không gọi init", /KiN không nhận ảnh/.test((await tBox.locator("[data-nop-tep-loi]").first().textContent()) ?? "") && tInit.n === 0);
+    await tBox.locator("[data-nop-tep-bo]").click();
+    await tBox.locator("[data-nop-tep-input]").setInputFiles(f("nhan-xet.docx", docx("tra")));
+    await tBox.locator('[data-nop-tep-hang][data-trang-thai="san-sang"]').waitFor({ timeout: 30000 });
+    await shot(pT, "nop-tep-1280-gia-su");
+    await pT.locator("#bt-score").fill("9");
+    await pT.locator("#bt-comment").fill("Em làm tốt, xem tệp đính kèm.");
+    await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
+    await eventually("'Gửi điểm & phản hồi' gọi grade rồi dinh-kem: điểm lưu + tệp trả gắn vào bài nộp", async () => {
+      const s = await prisma.assignmentSubmission.findUnique({ where: { id: subs[0].id } });
+      return s?.score === 9 && (await prisma.submissionFile.count({ where: { submissionId: subs[0].id, kind: "tutor_return", status: "ready" } })) === 1;
+    }, 30000);
+    check("thông báo thành công, không báo lỗi đính kèm", /Đã gửi điểm và phản hồi cho học sinh\./.test((await pT.locator("[role=status]").allTextContents()).join(" ")));
+    check("học sinh nhận thông báo 'Gia sư đã trả bài' đúng một dòng, không có tên/tên tệp", await (async () => { const n = await prisma.notification.findMany({ where: { userId: S.id, type: "submission_returned" } }); return n.length === 1 && !/nhan-xet|Cô Lan|Em An/.test(JSON.stringify(n)); })());
+    await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
+    await pT.getByText("BT nộp tệp").first().click();
+    await pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra]').waitFor({ timeout: 30000 });
+    check("mở lại bài đã chấm: tệp đã trả hiện kèm 'Gỡ tệp'", (await pT.locator('[data-nop-tep-tep-tra] [data-nop-tep-go]').count()) === 1);
+    await shot(pT, "nop-tep-1280-gia-su-da-tra");
+    await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
+    await pT.getByText("BT nộp tệp").first().click();
+    await pT.locator('[data-nop-tep-ds="het-han"]').waitFor({ timeout: 30000 });
+    check("hết hạn phía gia sư: đúng câu, không nút tải tệp học sinh", (await pT.locator('[data-nop-tep-ds="het-han"]').textContent())?.trim() === EXPIRED_TEXT);
+    await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() + 59 * 86_400_000) } });
+  } else {
+    const { api } = await import("./h");
+    await api("PATCH", `/api/assignments/${A.id}/submissions/${subs[0].id}/grade`, { as: T, body: { score: 9, comment: "Em làm tốt, xem tệp đính kèm." } });
+    const trBytes = docx("tra");
+    const ini = await api("POST", "/api/media/nop-bai/init", { as: T, body: { kind: "tutor_return", assignmentId: A.id, submissionId: subs[0].id, name: "nhan-xet.docx", size: trBytes.length, type: DOCX_MIME } });
+    await api("PUT", ini.json.upload.url, { as: T, raw: trBytes as unknown as BodyInit });
+    await api("POST", "/api/media/nop-bai/complete", { as: T, body: { fileId: ini.json.fileId } });
+    await api("POST", "/api/media/nop-bai/dinh-kem", { as: T, body: { submissionId: subs[0].id, fileIds: [ini.json.fileId] } });
+    await prisma.notification.deleteMany({ where: { userId: S.id, type: "submission_returned" } });   // thông báo do bước dự phòng không tính
+    await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() + 59 * 86_400_000) } });
+  }
 
   section("học sinh thấy tệp gia sư trả; nộp lại hỏi xác nhận");
   await open(p1); await settled(p1);
@@ -263,7 +278,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const cX = await ctxFor(SX, { width: 1280, height: 900 });
   const pX = await cX.newPage(); watch(pX);
   await pX.goto(lessonUrl, { waitUntil: "networkidle", timeout: 120000 });
-  check("không có khối nộp tệp (thấy thông báo nghỉ lớp có sẵn)", (await pX.locator("[data-nop-tep]").count()) === 0 && (await pX.getByRole("button", { name: "Bài tập" }).count()) === 0);
+  check("không có khối nộp tệp (thấy thông báo nghỉ lớp có sẵn)", (await pX.locator("[data-nop-tep]").count()) === 0 && (await pX.getByRole("button", { name: "Bài tập", exact: true }).count()) === 0);
 
   // ─────────────────────────────────────────────────────────────────────────
   section("390px: không tràn ngang, nút ≥44px, tên dài cắt giữa, bàn phím");
@@ -289,7 +304,8 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   await p3.locator(`${BOX} [data-nop-tep-input]`).setInputFiles(f(longName, docx("dai")));
   await p3.locator(`${BOX} [data-nop-tep-hang][data-trang-thai="san-sang"]`).waitFor({ timeout: 30000 });
   const nameEl = p3.locator(`${BOX} [data-nop-tep-ten]`).first();
-  check("tên dài: title có đủ tên, không tràn khung (cắt giữa, giữ đuôi .docx)", (await nameEl.getAttribute("title")) === longName && await nameEl.evaluate(e => e.scrollWidth <= (e.parentElement as HTMLElement).clientWidth + 1) && /\.docx$/.test((await nameEl.textContent()) ?? ""));
+  const nameInfo = { title: await nameEl.getAttribute("title"), text: await nameEl.textContent(), w: await nameEl.evaluate(e => [e.scrollWidth, (e.parentElement as HTMLElement).clientWidth]) };
+  check("tên dài: title có đủ tên, không tràn khung (cắt giữa, giữ đuôi .docx)", nameInfo.title === longName && nameInfo.w[0] <= nameInfo.w[1] + 1 && /\.docx$/.test(nameInfo.text ?? ""), nameInfo);
   const bo = p3.locator(`${BOX} [data-nop-tep-bo]`).first();
   check("390: 'Bỏ tệp' và 'Nộp bài' cao ≥44px, status role=status có chữ", (((await bo.boundingBox())?.height ?? 0) >= 44) && (((await p3.locator(`${BOX} [data-nop-tep-nop]`).boundingBox())?.height ?? 0) >= 44) && (await p3.locator(`${BOX} [data-nop-tep-tom-tat]`).getAttribute("role")) === "status");
   await noScroll(p3, "390 có tệp");

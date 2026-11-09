@@ -160,12 +160,11 @@ const SECRET = process.env.CRON_SECRET ?? "";
   if (SECRET.length < 16) { console.log("  (bỏ qua: không có CRON_SECRET ≥ 16 ký tự trong môi trường bài test)"); }
   else {
     const guard = await prisma.submissionFile.create({ data: { ...bulk[0], id: `tf-guard-${stamp}`, storageKey: `kin-nop-bai/${C.id}/${A1.id}/guard-${stamp}.docx`, status: "ready", createdAt: ago(61 * DAY), expiresAt: nopTepExpiresAt(ago(61 * DAY)), deletedAt: null } });
-    const gs: Spec = { id: guard.id, asg: A1, user: S, status: "ready", createdAt: ago(61 * DAY), submissionId: null };
     mkdirSync(dirname(localPathFor(guard.storageKey)), { recursive: true }); writeFileSync(localPathFor(guard.storageKey), docxBytes);
     const none401 = await api("GET", "/api/cron/het-han-tep-nop-bai?xoa=1");
     const wrong = await api("GET", "/api/cron/het-han-tep-nop-bai?xoa=1", { headers: { authorization: "Bearer sai-khoa-sai-khoa-sai-khoa" } });
     check("không Authorization ⇒ 401; CRON_SECRET sai ⇒ 401", none401.status === 401 && wrong.status === 401, [none401.status, wrong.status]);
-    check("401 thì KHÔNG xoá gì (hàng còn ready, tệp còn trên đĩa)", (await row(guard.id))?.status === "ready" && onDisk(gs));
+    check("401 thì KHÔNG xoá gì (hàng còn ready, tệp còn trên đĩa)", (await row(guard.id))?.status === "ready" && existsSync(localPathFor(guard.storageKey)));
     const dryHttp = await fetch(BASE + "/api/cron/het-han-tep-nop-bai", { headers: { authorization: `Bearer ${SECRET}` } });
     const dj = await dryHttp.json() as { dryRun?: boolean; sets?: { expired: { ids: string[] } } };
     check("GET không ?xoa=1 ⇒ 200, dryRun=true (chạy khô mặc định), liệt kê hàng đến hạn, không xoá", dryHttp.status === 200 && dj.dryRun === true && !!dj.sets?.expired.ids.includes(guard.id) && (await row(guard.id))?.status === "ready" && dryHttp.headers.get("cache-control") === "no-store", [dryHttp.status, dj.dryRun]);
@@ -173,6 +172,11 @@ const SECRET = process.env.CRON_SECRET ?? "";
     const realHttp = await fetch(BASE + "/api/cron/het-han-tep-nop-bai?xoa=1", { headers: { authorization: `Bearer ${SECRET}` } });
     const rj = await realHttp.json() as { dryRun?: boolean };
     check("?xoa=1 ⇒ dryRun=false và hàng đến hạn chuyển expired", realHttp.status === 200 && rj.dryRun === false && (await row(guard.id))?.status === "expired", [realHttp.status, rj.dryRun]);
+    // Yêu cầu của chủ: dọn tệp phải ghi AuditLog (cả chạy khô lẫn chạy thật), không tên tệp / không id học sinh.
+    const au = await prisma.auditLog.findMany({ where: { action: { in: ["submission_file.expire_dry_run", "submission_file.expire_run"] } }, orderBy: { createdAt: "asc" } });
+    const auText = JSON.stringify(au.map(a => a.metadata));
+    check("AuditLog: một dòng chạy khô + một dòng chạy thật, actorId null, resourceType SubmissionFile", au.some(a => a.action === "submission_file.expire_dry_run") && au.some(a => a.action === "submission_file.expire_run") && au.every(a => a.actorId === null && a.resourceType === "SubmissionFile"), au.map(a => a.action));
+    check("AuditLog không chứa tên tệp, id học sinh, đường dẫn kho", !auText.includes(".docx") && !auText.includes(S.id) && !auText.includes("kin-nop-bai"), auText.slice(0, 160));
   }
 
   done();

@@ -61,7 +61,7 @@ export default function Navbar() {
       <div className="mx-auto h-full flex items-center justify-between gap-4 px-4 sm:px-8 max-w-[1440px]">
 
         {/* Logo */}
-        <Link href="/" aria-label="KiN — trang chủ" className="flex items-center flex-shrink-0">
+        <Link href="/" aria-label="KiN — trang chủ" className="flex items-center min-h-11 flex-shrink-0">
           <KinLogo />
         </Link>
 

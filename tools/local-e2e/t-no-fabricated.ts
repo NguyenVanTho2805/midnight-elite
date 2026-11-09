@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { check, section, done } from "./h";
+import { checkClaims } from "@/lib/homeContentGuard";
 
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), "utf-8");
@@ -70,6 +71,48 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("trang chủ đếm từ cơ sở dữ liệu (prisma) và làm mới theo giờ", /prisma\./.test(home) && /export const revalidate = 3600/.test(home));
   check("số nào bằng 0 thì ẩn, truy vấn lỗi thì ẩn cả khối (không bao giờ hiện số bịa)", /filter\(s => s\.value > 0\)/.test(home) && /catch \{\s*return \[\];/.test(home) && /stats\.length > 0/.test(read("src/components/guest/HomeSections.tsx")));
   check("không còn mảng STATS viết cứng", !/const STATS\s*=/.test(home));
+
+  // BU-HS-LANDING (09/11/2026): trang chủ công khai dựng lại theo bố cục hsavnu; những khối của HSA mà KiN KHÔNG có dữ liệu thật (lời chứng thực, bảng vàng, "50.000+ học viên", tên giáo viên viết cứng)
+  // không được dựng bằng chữ mẫu. Bộ quét chạy trên mã đã bỏ chú thích (chú thích được phép nhắc tên khối đã hoãn); phần "ca phá cố ý" chứng minh bộ quét bắt được và không bắt nhầm.
+  section("Landing: khối không có dữ liệu thật không được dựng");
+  const stripComments = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const HOME_FILE = /^src\/components\/guest\/Home[^/]*\.tsx$/;
+  const FAKE_BLOCK_FILE = /^src\/components\/guest\/Home(Testimonials?|Honor|Reviews?)[^/]*\.tsx$/;
+  const TESTIMONIAL_TEXT = /Học viên nói gì|Bảng vàng|lời chứng thực|Phụ huynh nói/i;
+  const FABRICATED_COUNT = [/\d{1,3}(\.\d{3})+\+/, /\d+\+\s*(học viên|học sinh|gia sư|giáo viên|đề)/i] as const; // "50.000+ học viên", "200+ gia sư"
+  // Tên người viết cứng: \p{Lu}\p{Ll} (không chỉ [A-ZĐ][a-z]) để "Cô Ánh Nguyệt" cũng bị bắt; "Gia sư <tên từ dữ liệu>" không khớp vì "Gia sư" không nằm trong danh sách.
+  const HARDCODED_PERSON = /(Thầy|Cô|ThS|TS)\.?\s+\p{Lu}\p{Ll}+/u;
+  const homeFiles = src.filter(p => HOME_FILE.test(p));
+  check("có đủ tệp khối trang chủ để quét (HomeSections, HomeTutors, HomeCourses, HomeExams, HomeNews…)", ["HomeSections", "HomeTutors", "HomeCourses", "HomeExams", "HomeNews", "HomeLandingBlocks"].every(n => homeFiles.includes(`src/components/guest/${n}.tsx`)), homeFiles);
+  check("không có tệp khối lời chứng thực / bảng vàng / đánh giá (Home{Testimonials,Honor,Reviews}*.tsx)", src.filter(p => FAKE_BLOCK_FILE.test(p)).length === 0, src.filter(p => FAKE_BLOCK_FILE.test(p)));
+  const testiHits = [...homeFiles, "src/lib/siteContent.ts"].filter(p => TESTIMONIAL_TEXT.test(stripComments(read(p))));
+  check("HomeSections.tsx, Home*.tsx và chữ mặc định (siteContent.ts) không có 'Học viên nói gì', 'Bảng vàng', 'lời chứng thực', 'Phụ huynh nói'", testiHits.length === 0, testiHits);
+  for (const re of FABRICATED_COUNT) {
+    const hit = src.filter(p => !GUARD_LISTS.includes(p) && re.test(stripComments(read(p))));
+    check(`không tệp src nào có cụm số bịa ${re.source.slice(0, 44)} (kiểu '50.000+ học viên')`, hit.length === 0, hit);
+  }
+  const personHits = homeFiles.filter(p => HARDCODED_PERSON.test(stripComments(read(p))));
+  check("không tên người viết cứng (Thầy / Cô / ThS / TS + Họ) trong Home*.tsx: tên gia sư chỉ đến từ dữ liệu", personHits.length === 0, personHits);
+  // [phá cố ý] bộ quét phải bắt đúng cái cần bắt…
+  check("[phá cố ý] bộ quét số bịa bắt '50.000+ học viên', '1.200+ gia sư', '200+ đề', '3+ giáo viên'", ["50.000+ học viên", "Hơn 1.200+ gia sư", "200+ đề thi thử", "3+ giáo viên"].every(t => FABRICATED_COUNT.some(re => re.test(t))));
+  check("[phá cố ý] bộ quét tên người bắt 'Cô Nguyễn Lan', 'Cô Ánh Nguyệt', 'Thầy Bình', 'TS. Trần Hà', 'ThS Lê Minh'", ["Cô Nguyễn Lan", "Cô Ánh Nguyệt", "Thầy Bình", "TS. Trần Hà", "ThS Lê Minh"].every(t => HARDCODED_PERSON.test(t)));
+  check("[phá cố ý] bộ quét lời chứng thực bắt 'Học viên nói gì', 'Bảng vàng học viên', 'Lời chứng thực', 'Phụ huynh nói gì'", ["Học viên nói gì", "Bảng vàng học viên", "Lời chứng thực", "Phụ huynh nói gì"].every(t => TESTIMONIAL_TEXT.test(t)));
+  check("[phá cố ý] tên tệp: HomeTestimonials / HomeHonorRoll / HomeReviewsStrip bị bắt, HomeTutors / HomeNews không", ["HomeTestimonials", "HomeHonorRoll", "HomeReviewsStrip"].every(n => FAKE_BLOCK_FILE.test(`src/components/guest/${n}.tsx`)) && !["HomeTutors", "HomeNews", "HomeCommunity"].some(n => FAKE_BLOCK_FILE.test(`src/components/guest/${n}.tsx`)));
+  {
+    // …và bắt trên chính mã thật khi bị chèn: lấy HomeTutors.tsx thật, thêm một dòng bịa, quét lại.
+    const real = read("src/components/guest/HomeTutors.tsx");
+    const tampered = (line: string) => stripComments(real) + `\n<p>${line}</p>`;
+    check("[phá cố ý] HomeTutors.tsx thật + '<p>Cô Nguyễn Lan, 12 năm kinh nghiệm</p>' → bộ quét tên người ĐỎ; bản thật thì không", HARDCODED_PERSON.test(tampered("Cô Nguyễn Lan, 12 năm kinh nghiệm")) && !HARDCODED_PERSON.test(stripComments(real)));
+    check("[phá cố ý] HomeSections.tsx thật + '<h2>Học viên nói gì</h2>' → bộ quét chứng thực ĐỎ; + '<b>50.000+ học viên</b>' → bộ quét số bịa ĐỎ", TESTIMONIAL_TEXT.test(stripComments(read("src/components/guest/HomeSections.tsx")) + "<h2>Học viên nói gì</h2>") && FABRICATED_COUNT.some(re => re.test(stripComments(read("src/components/guest/HomeSections.tsx")) + "<b>50.000+ học viên</b>")));
+    check("[phá cố ý] chú thích KHÔNG bị tính: dòng '// Học viên nói gì (chưa làm)' và '/* Cô Nguyễn Lan */' bị bỏ trước khi quét", !TESTIMONIAL_TEXT.test(stripComments("// Học viên nói gì (chưa làm)\n")) && !HARDCODED_PERSON.test(stripComments("{/* Cô Nguyễn Lan */}")));
+  }
+  // …và KHÔNG bắt nhầm dữ liệu / chữ hợp lệ.
+  const OK_TEXT = ["Gia sư {t.name}", "Gia sư {course.teacher}", "Gia sư ${c.teacher}", "Thầy cô giáo", "Cô ấy dạy Toán", "Kỳ thi TSA", "TS", "Đang nhận học viên", "Còn 5 chỗ", "500.000đ", "1.200.000đ", "Hỗ trợ: 09:00 – 21:30 hằng ngày", "Xem tất cả 4 lớp", "Mở lúc 19:30 ngày 12/11", "90 phút · 2 câu", "0384 409 051", "ĐGNL HSA"];
+  const badOk = OK_TEXT.filter(t => HARDCODED_PERSON.test(t) || TESTIMONIAL_TEXT.test(t) || FABRICATED_COUNT.some(re => re.test(t)));
+  check("[không bắt nhầm] 'Gia sư <tên từ dữ liệu>', giá '500.000đ', 'Đang nhận học viên', giờ hỗ trợ, số điện thoại… không khớp bộ quét nào", badOk.length === 0, badOk);
+  // Đồng bộ với bộ chặn của màn quản trị (homeContentGuard.ts ghi rõ: phải BAO TRÙM danh sách của bài này): quản trị không được lưu 'số bịa' vào chữ trang chủ.
+  const unguarded = ["50.000+ học viên", "Hơn 3.500+ gia sư", "200+ đề thi"].filter(t => checkClaims(t) === null);
+  check("màn sửa chữ trang chủ (checkClaims) cũng chặn '50.000+ học viên', '3.500+ gia sư', '200+ đề thi' — đồng bộ với bộ quét mã nguồn", unguarded.length === 0, unguarded);
 
   section("Trang chính sách chỉ nói điều kiểm chứng được");
   const pol = read("src/app/(guest)/chinh-sach/page.tsx");

@@ -382,6 +382,101 @@ async function dl(u: TUser | undefined, id: string, q = "", headers: Record<stri
   check("linkUrl Azota ⇒ vẫn 200, kind=link", oldLink.status === 200 && oldLink.json.kind === "link", oldLink.json);
   check("thân rỗng ⇒ 400", (await api("POST", `/api/assignments/${AS.id}/submit`, { as: S10, body: {} })).status === 400);
 
+  // ── 7b. Ca phá bổ sung của stu-test (10/11/2026): lớp mình không ghi danh, bài Nháp/Ẩn, tệp trả bài của gia sư lớp khác, tệp kind=tutor_return do học sinh gắn/đụng vào ──
+  section("7b. Học sinh ghi danh lớp A nộp / xem / đụng tệp của LỚP B (lớp mình không ghi danh)");
+  const secB = await prisma.section.create({ data: { id: `secB-${stamp}`, title: "Phần của lớp B", order: 1, courseId: B.id } });
+  const chB = await prisma.chapter.create({ data: { id: `chB-${stamp}`, title: "Nhóm lớp B", order: 1, sectionId: secB.id } });
+  const AS_B = await mkAsg(chB.id, { ownerId: T2.id });
+  const SB = await mkUser({ name: "Học sinh lớp B" }); await prisma.enrollment.create({ data: { userId: SB.id, courseId: B.id, status: "active" } });
+  const SA1 = await newStudent("Học sinh chỉ lớp A");
+  const FB = await ready(SB, AS_B, "bai-lop-b.docx"); await api("POST", NOP(AS_B.id), { as: SB });
+  const subB = (await submitOf(AS_B.id, SB.id))!;
+  check("học sinh lớp A init vào bài của lớp B ⇒ 403, không tạo hàng", (await api("POST", INIT, { as: SA1, body: { kind: "student", assignmentId: AS_B.id, name: "a.docx", size: 50 } })).status === 403 && (await prisma.submissionFile.count({ where: { assignmentId: AS_B.id, studentUserId: SA1.id } })) === 0);
+  const crossNop = await api("POST", NOP(AS_B.id), { as: SA1 });
+  check("học sinh lớp A bấm nop bài lớp B ⇒ 303 ?nop=loi-lop, không tạo bài nộp", crossNop.status === 303 && /nop=loi-lop/.test(crossNop.headers.get("location") ?? "") && (await submitOf(AS_B.id, SA1.id)) === null, crossNop.headers.get("location"));
+  check("học sinh lớp A xem danh sách tệp của bài lớp B ⇒ 403", (await api("GET", `${LIST}?assignmentId=${AS_B.id}`, { as: SA1 })).status === 403);
+  const crossDl = await dl(SA1, FB);
+  check("học sinh lớp A tải tệp của học sinh lớp B ⇒ 404 (không lộ tồn tại), complete / xoá / PUT đè ⇒ 404 hết, tệp nguyên vẹn", crossDl.status === 404 && noLeak(crossDl) && (await api("POST", COMPLETE, { as: SA1, body: { fileId: FB } })).status === 404 && (await api("POST", `/api/media/nop-bai/${FB}/xoa`, { as: SA1, body: {} })).status === 404 && (await api("PUT", `/api/media/nop-bai/dai/${FB}`, { as: SA1, raw: Buffer.from("x") })).status === 404 && (await prisma.submissionFile.findUnique({ where: { id: FB } }))?.status === "ready");
+  check("gia sư lớp A (không phải chủ lớp B) tải tệp học sinh lớp B ⇒ 403; danh sách theo bài nộp của B ⇒ 403", (await dl(T, FB)).status === 403 && (await api("GET", `${LIST}?submissionId=${subB.id}`, { as: T })).status === 403);
+
+  section("7c. Học sinh không ghi danh / đã nghỉ lớp: các đường còn lại (danh sách, chốt, bỏ tệp, PUT)");
+  const SP = await newStudent("Học sinh sẽ nghỉ giữa chừng");
+  // init + PUT nhưng KHÔNG complete (helper `upload` tự complete nên làm tay)
+  const pInit = await api("POST", INIT, { as: SP, body: { kind: "student", assignmentId: AS.id, name: "dang-do.docx", size: 20, type: DOCX_MIME } });
+  const pend = { fileId: pInit.json?.fileId as string, put: await api("PUT", pInit.json.upload.url, { as: SP, raw: validDocx() as unknown as BodyInit }) };
+  check("tiền đề: tệp đã PUT nhưng còn 'pending'", pInit.status === 200 && pend.put.status === 200 && (await prisma.submissionFile.findUnique({ where: { id: pend.fileId } }))?.status === "pending", [pInit.status, pend.put.status]);
+  await prisma.enrollment.update({ where: { userId_courseId: { userId: SP.id, courseId: A.id } }, data: { status: "suspended" } });
+  const cSus = await api("POST", COMPLETE, { as: SP, body: { fileId: pend.fileId } });
+  check("nghỉ lớp giữa chừng: complete ⇒ 403 (không chốt được nữa), tệp vẫn pending", cSus.status === 403 && (await prisma.submissionFile.findUnique({ where: { id: pend.fileId } }))?.status === "pending", [cSus.status, cSus.json]);
+  check("nghỉ lớp: xoá tệp của mình ⇒ 403; xem danh sách của bài ⇒ 403", (await api("POST", `/api/media/nop-bai/${pend.fileId}/xoa`, { as: SP, body: {} })).status === 403 && (await api("GET", `${LIST}?assignmentId=${AS.id}`, { as: SP })).status === 403);
+  check("học sinh chưa ghi danh (SX): danh sách ⇒ 403, init tutor_return ⇒ 403 (đã có ca student)", (await api("GET", `${LIST}?assignmentId=${AS.id}`, { as: SX })).status === 403);
+  const putSus = await api("PUT", `/api/media/nop-bai/dai/${pend.fileId}`, { as: SP, raw: Buffer.from("x") });
+  console.log(`     [thông tin] học sinh đã nghỉ lớp PUT byte vào tệp pending của mình ⇒ HTTP ${putSus.status} (route dai/[fileId] KHÔNG kiểm ghi danh; byte chỉ vào tệp nháp của chính em, không chốt được, cron dọn sau 24 giờ)`);
+
+  section("7d. Bài tập Nháp / Ẩn: học sinh đã nộp lúc đang Đã đăng, sau đó mục bị chuyển Nháp rồi Ẩn");
+  const AS_H = await mkAsg(ch2.id);
+  const SH = await newStudent("Học sinh bài bị ẩn");
+  const FH = await ready(SH, AS_H, "truoc-khi-an.docx"); await api("POST", NOP(AS_H.id), { as: SH });
+  const SHB = await newStudent("Học sinh khác bài bị ẩn"); const FHB = await ready(SHB, AS_H, "khac.docx");   // nháp của em khác
+  for (const st of ["draft", "hidden"] as const) {
+    await prisma.lesson.update({ where: { id: AS_H.lessonId }, data: { status: st } });
+    check(`mục ${st}: init ⇒ 404, nop ⇒ 404, danh sách ⇒ 404, complete tệp nháp mới ⇒ 404 (studentGate), xoá ⇒ 404`, (await api("POST", INIT, { as: SH, body: { kind: "student", assignmentId: AS_H.id, name: "n.docx", size: 50 } })).status === 404 && (await api("POST", NOP(AS_H.id), { as: SH })).status === 404 && (await api("GET", `${LIST}?assignmentId=${AS_H.id}`, { as: SH })).status === 404 && (await api("POST", COMPLETE, { as: SHB, body: { fileId: FHB } })).status === 404 && (await api("POST", `/api/media/nop-bai/${FH}/xoa`, { as: SH, body: {} })).status === 404);
+    const own = await dl(SH, FH), other = await dl(SHB, FH);
+    check(`mục ${st}: em KHÁC tải tệp đã nộp ⇒ 404; khách ⇒ 401`, other.status === 404 && (await dl(undefined, FH)).status === 401);
+    console.log(`     [thông tin] mục ${st}: CHÍNH chủ bài tải lại tệp của mình ⇒ HTTP ${own.status} (spec 3.3 không có điều khoản theo trạng thái mục; mọi đường GHI đều 404). Gia sư chủ lớp tải ⇒ ${(await dl(T, FH)).status}`);
+  }
+  await prisma.lesson.update({ where: { id: AS_H.lessonId }, data: { status: "published" } });
+
+  section("7e. Tệp trả bài (kind=tutor_return): gia sư lớp khác, học sinh, và gắn nhầm bài / nhầm học sinh");
+  const SR = await newStudent("Học sinh nhận trả bài"), SR2 = await newStudent("Học sinh nhận trả bài 2");
+  await ready(SR, AS, "sr.docx"); await api("POST", NOP(AS.id), { as: SR });
+  await ready(SR2, AS, "sr2.docx"); await api("POST", NOP(AS.id), { as: SR2 });
+  const subR = (await submitOf(AS.id, SR.id))!, subR2 = (await submitOf(AS.id, SR2.id))!;
+  const trA = await upload(T, AS, "nhan-xet-1.docx", validDocx(), { kind: "tutor_return", submissionId: subR.id });
+  const trB = await upload(T, AS, "nhan-xet-2.docx", validDocx(), { kind: "tutor_return", submissionId: subR.id });
+  const trCrossSub = await api("POST", INIT, { as: T, body: { kind: "tutor_return", assignmentId: AS.id, submissionId: subB.id, name: "x.docx", size: 50 } });
+  check("tiền đề: hai tệp trả bài ready của gia sư T cho bài của SR", trA.complete?.status === 200 && trB.complete?.status === 200);
+  check("gia sư init tutor_return với assignmentId của bài NÀY nhưng submissionId của bài lớp KHÁC ⇒ 404, không tạo hàng", trCrossSub.status === 404 && (await prisma.submissionFile.count({ where: { kind: "tutor_return", studentUserId: SB.id } })) === 0, trCrossSub.json);
+  const attOk = await api("POST", ATTACH, { as: T, body: { submissionId: subR.id, fileIds: [trA.fileId] } });
+  check("gia sư T đính kèm tệp trả bài đúng học sinh ⇒ 200", attOk.status === 200 && (await prisma.submissionFile.findUnique({ where: { id: trA.fileId! } }))?.submissionId === subR.id);
+  // gắn nhầm
+  const mis1 = await api("POST", ATTACH, { as: T, body: { submissionId: subR2.id, fileIds: [trB.fileId] } });
+  check("gia sư T gắn tệp trả bài của SR vào bài nộp của SR2 (nhầm học sinh) ⇒ 400, tệp vẫn chưa gắn", mis1.status === 400 && (await prisma.submissionFile.findUnique({ where: { id: trB.fileId! } }))?.submissionId === null, [mis1.status, mis1.json]);
+  const mis2 = await api("POST", ATTACH, { as: T, body: { submissionId: subR2.id, fileIds: [trA.fileId] } });
+  check("gia sư T gắn tệp trả bài ĐÃ gắn của SR vào bài nộp của SR2 ⇒ 400, tệp vẫn thuộc bài của SR", mis2.status === 400 && (await prisma.submissionFile.findUnique({ where: { id: trA.fileId! } }))?.submissionId === subR.id, [mis2.status, mis2.json]);
+  const mis3 = await api("POST", ATTACH, { as: T2, body: { submissionId: subB.id, fileIds: [trB.fileId] } });
+  check("gia sư LỚP KHÁC (chủ lớp B) gắn tệp trả bài của gia sư T vào bài nộp của lớp B mình ⇒ 400, tệp không đổi chủ", mis3.status === 400 && (await prisma.submissionFile.findUnique({ where: { id: trB.fileId! } }))?.submissionId === null, [mis3.status, mis3.json]);
+  const mis4 = await api("POST", ATTACH, { as: T2, body: { submissionId: subR.id, fileIds: [trB.fileId] } });
+  check("gia sư LỚP KHÁC gắn tệp vào bài nộp của lớp A ⇒ 403 (không qua cổng chấm)", mis4.status === 403 && (await prisma.submissionFile.findUnique({ where: { id: trB.fileId! } }))?.submissionId === null, mis4.status);
+  // gia sư lớp khác đụng tệp trả bài (đã gắn)
+  const t2dl = await dl(T2, trA.fileId!);
+  check("gia sư lớp B tải tệp trả bài (đã gắn) của lớp A ⇒ 403, không lộ khoá", t2dl.status === 403 && noLeak(t2dl), t2dl.status);
+  check("gia sư lớp B complete / xoá / PUT đè tệp trả bài của gia sư T ⇒ 404 hết, tệp nguyên vẹn", (await api("POST", COMPLETE, { as: T2, body: { fileId: trA.fileId } })).status === 404 && (await api("POST", `/api/media/nop-bai/${trA.fileId}/xoa`, { as: T2, body: { confirm: true } })).status === 404 && (await api("PUT", `/api/media/nop-bai/dai/${trA.fileId}`, { as: T2, raw: Buffer.from("x") })).status === 404 && (await prisma.submissionFile.findUnique({ where: { id: trA.fileId! } }))?.status === "ready");
+  const t2list = await api("GET", `${LIST}?submissionId=${subR.id}`, { as: T2 });
+  check("gia sư lớp B xem danh sách bài nộp của lớp A ⇒ 403 và thân không chứa id tệp trả bài", t2list.status === 403 && !t2list.text.includes(trA.fileId!), t2list.status);
+  // học sinh đụng kind=tutor_return
+  check("học sinh nhận bài tải tệp trả bài ĐÃ gắn của mình ⇒ 200; học sinh KHÁC (SR2) ⇒ 404", (await dl(SR, trA.fileId!)).status === 200 && (await dl(SR2, trA.fileId!)).status === 404);
+  check("học sinh tải tệp trả bài CHƯA gắn (nháp của gia sư) ⇒ 404", (await dl(SR, trB.fileId!)).status === 404);
+  const stuTouch = [await api("POST", COMPLETE, { as: SR, body: { fileId: trB.fileId } }), await api("POST", `/api/media/nop-bai/${trB.fileId}/xoa`, { as: SR, body: { confirm: true } }), await api("PUT", `/api/media/nop-bai/dai/${trB.fileId}`, { as: SR, raw: Buffer.from("x") }),
+    await api("POST", COMPLETE, { as: SR, body: { fileId: trA.fileId } }), await api("POST", `/api/media/nop-bai/${trA.fileId}/xoa`, { as: SR, body: { confirm: true } })];
+  check("học sinh complete / xoá / PUT đè tệp kind=tutor_return (đã gắn hoặc chưa gắn) ⇒ 404 hết (không phải chủ tải)", stuTouch.every(r => r.status === 404), stuTouch.map(r => r.status));
+  const beforeSub = await submitOf(AS.id, SR.id);
+  const stuNop = await api("POST", NOP(AS.id), { as: SR, raw: `fileId=${trB.fileId}&fileIds=${trB.fileId},${trA.fileId}&kind=tutor_return` as unknown as BodyInit, headers: { "content-type": "application/x-www-form-urlencoded" } });
+  const afterSub = await submitOf(AS.id, SR.id);
+  check("học sinh bấm nop kèm id tệp tutor_return trong thân ⇒ bị bỏ qua: bài nộp không đổi, tệp trả bài giữ nguyên (đã gắn / chưa gắn như cũ)", stuNop.status === 303 && beforeSub?.submittedAt.getTime() === afterSub?.submittedAt.getTime() && beforeSub?.fileUrl === afterSub?.fileUrl && (await prisma.submissionFile.findUnique({ where: { id: trA.fileId! } }))?.submissionId === subR.id && (await prisma.submissionFile.findUnique({ where: { id: trB.fileId! } }))?.submissionId === null && (await prisma.submissionFile.count({ where: { submissionId: subR.id, kind: "student", status: "ready" } })) === 1, [stuNop.status, stuNop.headers.get("location")]);
+  check("học sinh gọi dinh-kem với tệp tutor_return của mình ⇒ 403 (không phải người chấm), không gắn", (await api("POST", ATTACH, { as: SR, body: { submissionId: subR.id, fileIds: [trB.fileId] } })).status === 403 && (await prisma.submissionFile.findUnique({ where: { id: trB.fileId! } }))?.submissionId === null);
+  check("học sinh nhận bài bấm danh sách: thấy tệp trả bài ĐÃ gắn, KHÔNG thấy tệp trả bài chưa gắn", await (async () => { const l = await api("GET", `${LIST}?assignmentId=${AS.id}`, { as: SR }); return l.status === 200 && l.json.files.some((f: Json) => f.id === trA.fileId) && !l.json.files.some((f: Json) => f.id === trB.fileId) && noLeak(l); })());
+
+  section("7f. Khách gọi mọi đường còn lại của nop-bai ⇒ 401, và không phát sinh gì");
+  const rowsBefore = await prisma.submissionFile.count();
+  const guestAll = [
+    await api("GET", `${LIST}?assignmentId=${AS.id}`), await api("GET", `${LIST}?submissionId=${subR.id}`), await api("POST", COMPLETE, { body: { fileId: trA.fileId } }),
+    await api("POST", `/api/media/nop-bai/${trA.fileId}/xoa`, { body: {} }), await api("PUT", `/api/media/nop-bai/dai/${trB.fileId}`, { raw: Buffer.from("x") }),
+    await api("POST", NOP(AS.id)), await api("POST", INIT, { body: { kind: "tutor_return", assignmentId: AS.id, submissionId: subR.id, name: "x.docx", size: 5 } }),
+  ];
+  check("khách: danh-sach ×2, complete, xoa, PUT dai, nop, init(tutor_return) ⇒ 401 hết, không tạo / đổi hàng nào", guestAll.every(r => r.status === 401) && (await prisma.submissionFile.count()) === rowsBefore, guestAll.map(r => r.status));
+  check("khách: không phản hồi nào lộ khoá kho / tên tệp", noLeak(...guestAll.map(r => ({ text: r.text, headers: r.headers }))));
+
   // ── 8. Không lộ gì ở bất kỳ phản hồi nào ──────────────────────────────────
   section("8. Quét rò rỉ");
   const all = [lst1, lst8, lstTut, att, up1.init, up1.complete!, own, rng, e1, e2, e3, e4];

@@ -45,7 +45,7 @@ export default function HomeSections({ content: c, stats, slots }: { content: Ho
     <>
     {/* ── Hero ───────────────────────────────────────────────────────── */}
     {/* Ba ô lưới: trái (chữ + nút), dải "Cần tư vấn?", phải (thẻ kỳ thi + số liệu). Điện thoại: một cột theo thứ tự DOM (chữ → tư vấn → kỳ thi), nên dải tư vấn nằm ngay sau hai nút. */}
-    <section data-home-block="hero" className="bg-[var(--kin-nhan-nen)] pt-8 pb-10">
+    <section data-home-block="hero" className="bg-[var(--kin-nhan-nen)] pt-6 pb-8">
       <div className="mx-auto max-w-[1440px] px-4 sm:px-8 lg:px-20 grid gap-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-x-14 lg:gap-y-4 lg:items-center">
 
         <div className="min-w-0 flex flex-col items-start gap-5 lg:col-start-1 lg:row-start-1 lg:row-span-2">
@@ -74,7 +74,7 @@ export default function HomeSections({ content: c, stats, slots }: { content: Ho
           <HomeHeroContact />
         </div>
 
-        <div className="min-w-0 flex flex-col gap-4 lg:col-start-2 lg:row-start-1">
+        <div className="min-w-0 flex flex-col gap-3 lg:col-start-2 lg:row-start-1">
           <p className="text-[length:var(--kin-co-caption)] font-semibold tracking-[0.09em] text-white/65">ĐANG MỞ LUYỆN THI</p>
           <div className="grid grid-cols-2 gap-[10px]">
             {c.exams.map((e, i) => (

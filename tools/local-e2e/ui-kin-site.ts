@@ -80,7 +80,8 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   const whySection = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
   const why = await whySection.getByRole("heading", { level: 3 }).allInnerTexts();
   check("4 thẻ lợi ích đúng chữ KiN", JSON.stringify(why) === JSON.stringify(["Vào lớp bằng mã mời", "Lịch học và buổi học", "Thi thử trong phòng thi", "Bài tập và hỏi đáp"]), why);
-  const grid = await p.locator("article").first().boundingBox();
+  // 09/11/2026 (BU-HS-LANDING): trang chủ nay có thẻ <article> ở khối Gia sư / Lớp / Thi thử / Tin TRƯỚC mục lợi ích, nên phải đo thẻ đầu TRONG mục "Học ở đây thì được gì?".
+  const grid = await whySection.locator("article").first().boundingBox();
   check("thẻ lợi ích đầu tiên cách mép trái 260px (lưới 920px, Figma 152:6)", !!grid && Math.abs(grid.x - 260) <= 1, grid?.x);
   const tutorSec = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Đang tìm gia sư?" }) }).first();
   const tutorBtn = tutorSec.getByRole("link", { name: "Tìm gia sư", exact: true });
@@ -108,8 +109,9 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   const dp = await dctx.newPage(); watch(dp);
   await dp.emulateMedia({ colorScheme: "dark" });
   await dp.goto(`${BASE}/khoa-hoc`, { waitUntil: "domcontentloaded", timeout: 240000 });
-  await dp.locator("header").waitFor();
-  const hb = await dp.locator("header").evaluate(e => getComputedStyle(e).backgroundColor);
+  // /khoa-hoc có thêm <header> của chính trang (CAT-01) nên lấy thanh trên của khách = <header> đầu tiên.
+  await dp.locator("header").first().waitFor();
+  const hb = await dp.locator("header").first().evaluate(e => getComputedStyle(e).backgroundColor);
   const fb = await dp.locator("footer").evaluate(e => getComputedStyle(e).backgroundColor);
   check("thanh trên nền trắng khi máy ở chế độ tối", hb === "rgb(255, 255, 255)", hb);
   check("chân trang nền trắng khi máy ở chế độ tối", fb === "rgb(255, 255, 255)", fb);

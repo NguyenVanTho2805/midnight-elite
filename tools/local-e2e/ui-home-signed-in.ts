@@ -33,6 +33,16 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const go = p.locator("header").getByRole("link", { name: "Vào trang của tôi" });
     await go.waitFor({ timeout: 90000 });
     check(`${name}: nút 'Vào trang của tôi' → ${href}, cao ≥ 44px`, (await go.getAttribute("href")) === href && ((await go.boundingBox())?.height ?? 0) >= 44, await go.getAttribute("href"));
+    // BU-HS-TRANG-CHU (09/11/2026): HỌC SINH có thêm mục "Lớp của tôi" (→ /student/hoc-tap) ở Navbar và khối "Lớp của tôi" trong trang; gia sư / quản trị không có cả hai.
+    const lopLink = p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Lớp của tôi", exact: true });
+    if (name === "học sinh") {
+      await p.locator('[data-home-block="my-class"]').waitFor({ timeout: 90000 });
+      check("học sinh: Navbar có ĐÚNG 1 liên kết 'Lớp của tôi' → /student/hoc-tap, cao ≥ 44px", (await lopLink.count()) === 1 && (await lopLink.getAttribute("href")) === "/student/hoc-tap" && ((await lopLink.boundingBox())?.height ?? 0) >= 44);
+      check("học sinh: trang có khối 'Lớp của tôi' (có lớp Toán 9 của em)", await p.locator('[data-home-block="my-class"]').getByText("Toán 9").first().isVisible());
+    } else {
+      await p.waitForTimeout(1500);
+      check(`${name}: Navbar KHÔNG có 'Lớp của tôi' và trang không có khối 'Lớp của tôi'`, (await lopLink.count()) === 0 && (await p.locator('[data-home-block="my-class"]').count()) === 0);
+    }
     // Mở menu tài khoản: nút nằm NGOÀI role=menu và không làm tăng số menuitem.
     await p.locator("header").getByRole("button", { name: new RegExp(short.split(" ").pop()!) }).click();
     await p.locator("header [role=menu]").waitFor({ timeout: 10000 });
@@ -100,7 +110,8 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("không còn #h-gia-su, #cau-hoi, <details>", await p.locator("#h-gia-su, #cau-hoi, details").count() === 0);
     const why = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
     const sec = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Đang tìm gia sư?" }) }).first();
-    check("khối 'Tìm gia sư' đứng SAU mục 'Học ở đây thì được gì?' (thứ tự DOM)", await why.evaluate((a, b) => !!(a.compareDocumentPosition(b as Node) & Node.DOCUMENT_POSITION_FOLLOWING), await sec.elementHandle()));
+    // BU-HS-LANDING mục 4: chữ "Tìm gia sư" chuyển vào khối Gia sư (đứng sau hero, TRƯỚC "Học ở đây thì được gì?"): hero → tutors → courses → exams → news → community → score → why → cta.
+    check("khối 'Tìm gia sư' (trong khối Gia sư) đứng TRƯỚC mục 'Học ở đây thì được gì?' (thứ tự DOM)", await sec.evaluate((a, b) => !!(a.compareDocumentPosition(b as Node) & Node.DOCUMENT_POSITION_FOLLOWING), await why.elementHandle()));
     const btn = sec.getByRole("link", { name: "Tìm gia sư", exact: true });
     check("nút 'Tìm gia sư' → /giang-vien, cao ≥ 44px", (await btn.getAttribute("href")) === "/giang-vien" && ((await btn.boundingBox())?.height ?? 0) >= 44);
     check("có chữ 'Phụ huynh xem Sổ của con bằng đường dẫn riêng'", await sec.getByText(/Phụ huynh xem Sổ của con bằng đường dẫn riêng/).isVisible());

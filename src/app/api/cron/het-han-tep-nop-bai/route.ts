@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { recordCronRun } from "@/lib/adminOpsServer";
 import { runNopTepExpiry } from "@/lib/nopTepExpiryServer";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
@@ -13,7 +14,10 @@ export async function GET(req: NextRequest) {
   await recordCronRun("het-han-tep-nop-bai");
   const dryRun = new URL(req.url).searchParams.get("xoa") !== "1";
   try {
-    return NextResponse.json(await runNopTepExpiry({ now: new Date(), dryRun }), { headers: { "Cache-Control": "no-store" } });
+    const result = await runNopTepExpiry({ now: new Date(), dryRun });
+    // Nhật ký kiểm toán MỖI lượt chạy (cả chạy khô): chỉ số đếm + fileId, KHÔNG tên tệp, KHÔNG id học sinh. actorId null = hệ thống.
+    await logAction(null, dryRun ? "submission_file.expire_dry_run" : "submission_file.expire_run", "SubmissionFile", "cron", JSON.parse(JSON.stringify(result)));
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[cron/het-han-tep-nop-bai]", (e as Error)?.name);
     return NextResponse.json({ error: "Không chạy được" }, { status: 500, headers: { "Cache-Control": "no-store" } });

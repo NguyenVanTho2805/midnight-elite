@@ -97,7 +97,7 @@ const ACTION_LABEL: Record<string, string> = {
   "coin_topup.request": "Yêu cầu nạp Coin", "coin_topup.approve": "Duyệt nạp Coin", "coin_topup.reject": "Từ chối nạp Coin",
   "pro_order.create": "Tạo yêu cầu gói Pro", "pro_order.activate": "Kích hoạt gói Pro", "pro_order.cancel": "Huỷ yêu cầu gói Pro", "pro_order.grant_legacy": "Tặng Pro cho gia sư hiện có", "pro_config.update": "Sửa cấu hình gói Pro",
   "tutor_subscription.expire": "Hết hạn gói VIP gia sư",
-  "submission_file.download": "Quản trị tải tệp bài nộp của học sinh",
+  "submission_file.download": "Quản trị tải tệp bài nộp của học sinh", "submission_file.expire_run": "Dọn tệp bài nộp hết hạn 60 ngày", "submission_file.expire_dry_run": "Chạy khô dọn tệp bài nộp hết hạn",
   "student_profile.create": "Tạo hồ sơ học sinh", "student_profile.update": "Sửa hồ sơ học sinh", "student_profile.delete": "Xoá hồ sơ học sinh", "student_profile.import": "Nhập danh sách học sinh",
   "student_profile.consent": "Ghi đồng ý hồ sơ học sinh", "student_profile.revoke": "Rút đồng ý hồ sơ học sinh",
   "parent_link.verify": "Xác nhận liên kết phụ huynh", "parent_link.revoke": "Gỡ liên kết phụ huynh",
