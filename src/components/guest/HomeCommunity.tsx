@@ -1,4 +1,4 @@
-// Trang chủ — khối bảng tin "Cộng đồng đang nói gì". Dùng lại useFeed + FeedCard (BU-05), chỉ bài CHUNG (scope=common) và 5 bài đầu, cho cả khách lẫn học sinh (mặt tiền công khai:
+// Trang chủ — khối bảng tin "Cộng đồng đang nói gì" (nền do khung data-home-alt của HomeSections quyết, khối không tự đặt nền). Dùng lại useFeed + FeedCard (BU-05), chỉ bài CHUNG (scope=common) và 5 bài đầu, cho cả khách lẫn học sinh (mặt tiền công khai:
 // không bao giờ hiện bài của lớp). Chỉ tên hiển thị rút gọn do máy chủ trả; không ô soạn bài, không ô hỏi, không nhắn riêng; bài của khách đang chờ duyệt không có trong kết quả.
 // Khách bấm Thích / Lưu / Bình luận → ActionRow chuyển sang /dang-nhap?redirect=%2F. `aside` = cột phải (khối Quiz); không truyền thì bảng tin canh giữa một cột 600px.
 // Ba trạng thái: đang tải (khung xám đúng lưới 48|1fr) · rỗng (có lời và liên kết đi tiếp) · lỗi (nói là LỖI + Thử lại 44px).
@@ -20,7 +20,7 @@ export default function HomeCommunity({ aside }: { aside?: ReactNode }) {
   const state = feed.status === "loading" ? "loading" : feed.status === "error" ? "error" : list.length === 0 ? "empty" : "ok";
 
   return (
-    <section aria-labelledby="home-cong-dong" data-home-block="community" data-home-state={state} className="bg-[var(--kin-nen-trang)] py-10">
+    <section aria-labelledby="home-cong-dong" data-home-block="community" data-home-state={state} className="py-12">
       <div className="mx-auto max-w-[1120px] px-4 sm:px-8">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 sm:gap-4">
           <div className="min-w-0">

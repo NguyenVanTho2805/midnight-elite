@@ -7,7 +7,7 @@ import { kinButtonClass } from "@/components/kin/buttonClass";
 
 export default function HomeScore({ formulas }: { formulas: PublicFormula[] }) {
   return (
-    <section data-home-block="score" data-home-state={formulas.length > 0 ? "ok" : "empty"} className="bg-[var(--kin-nen-trang)] pt-2 pb-10">
+    <section data-home-block="score" data-home-state={formulas.length > 0 ? "ok" : "empty"} className="py-12">
       <div className="mx-auto max-w-[760px] px-4 sm:px-8">
         {formulas.length > 0 ? <TinhDiemChuan formulas={formulas} /> : (
           <div className="rounded-[var(--kin-bo-xl)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] p-[var(--kin-kc-8)]">
