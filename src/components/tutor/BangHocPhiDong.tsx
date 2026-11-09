@@ -34,7 +34,9 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
 }) {
   const notify = useNotify();
   const { ask, dialog } = useKinConfirm();
-  const locked = row.locked || readOnly;
+  // Em đã rời lớp: máy chủ không nhận sửa (404) nhưng vẫn gỡ được dòng chưa vào phiếu → panel chỉ-gỡ.
+  const leftOnly = !!row.left && !row.locked && !readOnly;
+  const locked = row.locked || readOnly || !!row.left;
   const [sessions, setSessions] = useState<Record<string, string>>(() => Object.fromEntries(config.subjects.map(s => [s, row.filled && (row.sessions[s] ?? 0) > 0 ? String(row.sessions[s]) : ""])));
   const [free, setFree] = useState(row.freeSessions ? String(row.freeSessions) : "");
   // Số môn: chỉ điền sẵn khi lần ghi trước là "file" (cô tự ghi); "counted" = để trống cho KiN đếm.
@@ -91,7 +93,7 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
     setErr("Chưa lưu được học phí của em, cô thử lại nhé.");
   }
   async function remove() {
-    if (busy || locked) return;
+    if (busy || row.locked || readOnly) return;
     const ok = await ask({
       title: "Gỡ học phí tháng này của em?",
       message: "Học phí tháng này của em sẽ bị xoá khỏi bảng, khoản phí chưa vào phiếu cũng được gỡ. Cô nhập lại được bất cứ lúc nào.",
@@ -116,8 +118,8 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
       <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Học phí {periodLabel}{row.left ? " · em đã rời lớp" : ""}</p>
 
       {locked && (
-        <KinCallout title={readOnly ? "Chỉ xem" : "Đã vào phiếu"}>
-          {readOnly ? "Chủ lớp nhập và sửa học phí ở bảng này." : "Học phí em này đã vào phiếu nên không sửa ở bảng được. Cô sửa số tiền ngay trên phiếu (Học phí và đối soát)."}
+        <KinCallout title={readOnly ? "Chỉ xem" : leftOnly ? "Em đã rời lớp" : "Đã vào phiếu"}>
+          {readOnly ? "Chủ lớp nhập và sửa học phí ở bảng này." : leftOnly ? "Em đã rời lớp nên không sửa được số liệu. Cô chỉ gỡ được dòng học phí này khỏi bảng (khoản phí chưa vào phiếu cũng được gỡ)." : "Học phí em này đã vào phiếu nên không sửa ở bảng được. Cô sửa số tiền ngay trên phiếu (Học phí và đối soát)."}
         </KinCallout>
       )}
 
@@ -177,9 +179,9 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
       </div>
 
       {err && <p role="alert" data-bh-loi className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</p>}
-      {!locked && (
+      {(!locked || leftOnly) && (
         <div className="flex gap-2 flex-wrap">
-          <KinButton loading={busy === "save"} loadingLabel="Đang lưu…" disabled={busy === "del"} onClick={() => void save()}>Lưu học phí</KinButton>
+          {!leftOnly && <KinButton loading={busy === "save"} loadingLabel="Đang lưu…" disabled={busy === "del"} onClick={() => void save()}>Lưu học phí</KinButton>}
           {row.filled && <KinButton variant="danger" loading={busy === "del"} loadingLabel="Đang gỡ…" disabled={busy === "save"} onClick={() => void remove()}>Gỡ học phí tháng này</KinButton>}
           <KinButton variant="ghost" onClick={onClose}>Huỷ</KinButton>
         </div>

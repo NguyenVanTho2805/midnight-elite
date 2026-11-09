@@ -114,11 +114,11 @@ export default function LopBangHocPhi({ courseId, readOnly = false }: { courseId
   // Điện thoại / máy hẹp: panel là CẢ MÀN (không hộp thoại nhỏ), đóng thì về bảng.
   if (sidePanel && !split) return <div data-bh-tab data-bh-panel-full>{sidePanel}</div>;
 
-  const openRow = (r: SheetRow) => { if (!readOnly && !r.left) setPanel({ ym, kind: "row", studentId: r.studentId }); };
+  const openRow = (r: SheetRow) => { if (!readOnly && (!r.left || r.filled)) setPanel({ ym, kind: "row", studentId: r.studentId }); };
 
   const nameCell = (r: SheetRow) => (
     <>
-      {readOnly || !cfg || r.left // em đã rời lớp: máy chủ từ chối ghi (404), nên không mở panel sửa
+      {readOnly || !cfg || (r.left && !r.filled) // em đã rời lớp còn dòng: mở panel CHỈ-GỠ (máy chủ không nhận sửa, vẫn cho gỡ)
         ? <span className="font-medium break-words">{r.name}</span>
         : <button type="button" data-bh-row={r.studentId} onClick={() => openRow(r)} aria-label={`Sửa học phí của ${r.name}`} className="inline-flex items-center min-h-11 text-left font-medium text-[var(--kin-nhan-link)] hover:underline break-words">{r.name}</button>}
       {r.left && <span className="block text-[length:var(--kin-co-phu)] font-normal text-[var(--kin-chu-mo)]">Đã rời lớp</span>}

@@ -246,7 +246,11 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await p.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
   const leftTr = p.locator("[data-bh-tr]", { hasText: "Gia Hân" });
   await leftTr.waitFor({ timeout: 60000 });
-  check("em đã rời lớp: còn dòng, ghi 'Đã rời lớp', tên KHÔNG phải nút sửa, không mở được panel", /Đã rời lớp/.test(await leftTr.innerText()) && (await p.locator(`[data-bh-row="${S["Gia Hân"].id}"]`).count()) === 0 && (await p.locator("[data-bh-panel]").count()) === 0);
+  check("em đã rời lớp còn dòng chưa vào phiếu: ghi 'Đã rời lớp', tên là nút mở panel CHỈ-GỠ", /Đã rời lớp/.test(await leftTr.innerText()) && (await p.locator(`[data-bh-row="${S["Gia Hân"].id}"]`).count()) === 1);
+  await p.locator(`[data-bh-row="${S["Gia Hân"].id}"]`).click();
+  await p.locator("[data-bh-panel]").waitFor({ timeout: 30000 });
+  check("panel của em đã rời: có chữ 'Em đã rời lớp', KHÔNG có nút Lưu, CÓ nút 'Gỡ học phí tháng này', ô nhập bị khoá", (await p.getByText("Em đã rời lớp", { exact: true }).count()) >= 1 && (await p.getByRole("button", { name: "Lưu học phí" }).count()) === 0 && (await p.getByRole("button", { name: "Gỡ học phí tháng này" }).count()) === 1 && await p.getByLabel("Toán (buổi)").isDisabled());
+  await p.getByRole("button", { name: "Huỷ" }).click();
   await prisma.enrollment.updateMany({ where: { courseId: C.id, userId: S["Gia Hân"].id }, data: { status: "active" } });
 
   // ───────────────────────── Ba trạng thái ─────────────────────────
