@@ -20,6 +20,7 @@
 import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, BASE, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
+import { execSync } from "node:child_process";
 
 const FORM = { "content-type": "application/x-www-form-urlencoded" };
 const form = (path: string, as: TUser | undefined, pairs: [string, string][] = []) => api("POST", path, { as, raw: new URLSearchParams(pairs), headers: FORM });
@@ -58,6 +59,9 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   await prisma.courseTeacher.create({ data: { courseId: CA.id, userId: CO.id, role: "co_teacher", status: "active", invitedBy: A.id } });
   await prisma.courseTeacher.create({ data: { courseId: CA.id, userId: SUB.id, role: "subject_teacher", status: "active", invitedBy: A.id } });
   const idA = CA.id, idB = CB.id;
+  // Ảnh chụp số phiếu thu / hoá đơn: toàn bộ bài này chỉ ĐỌC trang lớp + gọi API tải tệp, KHÔNG được sinh phiếu nào (mục 9.1 "không có đường sinh học phí mới").
+  const feeSnap = async () => ({ fee: await prisma.feeCharge.count(), inv: await prisma.tuitionInvoice.count() });
+  const fee0 = await feeSnap();
 
   // ── 1. /lop-cua-toi/[courseId]: chủ lớp → 307 + Cache-Control, giữ query phụ ─────────────────────────
   section("1. Chủ lớp mở /lop-cua-toi/<id> → 307 sang đúng tab (không 308, không cho lưu lại), giữ moi / lich / them / duyet / n / ma");
@@ -190,6 +194,45 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const noAuth = await api("POST", "/api/media/document/init", { body: { courseId: idA, fileName: "a.pdf", size: 1000, confirmedNotice: true } });
   check("chưa đăng nhập → 401", noAuth.status === 401, noAuth.status);
 
+  section("3c. Tệp tài liệu của lớp A: gia sư B / học sinh ngoài lớp / chờ duyệt / khách không tải, không chốt, không mở được (mã HTTP thật ở API)");
+  const asset = await prisma.fileAsset.create({ data: { ownerId: A.id, courseId: idA, kind: "document", driver: "local", storageKey: "gs-lop-gon-test/khong-co-tren-dia.pdf", mimeType: "application/pdf", bytes: 1234, originalName: "de-cuong-bi-mat-cua-co-A.pdf", status: "ready" } });
+  const lessonSec = await prisma.section.create({ data: { id: `sec-lg-${Date.now()}`, title: "Chương tài liệu", order: 1, courseId: idA } });
+  const lessonChap = await prisma.chapter.create({ data: { id: `chap-lg-${Date.now()}`, title: "Bài tài liệu", order: 1, sectionId: lessonSec.id } });
+  const lessonDoc = await prisma.lesson.create({ data: { id: `les-lg-${Date.now()}`, code: "LG1", title: "Bài có tài liệu bí mật", type: "record", order: 1, chapterId: lessonChap.id, isLocked: false, isFree: false, status: "published", documents: JSON.stringify([{ name: "de-cuong-bi-mat-cua-co-A.pdf", url: `/api/media/${asset.id}/file` }]) } as never });
+  await prisma.fileAsset.update({ where: { id: asset.id }, data: { lessonId: lessonDoc.id } });
+  const fileUrl = `/api/media/${asset.id}/file`;
+  const rf = async (u?: TUser) => api("GET", fileUrl, { as: u });
+  const leak = (r: Res) => /de-cuong-bi-mat|Lớp Toán Bí Mật|Học Sinh Bí Mật/.test(r.text);
+  for (const [who, u] of [["gia sư B", B], ["học sinh ngoài lớp", STU], ["gia sư chờ duyệt", PEND]] as [string, TUser][]) {
+    const r = await rf(u);
+    check(`${who} GET /api/media/<tệp của A>/file → 403, không lộ tên tệp / lớp`, r.status === 403 && !leak(r), [r.status, r.text.slice(0, 100)]);
+  }
+  check("khách GET tệp của A → 401", (await rf()).status === 401);
+  const rOwner = await rf(A);
+  check("chủ lớp A: không bị từ chối (không 401 / 403) — tệp chưa có trên đĩa nên 404 là bình thường", ![401, 403].includes(rOwner.status), rOwner.status);
+  const rEnrFile = await rf(ENR);
+  check("học sinh active của lớp A (bài đã đăng chứa tệp): không bị 403", rEnrFile.status !== 403 && rEnrFile.status !== 401, rEnrFile.status);
+  const asset404 = await api("GET", "/api/media/khong-co-tep-nay-dau/file", { as: B });
+  check("mã tệp lạ → 404, không 500", asset404.status === 404, asset404.status);
+  const assetBad = await api("GET", "/api/media/..%2F..%2Fetc/file", { as: B });
+  check("mã tệp có ../ → 404 (không thoát khỏi kho)", assetBad.status === 404 || assetBad.status === 400, assetBad.status);
+  const comp = (u?: TUser, id: string = asset.id) => api("POST", "/api/media/document/complete", { as: u, body: { assetId: id } });
+  const pendAsset = await prisma.fileAsset.create({ data: { ownerId: A.id, courseId: idA, kind: "document", driver: "local", storageKey: "x", mimeType: "application/pdf", originalName: "dang-tai-do-cua-A.pdf", status: "pending" } });
+  for (const [who, u] of [["gia sư B", B], ["đồng giảng", CO]] as [string, TUser][]) {
+    const r1 = await comp(u, pendAsset.id);
+    check(`${who} POST document/complete với tệp ĐANG TẢI của A → 403, tệp không bị chốt / xoá`, r1.status === 403 && (await prisma.fileAsset.findUnique({ where: { id: pendAsset.id } }))?.status === "pending", [r1.status, r1.text.slice(0, 100)]);
+  }
+  check("document/complete: chưa đăng nhập → 401; học sinh → 403; chờ duyệt → 403; mã lạ → 404", (await comp(undefined)).status === 401 && (await comp(STU)).status === 403 && (await comp(PEND)).status === 403 && (await comp(A, "khong-co-ma")).status === 404);
+  const initBody = { courseId: idA, fileName: "x.pdf", size: 1000, mimeType: "application/pdf", confirmedNotice: true };
+  const pi = await api("POST", "/api/media/document/init", { as: PEND, body: initBody });
+  const si = await api("POST", "/api/media/document/init", { as: STU, body: initBody });
+  check("document/init: gia sư CHỜ DUYỆT → 403; học sinh → 403 (không tạo FileAsset)", pi.status === 403 && si.status === 403 && (await prisma.fileAsset.count({ where: { ownerId: { in: [PEND.id, STU.id] } } })) === 0, [pi.status, si.status]);
+  const noBefore = await prisma.fileAsset.count({ where: { ownerId: B.id } });
+  await api("POST", "/api/media/document/init", { as: B, body: initBody });
+  check("B gọi init với lớp của A → không tạo FileAsset nào cho B", (await prisma.fileAsset.count({ where: { ownerId: B.id } })) === noBefore);
+  const cfgB = await api("GET", "/api/media/config", { as: B });
+  check("GET /api/media/config với gia sư: 200 và có khối document; học sinh / khách không đọc được (401 / 403)", cfgB.status === 200 && typeof cfgB.json?.document?.enabled === "boolean" && [401, 403].includes((await api("GET", "/api/media/config", { as: STU })).status) && (await api("GET", "/api/media/config")).status === 401, [cfgB.status]);
+
   // ── 4. Id lạ ─────────────────────────────────────────────────────────────────────────────────────
   section("4. Id lạ: không có / NUL / quá dài → màn 'Không tìm thấy lớp', không 500");
   const weird: [string, string][] = [["khong-co", "khong-co"], ["chứa %00", "a%00b"], ["300 ký tự", "x".repeat(300)], ["a%2Fb", "a%2Fb"], ["..%2F..%2Fadmin", "..%2F..%2Fadmin"], ["dấu cách", "a%20b"]];
@@ -252,6 +295,31 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   section("8. Route Kế hoạch buổi vẫn chạy (lối vào từ Lịch / chi tiết buổi dùng nó)");
   const kh = await api("GET", "/lop-cua-toi/ke-hoach-buoi", { as: A });
   check("GET /lop-cua-toi/ke-hoach-buoi → 200", kh.status === 200 && go(kh).to === null, [kh.status, go(kh).to]);
+
+  // ── 9. Không có đường sinh học phí mới ───────────────────────────────────────────────────────────
+  section("9. Không sinh phí ngoài luồng: mọi việc ở bài này (xem trang lớp, mở tệp, tải tệp) để lại 0 FeeCharge / Invoice mới; mã việc không đụng tệp học phí");
+  const fee1 = await feeSnap();
+  check(`số FeeCharge / Invoice không đổi (${fee0.fee}/${fee0.inv} → ${fee1.fee}/${fee1.inv})`, fee1.fee === fee0.fee && fee1.inv === fee0.inv, [fee0, fee1]);
+  const FREE = await mkCourse(A.id, { name: "Lớp Miễn Phí Cô A" });
+  await prisma.course.update({ where: { id: FREE.id }, data: { price: 0 } });
+  await prisma.enrollment.create({ data: { userId: ENR.id, courseId: FREE.id, status: "active" } });
+  for (const p of ["/giao-trinh", "/hoc-vien", "/diem-danh", "/lich-hoc", "?tab=cai-dat&muc=hoc-phi", "?tab=chuong-bai"]) await api("GET", `${QL}/${FREE.id}${p}`, { as: A });
+  await api("GET", `/lop-cua-toi/${FREE.id}?tab=hoc-phi`, { as: A });
+  const fee2 = await feeSnap();
+  check("lớp miễn phí (price = 0) + học sinh vào lớp + mở mọi tab (kể cả Học phí): vẫn 0 phiếu / hoá đơn mới", fee2.fee === fee0.fee && fee2.inv === fee0.inv, [fee0, fee2]);
+  let changed: string[] | null = null, addedFeeRefs: string[] = [];
+  try {
+    const BASE_REF = "f0378557";
+    changed = execSync(`git diff --name-only ${BASE_REF} HEAD -- src prisma`, { encoding: "utf8", cwd: process.cwd() }).split("\n").filter(Boolean);
+    const added = execSync(`git diff -U0 ${BASE_REF} HEAD -- src`, { encoding: "utf8", cwd: process.cwd(), maxBuffer: 64 * 1024 * 1024 }).split("\n").filter(l => l.startsWith("+") && !l.startsWith("+++"));
+    addedFeeRefs = added.filter(l => /prisma\.(feeCharge|tuitionInvoice|invoice)\b|from "@\/lib\/(feeCharge|invoiceServer|sessionBook)|api\/(fees|invoices)\b/i.test(l));
+  } catch { /* không có lịch sử git của mốc nền (cây đã gộp / sao chép) → bỏ qua phần quét diff, in cảnh báo */ }
+  if (changed === null) console.log("    (bỏ qua quét diff: không có git f0378557 trong cây này)");
+  else {
+    check("diff so với mốc nền KHÔNG chạm tệp feeCharge* / invoiceServer* / sessionBook* / api/fees* / api/invoices* / revenue*", !changed.some(f => /feeCharge|invoiceServer|sessionBook|api\/fees|api\/invoices|revenue/i.test(f)), changed.filter(f => /fee|invoice|sessionBook|revenue/i.test(f)));
+    check("diff KHÔNG đổi schema.prisma", !changed.some(f => f === "prisma/schema.prisma" || f.startsWith("prisma/")), changed.filter(f => f.startsWith("prisma/")));
+    check("không dòng mã THÊM mới nào gọi prisma.feeCharge / prisma.invoice / nhập feeCharge* / invoiceServer* / sessionBook* / api/fees / api/invoices", addedFeeRefs.length === 0, addedFeeRefs.slice(0, 5));
+  }
 
   await done();
 })();

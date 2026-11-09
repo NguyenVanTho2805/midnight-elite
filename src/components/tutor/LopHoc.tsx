@@ -9,7 +9,6 @@ import { filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
-import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import DongGiangNhom from "@/components/tutor/DongGiangNhom";
 import { KinPage, KinPageHeader, KIN_FIELD } from "@/components/kin/PageLayout";
@@ -90,6 +89,16 @@ export default function LopHoc() {
             </label>
           </div>
 
+          {noStudents && (
+            <section aria-labelledby="lop-empty" data-lop-nhac className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[var(--kin-bo-the)] bg-[var(--kin-nen-bang)] p-4">
+              <div className="min-w-0 flex-1">
+                <h2 id="lop-empty" className="text-[length:var(--kin-co-tieu-de)] font-medium break-words">{noStudents.name} chưa có học sinh</h2>
+                <p className="pt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mời bằng mã lớp để học sinh tự vào, hoặc thêm từ danh sách để bắt đầu lên lịch.</p>
+              </div>
+              <Link href={`${classBase(noStudents.id)}/hoc-vien?muc=ma-moi`} className={kinButtonClass("secondary")}>Mời học sinh vào {noStudents.name}</Link>
+            </section>
+          )}
+
           <div className="mt-6">
             {shown.length === 0 ? (
               <KinEmptyState title="Không có lớp nào khớp" action={<button type="button" className={kinButtonClass("secondary")} onClick={() => { setQ(""); setCategory(""); setStatus(""); }}>Xoá bộ lọc</button>}>
@@ -98,13 +107,6 @@ export default function LopHoc() {
             ) : <ThuVienLop rows={shown} />}
           </div>
 
-          {noStudents && (
-            <section aria-labelledby="lop-empty" className="mt-8 max-w-xl">
-              <KinSectionHead id="lop-empty" title={`${noStudents.name} chưa có học sinh`} />
-              <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Mời bằng mã lớp để học sinh tự vào, hoặc thêm từ danh sách để bắt đầu lên lịch.</p>
-              <Link href={`${classBase(noStudents.id)}/hoc-vien?muc=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mời học sinh vào {noStudents.name}</Link>
-            </section>
-          )}
           <p className="mt-8 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Hiển thị {shown.length}/{all.length} lớp{filtering ? " theo bộ lọc" : ""}.</p>
         </>
       )}

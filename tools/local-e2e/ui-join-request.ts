@@ -94,7 +94,9 @@ async function mobileReport(page: Page) {
   await shot(tp, "bu01-gs-cho-duyet-1280");
   await Promise.all([tp.waitForURL(/duyet=ok/, { timeout: 60000 }), tp.getByRole("button", { name: "Duyệt Em Mai", exact: true }).click()]);
   check("303 về đúng lớp + tab Học sinh, mục Xin vào lớp + duyet=ok", tp.url().includes(`/lop-cua-toi/quan-lop/${A.id}/hoc-vien`) && tp.url().includes("muc=xin-vao"), tp.url());
-  await tp.getByText("Đã duyệt, bạn ấy đã vào lớp.").waitFor({ timeout: 60000 });
+  // quan-lop/** nằm dưới (tutor)/loading.tsx → Next STREAM trang: trong ~300ms đầu có thêm một bản ẨN của cùng khối trong <div id="S:n" hidden> (khay Suspense, tự dọn sau khi hoán đổi). Chờ bản HIỆN, rồi khẳng định chỉ còn đúng 1 bản sau khi ổn định.
+  await tp.getByText("Đã duyệt, bạn ấy đã vào lớp.").and(tp.locator(":visible")).first().waitFor({ timeout: 60000 });
+  await eventually("thông báo duyệt chỉ có MỘT bản trong DOM sau khi stream xong (không vẽ hai lần)", async () => (await tp.getByText("Đã duyệt, bạn ấy đã vào lớp.").count()) === 1);
   check("thông báo hiện, tab Học sinh đang mở, em Mai nay nằm trong danh sách lớp (nhãn 'Học sinh' sáng, nút danh bạ 1 em)", (await tp.getByRole("navigation", { name: /^Trang của/ }).locator("[aria-current=page]").innerText()).trim() === "Học sinh" && await tp.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Danh bạ" }).isVisible());
   await shot(tp, "bu01-gs-da-duyet-1280");
   check("DB: Enrollment active + yêu cầu approved", (await prisma.enrollment.count({ where: { courseId: A.id, userId: S1.id, status: "active" } })) === 1
@@ -118,7 +120,8 @@ async function mobileReport(page: Page) {
   await tp.locator("summary", { hasText: "Từ chối" }).first().click();
   await tp.getByLabel(/Lời nhắn cho bạn/).first().fill("Cô chưa xếp được chỗ, em thử lại tuần sau nhé.");
   await Promise.all([tp.waitForURL(/duyet=tuchoi/, { timeout: 60000 }), tp.getByRole("button", { name: "Xác nhận từ chối" }).first().click()]);
-  await tp.getByText("Đã từ chối.").waitFor({ timeout: 60000 });
+  await tp.getByText("Đã từ chối.").and(tp.locator(":visible")).first().waitFor({ timeout: 60000 }); // bản ẩn trong khay Suspense của trang stream: xem chú thích ở ca Duyệt
+  await eventually("thông báo từ chối chỉ có MỘT bản trong DOM sau khi stream xong", async () => (await tp.getByText("Đã từ chối.").count()) === 1);
   check("gia sư thấy 'Đã từ chối.' ở đúng tab (Học sinh, mục Xin vào lớp)", tp.url().includes("/hoc-vien") && tp.url().includes("muc=xin-vao"));
   await s2.goto(`${BASE}/student/nhap-ma-lop?code=${code2}`, { waitUntil: "networkidle" });
   await s2.locator("[data-join-rejected]").waitFor({ timeout: 60000 });

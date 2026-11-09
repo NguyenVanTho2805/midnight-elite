@@ -250,16 +250,18 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
 
   // ───────────────────── G3: khung giờ học ở trang quản khoá (tab Lịch học) ─────────────────────
   begin("G3", "lớp → khung giờ học");
-  section("G3. (đã ở trang quản khoá, tab 'Lịch học' mở sẵn) → '+ Thêm khung giờ'");
-  await p.getByRole("button", { name: "+ Thêm khung giờ" }).waitFor({ timeout: 90000 });
-  await click(p.getByRole("button", { name: "+ Thêm khung giờ" }));
+  section("G3. (GS-LOP-GON: tab 'Lịch học' của lớp = /quan-lop/<id>/lich-hoc, lưới LichKhung) → 'Thêm khung giờ'");
+  await p.getByRole("button", { name: "Thêm khung giờ", exact: true }).waitFor({ timeout: 90000 });
+  await click(p.getByRole("button", { name: "Thêm khung giờ", exact: true }));
   sub("form thêm khung giờ");
   const rSched = await req(p, "khung giờ học (form thêm)", "Thứ / giờ bắt đầu / giờ kết thúc đều CÓ SẴN giá trị mặc định (Thứ 2, 19:00–21:00); không ô nào có dấu *");
   const dow = dayOfWeekOfKey(vnDateKeyOf(new Date()));
-  const form = p.locator("div.rounded-xl", { hasText: "Giờ bắt đầu" }).filter({ hasText: "Link vào lớp" }).last();
+  // GS-LOP-GON: khung giờ thêm bằng hộp thoại của WeekScheduleEditor (lưới LichKhung): Thứ / Bắt đầu / Kết thúc là ô xổ (giá trị = phút trong ngày), không còn input[type=time].
+  const form = p.locator("[data-block-panel]").filter({ hasText: "Link vào lớp" }).last();
+  await form.waitFor({ timeout: 60000 });
   await pick(form.locator("select").first(), dow);
-  await typeIn(form.locator('input[type="time"]').nth(0), "19:00");
-  await typeIn(form.locator('input[type="time"]').nth(1), "20:30");
+  await pick(form.locator("#sched-s"), 19 * 60);
+  await pick(form.locator("#sched-e"), 20 * 60 + 30);
   await click(p.getByRole("button", { name: "Lưu khung giờ" }));
   await eventually("DB: khung giờ đã lưu cho lớp", async () => (await prisma.classSchedule.count({ where: { courseId: course.id, startTime: "19:00", endTime: "20:30", dayOfWeek: dow } })) === 1, 60000);
   await eventually("khung giờ hiện trên trang", async () => (await body()).includes("19:00"), 30000);
@@ -268,12 +270,9 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // ───────────────────── G4: Mời cả lớp một lần (tab Mã mời của lớp) ─────────────────────
   begin("G4", "khung giờ → mời cả lớp");
   section("G4. Tới trang lớp /lop-cua-toi/<lớp> → tab 'Mã mời' → 'Mời cả lớp một lần'");
-  // NC2-029: nút "Mở lớp" ngay ở trang quản khoá (trước đây phải đi Khác → Cài đặt → bật module Lớp → Lớp → thẻ lớp).
-  const moLop = p.getByRole("link", { name: "Mở lớp", exact: true });
-  check("trang quản khoá có nút 'Mở lớp' trỏ tới trang lớp", (await moLop.count()) === 1 && (await moLop.getAttribute("href")) === `/lop-cua-toi/${course.id}`);
-  await click(moLop);
-  console.log("    (đường tới trang lớp: nút 'Mở lớp' ở trang quản khoá)");
-  await eventually("tới /lop-cua-toi/quan-lop/<lớp>/giao-trinh (GS-LOP-GON: mở lớp vào Giáo trình)", () => at().pathname === `/lop-cua-toi/quan-lop/${course.id}/giao-trinh`, 120000);
+  // GS-LOP-GON (spec 1.1): trang quản khoá của gia sư là CHÍNH trang lớp — bỏ nút "Mở lớp" (nó dẫn về chính trang đang chuyển hướng). Gia sư ở sẵn trong lớp, bấm thẳng tab "Học sinh" của dải tab MỘT lần.
+  check("trang lớp KHÔNG còn nút 'Mở lớp' trỏ về chính nó (không vòng lặp); có dải tab 'Trang của …'", (await p.getByRole("link", { name: "Mở lớp", exact: true }).count()) === 0 && (await p.getByRole("navigation", { name: /^Trang của/ }).count()) === 1);
+  check("đang ở tab Lịch học của đúng lớp vừa tạo", at().pathname === `/lop-cua-toi/quan-lop/${course.id}/lich-hoc`, at().pathname);
   await click(p.getByRole("navigation", { name: /^Trang của/ }).getByRole("link", { name: "Học sinh", exact: true }));
   await click(p.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Mã mời", exact: true }));
   sub("mục 'Mã mời' của tab Học sinh (có sẵn khối 'Mời cả lớp một lần')");
@@ -288,8 +287,10 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await codeEl.waitFor({ timeout: 60000 });
   const code = (await codeEl.innerText()).trim();
   end();
-  const inv = await prisma.classInvite.findFirst({ where: { courseId: course.id } });
-  check("DB: đúng MỘT mã mời cho lớp, đúng mã trên màn hình, 3 lượt", (await prisma.classInvite.count({ where: { courseId: course.id } })) === 1 && inv?.code === code && inv?.maxUses === 3, { code, inv });
+  // Từ 08/11 (10a109db / 6c248bdd) lớp dùng mã có sẵn MỘT mã lớp dài hạn (kind=class, không giới hạn lượt) ngay khi tạo; "Mời cả lớp một lần" thêm đúng MỘT mã lô có giới hạn 3 lượt. Đếm riêng từng loại.
+  const invs = await prisma.classInvite.findMany({ where: { courseId: course.id } });
+  const inv = invs.find(i => i.maxUses !== null);
+  check("DB: đúng MỘT mã mời lô (3 lượt, đúng mã trên màn hình) + đúng MỘT mã lớp dài hạn tự tạo khi tạo lớp", invs.filter(i => i.maxUses !== null).length === 1 && invs.filter(i => i.maxUses === null).length === 1 && inv?.code === code && inv?.maxUses === 3, { code, invs });
   check("3 dòng phụ huynh hiện ra, chưa mở Zalo", (await p.getByRole("list", { name: "Phụ huynh cần nhắn" }).getByRole("listitem").count()) === 3);
 
   // ───────────────────── G5: Hộp việc ─────────────────────

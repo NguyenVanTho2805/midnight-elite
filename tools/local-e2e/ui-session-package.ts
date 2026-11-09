@@ -34,13 +34,17 @@ const COURSE_BASE = {
     && (await p.getByRole("heading", { name: "Gói buổi trả trước" }).count()) === 0 && (await p.getByRole("button", { name: "Lập gói…" }).count()) === 0;
 
   section("Lớp cũ: không có mục gói buổi");
-  await page.goto(`${BASE}/lop-cua-toi/${legacy.id}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
+  // GS-LOP-GON: đường cũ ?tab=hoc-phi → 307 → quan-lop/<id>?tab=cai-dat&muc=hoc-phi. Đi THẲNG đích mới; ca 307 kiểm riêng ở dưới.
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${legacy.id}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
   check("lớp tính theo số buổi trong tháng: KHÔNG có 'Gói buổi trả trước'", await noGoiBuoi(page));
 
   section("Lớp theo buổi: mục gói buổi đã ẩn, phần học phí còn nguyên");
+  // Lớp theo buổi (LopHocPhi chế độ mới, HOCPHI-THEO-BUOI 05/11) không còn tiêu đề "Học phí và đối soát" (chỉ lớp cách cũ có): chờ mục "Cách tính hiện tại" của chính LopHocPhi.
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${cid}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
+  await page.getByRole("heading", { name: "Cách tính hiện tại" }).waitFor({ timeout: 90000 });
   await page.goto(`${BASE}/lop-cua-toi/${cid}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
-  await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  check("đường cũ /lop-cua-toi/<id>?tab=hoc-phi → 307 → quan-lop/<id>?tab=cai-dat&muc=hoc-phi (vẫn ra đúng mục Học phí)", page.url().includes(`/lop-cua-toi/quan-lop/${cid}`) && page.url().includes("tab=cai-dat") && page.url().includes("muc=hoc-phi") && await page.getByRole("heading", { name: "Cách tính hiện tại" }).isVisible(), page.url());
   check("tab Học phí của lớp theo buổi: KHÔNG có 'Gói buổi trả trước', không có nút 'Lập gói…', không có chữ 'Sổ buổi, không phải thu tiền'", await noGoiBuoi(page) && (await page.getByText("Sổ buổi, không phải thu tiền").count()) === 0);
 
   section("Dữ liệu gói vẫn dựng được qua API (API giữ nguyên) nhưng giao diện không hiện");
@@ -52,7 +56,7 @@ const COURSE_BASE = {
   await api("POST", `/api/courses/${cid}/sessions/${d}/close`, { as: T, body: { action: "close" } });
   check("chốt buổi vẫn trừ gói ở DB (đã dùng 1)", (await prisma.sessionPackageUse.count({ where: { reversedAt: null } })) === 1);
   await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  await page.getByRole("heading", { name: "Cách tính hiện tại" }).waitFor({ timeout: 90000 });
   check("có gói và đã trừ buổi trong DB, tab Học phí VẪN không hiện mục gói buổi (không 'đã dùng 1 · còn 4', không 'Huỷ gói')", await noGoiBuoi(page) && (await page.getByText(/còn 4/).count()) === 0 && (await page.getByRole("button", { name: "Huỷ gói" }).count()) === 0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check("390px: tab Học phí không tràn ngang", overflow <= 0, overflow);
@@ -84,8 +88,8 @@ const COURSE_BASE = {
   section("1440px");
   const wctx = await ctxFor(T, { width: 1440, height: 900 });
   const wp = await wctx.newPage();
-  await wp.goto(`${BASE}/lop-cua-toi/${cid}?tab=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
-  await wp.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
+  await wp.goto(`${BASE}/lop-cua-toi/quan-lop/${cid}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "networkidle", timeout: 120000 });
+  await wp.getByRole("heading", { name: "Cách tính hiện tại" }).waitFor({ timeout: 90000 });
   check("1440px: tab Học phí không có mục gói buổi, không tràn ngang", await noGoiBuoi(wp) && (await wp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
   check("không lỗi trình duyệt", errors.length === 0, errors);
   await closeAll();

@@ -1,7 +1,7 @@
 // GS-LOP-GON (09/11/2026) — THƯ VIỆN LỚP: thẻ lớp dạng lưới thay cho bảng 5 cột của "Lớp học" (chủ dùng bản thật: "khó dùng, ẩu"). Mỗi thẻ: ảnh bìa 16:9 (Course.bg dạng url https,
 // đã lọc ở máy chủ — không có ảnh hoặc ảnh lỗi thì ô chữ cái đầu của tên lớp trên nền token), tên lớp, môn · số học sinh, lịch cố định, nhãn trạng thái bằng CHỮ
 // ("Đang nhận học viên" / "Tạm ngừng" / "Đã đóng", thêm "đang ẩn"), tiến độ đã điểm danh. Cả thẻ bấm được (mở Giáo trình của lớp); nút phụ "Mời học sinh" (lớp chưa có em) và "Đặt lịch" (chưa có lịch) ≥ 44px.
-// Cột: 1 ở 390/320 (lịch xuống dòng đủ chữ, không cắt — đặc tả 6.3), 2 từ 768, 3 từ 1280, 4 từ 1440. Thẻ KHÔNG có tên học sinh, liên lạc hay tiền.
+// Cột: 1 ở 390/320 (lịch xuống dòng đủ chữ, không cắt — đặc tả 6.3), 2 từ 768, 3 từ 1280 (khung Figma 1600 cũng 3 cột, không 4). Thẻ KHÔNG có tên học sinh, liên lạc hay tiền.
 "use client";
 import Link from "next/link";
 import { useState } from "react";
@@ -32,7 +32,7 @@ function Cover({ row }: { row: TutorClassRow }) {
 
 export default function ThuVienLop({ rows }: { rows: TutorClassRow[] }) {
   return (
-    <ul aria-label="Danh sách lớp" data-thu-vien-lop className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 min-[1440px]:grid-cols-4">
+    <ul aria-label="Danh sách lớp" data-thu-vien-lop className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {rows.map(c => {
         const base = classBase(c.id);
         const empty = c.students === 0;
@@ -54,7 +54,7 @@ export default function ThuVienLop({ rows }: { rows: TutorClassRow[] }) {
               <p className={`text-[length:var(--kin-co-goc)] leading-5 ${c.sessionsTaught > 0 ? "tabular-nums" : "text-[var(--kin-chu-mo)]"}`}>{c.sessionsTaught > 0 ? `${c.sessionsTaught} buổi đã điểm danh` : "Chưa bắt đầu"}</p>
               <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
                 {/* liên kết "Mở lớp" trải cả thẻ (::after phủ kín); các nút phụ khác nằm trên nó (relative z-10) */}
-                <Link href={giaoTrinhHref(c.id, true)} aria-label={`Mở lớp ${c.name}`} className={`${kinButtonClass("secondary")} flex-1 after:absolute after:inset-0 after:content-[''] sm:flex-none`}>Mở lớp</Link>
+                <Link href={giaoTrinhHref(c.id, true)} aria-label={`Mở lớp ${c.name}`} className={`${kinButtonClass("secondary")} flex-1 after:absolute after:inset-0 after:content-[''] sm:flex-none`}>Mở lớp <span aria-hidden>→</span></Link>
                 {empty && <Link href={`${base}/hoc-vien?muc=ma-moi`} aria-label={`Mời học sinh vào ${c.name}`} className={`${kinButtonClass("primary")} relative z-10 flex-1 sm:flex-none`}>Mời học sinh</Link>}
                 {!c.schedule && <Link href={`${base}/lich-hoc`} aria-label={`Đặt lịch cho lớp ${c.name}`} className="relative z-10 inline-flex min-h-11 items-center text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] hover:underline">Đặt lịch</Link>}
               </div>

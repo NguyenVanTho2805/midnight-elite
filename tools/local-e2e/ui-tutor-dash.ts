@@ -85,7 +85,8 @@ let seq = 700;
   check("việc khẩn (đối soát) đứng đầu danh sách", todoText.indexOf("Khoản tiền vào cần đối soát") < todoText.indexOf("Báo cáo cộng đồng"));
   check("thẻ lớp Toán 9: 2/2 học viên, đã đầy", await page.getByText("2/2").first().isVisible() && await page.getByText(/đã đầy/).isVisible());
   check("thẻ lớp Lý 9: trạng thái 'Đã đóng'", await page.getByText(/Lý 9/).first().isVisible() && await page.getByText(/Đã đóng/).first().isVisible());
-  check("thẻ có nút Điểm danh và nhãn 'Danh bạ lớp' (không còn 'Danh sách HS')", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2 && (await page.getByRole("link", { name: "Danh bạ lớp" }).count()) === 2 && (await page.getByText("Danh sách HS").count()) === 0);
+  // GS-LOP-GON: nhãn lối tắt trên thẻ lớp đổi "Danh bạ lớp" → "Học sinh" (tab Học sinh của trang lớp). Vẫn đòi: 2 thẻ × (Điểm danh + Học sinh → /quan-lop/<id>/hoc-vien), không còn 'Danh bạ lớp' / 'Danh sách HS'.
+  check("thẻ có nút Điểm danh và nút 'Học sinh' (tab Học sinh của lớp; không còn 'Danh bạ lớp' / 'Danh sách HS')", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2 && (await page.locator('a[href^="/lop-cua-toi/quan-lop/"][href$="/hoc-vien"]', { hasText: "Học sinh" }).count()) === 2 && (await page.getByRole("link", { name: "Danh bạ lớp" }).count()) === 0 && (await page.getByText("Danh sách HS").count()) === 0);
   check("Tổng quan không còn dải 'Lối tắt'", (await page.getByRole("navigation", { name: "Lối tắt" }).count()) === 0);
   check("Hộp việc tắt: bảng Khác còn mục 'Tổng quan'", await (async () => { await page.getByRole("button", { name: "Khác" }).first().click(); const t = await page.locator("#khac-bang").innerText(); await page.keyboard.press("Escape"); return /Tổng quan/.test(t); })());
   await shot(page, "dash-tutor");
@@ -184,7 +185,7 @@ let seq = 700;
   const inv = await prisma.classInvite.findFirst({ where: { courseId: c1.id } });
   check("DB: mã 8 ký tự, maxUses 2, hết hạn ~7 ngày", inv?.code.length === 8 && inv.maxUses === 2 && Math.abs((inv.expiresAt!.getTime() - Date.now()) - 7 * 86400000) < 3600000, inv);
   await eventually("danh sách hiện mã + 'Đang dùng được' + 0/2 lượt", async () => (await page.getByText(inv!.code).isVisible()) && (await page.getByText("Đang dùng được").isVisible()) && (await page.getByText(/Đã dùng 0\/2 lượt/).isVisible()));
-  await page.getByRole("button", { name: "Sao chép link" }).click();
+  await page.getByRole("button", { name: "Sao chép link", exact: true }).click(); // exact: khối "Cách học sinh vào lớp" (BU-01) cũng có nút "Sao chép link trang lớp" cùng trang
   await page.getByText("Đã sao chép link mời.").waitFor({ timeout: 10000 });
   const link = await page.evaluate(() => navigator.clipboard.readText());
   check("link mời = /student/nhap-ma-lop?code=<mã>", link.endsWith(`/student/nhap-ma-lop?code=${inv!.code}`), link);
