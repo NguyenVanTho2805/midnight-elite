@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { FEE_MODE_SHEET, normalizeFeeMode } from "@/lib/tuitionFee";
 import { moneyPathsBlocked } from "@/lib/feeChargeServer";
 import { validatePeriodStartDay, validateSubjects, validateTiers, type Tier } from "@/lib/hocPhiSheet";
-import { auditSheetWrite, moneyHistoryOf, previewBlocked, sheetFail, sheetGate, sheetOk } from "@/lib/hocPhiSheetServer";
+import { auditSheetWrite, enableBlockOf, msgSharesLegacy, previewBlocked, sheetFail, sheetGate, sheetOk } from "@/lib/hocPhiSheetServer";
 import type { Prisma } from "@/generated/prisma/client";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {
@@ -33,8 +33,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ cour
   const isSheet = previousFeeMode === FEE_MODE_SHEET;
 
   if (!isSheet && !enable) {
-    const h = await moneyHistoryOf(acc.course.id);
-    return sheetFail(409, "Lớp này không tính học phí theo bảng tháng.", "NOT_SHEET_MODE", { canEnable: h.feeCharges === 0 && h.monthlyFees === 0 });
+    const b = await enableBlockOf(acc.course);
+    return sheetFail(409, "Lớp này không tính học phí theo bảng tháng.", "NOT_SHEET_MODE", { canEnable: b.canEnable, enableBlockedReason: b.reason, sharedStudents: b.sharedStudents });
   }
 
   type Out = { ok: true; config: { subjects: string[]; tiers: Tier[]; periodStartDay: number } } | { ok: false; res: ReturnType<typeof sheetFail> };
@@ -45,17 +45,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ cour
     const nowSheet = normalizeFeeMode(course?.feeMode) === FEE_MODE_SHEET;
     if (!nowSheet) {
       if (!enable) return { ok: false, res: sheetFail(409, "Lớp này không tính học phí theo bảng tháng.", "NOT_SHEET_MODE") };
-      const h = await moneyHistoryOf(acc.course.id, tx);
-      if (h.feeCharges > 0 || h.monthlyFees > 0) {
-        return { ok: false, res: sheetFail(409, "Lớp đã phát sinh học phí nên không chuyển sang bảng tháng được. Hãy tạo lớp mới.", "HAS_MONEY_HISTORY", h) };
+      const b = await enableBlockOf({ id: acc.course.id, ownerId: acc.course.ownerId, feeMode: course?.feeMode }, tx);
+      if (b.reason === "HAS_MONEY_HISTORY") {
+        return { ok: false, res: sheetFail(409, "Lớp đã phát sinh học phí nên không chuyển sang bảng tháng được. Hãy tạo lớp mới.", "HAS_MONEY_HISTORY", { feeCharges: b.feeCharges, monthlyFees: b.monthlyFees }) };
+      }
+      // Lật feeMode làm lớp rời legacyEnrollments → em học thêm lớp cách cũ khác rơi bậc đơn giá ở các phiếu chưa lập của lớp đó. Dừng trước khi lật.
+      if (b.reason === "SHARES_LEGACY_STUDENTS") {
+        return { ok: false, res: sheetFail(409, msgSharesLegacy(b.sharedStudents), "SHARES_LEGACY_STUDENTS", { sharedStudents: b.sharedStudents }) };
       }
       await tx.course.update({ where: { id: acc.course.id }, data: { feeMode: FEE_MODE_SHEET } });
     }
-    const cur = await tx.courseFeeTable.findUnique({ where: { courseId: acc.course.id }, select: { periodStartDay: true } });
+    const cur = await tx.courseFeeTable.findUnique({ where: { courseId: acc.course.id }, select: { periodStartDay: true, subjects: true } });
     const day = startDay ?? cur?.periodStartDay ?? 1;
-    if (day !== (cur?.periodStartDay ?? 1)) {
+    const dayChanged = day !== (cur?.periodStartDay ?? 1);
+    // Dòng cũ lưu `sessions` theo NHÃN môn: bỏ / đổi nhãn một môn đã có thì dòng cũ hiện 0 buổi mà Phải đóng vẫn có số. So nhãn đúng từng ký tự (đổi hoa / thường cũng lệch khoá).
+    const droppedSubject = !!cur && cur.subjects.some(s => !sub.value.includes(s));
+    if (dayChanged || droppedSubject) {
       const rows = await tx.courseFeeSheetRow.count({ where: { courseId: acc.course.id } });
-      if (rows > 0) return { ok: false, res: sheetFail(409, "Lớp đã có dòng học phí nên không đổi ngày bắt đầu kỳ thu được.", "HAS_ROWS", { rows }) };
+      if (rows > 0 && dayChanged) return { ok: false, res: sheetFail(409, "Lớp đã có dòng học phí nên không đổi ngày bắt đầu kỳ thu được.", "HAS_ROWS", { rows }) };
+      if (rows > 0) return { ok: false, res: sheetFail(409, "Lớp đã có dòng học phí nên không đổi tên hay bỏ môn đã có dòng học phí; thêm môn mới hoặc đổi bậc thì được.", "HAS_ROWS", { rows }) };
     }
     const data = { subjects: sub.value, tiers: tiers.value as unknown as Prisma.InputJsonValue, periodStartDay: day, updatedBy: acc.session.userId };
     await tx.courseFeeTable.upsert({ where: { courseId: acc.course.id }, create: { courseId: acc.course.id, ...data }, update: data });

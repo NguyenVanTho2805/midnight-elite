@@ -67,6 +67,9 @@ function normSessions(v: unknown): Record<string, number> {
 }
 function normSource(v: unknown): SubjectCountSource | null { return v === "file" || v === "counted" ? v : null; }
 
+/** Kết quả PUT /dong/<em> (máy chủ luôn trả 200 kèm cờ): chỉ `applied === true` mới là đã ghi; `unchanged` = số trùng lần ghi trước; dryRun luôn applied:false. */
+export interface SheetDongResult { applied?: boolean; unchanged?: boolean; dryRun?: boolean }
+
 /** Các trường tính toán chung của một dòng (bảng tháng, xem trước, dryRun đều dùng). */
 function calc(r: Raw) {
   return {

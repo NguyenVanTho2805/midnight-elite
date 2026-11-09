@@ -32,7 +32,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await wipe();
   const today = vnDateKeyOf(new Date());
   const ym = today.slice(0, 7);
-  const ymPrev = shiftYm(ym, -1), ymPrev2 = shiftYm(ym, -2), ymPrev3 = shiftYm(ym, -3), ymNext = shiftYm(ym, 1);
+  const ymPrev = shiftYm(ym, -1), ymPrev2 = shiftYm(ym, -2), ymPrev3 = shiftYm(ym, -3), ymPrev4 = shiftYm(ym, -4), ymNext = shiftYm(ym, 1);
 
   const T = await mkTutor("Cô Lan");
   const other = await mkTutor("Cô Khác");
@@ -127,7 +127,10 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
     const f = fill[String(row.getCell(col["Họ tên"]).value ?? "").trim()];
     if (f) for (const [k, v] of Object.entries(f)) row.getCell(col[k]).value = v;
   });
-  // Mẫu xuất MỌI em đang học (kể cả hai em "Hà Nhi" trùng tên, để trống): cô xoá hàng của em không thu tháng này trước khi nạp lại (hàng trống mà giữ lại vẫn được máy chủ ghi thành dòng 0đ).
+  // Mẫu xuất MỌI em đang học (kể cả hai em "Hà Nhi" trùng tên, để trống). Máy chủ BỎ QUA hàng chỉ có Mã em / Họ tên (không số nào): em đó hiện ở "chưa nhập", KHÔNG thành dòng 0đ.
+  // Nên lưu HAI bản: bản giữ nguyên hàng trống (ca kiểm "không xoá hàng trống" bên dưới) và bản cô xoá tay 2 hàng Hà Nhi (luồng chính).
+  const filledKeep = join(OUT, "hp-lt-dien-giu-hang-trong.xlsx");
+  await wb.xlsx.writeFile(filledKeep);
   const drop: number[] = [];
   ws.eachRow((row, n) => { if (n > 1 && String(row.getCell(col["Họ tên"]).value ?? "").trim() === "Hà Nhi") drop.push(n); });
   for (const n of drop.sort((x, y) => y - x)) ws.spliceRows(n, 1);
@@ -194,6 +197,20 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   const ids = prevRows.map(r => r.studentId);
   check("DB: ghi đúng 3 em (Mai Anh, Minh Khôi theo lựa chọn, 1 em Hà Nhi theo lựa chọn); Bảo Châu dòng sai không ghi", prevRows.length === 3 && ids.includes(S["Mai Anh"].id) && ids.includes(S["Minh Khôi"].id) && (ids.includes(hn1.id) || ids.includes(hn2.id)) && !ids.includes(S["Bảo Châu"].id), ids);
 
+  // ───────────────────────── Nạp lại mẫu KHÔNG xoá hàng trống ─────────────────────────
+  section("Mẫu giữ nguyên hàng trống: máy chủ bỏ qua hàng chỉ có tên, em trống KHÔNG thành dòng 0đ");
+  await p.goto(nhapUrl(C.id, ymPrev4), { waitUntil: "networkidle", timeout: 120000 });
+  await p.locator("#bhn-file").waitFor({ timeout: 90000 });
+  await p.setInputFiles("#bhn-file", filledKeep);
+  await p.getByRole("button", { name: "Xem trước" }).click();
+  await p.locator("[data-bhn-preview]").waitFor({ timeout: 60000 });
+  check("giữ hàng trống: 'Sẽ ghi 5 dòng' (chỉ các em đã điền), không có dòng 'Trùng tên' từ hai em Hà Nhi trống", /Sẽ ghi 5 dòng/.test(await p.locator("[data-bhn-footer]").innerText()) && (await p.locator("[data-bhn-row=ambiguous]").count()) === 0, await p.locator("[data-bhn-footer]").innerText());
+  await p.getByRole("button", { name: "Xác nhận ghi 5 dòng" }).click();
+  await p.locator("[data-bhn-done]").waitFor({ timeout: 60000 });
+  const keptRows = await prisma.courseFeeSheetRow.findMany({ where: { courseId: C.id, yearMonth: ymPrev4 } });
+  const keptIds = keptRows.map(r => r.studentId);
+  check("DB: đúng 5 dòng, hai em Hà Nhi (hàng trống) KHÔNG có dòng 0đ", keptRows.length === 5 && !keptIds.includes(hn1.id) && !keptIds.includes(hn2.id), { n: keptRows.length });
+
   // ───────────────────────── Panel sửa một em ─────────────────────────
   section("Panel sửa một em: dòng công thức sống, Số môn, 0đ, gỡ dòng");
   await p.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
@@ -207,16 +224,15 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await eventually("đơn giá riêng thắng bậc: 13 buổi × 45.000đ = 585.000đ … = 535.000đ + chữ 'đơn giá riêng của em'", async () => { const t = await p.locator("[data-bh-cong-thuc]").innerText(); return /13 buổi × 45\.000đ = 585\.000đ/.test(t) && /535\.000đ/.test(t) && /đơn giá riêng của em/.test(t); }, 15000);
   check("chưa bấm lưu: DB giữ 610.000 (dryRun không ghi)", (await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } })).net === 610000);
   await shot(p, `hp-lt-${DW}-panel-em`);
-  const putLog: string[] = [];
-  const onReq = (rq: import("playwright").Request) => { if (rq.method() === "PUT" && /bang-hoc-phi\/dong\//.test(rq.url())) putLog.push(`${/"dryRun":true/.test(rq.postData() ?? "") ? "dry" : "SAVE"}@${Date.now() % 100000}`); };
-  const onRes = async (rs: import("playwright").Response) => { const rq = rs.request(); if (rq.method() === "PUT" && /bang-hoc-phi\/dong\//.test(rq.url())) putLog.push(`resp ${rs.status()} req=${(rq.postData() ?? "").slice(0, 260)} res=${(await rs.text().catch(() => "")).slice(0, 420)}`); };
-  p.on("request", onReq); p.on("response", onRes);
-  await p.getByRole("button", { name: "Lưu học phí" }).click();
-  await p.locator("[data-bh-panel]").waitFor({ state: "detached", timeout: 20000 }).catch(() => undefined);
-  await new Promise(r => setTimeout(r, 1500));
-  p.off("request", onReq); p.off("response", onRes);
+  const [saveRes] = await Promise.all([
+    p.waitForResponse(r => r.request().method() === "PUT" && /bang-hoc-phi\/dong\//.test(r.url()) && !/"dryRun":true/.test(r.request().postData() ?? ""), { timeout: 30000 }),
+    p.getByRole("button", { name: "Lưu học phí" }).click(),
+  ]);
+  const saveJson = await saveRes.json().catch(() => ({})) as { applied?: boolean };
+  check("lưu panel: PUT thật (không dryRun) trả 200 và applied === true", saveRes.status() === 200 && saveJson.applied === true, { status: saveRes.status(), saveJson });
+  await p.locator("[data-bh-panel]").waitFor({ state: "detached", timeout: 20000 }); // không nuốt timeout: panel phải đóng sau khi lưu
   const maiNet = (await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } })).net;
-  check("lưu xong: DB Mai Anh 535.000 và panel đóng", maiNet === 535000 && (await p.locator("[data-bh-panel]").count()) === 0, { maiNet, panelCount: await p.locator("[data-bh-panel]").count(), putLog });
+  check("lưu xong: DB Mai Anh 535.000 và panel đóng", maiNet === 535000 && (await p.locator("[data-bh-panel]").count()) === 0, { maiNet, panelCount: await p.locator("[data-bh-panel]").count() });
   await p.locator(`[data-bh-row="${S["Tuấn Kiệt"].id}"]`).click();
   await p.locator("[data-bh-panel]").waitFor({ timeout: 30000 });
   await eventually("Phải đóng 0đ: panel nói KiN không tạo khoản phí", async () => /Phải đóng 0đ nên KiN không tạo khoản phí/.test(await p.locator("[data-bh-cong-thuc]").innerText()), 15000);
@@ -224,6 +240,14 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   check("gỡ dòng hỏi bằng KinConfirm (hộp thoại của KiN), không window.confirm", await p.getByRole("dialog").isVisible());
   await p.getByRole("dialog").getByRole("button", { name: "Gỡ học phí", exact: true }).click();
   await eventually("DB: dòng Tuấn Kiệt đã gỡ", async () => (await prisma.courseFeeSheetRow.count({ where: { courseId: C.id, studentId: S["Tuấn Kiệt"].id, yearMonth: ym } })) === 0, 20000);
+
+  // Em đã rời lớp (còn dòng học phí nhưng hết học): máy chủ từ chối PUT /dong (404), nên giao diện không được mở panel sửa.
+  await prisma.enrollment.updateMany({ where: { courseId: C.id, userId: S["Gia Hân"].id }, data: { status: "removed" } });
+  await p.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
+  const leftTr = p.locator("[data-bh-tr]", { hasText: "Gia Hân" });
+  await leftTr.waitFor({ timeout: 60000 });
+  check("em đã rời lớp: còn dòng, ghi 'Đã rời lớp', tên KHÔNG phải nút sửa, không mở được panel", /Đã rời lớp/.test(await leftTr.innerText()) && (await p.locator(`[data-bh-row="${S["Gia Hân"].id}"]`).count()) === 0 && (await p.locator("[data-bh-panel]").count()) === 0);
+  await prisma.enrollment.updateMany({ where: { courseId: C.id, userId: S["Gia Hân"].id }, data: { status: "active" } });
 
   // ───────────────────────── Ba trạng thái ─────────────────────────
   section("Ba trạng thái: tải · lỗi + Thử lại · rỗng (3 loại) · tệp bị từ chối");

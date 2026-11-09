@@ -10,7 +10,8 @@ import { KinMoney } from "@/components/kin/MoneyVisibility";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi, useNotify } from "@/components/tutor/shared";
-import { normCalc, sheetErrorText, sourceText, vndText, type SheetCalc, type SheetConfig, type SheetRow } from "@/components/tutor/bangHocPhiTypes";
+import BangHocPhiChu from "@/components/tutor/BangHocPhiChu";
+import { normCalc, sheetErrorText, sourceText, vndText, type SheetCalc, type SheetConfig, type SheetDongResult, type SheetRow } from "@/components/tutor/bangHocPhiTypes";
 
 const digits = (s: string) => s.replace(/[^\d]/g, "");
 const asNum = (s: string) => (s === "" ? 0 : Number(s));
@@ -81,11 +82,13 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
     if (busy || locked) return;
     if (!anySessions && asNum(free) === 0) { setErr("Cô nhập số buổi của ít nhất một môn."); return; }
     setBusy("save"); setErr(null);
-    const r = await callApi<{ code?: string }>(url, { method: "PUT", body: JSON.stringify(body) });
+    const r = await callApi<{ code?: string } & SheetDongResult>(url, { method: "PUT", body: JSON.stringify(body) });
     setBusy(null);
     if (!r.ok) { setErr(sheetErrorText(r.status, r.data)); return; }
-    notify.ok("Đã lưu học phí của em.");
-    onSaved();
+    // Máy chủ trả 200 cả khi KHÔNG ghi (số không đổi, hoặc dryRun): chỉ nói "Đã lưu" khi applied === true.
+    if (r.data.applied === true) { notify.ok("Đã lưu học phí của em."); onSaved(); return; }
+    if (r.data.unchanged === true) { notify.info("Số liệu không đổi so với lần ghi trước."); onSaved(); return; }
+    setErr("Chưa lưu được học phí của em, cô thử lại nhé.");
   }
   async function remove() {
     if (busy || locked) return;
@@ -170,7 +173,7 @@ export default function BangHocPhiDong({ courseId, ym, periodLabel, config, row,
                 </>
               : <p className="pt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang tính…</p>}
         {live.state === "ok" && live.calc?.net === 0 && <p className="pt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">Phải đóng 0đ nên KiN không tạo khoản phí cho em này.</p>}
-        {(live.warnings ?? []).map((w, i) => <p key={i} className="pt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">{w}</p>)}
+        {(live.warnings ?? []).map((w, i) => <p key={i} className="pt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)] break-words"><BangHocPhiChu text={w} /></p>)}
       </div>
 
       {err && <p role="alert" data-bh-loi className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</p>}

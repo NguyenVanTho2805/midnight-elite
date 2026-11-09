@@ -19,6 +19,7 @@ import { KinMoney } from "@/components/kin/MoneyVisibility";
 import { Badge, callApi, invoiceTone } from "@/components/tutor/shared";
 import BangHocPhiCauHinh from "@/components/tutor/BangHocPhiCauHinh";
 import BangHocPhiDong from "@/components/tutor/BangHocPhiDong";
+import BangHocPhiChu from "@/components/tutor/BangHocPhiChu";
 import {
   YM_RANGE_MONTHS, capFirst, currentYmVn, isYm, normConfig, normSheet, periodText, sessionsText, shiftYm, sheetErrorText, sourceShort, useIsWide, useMinWidth, vndText,
   type SheetConfig, type SheetData, type SheetRow,
@@ -113,15 +114,15 @@ export default function LopBangHocPhi({ courseId, readOnly = false }: { courseId
   // Điện thoại / máy hẹp: panel là CẢ MÀN (không hộp thoại nhỏ), đóng thì về bảng.
   if (sidePanel && !split) return <div data-bh-tab data-bh-panel-full>{sidePanel}</div>;
 
-  const openRow = (r: SheetRow) => { if (!readOnly) setPanel({ ym, kind: "row", studentId: r.studentId }); };
+  const openRow = (r: SheetRow) => { if (!readOnly && !r.left) setPanel({ ym, kind: "row", studentId: r.studentId }); };
 
   const nameCell = (r: SheetRow) => (
     <>
-      {readOnly || !cfg
+      {readOnly || !cfg || r.left // em đã rời lớp: máy chủ từ chối ghi (404), nên không mở panel sửa
         ? <span className="font-medium break-words">{r.name}</span>
         : <button type="button" data-bh-row={r.studentId} onClick={() => openRow(r)} aria-label={`Sửa học phí của ${r.name}`} className="inline-flex items-center min-h-11 text-left font-medium text-[var(--kin-nhan-link)] hover:underline break-words">{r.name}</button>}
       {r.left && <span className="block text-[length:var(--kin-co-phu)] font-normal text-[var(--kin-chu-mo)]">Đã rời lớp</span>}
-      {r.warnings.map((w, i) => <span key={i} className="block text-[length:var(--kin-co-phu)] font-normal text-[var(--kin-tt-chu-cho)]">{w}</span>)}
+      {r.warnings.map((w, i) => <span key={i} className="block text-[length:var(--kin-co-phu)] font-normal text-[var(--kin-tt-chu-cho)]"><BangHocPhiChu text={w} /></span>)}
     </>
   );
   const invoiceCell = (r: SheetRow) => {
@@ -237,8 +238,8 @@ export default function LopBangHocPhi({ courseId, readOnly = false }: { courseId
     body = (
       <div data-bh-state="empty-students">
         <KinEmptyState title="Lớp chưa có học sinh"
-          action={<a href={`/lop-cua-toi/${encodeURIComponent(courseId)}?tab=hoc-sinh`} className={kinButtonClass("secondary")}>Mở tab Học sinh</a>}>
-          Thêm học sinh rồi quay lại để nhập học phí.
+          action={readOnly ? undefined : <a href={`/lop-cua-toi/${encodeURIComponent(courseId)}?tab=hoc-sinh`} className={kinButtonClass("secondary")}>Mở tab Học sinh</a>}>
+          {readOnly ? "Lớp chưa có học sinh nên chưa có học phí để xem." : "Thêm học sinh rồi quay lại để nhập học phí."}
         </KinEmptyState>
       </div>
     );

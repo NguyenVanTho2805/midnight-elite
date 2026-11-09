@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 import { FEE_MODE_SHEET } from "@/lib/tuitionFee";
 import { currentPeriodId } from "@/lib/hocPhiSheet";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { loadSheetView, moneyHistoryOf, periodInfo, resolveYm, sheetFail, sheetGate, sheetOk, suggestedConfigFor } from "@/lib/hocPhiSheetServer";
+import { enableBlockOf, loadSheetView, moneyHistoryOf, periodInfo, resolveYm, sheetFail, sheetGate, sheetOk, suggestedConfigFor } from "@/lib/hocPhiSheetServer";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
@@ -14,9 +14,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cour
   const course = { id: acc.course.id, ownerId: acc.course.ownerId };
 
   if (!g.isSheet) {
-    const h = await moneyHistoryOf(course.id);
+    const b = await enableBlockOf(acc.course);
     return sheetFail(409, "Lớp này không tính học phí theo bảng tháng.", "NOT_SHEET_MODE", {
-      canEnable: h.feeCharges === 0 && h.monthlyFees === 0, suggestedConfig: await suggestedConfigFor(course.ownerId, course.id),
+      canEnable: b.canEnable, enableBlockedReason: b.reason, sharedStudents: b.sharedStudents, suggestedConfig: await suggestedConfigFor(course.ownerId, course.id),
     });
   }
 

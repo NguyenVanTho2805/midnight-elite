@@ -10,6 +10,8 @@
 //   - `auditSheetWrite` thôi thông báo chủ lớp khi quản trị ghi / thông báo cả khi chủ tự ghi → ca "đúng MỘT thông báo" / "chủ tự ghi: 0" đỏ
 //   - tin số tiền khách gửi lên / bỏ `computeSheetFee` ở máy chủ                               → ca "số khách gửi lên bị bỏ qua" đỏ
 //   - cho `enable` chạy trên lớp đã có FeeCharge                                              → ca "HAS_MONEY_HISTORY" đỏ
+//   - bỏ `sharedLegacyStudentCount` khỏi `enableBlockOf` (cho bật khi chia em với lớp cũ khác) → ca "4b SHARES_LEGACY_STUDENTS" + mục 15 đỏ
+//   - cho PUT cau-hinh đổi nhãn / bỏ môn khi đã có dòng                                          → ca "4c HAS_ROWS" đỏ
 //   - `invites/by-code` thôi chặn bậc chung cho lớp bảng                                       → ca "tuition: null" đỏ
 //   - sửa `invoiceServer`/`tuition` để lớp bảng vào `legacyEnrollments`                         → mục BẤT BIẾN đỏ (phiếu lớp cũ của em học hai lớp đổi bậc)
 import { createHash } from "node:crypto";
@@ -452,6 +454,92 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("[số cũ] duplicate lớp cách cũ → vẫn lớp cách cũ, không CourseFeeTable", dup2.status === 200 && (await prisma.course.findUniqueOrThrow({ where: { id: dup2.json.id } })).feeMode === "monthly_sessions" && (await prisma.courseFeeTable.count({ where: { courseId: dup2.json.id } })) === 0);
   }
 
+  // ════════════════════════════════ 4b. Bật chế độ khi chia em với lớp cách cũ khác (P1-1) ════════════════════════════════
+  section("4b. Bật monthly_sheet cho lớp cách cũ CHIA EM với lớp cách cũ khác của cùng chủ lớp → 409 SHARES_LEGACY_STUDENTS (bậc đơn giá lớp kia không đổi); không chia → vẫn bật được");
+  {
+    const CE = await mkTutor("Cô Chia Em"), CO = await mkTutor("Thầy Lớp Khác");
+    const MONEY = ["tuitionInvoice", "feeCharge", "monthlyCourseFee", "courseFeeRate", "courseStudentRate", "studentDiscount", "tuitionOverride", "sessionPackage", "tuitionCredit"] as const;
+    const moneyHash = async () => createHash("sha256").update(JSON.stringify(await Promise.all(MONEY.map(async t => (await (prisma as any)[t].findMany({ orderBy: { id: "asc" } })))))).digest("hex").slice(0, 16);
+    const enr = (userId: string, courseId: string, status = "active") => prisma.enrollment.create({ data: { userId, courseId, status } });
+    const La = await mkCourse(CE.id, { name: "Lớp cũ A (có tiền)" }), Lb = await mkCourse(CE.id, { name: "Lớp cũ B (chưa tiền, chia em với A)" });
+    const X = await mkUser({ name: "Em Chia Hai Lớp" }), Y = await mkUser({ name: "Em Chỉ Lớp B" });
+    await enr(X.id, La.id); await enr(X.id, Lb.id); await enr(Y.id, Lb.id);
+    for (const ym of [YM_PREV, YM]) await prisma.monthlyCourseFee.create({ data: { courseId: La.id, yearMonth: ym, sessionCount: 8, updatedBy: CE.id } }); // chỉ lớp A có tiền; lớp B chưa có gì
+    const iX = await issueInvoice({ tutorId: CE.id, studentId: X.id, yearMonth: YM_PREV });
+    const invX = await prisma.tuitionInvoice.findFirstOrThrow({ where: { studentId: X.id, yearMonth: YM_PREV } });
+    check("dựng: em X học hai lớp cách cũ (A, B) của cô → phiếu kỳ trước bậc 60.000 (2 môn cũ), gốc 8 × 60.000 = 480.000 — làm mốc", iX.ok && (invX.breakdown as any).pricePerSession === 60000 && (invX.breakdown as any).gross === 480000, (invX.breakdown as any)?.pricePerSession);
+    const hBefore = await moneyHash();
+    const gB = await getView(Lb.id, CE);
+    check("GET lớp B (chia em X với lớp cách cũ A): 409 NOT_SHEET_MODE, canEnable false, enableBlockedReason SHARES_LEGACY_STUDENTS, sharedStudents 1 (số đếm, không tên)", gB.status === 409 && gB.json.code === "NOT_SHEET_MODE" && gB.json.canEnable === false && gB.json.enableBlockedReason === "SHARES_LEGACY_STUDENTS" && gB.json.sharedStudents === 1 &&!/Em Chia Hai Lớp|Em Chỉ Lớp B/.test(gB.text), gB.json);
+    const cntB = await counts();
+    const pB = await putCfg(Lb.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("PUT enable lớp B → 409 SHARES_LEGACY_STUDENTS + sharedStudents 1; message xưng 'cô', không tên em", pB.status === 409 && pB.json.code === "SHARES_LEGACY_STUDENTS" && pB.json.sharedStudents === 1 && /\bcô\b/.test(pB.json.error) && /1 em/.test(pB.json.error) && !/Em Chia Hai Lớp|Em Chỉ Lớp B/.test(pB.text), pB.json);
+    check("sau 409: feeMode lớp B giữ nguyên 'monthly_sessions', không CourseFeeTable, không audit / thông báo mới", (await prisma.course.findUniqueOrThrow({ where: { id: Lb.id } })).feeMode === "monthly_sessions" && (await prisma.courseFeeTable.count({ where: { courseId: Lb.id } })) === 0 && (await counts()) === cntB);
+    check("phiếu / dòng phí / bậc / giảm giá / 9 bảng tiền của lớp A và em X: băm GIỐNG HỆT trước và sau", (await moneyHash()) === hBefore);
+    const iX2 = await issue(CE, YM, [X.id]);
+    const invX2 = await prisma.tuitionInvoice.findFirst({ where: { studentId: X.id, yearMonth: YM } });
+    check("phiếu CHƯA LẬP của X (kỳ này) lập sau lần bị chặn: vẫn bậc 60.000 (lớp B còn là cách cũ) — bậc không rơi xuống 70.000, gốc 480.000", iX2.status === 201 && (invX2?.breakdown as any)?.pricePerSession === 60000 && (invX2?.breakdown as any)?.gross === 480000 && (invX2?.breakdown as any)?.perSubject?.length === 2, invX2?.breakdown);
+
+    // enable thất bại rồi vẫn đặt cấu hình thường: PUT không enable trên lớp cách cũ → NOT_SHEET_MODE (không đổi)
+    const noEn = await putCfg(Lb.id, CE, { subjects: SUBJ, tiers: TIERS });
+    check("PUT không enable trên lớp B → 409 NOT_SHEET_MODE, canEnable false + enableBlockedReason SHARES_LEGACY_STUDENTS", noEn.status === 409 && noEn.json.code === "NOT_SHEET_MODE" && noEn.json.canEnable === false && noEn.json.enableBlockedReason === "SHARES_LEGACY_STUDENTS");
+
+    // lớp cách cũ KHÔNG chia em với lớp cũ nào → bật được
+    const Lc = await mkCourse(CE.id, { name: "Lớp cũ C (em riêng)" }); const Z = await mkUser({ name: "Em Riêng C" }); await enr(Z.id, Lc.id);
+    const gC = await getView(Lc.id, CE);
+    check("GET lớp C (không chia em với lớp cũ nào): canEnable true, enableBlockedReason null", gC.status === 409 && gC.json.canEnable === true && gC.json.enableBlockedReason === null && gC.json.sharedStudents === 0, gC.json);
+    const pC = await putCfg(Lc.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("PUT enable lớp C → 200, feeMode monthly_sheet", pC.status === 200 && pC.json.enabled === true && (await prisma.course.findUniqueOrThrow({ where: { id: Lc.id } })).feeMode === "monthly_sheet", pC.json);
+
+    // em ĐÃ RỜI lớp cũ A (không active) → không tính là chia
+    const Ld = await mkCourse(CE.id, { name: "Lớp cũ D (em đã rời lớp A)" }); const W = await mkUser({ name: "Em Đã Rời A" });
+    await enr(W.id, La.id, "suspended"); await enr(W.id, Ld.id);
+    const pD = await putCfg(Ld.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("em chỉ 'suspended' ở lớp cũ A (không active) → không tính chia: PUT enable lớp D → 200", pD.status === 200 && (await prisma.course.findUniqueOrThrow({ where: { id: Ld.id } })).feeMode === "monthly_sheet", pD.json);
+
+    // lớp cũ của gia sư KHÁC (cùng em) không tính: legacyEnrollments chỉ lấy lớp của chủ lớp
+    const Lo = await mkCourse(CO.id, { name: "Lớp cũ của thầy khác" }), Le = await mkCourse(CE.id, { name: "Lớp cũ E (em cũng học lớp thầy khác)" }); const V = await mkUser({ name: "Em Hai Thầy" });
+    await enr(V.id, Lo.id); await enr(V.id, Le.id);
+    const pE = await putCfg(Le.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("em cũng học lớp cách cũ của gia sư KHÁC → không chia (khác chủ lớp): PUT enable lớp E → 200", pE.status === 200, pE.json);
+
+    // lớp per_* chia em với lớp cách cũ → vẫn bật được (không nằm trong legacyEnrollments nên không đổi bậc ai)
+    const Lp = await mkCourse(CE.id, { name: "Lớp theo buổi F (chia em X với lớp cũ A)" });
+    await prisma.course.update({ where: { id: Lp.id }, data: { feeMode: "per_session" } }); await enr(X.id, Lp.id);
+    const hP = await moneyHash();
+    const gP2 = await getView(Lp.id, CE);
+    check("GET lớp per_session chia em X: canEnable true (không bị chặn bởi điều kiện chia em)", gP2.status === 409 && gP2.json.canEnable === true && gP2.json.enableBlockedReason === null, gP2.json);
+    const pP = await putCfg(Lp.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("PUT enable lớp per_session chia em → 200 monthly_sheet; 9 bảng tiền của lớp A / em X giống hệt", pP.status === 200 && (await prisma.course.findUniqueOrThrow({ where: { id: Lp.id } })).feeMode === "monthly_sheet" && (await moneyHash()) === hP, pP.json);
+
+    // HAS_MONEY_HISTORY thắng khi cả hai cùng đúng
+    const Lh = await mkCourse(CE.id, { name: "Lớp cũ H (có tiền VÀ chia em)" }); await enr(X.id, Lh.id);
+    await prisma.monthlyCourseFee.create({ data: { courseId: Lh.id, yearMonth: YM, sessionCount: 2, updatedBy: CE.id } });
+    const pH = await putCfg(Lh.id, CE, { subjects: SUBJ, tiers: TIERS, enable: true });
+    check("vừa có tiền vừa chia em → HAS_MONEY_HISTORY (mã có sẵn, số đếm cũ) thắng", pH.status === 409 && pH.json.code === "HAS_MONEY_HISTORY" && pH.json.monthlyFees === 1);
+  }
+
+  // ════════════════════════════════ 4c. Đổi môn khi lớp đã có dòng (P2-2) ════════════════════════════════
+  section("4c. PUT cau-hinh khi lớp đã có dòng: đổi nhãn / bỏ môn đã có → 409 HAS_ROWS; thêm môn mới, đổi bậc, đổi thứ tự → 200");
+  {
+    const DM = await mkWorld("DOIMON", { names: ["Mai Anh"] });
+    const w = await putRow(DM.C.id, DM.S["Mai Anh"].id, DM.T, { sessions: { Toán: 8, Anh: 4 } });
+    check("dựng: lớp có 1 dòng học phí (Toán 8, Anh 4)", w.status === 200 && (await prisma.courseFeeSheetRow.count({ where: { courseId: DM.C.id } })) === 1);
+    const cfgOf = () => prisma.courseFeeTable.findUniqueOrThrow({ where: { courseId: DM.C.id } });
+    const base = stableStringify(await cfgOf().then(c => [c.subjects, c.tiers]));
+    const cnt0 = await counts(), net0 = (await rowOf(DM.C.id, DM.S["Mai Anh"].id))!.net;
+    const bad: [string, string[]][] = [["đổi nhãn Toán → Toán học", ["Toán học", "Sử", "Địa", "Anh"]], ["bỏ môn Anh", ["Toán", "Sử", "Địa"]], ["đổi hoa / thường Toán → toán", ["toán", "Sử", "Địa", "Anh"]], ["bỏ hết, chỉ còn môn mới", ["Lý"]]];
+    for (const [n, subjects] of bad) {
+      const r = await putCfg(DM.C.id, DM.T, { subjects, tiers: TIERS });
+      check(`${n} khi lớp đã có dòng → 409 HAS_ROWS (message nói rõ), cấu hình giữ nguyên, không ghi gì`, r.status === 409 && r.json.code === "HAS_ROWS" && r.json.rows === 1 && /không đổi tên hay bỏ môn/.test(r.json.error) && stableStringify(await cfgOf().then(c => [c.subjects, c.tiers])) === base && (await counts()) === cnt0, r.json);
+    }
+    const ok1 = await putCfg(DM.C.id, DM.T, { subjects: ["Anh", "Toán", "Sử", "Địa", "Lý"], tiers: [...TIERS, { subjects: 5, rate: 45000 }] });
+    const c1 = await cfgOf();
+    check("thêm môn mới (Lý) + đổi thứ tự + thêm bậc 5 môn → 200 (môn cũ còn đủ)", ok1.status === 200 && c1.subjects.join() === "Anh,Toán,Sử,Địa,Lý" && (c1.tiers as any[]).length === 5, ok1.json);
+    const ok2 = await putCfg(DM.C.id, DM.T, { subjects: ["Anh", "Toán", "Sử", "Địa", "Lý"], tiers: [{ subjects: 1, rate: 75000 }, { subjects: 2, rate: 65000 }] });
+    check("chỉ đổi bậc (giữ nguyên môn) → 200; dòng học phí cũ không đổi số", ok2.status === 200 && (await rowOf(DM.C.id, DM.S["Mai Anh"].id))!.net === net0);
+  }
+
   // ════════════════════════════════ 5. Kỳ thu ════════════════════════════════
   section("5. Ngày bắt đầu kỳ thu 1..28 (0a #8): kỳ hiện tại / nhãn / dateKey FeeCharge; HAS_ROWS");
   {
@@ -707,6 +795,12 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("em đã rời lớp mà vẫn có dòng cũ → GET vẫn hiện (left:true, name, số) — không mất lịch sử; em chưa có dòng và đã rời thì không hiện", gl1?.left === true && gl1.net === 280000 && !(gl.json.rows as any[]).some(r => r.studentId === left.id));
     const pl = await putRow(SW.C.id, hn1.id, SW.T, { sessions: { Toán: 1 } });
     check("em vừa rời → không sửa được nữa (404)", pl.status === 404);
+    // P2-5: PUT không nới cho em đã rời, nhưng DELETE vẫn gỡ được dòng của em đã rời (chưa vào phiếu) — cùng FeeCharge chưa vào phiếu.
+    const hn1Row = await rowOf(SW.C.id, hn1.id);
+    const hn1Ch = hn1Row?.feeChargeId ? await prisma.feeCharge.findUnique({ where: { id: hn1Row.feeChargeId } }) : null;
+    const dLeft = await delRow(SW.C.id, hn1.id, SW.T);
+    check("em ĐÃ RỜI còn dòng chưa vào phiếu: DELETE /dong → 200 deleted (gỡ dòng + FeeCharge chưa vào phiếu); GET không còn dòng của em", !!hn1Row && !!hn1Ch && hn1Ch.invoiceId === null && dLeft.status === 200 && dLeft.json.deleted === true && dLeft.json.chargeRemoved === true
+      && (await rowOf(SW.C.id, hn1.id)) === null && (await prisma.feeCharge.findUnique({ where: { id: hn1Ch!.id } })) === null && !((await getView(SW.C.id, SW.T)).json.rows as any[]).some(r => r.studentId === hn1.id), [dLeft.status, dLeft.json]);
   }
 
   // ════════════════════════════════ 9. Khoá ════════════════════════════════
@@ -962,6 +1056,14 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     const leg = ["Em A", "Em B", "Em C", "Em K"].length;
     check(`phiếu lớp cũ (nháp / đã gửi + tín dụng / đã đóng + giảm 10% + override / huỷ) và phiếu của thầy khác: không đổi (số tiền, trạng thái, breakdown, creditParts)`, leg === 4 && [sA, sB, sC, sK, sM, sD, sE].every(s => { const b = [...before2.tuitionInvoice.values()].find(v => v.row.studentId === s.id)!, a = [...after.tuitionInvoice.values()].find(v => v.row.id === b.row.id)!; return a.json === b.json; }));
     check("computeMonthlyFee / pricePerSessionVnd cho cùng kết quả cố định 70 / 60 / 55 / 50 / 50 (TUITION_TIER_VND chưa bị đụng)", fixed.price.join() === "70000,60000,55000,50000,50000" && pricePerSessionVnd(3) === 55000 && pricePerSessionVnd(2, 40000) === 40000 && stableStringify(TUITION_TIER_VND) === stableStringify({ 1: 70000, 2: 60000, 3: 55000, 4: 50000 }) && computeMonthlyFee({ subjects: [1, 2, 3].map(i => ({ courseId: `c${i}`, courseName: `c${i}`, sessionCount: 10, freeCount: 0 })) }).gross === 3 * 10 * 55000, fixed);
+    // P1-1: em F học hai lớp cách cũ (L1, L2) → bật monthly_sheet cho một lớp cách cũ THỨ BA của F bị chặn; 9 bảng tiền không đổi; bậc 60.000 của F không rơi.
+    const L4 = await mkCourse(T1.id, { name: "Sử cũ (F học thêm)" });
+    await prisma.enrollment.create({ data: { userId: F.id, courseId: L4.id, status: "active" } });
+    const en4 = await putCfg(L4.id, T1, { subjects: ["Sử"], tiers: [{ subjects: 1, rate: 70000 }], enable: true });
+    const after4 = await snap();
+    check("em F học hai lớp cách cũ (L1, L2) + lớp cách cũ L4: bật monthly_sheet cho L4 → 409 SHARES_LEGACY_STUDENTS (sharedStudents 1), feeMode giữ nguyên, không CourseFeeTable", en4.status === 409 && en4.json.code === "SHARES_LEGACY_STUDENTS" && en4.json.sharedStudents === 1
+      && (await prisma.course.findUniqueOrThrow({ where: { id: L4.id } })).feeMode === "monthly_sessions" && (await prisma.courseFeeTable.count({ where: { courseId: L4.id } })) === 0, en4.json);
+    check("sau lần bật bị chặn: băm 9 bảng tiền (phiếu, dòng phí, bậc, giảm giá, ...) GIỐNG HỆT trước lần gọi", TABLES.every(t => hashOf(after4[t]) === hashOf(after[t])), TABLES.filter(t => hashOf(after4[t]) !== hashOf(after[t])));
     let diff = "";
     try { const mb = execFileSync("git", ["merge-base", "HEAD", "origin/main"], { encoding: "utf8", cwd: process.cwd() }).trim(); diff = execFileSync("git", ["diff", "--name-only", mb, "--", "src/lib/tuition.ts", "src/lib/invoiceServer.ts", "src/lib/feeChargeServer.ts", "src/lib/sessionBookServer.ts", "src/lib/notify.ts"], { encoding: "utf8", cwd: process.cwd() }).trim(); } catch (e) { diff = `LỖI git: ${(e as Error).message.slice(0, 80)}`; }
     check("5 tệp KHÓA (tuition.ts, invoiceServer.ts, feeChargeServer.ts, sessionBookServer.ts, notify.ts) không có thay đổi nào so với nền origin/main", diff === "", diff);

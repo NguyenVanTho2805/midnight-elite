@@ -15,6 +15,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
 import { KinMoney } from "@/components/kin/MoneyVisibility";
 import { callApi } from "@/components/tutor/shared";
+import BangHocPhiChu from "@/components/tutor/BangHocPhiChu";
 import {
   PREVIEW_ORDER, PREVIEW_STATUS, YM_RANGE_MONTHS, capFirst, currentYmVn, needsAttention, normPreview, normSheet, periodText, shiftYm, sheetErrorText, sourceText, useIsWide, vndText,
   type PreviewData, type PreviewRow, type PreviewStatus, type SheetData,
@@ -226,7 +227,7 @@ export default function BangHocPhiNhap({ courseId, courseName, ym: ymProp }: { c
     </div>
   );
   const notes = (r: PreviewRow) => r.messages.length > 0 && (
-    <ul className="space-y-0.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{r.messages.map((m, i) => <li key={i} className="break-words">{m}</li>)}</ul>
+    <ul className="space-y-0.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{r.messages.map((m, i) => <li key={i} className="break-words"><BangHocPhiChu text={m} /></li>)}</ul>
   );
   const netText = (r: PreviewRow) => (r.net == null ? dash : <>{r.status === "replace" && r.before != null && <><span className="text-[var(--kin-chu-mo)]"><Money n={r.before} /></span> → </>}<Money n={r.net} /></>);
   const kText = (r: PreviewRow) => (r.subjectCount == null ? dash : <>{r.subjectCount}<span className="block text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">{sourceText(r.subjectCountSource)}</span></>);
@@ -390,7 +391,7 @@ export default function BangHocPhiNhap({ courseId, courseName, ym: ymProp }: { c
                 {preview.columns.blocking.length > 0 && <p role="alert" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">Cột chưa khớp môn nào của lớp: {preview.columns.blocking.join(", ")}.</p>}
                 {preview.columns.missingSubjects.length > 0 && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tệp không có cột môn: {preview.columns.missingSubjects.join(", ")}. KiN coi các môn đó là 0 buổi.</p>}
                 {preview.exampleLines.length > 0 && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Dòng ví dụ của bảng mẫu ({preview.exampleLines.map(l => `dòng ${l}`).join(", ")}) được bỏ qua.</p>}
-                {preview.messages.map((m, i) => <p key={i} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{m}</p>)}
+                {preview.messages.map((m, i) => <p key={i} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]"><BangHocPhiChu text={m} /></p>)}
                 {rows.length === 0
                   ? <KinEmptyState title="Tệp không có dòng nào để đọc">Cô kiểm tra tệp có dòng tiêu đề và dữ liệu, hoặc dùng mẫu Excel ở bước 1.</KinEmptyState>
                   : wide ? table : cards}

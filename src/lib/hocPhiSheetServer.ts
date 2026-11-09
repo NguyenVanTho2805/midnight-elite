@@ -11,7 +11,8 @@ import { logAction } from "@/lib/auditLog";
 import { notify } from "@/lib/notify";
 import { requireCourseAccess, type CourseAccess } from "@/lib/courseAccessServer";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { FEE_MODE_SHEET, normalizeFeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_LEGACY, FEE_MODE_SHEET, normalizeFeeMode } from "@/lib/tuitionFee";
+import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { INVOICE_STATUS_LABEL, type InvoiceStatus } from "@/lib/tuitionInvoice";
 import { buildFeeOverrideNotification, feeRuleRole, isFeeOverride } from "@/lib/feeRuleAudit";
 import { PREVIEW_BLOCKED_MESSAGE } from "@/lib/feeChargeServer";
@@ -56,6 +57,38 @@ export async function moneyHistoryOf(courseId: string, db: Pick<typeof prisma, "
   const [feeCharges, monthlyFees] = await Promise.all([db.feeCharge.count({ where: { courseId } }), db.monthlyCourseFee.count({ where: { courseId } })]);
   return { feeCharges, monthlyFees };
 }
+
+/**
+ * Số em ĐANG HỌC lớp này mà cũng đang học một lớp cách tính CŨ khác của cùng chủ lớp. Cùng định nghĩa "lớp cách cũ" với invoiceServer.legacyEnrollments
+ * (enrollment active, course.ownerId = chủ lớp, normalizeFeeMode(feeMode) === monthly_sessions). Lớp này không phải cách cũ (hoặc không có chủ) → 0:
+ * lớp kiểu mới không nằm trong legacyEnrollments nên bật bảng tháng cho nó không đổi bậc của ai. Chỉ trả SỐ ĐẾM (không tên em).
+ */
+export async function sharedLegacyStudentCount(course: { id: string; ownerId: string | null; feeMode: unknown }, db: Pick<typeof prisma, "course" | "enrollment"> = prisma): Promise<number> {
+  if (!course.ownerId || normalizeFeeMode(course.feeMode) !== FEE_MODE_LEGACY) return 0;
+  const others = await db.course.findMany({ where: { ownerId: course.ownerId, id: { not: course.id } }, select: { id: true, feeMode: true } });
+  const legacyIds = others.filter(c => normalizeFeeMode(c.feeMode) === FEE_MODE_LEGACY).map(c => c.id);
+  if (legacyIds.length === 0) return 0;
+  const mine = await db.enrollment.findMany({ where: { courseId: course.id, status: ENROLLMENT_STATUS.ACTIVE }, select: { userId: true } });
+  if (mine.length === 0) return 0;
+  const shared = await db.enrollment.findMany({
+    where: { courseId: { in: legacyIds }, status: ENROLLMENT_STATUS.ACTIVE, userId: { in: mine.map(m => m.userId) } }, select: { userId: true }, distinct: ["userId"],
+  });
+  return shared.length;
+}
+
+export type EnableBlockedReason = "HAS_MONEY_HISTORY" | "SHARES_LEGACY_STUDENTS";
+/** Lớp (chưa bật bảng tháng) có bật được không: HAS_MONEY_HISTORY thắng, rồi SHARES_LEGACY_STUDENTS. `reason` null = bật được. */
+export async function enableBlockOf(
+  course: { id: string; ownerId: string | null; feeMode: unknown }, db: Pick<typeof prisma, "feeCharge" | "monthlyCourseFee" | "course" | "enrollment"> = prisma,
+): Promise<{ canEnable: boolean; reason: EnableBlockedReason | null; sharedStudents: number; feeCharges: number; monthlyFees: number }> {
+  const h = await moneyHistoryOf(course.id, db);
+  const sharedStudents = await sharedLegacyStudentCount(course, db);
+  const reason: EnableBlockedReason | null = h.feeCharges > 0 || h.monthlyFees > 0 ? "HAS_MONEY_HISTORY" : sharedStudents > 0 ? "SHARES_LEGACY_STUDENTS" : null;
+  return { canEnable: reason === null, reason, sharedStudents, ...h };
+}
+
+export const msgSharesLegacy = (n: number) =>
+  `Có ${n} em đang học lớp này cùng một lớp cách tính cũ khác của cô; chuyển cách tính sẽ làm đổi bậc đơn giá của các lớp đó. Hãy tạo lớp mới theo bảng học phí tháng.`;
 
 /** Bản sao CourseFeeTable của lớp monthly_sheet GẦN NHẤT (updatedAt) cùng chủ lớp, khác lớp này. Không có thì null — KHÔNG bịa bảng mặc định. */
 export async function suggestedConfigFor(ownerId: string | null, courseId: string): Promise<SheetConfig | null> {
