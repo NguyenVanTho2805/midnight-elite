@@ -380,6 +380,24 @@ async function dl(u: TUser | undefined, id: string, q = "", headers: Record<stri
   check("fileUrl do trình duyệt gửi ⇒ 400 'Hãy dùng chức năng nộp tệp mới', KHÔNG tạo bài nộp", oldFile.status === 400 && /nộp tệp mới/.test(oldFile.json.error) && (await prisma.assignmentSubmission.count({ where: { userId: S10.id } })) === 0, oldFile.json);
   const oldLink = await api("POST", `/api/assignments/${AS.id}/submit`, { as: S10, body: { linkUrl: "https://azota.vn/de-thi/abc123" } });
   check("linkUrl Azota ⇒ vẫn 200, kind=link", oldLink.status === 200 && oldLink.json.kind === "link", oldLink.json);
+  // P2 (rà soát): đang có bài nộp bằng TỆP mà nộp lại bằng link Azota ⇒ bộ tệp cũ phải bị gỡ khỏi kho (không để gia sư tải tệp cũ sau khi điểm bị xoá).
+  {
+    const S11 = await newStudent("Học sinh đổi sang link");
+    const F11 = await ready(S11, AS, "truoc-khi-doi-link.docx");
+    await api("POST", NOP(AS.id), { as: S11 });
+    const before = await prisma.submissionFile.findUnique({ where: { id: F11 } });
+    const sw = await api("POST", `/api/assignments/${AS.id}/submit`, { as: S11, body: { linkUrl: "https://azota.vn/de-thi/abc123" } });
+    const afterRow = await prisma.submissionFile.findUnique({ where: { id: F11 } });
+    check("nộp tệp rồi nộp lại bằng link Azota ⇒ tệp cũ removed, đã xoá khỏi kho, gia sư không tải được nữa", before?.status === "ready" && sw.status === 200 && afterRow?.status === "removed" && afterRow?.deletedAt !== null && (await dl(T, F11)).status === 404, [before?.status, sw.status, afterRow?.status, afterRow?.deletedAt]);
+  }
+  // P2 (rà soát): form POST của trình duyệt (Accept: text/html) gặp lỗi phải được 303 về trang thật, không hiện JSON thô; gọi API vẫn nhận mã lỗi.
+  {
+    const asHtml = { headers: { accept: "text/html,application/xhtml+xml" } };
+    const g = await api("POST", NOP(AS.id), asHtml);
+    const tt = await api("POST", NOP(AS.id), { as: T, ...asHtml });
+    const nf = await api("POST", NOP("khong-co-bai-nay"), { as: S10, ...asHtml });
+    check("form (Accept html): khách ⇒ 303 /dang-nhap; gia sư ⇒ 303 /; bài không có ⇒ 303 /student/hoc-tap", g.status === 303 && /\/dang-nhap/.test(g.headers.get("location") ?? "") && tt.status === 303 && nf.status === 303 && /\/student\/hoc-tap/.test(nf.headers.get("location") ?? ""), [g.status, tt.status, nf.status]);
+  }
   check("thân rỗng ⇒ 400", (await api("POST", `/api/assignments/${AS.id}/submit`, { as: S10, body: {} })).status === 400);
 
   // ── 7b. Ca phá bổ sung của stu-test (10/11/2026): lớp mình không ghi danh, bài Nháp/Ẩn, tệp trả bài của gia sư lớp khác, tệp kind=tutor_return do học sinh gắn/đụng vào ──

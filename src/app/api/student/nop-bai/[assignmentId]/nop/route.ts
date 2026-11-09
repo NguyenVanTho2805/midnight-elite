@@ -14,14 +14,17 @@ import { NOP_TEP_API, NOP_TEP_MAX_FILES, NOP_TEP_RESULT, NOP_TEP_SUBMISSION_KIND
 import { loadAssignmentScope, lockNopTep, nopTepErr, nopTepRuntimeConfig, removeStoredFiles } from "@/lib/nopTepServer";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ assignmentId: string }> }) {
+  // Trình duyệt gửi form thường (Accept có text/html): lỗi phải đưa người dùng về một trang thật, không để họ đứng trước JSON thô. Gọi API (fetch/test) vẫn nhận JSON + mã 401/403/404.
+  const html = (req.headers.get("accept") ?? "").includes("text/html");
+  const go = (path: string) => NextResponse.redirect(new URL(path, req.url), 303);
   const auth = await requireSession();
-  if (isNextResponse(auth)) return auth;
-  if (auth.role !== "student") return nopTepErr("Chỉ học sinh mới nộp được bài tập", 403);
+  if (isNextResponse(auth)) return html ? go("/dang-nhap?redirect=%2Fstudent%2Fhoc-tap") : auth;
+  if (auth.role !== "student") return html ? go("/") : nopTepErr("Chỉ học sinh mới nộp được bài tập", 403);
   const { assignmentId } = await params;
 
   const scope = await loadAssignmentScope(assignmentId);
   // Bài Nháp/Ẩn ⇒ 404 TRƯỚC kiểm ghi danh (như submit/route.ts).
-  if (!scope || !isLearnerVisible(scope.lessonStatus) || scope.mode === "azota" || assignmentId.startsWith("azota-")) return nopTepErr("Không tìm thấy bài tập", 404);
+  if (!scope || !isLearnerVisible(scope.lessonStatus) || scope.mode === "azota" || assignmentId.startsWith("azota-")) return html ? go("/student/hoc-tap") : nopTepErr("Không tìm thấy bài tập", 404);
   const back = (code: NopTepResultCode) => NextResponse.redirect(new URL(`/student/bai-giang/${encodeURIComponent(scope.lessonId)}?nop=${code}`, req.url), 303);
 
   const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true } });

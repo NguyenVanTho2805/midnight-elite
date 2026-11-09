@@ -5,6 +5,7 @@ import { isEnrollmentActive } from "@/lib/enrollment";
 import { enrollmentDeniedBody } from "@/lib/suspendedContent";
 import { isLearnerVisible } from "@/lib/lessonStatus";
 import { validateWorkLink } from "@/lib/mediaLink";
+import { removeStoredFiles } from "@/lib/nopTepServer";
 
 // POST /api/assignments/[id]/submit — học viên nộp/nộp lại bài. Nộp lại GHI
 // ĐÈ bản cũ (unique [assignmentId, userId]) — nếu bài cũ đã được chấm, xoá
@@ -53,6 +54,10 @@ export async function POST(
       return NextResponse.json({ error: "Hãy dùng chức năng nộp tệp mới" }, { status: 400 });
     }
 
+    // Đang có bài nộp bằng TỆP mà nộp lại bằng link Azota: bỏ bộ tệp cũ (và tệp gia sư đã trả) khỏi kho, vì điểm/nhận xét cũ cũng bị xoá ngay dưới đây.
+    const prior = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_userId: { assignmentId, userId: auth.userId } }, select: { id: true } });
+    const oldFiles = prior ? await prisma.submissionFile.findMany({ where: { submissionId: prior.id, status: { in: ["pending", "ready"] } }, select: { id: true, driver: true, storageKey: true } }) : [];
+
     const submission = await prisma.assignmentSubmission.upsert({
       where: { assignmentId_userId: { assignmentId, userId: auth.userId } },
       create: { assignmentId, userId: auth.userId, fileUrl, fileName, kind },
@@ -63,6 +68,10 @@ export async function POST(
       },
     });
 
+    if (oldFiles.length) {
+      await prisma.submissionFile.updateMany({ where: { id: { in: oldFiles.map(f => f.id) } }, data: { status: "removed", removedAt: new Date() } });
+      await removeStoredFiles(oldFiles);
+    }
     return NextResponse.json(submission);
   } catch (e) {
     console.error("[POST /api/assignments/[id]/submit]", assignmentId, e);
