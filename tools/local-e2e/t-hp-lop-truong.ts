@@ -205,7 +205,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("FeeCharge.tutorId = chủ lớp (không phải quản trị)", ch.length >= 3 && ch.every(x => x.tutorId === W.T.id), ch.map(x => x.tutorId));
     const ns = await prisma.notification.findMany({ where: { type: "course_fee_override" } });
     check("chủ lớp nhận ĐÚNG MỘT Notification course_fee_override sau 4 lần quản trị ghi (chống dội theo type+link chưa đọc)", ns.length === 1 && ns[0].userId === W.T.id && ns[0].link === `/lop-cua-toi/${W.C.id}?tab=hoc-phi` && !ns[0].isRead, ns);
-    check("thông báo không có tên học sinh / tên lớp / chữ số", !/Mai Anh|Bảo Châu|Minh Khôi|Gia Hân|Tuấn Kiệt|Lớp bảng/.test(ns[0].title + ns[0].message) && !/\d/.test(ns[0].title + ns[0].message), ns[0]);
+    check("thông báo không có tên học sinh / tên lớp / chữ số", ns.length > 0 && !/Mai Anh|Bảo Châu|Minh Khôi|Gia Hân|Tuấn Kiệt|Lớp bảng/.test(ns[0].title + ns[0].message) && !/\d/.test(ns[0].title + ns[0].message), ns[0]);
     check("quản trị không nhận thông báo nào; tổng thông báo mới = 1", (await prisma.notification.count({ where: { userId: { in: [ADC.id, ADS.id] } } })) === 0 && (await prisma.notification.count()) === notes0 + 1);
     await prisma.notification.updateMany({ where: { userId: W.T.id }, data: { isRead: true } });
     await putRow(W.C.id, W.S["Bảo Châu"].id, ADC, { sessions: { Toán: 8, Sử: 8, Địa: 8, Anh: 8 }, discount: 200000 });
@@ -278,7 +278,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     const upd2 = await prisma.courseFeeSheetRow.findMany({ where: { courseId: M.C.id }, select: { id: true, updatedAt: true } });
     check("bấm xác nhận lần hai → written 0, không dòng thứ hai, không dòng nào bị ghi lại (updatedAt giữ nguyên)", c2.status === 200 && c2.json.written === 0 && c2.json.unchanged === 5 && (await prisma.courseFeeSheetRow.count({ where: { courseId: M.C.id } })) === 5 && (await prisma.feeCharge.count({ where: { courseId: M.C.id } })) === 4 && JSON.stringify(upd) === JSON.stringify(upd2));
     // FILE_CHANGED
-    const changed = FIVE_TEXT.replace("\t8\t4\t1\t50000", "\t9\t4\t1\t50000");
+    const changed = tsv([{ ...FIVE[0], Toán: 9 }, ...FIVE.slice(1)]); // Mai Anh Toán 8 → 9 (các ô giữa có ô trống nên không thay chuỗi con được)
     const before = await counts();
     const cf = await conf(M.C.id, M.T, changed, hash);
     check("đổi tệp giữa xem trước và xác nhận → 409 FILE_CHANGED, không ghi gì", cf.status === 409 && cf.json.code === "FILE_CHANGED" && (await counts()) === before, cf.json);
@@ -525,7 +525,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("không ghi gì sau 13 tệp xấu (xem trước không bao giờ ghi)", (await counts()) === before);
 
     // .csv với BOM / .tsv / .txt đúng → đọc được
-    const csvBom = await mp(F1, "ds.csv", Buffer.from("﻿" + HEAD.join(",") + "\nx,Mai Anh,,8,,,4,1,,50000,,\n"));
+    const csvBom = await mp(F1, "ds.csv", Buffer.from("﻿" + HEAD.join(",") + "\n,Mai Anh,,8,,,4,1,,50000,,\n"));
     check("CSV có BOM đọc được: Mai Anh khớp, Phải đóng 610.000", csvBom.status === 200 && pvRow(csvBom, "Mai Anh")?.net === 610000, csvBom.json?.counts);
     const tsvf = await mp(F1, "ds.tsv", Buffer.from(FIVE_TEXT)), txtf = await mp(F1, "ds.txt", Buffer.from(FIVE_TEXT));
     check(".tsv và .txt đọc được: 5 dòng, tổng 3.130.000", tsvf.json.totalNet === TOTAL && txtf.json.totalNet === TOTAL);
@@ -572,7 +572,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     }
     for (const v of ["70000", "70.000", "70,000", "70 000"]) {
       const x = await prev(F2.C.id, F2.T, tsv([{ "Họ tên": "Mai Anh", Toán: 2, "Học bổng": v }]));
-      check(`ô tiền '${v}' → hợp lệ 70.000đ (120.000 − 70.000 = 50.000)`, pvRow(x, "Mai Anh").status !== "error" && pvRow(x, "Mai Anh").net === 120000 - 70000, pvRow(x, "Mai Anh"));
+      check(`ô tiền '${v}' → hợp lệ 70.000đ (2 buổi × 70.000 = 140.000 − 70.000 = 70.000)`, pvRow(x, "Mai Anh").status !== "error" && pvRow(x, "Mai Anh").net === 140000 - 70000, pvRow(x, "Mai Anh"));
     }
     check("ô buổi '2.5' / '-1' / '61' / 'tám' → 'error'", (await Promise.all(["2.5", "-1", "61", "tám"].map(v => prev(F2.C.id, F2.T, tsv([{ "Họ tên": "Mai Anh", Toán: v }]))))).every(x => pvRow(x, "Mai Anh").status === "error"));
     const b1 = await counts();
@@ -961,7 +961,7 @@ const pvRow = (p: { json: any }, name: string) => (p.json.rows as any[]).find(r 
     check("băm 7 bảng giá / giảm giá / gói buổi / tín dụng / override / MonthlyCourseFee TRƯỚC = SAU", (["monthlyCourseFee", "courseFeeRate", "courseStudentRate", "studentDiscount", "tuitionOverride", "sessionPackage", "tuitionCredit"] as const).every(t => hashOf(after[t]) === hashOf(before2[t])));
     const leg = ["Em A", "Em B", "Em C", "Em K"].length;
     check(`phiếu lớp cũ (nháp / đã gửi + tín dụng / đã đóng + giảm 10% + override / huỷ) và phiếu của thầy khác: không đổi (số tiền, trạng thái, breakdown, creditParts)`, leg === 4 && [sA, sB, sC, sK, sM, sD, sE].every(s => { const b = [...before2.tuitionInvoice.values()].find(v => v.row.studentId === s.id)!, a = [...after.tuitionInvoice.values()].find(v => v.row.id === b.row.id)!; return a.json === b.json; }));
-    check("computeMonthlyFee / pricePerSessionVnd cho cùng kết quả cố định 70 / 60 / 55 / 50 / 50 (TUITION_TIER_VND chưa bị đụng)", fixed.price.join() === "70000,70000,60000,55000,50000" && pricePerSessionVnd(3) === 55000 && pricePerSessionVnd(2, 40000) === 40000 && stableStringify(TUITION_TIER_VND) === stableStringify({ 1: 70000, 2: 60000, 3: 55000, 4: 50000 }) && computeMonthlyFee({ subjects: [1, 2, 3].map(i => ({ courseId: `c${i}`, courseName: `c${i}`, sessionCount: 10, freeCount: 0 })) }).gross === 3 * 10 * 55000, fixed);
+    check("computeMonthlyFee / pricePerSessionVnd cho cùng kết quả cố định 70 / 60 / 55 / 50 / 50 (TUITION_TIER_VND chưa bị đụng)", fixed.price.join() === "70000,60000,55000,50000,50000" && pricePerSessionVnd(3) === 55000 && pricePerSessionVnd(2, 40000) === 40000 && stableStringify(TUITION_TIER_VND) === stableStringify({ 1: 70000, 2: 60000, 3: 55000, 4: 50000 }) && computeMonthlyFee({ subjects: [1, 2, 3].map(i => ({ courseId: `c${i}`, courseName: `c${i}`, sessionCount: 10, freeCount: 0 })) }).gross === 3 * 10 * 55000, fixed);
     let diff = "";
     try { const mb = execFileSync("git", ["merge-base", "HEAD", "origin/main"], { encoding: "utf8", cwd: process.cwd() }).trim(); diff = execFileSync("git", ["diff", "--name-only", mb, "--", "src/lib/tuition.ts", "src/lib/invoiceServer.ts", "src/lib/feeChargeServer.ts", "src/lib/sessionBookServer.ts", "src/lib/notify.ts"], { encoding: "utf8", cwd: process.cwd() }).trim(); } catch (e) { diff = `LỖI git: ${(e as Error).message.slice(0, 80)}`; }
     check("5 tệp KHÓA (tuition.ts, invoiceServer.ts, feeChargeServer.ts, sessionBookServer.ts, notify.ts) không có thay đổi nào so với nền origin/main", diff === "", diff);

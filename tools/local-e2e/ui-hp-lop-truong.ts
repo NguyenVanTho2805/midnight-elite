@@ -7,7 +7,7 @@
 //  · Số tiền viết đủ (không "tr"/"k"), công tắc ẩn tiền che số, trạng thái không chỉ bằng màu.
 //  · Gia sư bộ môn / gia sư lớp khác: không thấy tab Học phí, trang con 404, không rò số. Màn buổi của lớp bảng tháng không hứa "sinh học phí khi chốt buổi".
 // Dữ liệu dựng bằng prisma trực tiếp (không sửa h.ts / seed*); tên học sinh là tên giả. KHÔNG tự chạy trong lượt viết: COO chạy sau khi máy chủ (tut-code) xong.
-// Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-hp-lop-truong.ts
+// Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-hp-lop-truong.ts     (cỡ máy tính mặc định 1600; thêm DESKTOP_W=1280 để chạy ở laptop; cỡ điện thoại 390 luôn chạy)
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, section, done, eventually } from "./h";
@@ -24,6 +24,8 @@ const NO_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`;
 
 const shiftYm = (ym: string, by: number) => { const [y, m] = ym.split("-").map(Number); const i = y * 12 + (m - 1) + by; return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`; };
 const OUT = process.env.SHOTS ?? "scratchpad/shots";
+/** Chiều rộng cỡ MÁY TÍNH: mặc định 1600; chạy cỡ laptop: DESKTOP_W=1280 (mọi kiểm tra giữ nguyên, chỉ đổi cỡ cửa sổ). Cỡ điện thoại luôn 390. */
+const DW = Number(process.env.DESKTOP_W ?? 1600);
 
 (async () => {
   mkdirSync(OUT, { recursive: true });
@@ -52,9 +54,15 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
 
   await launch();
   const errors: string[] = [];
+  const devScriptWarn: string[] = [], notFoundUrls = new Set<string>();
   const watch = (p: Page) => {
-    p.on("pageerror", e => errors.push(String(e)));
-    p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of [45]|AbortError/i.test(m.text())) errors.push(m.text()); });
+    p.on("pageerror", e => errors.push(`${p.url().replace(BASE, "")} ${String(e)}`));
+    p.on("console", m => {
+      if (m.type() !== "error" || /Failed to load resource|favicon|net::ERR|status of [45]|AbortError/i.test(m.text())) return;
+      // Cảnh báo CÓ SẴN của React bản dev khi một trang gọi notFound() (README, mục 16/10): tách riêng, và cuối bài kiểm nó chỉ đến từ trang 404 do bài CHỦ Ý mở.
+      if (/Encountered a script tag while rendering React component/.test(m.text())) { devScriptWarn.push(p.url().replace(BASE, "")); return; }
+      errors.push(`${p.url().replace(BASE, "")} ${m.text().slice(0, 140)}`);
+    });
   };
   const tabUrl = (id: string, m = ym) => `${BASE}/lop-cua-toi/${id}?tab=hoc-phi&ym=${m}`;
   const nhapUrl = (id: string, m = ym) => `${BASE}/lop-cua-toi/${id}/bang-hoc-phi/nhap?ym=${m}`;
@@ -62,7 +70,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
 
   // ───────────────────────── Tạo lớp ─────────────────────────
   section("Tạo lớp: 'Theo bảng học phí tháng' trong Cách tính khác, không hỏi đơn giá");
-  const p = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(p);
+  const p = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(p);
   await p.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle", timeout: 120000 });
   await p.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
   check("mặc định vẫn là Theo buổi, có ô đơn giá (không đổi hành vi cũ)", await p.getByLabel(/^Theo buổi/).isChecked() && (await p.getByLabel(/^Đơn giá/).count()) >= 1);
@@ -82,7 +90,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   check("DB: feeMode monthly_sheet, KHÔNG có CourseFeeRate", made.feeMode === "monthly_sheet" && (await prisma.courseFeeRate.count({ where: { courseId: made.id } })) === 0, made.feeMode);
 
   // ───────────────────────── Tab Học phí, 1600px ─────────────────────────
-  section("1600px: tab Học phí của lớp bảng tháng");
+  section(`${DW}px: tab Học phí của lớp bảng tháng`);
   await p.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
   await p.locator("[data-bh-tiers]").waitFor({ timeout: 90000 });
   const tiersText = await p.locator("[data-bh-tiers]").innerText();
@@ -91,7 +99,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   check("bảng có 7 dòng em (5 em + 2 em trùng tên), chưa em nào nhập → 'Chưa nhập'", (await p.locator("[data-bh-tr]").count()) === 7 && (await p.getByText("Chưa nhập").count()) >= 7);
   check("tháng chưa nhập: có lời nhắc 'chưa có học phí'", await p.locator("[data-bh-empty-month]").isVisible());
   check("dòng tổng cố định cuối bảng", await p.locator("[data-bh-total]").isVisible());
-  await shot(p, "hp-lt-1600-bang-rong");
+  await shot(p, `hp-lt-${DW}-bang-rong`);
 
   section("Tải mẫu THẬT → điền → thả lại chính tệp đó");
   const [dl] = await Promise.all([p.waitForEvent("download", { timeout: 60000 }), p.getByRole("link", { name: "Tải mẫu Excel" }).click()]);
@@ -119,6 +127,11 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
     const f = fill[String(row.getCell(col["Họ tên"]).value ?? "").trim()];
     if (f) for (const [k, v] of Object.entries(f)) row.getCell(col[k]).value = v;
   });
+  // Mẫu xuất MỌI em đang học (kể cả hai em "Hà Nhi" trùng tên, để trống): cô xoá hàng của em không thu tháng này trước khi nạp lại (hàng trống mà giữ lại vẫn được máy chủ ghi thành dòng 0đ).
+  const drop: number[] = [];
+  ws.eachRow((row, n) => { if (n > 1 && String(row.getCell(col["Họ tên"]).value ?? "").trim() === "Hà Nhi") drop.push(n); });
+  for (const n of drop.sort((x, y) => y - x)) ws.spliceRows(n, 1);
+  check("mẫu xuất MỌI em đang học (7 hàng, gồm 2 em trùng tên Hà Nhi để trống); cô xoá 2 hàng đó, còn 5 hàng đã điền", drop.length === 2 && ws.actualRowCount === 6, { drop, rows: ws.actualRowCount });
   await wb.xlsx.writeFile(filled);
 
   await p.getByRole("link", { name: "Nhập từ Excel / Google Sheet" }).click();
@@ -131,12 +144,13 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   await p.locator("[data-bhn-preview]").waitFor({ timeout: 60000 });
   check("xem trước: 4 dòng Đúng + 1 dòng Cần xem (Phải đóng 0đ), chữ + biểu tượng", (await p.locator("[data-bhn-row=ok]").count()) === 4 && (await p.locator("[data-bhn-row=warn]").count()) === 1 && /✓/.test(await p.locator("[data-bhn-count=ok]").innerText()) && /Đúng/.test(await p.locator("[data-bhn-count=ok]").innerText()));
   const pv = await bodyText(p);
-  check("MỖI em ghi rõ nguồn Số môn: 1 em 'lấy từ cột Số môn trong tệp', 4 em 'đếm số môn có buổi'", (pv.match(/lấy từ cột Số môn trong tệp/g) ?? []).length === 1 && (pv.match(/đếm số môn có buổi/g) ?? []).length === 4, pv.slice(0, 300));
+  const rowsTxt = (await p.locator("[data-bhn-row]").allInnerTexts()).join("\n"); // chỉ đếm TRONG các dòng em (chữ giải thích ngoài bảng cũng nhắc cụm này)
+  check("MỖI em ghi rõ nguồn Số môn: 1 em 'lấy từ cột Số môn trong tệp', 4 em 'đếm số môn có buổi'", (rowsTxt.match(/lấy từ cột Số môn trong tệp/g) ?? []).length === 1 && (rowsTxt.match(/đếm số môn có buổi/g) ?? []).length === 4, { file: (rowsTxt.match(/lấy từ cột Số môn trong tệp/g) ?? []).length, counted: (rowsTxt.match(/đếm số môn có buổi/g) ?? []).length, trongToanTrang: (pv.match(/đếm số môn có buổi/g) ?? []).length });
   check("chân: 'Sẽ ghi 5 dòng' + Tổng Phải đóng 3.130.000đ (số do máy chủ trả)", /Sẽ ghi 5 dòng/.test(await p.locator("[data-bhn-footer]").innerText()) && /3\.130\.000đ/.test(await p.locator("[data-bhn-footer]").innerText()));
   check("nút xác nhận bật: 'Xác nhận ghi 5 dòng'", await p.getByRole("button", { name: "Xác nhận ghi 5 dòng" }).isEnabled());
   check("xem trước chưa ghi gì", (await prisma.courseFeeSheetRow.count({ where: { courseId: C.id } })) === 0 && (await prisma.feeCharge.count({ where: { courseId: C.id } })) === 0);
   check("số tiền viết đủ: không có '\\d(tr|k)'", !/\d(tr|k)\b/.test(pv));
-  await shot(p, "hp-lt-1600-xem-truoc");
+  await shot(p, `hp-lt-${DW}-xem-truoc`);
   await p.getByRole("button", { name: "Xác nhận ghi 5 dòng" }).click();
   await p.locator("[data-bhn-done]").waitFor({ timeout: 60000 });
   const maiAnh = await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } });
@@ -149,7 +163,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   await p.locator("[data-bh-total]").waitFor({ timeout: 60000 });
   check("quay về bảng tháng: dòng tổng 3.130.000đ, Mai Anh 610.000đ", /3\.130\.000đ/.test(await p.locator("[data-bh-total]").innerText()) && /610\.000đ/.test(await p.locator("[data-bh-tr]", { hasText: "Mai Anh" }).innerText()));
   check("em đã nhập chưa lập phiếu → 'Chưa lập phiếu'; Tuấn Kiệt 0đ có chữ 'Không tạo khoản phí'", (await p.getByText("Chưa lập phiếu").count()) >= 4 && await p.locator("[data-bh-tr]", { hasText: "Tuấn Kiệt" }).getByText("Không tạo khoản phí").isVisible());
-  await shot(p, "hp-lt-1600-bang-da-nhap");
+  await shot(p, `hp-lt-${DW}-bang-da-nhap`);
 
   // ───────────────────────── Dán TSV ─────────────────────────
   section("Dán TSV: đủ trạng thái, ô chọn em, nút xác nhận");
@@ -170,10 +184,10 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   check("còn dòng sai + chưa chọn em → nút xác nhận TẮT, có lý do bằng chữ", await p.getByRole("button", { name: /^Xác nhận ghi/ }).isDisabled() && /Còn 3 dòng/.test(await p.locator("[data-bhn-why]").innerText()));
   await p.locator("[data-bhn-pick]").nth(0).selectOption({ label: "Minh Khôi" });
   await p.locator("[data-bhn-pick]").nth(1).selectOption({ index: 1 });
-  check("đã chọn em cho hai dòng → còn đúng 1 dòng sai chặn nút", await p.getByRole("button", { name: /^Xác nhận ghi/ }).isDisabled() && /Còn 1 dòng/.test(await p.locator("[data-bhn-why]").innerText()));
+  await eventually("đã chọn em cho hai dòng → còn đúng 1 dòng sai chặn nút (chọn em gọi lại máy chủ nên chờ cập nhật)", async () => await p.getByRole("button", { name: /^Xác nhận ghi/ }).isDisabled() && /Còn 1 dòng/.test(await p.locator("[data-bhn-why]").innerText()), 15000);
   await p.locator("[data-bhn-skip]").check();
   check("tích 'Bỏ qua dòng sai' → bật: 'Xác nhận ghi 3 dòng' (1 đúng + 2 vừa chọn em)", await p.getByRole("button", { name: "Xác nhận ghi 3 dòng" }).isEnabled());
-  await shot(p, "hp-lt-1600-dan-tsv");
+  await shot(p, `hp-lt-${DW}-dan-tsv`);
   await p.getByRole("button", { name: "Xác nhận ghi 3 dòng" }).click();
   await p.locator("[data-bhn-done]").waitFor({ timeout: 60000 });
   const prevRows = await prisma.courseFeeSheetRow.findMany({ where: { courseId: C.id, yearMonth: ymPrev } });
@@ -192,9 +206,11 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   await p.getByLabel(/^Đơn giá riêng/).fill("45000");
   await eventually("đơn giá riêng thắng bậc: 13 buổi × 45.000đ = 585.000đ … = 535.000đ + chữ 'đơn giá riêng của em'", async () => { const t = await p.locator("[data-bh-cong-thuc]").innerText(); return /13 buổi × 45\.000đ = 585\.000đ/.test(t) && /535\.000đ/.test(t) && /đơn giá riêng của em/.test(t); }, 15000);
   check("chưa bấm lưu: DB giữ 610.000 (dryRun không ghi)", (await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } })).net === 610000);
-  await shot(p, "hp-lt-1600-panel-em");
+  await shot(p, `hp-lt-${DW}-panel-em`);
   await p.getByRole("button", { name: "Lưu học phí" }).click();
-  await eventually("lưu xong: DB Mai Anh 535.000 và panel đóng", async () => (await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } })).net === 535000 && (await p.locator("[data-bh-panel]").count()) === 0, 20000);
+  await p.locator("[data-bh-panel]").waitFor({ state: "detached", timeout: 20000 }).catch(() => undefined);
+  const maiNet = (await prisma.courseFeeSheetRow.findFirstOrThrow({ where: { courseId: C.id, studentId: S["Mai Anh"].id, yearMonth: ym } })).net;
+  check("lưu xong: DB Mai Anh 535.000 và panel đóng", maiNet === 535000 && (await p.locator("[data-bh-panel]").count()) === 0, { maiNet, panelCount: await p.locator("[data-bh-panel]").count() });
   await p.locator(`[data-bh-row="${S["Tuấn Kiệt"].id}"]`).click();
   await p.locator("[data-bh-panel]").waitFor({ timeout: 30000 });
   await eventually("Phải đóng 0đ: panel nói KiN không tạo khoản phí", async () => /Phải đóng 0đ nên KiN không tạo khoản phí/.test(await p.locator("[data-bh-cong-thuc]").innerText()), 15000);
@@ -205,7 +221,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
 
   // ───────────────────────── Ba trạng thái ─────────────────────────
   section("Ba trạng thái: tải · lỗi + Thử lại · rỗng (3 loại) · tệp bị từ chối");
-  const st = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(st);
+  const st = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(st);
   const SHEET_GET = /\/bang-hoc-phi\?ym=/; // GET bảng tháng (không khớp /mau?ym= hay /nhap/*)
   await st.route(SHEET_GET, async r => { await new Promise(res => setTimeout(res, 2500)); await r.continue(); });
   await st.goto(tabUrl(C.id), { waitUntil: "domcontentloaded", timeout: 120000 });
@@ -228,7 +244,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   check("rỗng #2 (chưa đặt bảng bậc): 'Cô chưa đặt bảng bậc' + nút 'Đặt bảng bậc'", await st.getByText("Cô chưa đặt bảng bậc").isVisible() && await st.getByRole("button", { name: "Đặt bảng bậc" }).isVisible());
   await st.getByRole("button", { name: "Đặt bảng bậc" }).click();
   await st.locator("[data-bh-cau-hinh]").waitFor({ timeout: 30000 });
-  check("panel bảng bậc điền sẵn từ lớp trước của cô (suggestedConfig) và nói rõ", await st.getByText("Điền sẵn từ lớp trước của cô").isVisible() && (await st.getByLabel("Tên môn 1").inputValue()) === "Toán");
+  check("panel bảng bậc điền sẵn từ lớp trước của cô (suggestedConfig) và nói rõ", await st.getByText("Điền sẵn từ lớp trước của cô", { exact: true }).isVisible() && (await st.getByLabel("Tên môn 1").inputValue()) === "Toán");
   check("có ô 'Ngày bắt đầu kỳ thu (1–28, mặc định 1 = tháng dương lịch)'", await st.getByLabel(/Ngày bắt đầu kỳ thu \(1–28/).isVisible() && (await st.getByLabel(/Ngày bắt đầu kỳ thu/).inputValue()) === "1");
   await st.getByLabel(/Ngày bắt đầu kỳ thu/).fill("15");
   await st.getByRole("button", { name: "Lưu bảng bậc" }).click();
@@ -241,7 +257,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   await st.getByRole("button", { name: "Xem trước" }).click();
   await st.locator("[data-bhn-fatal], [data-bhn-fail]").first().waitFor({ timeout: 60000 });
   check("tệp bị từ chối: thẻ lỗi nêu lý do + nút 'Chọn tệp khác', không ghi gì", await st.getByRole("button", { name: "Chọn tệp khác" }).first().isVisible() && (await prisma.courseFeeSheetRow.count({ where: { courseId: C.id, yearMonth: ymPrev2 } })) === 0);
-  await shot(st, "hp-lt-1600-tep-bi-tu-choi");
+  await shot(st, `hp-lt-${DW}-tep-bi-tu-choi`);
   await st.close();
 
   // ───────────────────────── Lớp cũ: lời mời bật chế độ ─────────────────────────
@@ -251,7 +267,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   const stuM = await mkUser({ name: "Em Có Phí" });
   await prisma.enrollment.create({ data: { userId: stuM.id, courseId: oldMoney.id, status: "active" } });
   await prisma.feeCharge.create({ data: { tutorId: T.id, courseId: oldMoney.id, studentId: stuM.id, kind: "extra", dateKey: today, yearMonth: ym, amount: 50000, mode: "monthly_sessions", label: "Tài liệu" } });
-  const lc = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(lc);
+  const lc = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(lc);
   await lc.goto(tabUrl(oldMoney.id), { waitUntil: "networkidle", timeout: 120000 });
   await lc.getByRole("heading", { name: "Học phí và đối soát" }).waitFor({ timeout: 90000 });
   await lc.waitForTimeout(2500);
@@ -270,7 +286,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   // ───────────────────────── Màn buổi + Học phí theo tháng ─────────────────────────
   section("Màn buổi không hứa sinh học phí; Học phí theo tháng gọi đúng tên cách tính");
   await prisma.classSchedule.create({ data: { courseId: C.id, dayOfWeek: dayOfWeekOfKey(today), startTime: "00:05", endTime: "00:35" } });
-  const b = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(b);
+  const b = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(b);
   await b.goto(`${BASE}/lop-cua-toi/buoi/${C.id}/${today}`, { waitUntil: "networkidle", timeout: 120000 });
   await b.getByRole("button", { name: "Đã dạy xong" }).waitFor({ timeout: 90000 });
   check("lớp bảng tháng: 'Việc này không tạo hay sửa học phí' (không nói học phí tính lúc Đã dạy xong)", await b.getByText("Việc này không tạo hay sửa học phí").isVisible() && (await b.getByText(/học phí của buổi được tính/).count()) === 0);
@@ -281,7 +297,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   // ───────────────────────── Quyền ─────────────────────────
   section("Gia sư bộ môn và gia sư lớp khác: không thấy tab, trang con 404, không rò số");
   for (const [who, u] of [["gia sư bộ môn", sub], ["gia sư lớp khác", other]] as const) {
-    const q = await (await ctxFor(u, { width: 1600, height: 1000 })).newPage(); watch(q);
+    const q = await (await ctxFor(u, { width: DW, height: 1000 })).newPage(); watch(q);
     const r1 = await q.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
     await q.waitForTimeout(1500);
     const txt = await bodyText(q);
@@ -291,6 +307,7 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
     const r3 = await q.goto(`${BASE}/lop-cua-toi/${C.id}/bang-hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     check(`${who}: /bang-hoc-phi → 404`, r3?.status() === 404, r3?.status());
     const body404 = await bodyText(q);
+    for (const [r, u2] of [[r1, tabUrl(C.id)], [r2, nhapUrl(C.id)], [r3, `${BASE}/lop-cua-toi/${C.id}/bang-hoc-phi`]] as const) if (r?.status() === 404) notFoundUrls.add(u2.replace(BASE, ""));
     check(`${who}: trang 404 không chứa số tiền hay tên lớp`, !/\d\.\d{3}đ/.test(body404) && !/Lớp bảng tháng/.test(body404));
     await q.close();
   }
@@ -329,20 +346,21 @@ const OUT = process.env.SHOTS ?? "scratchpad/shots";
   await shot(m, "hp-lt-390-xem-truoc");
 
   section("Công tắc ẩn tiền che số; số tiền không viết tắt");
-  const hide = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(hide);
+  const hide = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(hide);
   await hide.addInitScript("try{localStorage.setItem('kin:an-so-tien','1')}catch(e){}");
   await hide.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
   await hide.locator("[data-bh-total]").waitFor({ timeout: 90000 });
   const ht = await hide.locator("[data-bh-total]").innerText();
   check("ẩn tiền: dòng tổng và bảng bậc không còn số đồng (chỉ dấu chấm)", (await hide.locator("[data-money-hidden]").count()) > 0 && !/\d\.\d{3}đ/.test(ht) && !/\d\.\d{3}đ/.test(await hide.locator("[data-bh-tiers]").innerText()), ht);
   await hide.close();
-  const shown = await (await ctxFor(T, { width: 1600, height: 1000 })).newPage(); watch(shown);
+  const shown = await (await ctxFor(T, { width: DW, height: 1000 })).newPage(); watch(shown);
   await shown.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
   await shown.locator("[data-bh-total]").waitFor({ timeout: 90000 });
   check("hiện tiền: không có 'tr'/'k' viết tắt ở đâu trên màn", !/\d(tr|k)\b/.test(await bodyText(shown)));
   await shown.close();
 
   check("không lỗi trang / console", errors.length === 0, errors.slice(0, 4));
+  check("cảnh báo React dev 'script tag' (có sẵn ở trang notFound() của bản dev) chỉ đến từ trang 404 do bài chủ ý mở, không từ trang nào khác", devScriptWarn.every(u => notFoundUrls.has(u)), { devScriptWarn, notFoundUrls: [...notFoundUrls] });
   await closeAll();
   await done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });
