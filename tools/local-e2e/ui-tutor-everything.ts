@@ -56,6 +56,8 @@ function watch(p: Page) {
     let u: URL; try { u = new URL(r.url()); } catch { return; }
     if (u.origin !== MAIN_ORIGIN || r.status() < 400) return;
     if (u.pathname.startsWith("/_next/") || /favicon/.test(u.pathname)) return;
+    // HP-LOP-TRUONG: lớp CHƯA dùng bảng học phí tháng → máy chủ CỐ Ý trả 409 NOT_SHEET_MODE (kèm canEnable/suggestedConfig) để trang hiện khung "Bật bảng học phí cho lớp này". Hợp đồng đúng thiết kế (t-hp-lop-truong khẳng định), không phải lỗi.
+    if (r.status() === 409 && r.request().method() === "GET" && /^\/api\/tutor\/lop\/[^/]+\/bang-hoc-phi(\/cau-hinh)?$/.test(u.pathname)) return;
     issues.push({ at, kind: `HTTP ${r.status()}`, msg: `${r.request().method()} ${u.pathname}${u.search}` });
   });
 }
