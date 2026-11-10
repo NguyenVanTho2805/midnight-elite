@@ -11,6 +11,8 @@ import RemindClass from "@/components/admin/RemindClass";
 
 type Student = {
   userId:       string;
+  /** Trạng thái ghi danh (API /api/courses/[id]/students luôn trả). Chỉ em đang học / tạm dừng mới có hồ sơ: /api/tutor/hoc-sinh/<id> trả 403 cho em chờ đồng ý. */
+  status?:      string;
   name:         string;
   email:        string;
   phone:        string | null;
@@ -20,6 +22,9 @@ type Student = {
   totalLessons: number;
   progress:     number;
 };
+
+/** Em có hồ sơ riêng khi đang học hoặc tạm dừng (cùng luật với tutorHasStudent ở máy chủ). Thiếu status → coi là có (bản API cũ). */
+const coHoSo = (s: Student) => s.status === undefined || s.status === "active" || s.status === "suspended";
 
 export default function DanhBaLop({ courseId, embedded = false, emptyAction }: {
   courseId: string;
@@ -148,7 +153,9 @@ export default function DanhBaLop({ courseId, embedded = false, emptyAction }: {
                       </td>
                       {embedded && (
                         <td className="px-4 py-1">
-                          <Link href={`/lop-cua-toi/hoc-sinh/em/${encodeURIComponent(s.userId)}`} aria-label={`Hồ sơ của ${s.name}`} className="inline-flex items-center min-h-11 text-xs underline" style={{ color: "var(--kin-nhan-link)" }}>Hồ sơ</Link>
+                          {coHoSo(s)
+                            ? <Link href={`/lop-cua-toi/hoc-sinh/em/${encodeURIComponent(s.userId)}`} aria-label={`Hồ sơ của ${s.name}`} className="inline-flex items-center min-h-11 text-xs underline" style={{ color: "var(--kin-nhan-link)" }}>Hồ sơ</Link>
+                            : <span className="inline-flex items-center min-h-11 text-xs" data-cho-dong-y style={{ color: "var(--kin-chu-phu)" }}>Chờ đồng ý</span>}
                         </td>
                       )}
                     </tr>
@@ -188,7 +195,9 @@ export default function DanhBaLop({ courseId, embedded = false, emptyAction }: {
                     Ghi danh {new Date(s.enrolledAt).toLocaleDateString("vi-VN")}
                   </p>
                   {embedded && (
-                    <Link href={`/lop-cua-toi/hoc-sinh/em/${encodeURIComponent(s.userId)}`} aria-label={`Hồ sơ của ${s.name}`} className="mt-1 inline-flex items-center min-h-11 text-sm underline" style={{ color: "var(--kin-nhan-link)" }}>Hồ sơ của em</Link>
+                    coHoSo(s)
+                      ? <Link href={`/lop-cua-toi/hoc-sinh/em/${encodeURIComponent(s.userId)}`} aria-label={`Hồ sơ của ${s.name}`} className="mt-1 inline-flex items-center min-h-11 text-sm underline" style={{ color: "var(--kin-nhan-link)" }}>Hồ sơ của em</Link>
+                      : <span className="mt-1 inline-flex items-center min-h-11 text-sm" data-cho-dong-y style={{ color: "var(--kin-chu-phu)" }}>Chờ đồng ý</span>
                   )}
                 </div>
               ))}

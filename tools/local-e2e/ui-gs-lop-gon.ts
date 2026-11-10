@@ -17,6 +17,9 @@ const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịc
   const c3 = await mkCourse(T2.id, { name: "Lớp Của Thầy Khác" });
   await prisma.course.update({ where: { id: c1.id }, data: { joinPolicy: "approve", bg: "url(https://res.cloudinary.com/demo/image/upload/sample.jpg) center/cover no-repeat" } });
   for (const u of [S1, S2]) await prisma.enrollment.create({ data: { userId: u.id, courseId: c1.id, status: "active" } });
+  // Em chờ phụ huynh đồng ý: có trong danh bạ nhưng /api/tutor/hoc-sinh/<id> trả 403 → KHÔNG được có liên kết "Hồ sơ" (10/11/2026, lỗi tìm ra ở ui-tutor-everything).
+  const W = await mkUser({ name: "Em Chờ Đồng Ý" });
+  await prisma.enrollment.create({ data: { userId: W.id, courseId: c1.id, status: "pending_consent" } });
   await prisma.classSchedule.create({ data: { courseId: c1.id, dayOfWeek: 6, startTime: "19:00", endTime: "20:30" } });
   await prisma.classJoinRequest.create({ data: { courseId: c1.id, userId: P.id, status: "pending" } });
   const sec = await prisma.section.create({ data: { id: `sec-${Date.now()}`, title: "Chương 1", order: 1, courseId: c1.id } });
@@ -89,6 +92,9 @@ const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịc
     const mn = pg.getByRole("navigation", { name: "Mục của Học sinh" });
     check(`${tag}: 4 mục con Danh bạ · Xin vào lớp (1) · Mã mời · Thêm học sinh`, JSON.stringify((await mn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(["Danh bạ", "Xin vào lớp (1)", "Mã mời", "Thêm học sinh"]), await mn.getByRole("link").allInnerTexts());
     check(`${tag}: danh bạ hiện 2 em + liên kết Hồ sơ`, (await pg.locator("text=Em Bình >> visible=true").count()) > 0 && (await pg.getByRole("link", { name: /Hồ sơ/ }).locator("visible=true").count()) >= 2);
+    check(`${tag}: đúng 2 liên kết Hồ sơ (em đang học) — em chờ đồng ý KHÔNG có liên kết, chỉ có nhãn "Chờ đồng ý"`,
+      (await pg.locator('a[href*="/hoc-sinh/em/"]:visible').count()) === 2 && (await pg.locator("[data-cho-dong-y]:visible").count()) === 1 && (await pg.getByRole("link", { name: "Hồ sơ của Em Chờ Đồng Ý" }).count()) === 0,
+      { links: await pg.locator('a[href*="/hoc-sinh/em/"]:visible').count(), nhan: await pg.locator("[data-cho-dong-y]:visible").count() });
     await shot(pg, `gs-lop-gon-hoc-sinh-${tag}`);
     await mn.getByRole("link", { name: /^Xin vào lớp/ }).click();
     await pg.waitForURL(/muc=xin-vao/, { timeout: 120000 });
