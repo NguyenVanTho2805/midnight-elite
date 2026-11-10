@@ -126,12 +126,20 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
 // không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
 const HOME = COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
 const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
+// GS-LOP-GON: mỗi tab của lớp có đường dẫn riêng. /lop-cua-toi/<lớp> và /lop-cua-toi/quan-lop/<lớp> (kể cả liên kết cũ ?tab=lich-hoc | ?tab=hoc-vien — so sánh ở đây đã bỏ phần ?query)
+// chuyển sang /lop-cua-toi/quan-lop/<lớp>/(giao-trinh | lich-hoc | hoc-vien). Đích LUÔN mang đúng mã lớp đã yêu cầu nên không thể "khớp nhầm" sang lớp khác.
+function classTabAlias(reqPath: string, finPath: string): boolean {
+  const m = /^\/lop-cua-toi\/(?:quan-lop\/)?([^/]+)$/.exec(reqPath);
+  if (!m || m[1] === "tao-moi") return false;
+  return ["giao-trinh", "lich-hoc", "hoc-vien"].some(tab => finPath === `/lop-cua-toi/quan-lop/${m[1]}/${tab}`);
+}
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
+  if (classTabAlias(reqPath, finPath)) return true;
   if (/^\/admin(\/|$)/.test(reqPath)) {
     // đường cũ /admin/... của gia sư: 307 sang bí danh (rồi trang tao-moi còn chuyển tiếp một lần nữa), không có bí danh → Hộp việc
     const alias = toTutorPath(reqPath)?.split("?")[0] ?? null;
-    return finPath === (alias ?? HOME) || (alias !== null && STUDENT_ALIASES[alias] === finPath);
+    return finPath === (alias ?? HOME) || (alias !== null && (STUDENT_ALIASES[alias] === finPath || classTabAlias(alias, finPath)));
   }
   if (["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) return finPath === HOME;
   if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
@@ -346,7 +354,8 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // Đường cũ có bí danh: 307 sang bí danh, giữ tham số, vẫn khung gia sư.
   if (full) {
     const r = await open(p, MAIN + `/admin/khoa-hoc/${course1}?tab=lich-hoc`);
-    check("gia sư mở /admin/khoa-hoc/<lớp>?tab=lich-hoc (link cũ) → 307 sang /lop-cua-toi/quan-lop/<lớp>?tab=lich-hoc, khung gia sư", r.final.pathname === `/lop-cua-toi/quan-lop/${course1}` && r.final.searchParams.get("tab") === "lich-hoc" && r.shell === "Module của gia sư", { url: abs(r.final), shell: r.shell });
+    // GS-LOP-GON: tab "Lịch học" là trang riêng …/quan-lop/<lớp>/lich-hoc (không còn ?tab=lich-hoc); 307 rồi trang lớp chuyển tiếp thêm một lần.
+    check("gia sư mở /admin/khoa-hoc/<lớp>?tab=lich-hoc (link cũ) → sang /lop-cua-toi/quan-lop/<lớp>/lich-hoc, khung gia sư", r.final.pathname === `/lop-cua-toi/quan-lop/${course1}/lich-hoc` && r.shell === "Module của gia sư", { url: abs(r.final), shell: r.shell });
   }
   // Mở trang cấm làm trang gọi API trước khi PermissionGuard kịp đẩy đi → 403 là KỲ VỌNG, không tính vào mục C.
   const expected403 = issues.splice(issuesBeforePerm).filter(i => i.kind === "HTTP 403");

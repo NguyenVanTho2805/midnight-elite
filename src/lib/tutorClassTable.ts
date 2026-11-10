@@ -7,6 +7,8 @@ export interface ClassScheduleRule { dayOfWeek: number; startTime: string; endTi
 export interface TutorClassRow {
   id: string; name: string; category: string; classStatus: string; hidden: boolean;
   students: number; capacity: number | null; schedule: string | null; sessionsTaught: number;
+  /** GS-LOP-GON: ảnh bìa thẻ lớp — CHỈ địa chỉ https đã lọc từ Course.bg (coverImageOf), không bao giờ là chuỗi bg thô. Không có ảnh → null (thẻ vẽ chữ cái đầu). Chỉ THÊM. */
+  cover: string | null;
 }
 
 const DAY_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];

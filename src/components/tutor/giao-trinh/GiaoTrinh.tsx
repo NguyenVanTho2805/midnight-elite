@@ -8,12 +8,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinPage, KinPageHeader, KinPageSkeleton, KIN_FIELD } from "@/components/kin/PageLayout";
+import EmbeddedHead from "@/components/tutor/quan-lop/EmbeddedHead";
 import { KinStateCard } from "@/components/kin/StateCard";
 import { KinStatus } from "@/components/kin/Status";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { giaoTrinhHref, contentHref } from "@/lib/tutorRoutes";
+import { classBase } from "@/lib/tutorClassRoutes";
 import { formatMegabytes } from "@/lib/mediaStorage";
 import { moveEntry, type GtEntry, type GtGroup } from "@/lib/giaoTrinh";
 import type { LessonStatus } from "@/lib/lessonStatus";
@@ -31,7 +33,11 @@ const FILTERS: { key: GtFilter; label: string }[] = [
 const EXAM_STATE_TONE: Record<string, "xong" | "cho" | "mo"> = { "Sắp mở": "cho", "Đang mở": "xong", "Đã đóng": "mo" };
 const LIST_BOX = "rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] overflow-hidden";
 
-export default function GiaoTrinh({ courseId }: { courseId: string }) {
+/** Khung của thân trang: trang riêng dùng KinPage (lề + đầu trang); `embedded` (nằm trong khung lớp quan-lop/[id]) chỉ là một khối trơn vì đầu lớp + dải tab đã lo lề và h1. */
+function Plain({ children }: { children: React.ReactNode }) { return <div data-gt-embedded className="min-w-0">{children}</div>; }
+
+export default function GiaoTrinh({ courseId, embedded = false, noSchedule = false }: { courseId: string; /** GS-LOP-GON (2.2 dòng "Lớp chưa có lịch học"): trang máy chủ báo lớp chưa có khung giờ nào → một dòng nhắc đầu Giáo trình, dẫn sang tab Lịch học. Chỉ chủ lớp. */ noSchedule?: boolean; /** GS-LOP-GON: trong khung lớp → không h1 "Giáo trình" (trùng tên tab), không "← Lớp" (đã có "← Lớp học" ở đầu lớp); giữ nút thao tác. */ embedded?: boolean }) {
+  const Wrap = embedded ? Plain : KinPage;
   const g = useGiaoTrinh(courseId);
   const gv = useGiaoVienLop(courseId);
   const { ask, dialog } = useKinConfirm();
@@ -41,12 +47,14 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
   const [renameTitle, setRenameTitle] = useState("");
   const back = { href: `/lop-cua-toi/${courseId}`, label: "← Lớp" };
 
-  if (g.load.phase === "loading") return <KinPageSkeleton label="Đang tải giáo trình" rows={5} />;
+  if (g.load.phase === "loading") return embedded
+    ? <div aria-busy="true" aria-label="Đang tải giáo trình" className="space-y-3">{[0, 1, 2, 3, 4].map(i => <div key={i} className="h-[var(--kin-hang-bang)] rounded kin-skel kin-skel--soft" />)}</div>
+    : <KinPageSkeleton label="Đang tải giáo trình" rows={5} />;
   if (g.load.phase === "error") {
     const forbidden = g.load.status === 403 || g.load.status === 404;
     return (
-      <KinPage>
-        <KinPageHeader title="Giáo trình" back={back} />
+      <Wrap>
+        {!embedded && <KinPageHeader title="Giáo trình" back={back} />}
         <div className="max-w-xl">
           <KinStateCard tone="loi" kicker={forbidden ? "Không mở được" : "Lỗi · Có thể thử lại"} title={g.load.message}
             status={<KinStatus tone="loi">{forbidden ? "Không có dữ liệu của lớp này" : "Chưa tải được giáo trình"}</KinStatus>}
@@ -54,7 +62,7 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
             {forbidden ? "Giáo trình chỉ mở cho gia sư đang dạy lớp này." : "Dữ liệu của bạn vẫn an toàn. Thử lại sau ít giây."}
           </KinStateCard>
         </div>
-      </KinPage>
+      </Wrap>
     );
   }
 
@@ -145,8 +153,15 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
   const showGroupHeads = groups.length > 0;
 
   return (
-    <KinPage>
-      <KinPageHeader title="Giáo trình" sub={snap.courseName} back={back} actions={headerActions} />
+    <Wrap>
+      {embedded ? <EmbeddedHead actions={headerActions} /> : <KinPageHeader title="Giáo trình" sub={snap.courseName} back={back} actions={headerActions} />}
+
+      {embedded && noSchedule && (
+        <p data-gt-chua-co-lich className="mb-4 flex flex-wrap items-center gap-x-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
+          <span>Lớp chưa có lịch học: học sinh chưa thấy buổi nào trong lịch.</span>
+          <Link href={`${classBase(courseId)}/lich-hoc`} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Đặt lịch học</Link>
+        </p>
+      )}
 
       {pageMenu && (
         <div data-gt-menu-trang className="md:hidden mb-4 flex flex-col gap-2">
@@ -271,6 +286,6 @@ export default function GiaoTrinh({ courseId }: { courseId: string }) {
           onDuplicate={() => void g.duplicateEntry(g.editing as GtEntry)} onDelete={() => void removeEntry(g.editing as GtEntry)} />
       )}
       {dialog}
-    </KinPage>
+    </Wrap>
   );
 }

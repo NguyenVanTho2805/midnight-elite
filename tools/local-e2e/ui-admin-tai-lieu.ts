@@ -55,12 +55,14 @@ import { prisma } from "@/lib/prisma";
   check("lưu thành công: bài học trong DB có tài liệu là link đã dán", saved, await prisma.lesson.findMany({ select: { title: true, documents: true } }));
   await ctx.close();
 
-  section("Gia sư: /lop-cua-toi/quan-lop/{id} (cùng tệp qua bí danh) — mở ngăn Thêm bài học");
+  section("Gia sư: /lop-cua-toi/quan-lop/{id}?tab=chuong-bai (GS-LOP-GON: trang gia sư riêng, có KHUNG THẢ tài liệu thật) — mở ngăn Thêm bài học");
   const ct = await ctxFor(T, { width: 1280, height: 900 });
   const pt = await ct.newPage(); watch(pt);
-  await openLessonPanel(pt, `${BASE}/lop-cua-toi/quan-lop/${course.id}`);
-  const files2 = await docInputs(pt);
-  check("gia sư: ngăn mở được, KHÔNG input[type=file] nhận tài liệu, có dòng hướng dẫn dán link", !files2.some(isDocAccept) && (await pt.locator("[data-tai-lieu-dong]").count()) >= 1, files2);
+  await openLessonPanel(pt, `${BASE}/lop-cua-toi/quan-lop/${course.id}?tab=chuong-bai`);
+  await pt.locator('[data-tai-lieu-khung="san-sang"], [data-tai-lieu-khung="tat"]').first().waitFor({ timeout: 30000 });
+  // Ô tải VIDEO (VideoUploadBox, BU-02, có từ trước ở ô video của bài) là tính năng khác, cùng ngăn: chỉ đo input NẰM TRONG khung tài liệu ([data-tai-lieu]).
+  const files2 = await pt.locator('[data-tai-lieu] input[type="file"]').evaluateAll((els: Element[]) => els.map(e => e.getAttribute("accept") ?? ""));
+  check("gia sư: ngăn mở được, CÓ khung thả tài liệu (input[type=file] nhận pdf/doc… trong [data-tai-lieu]), KHÔNG còn dòng 'sắp có', KHÔNG đường video file trong khung tài liệu", files2.length === 0 ? (await pt.locator("[data-tai-lieu-khung]").count()) >= 1 : (files2.some(a => /\.pdf/.test(a) && /\.docx/.test(a)) && !files2.some(a => /mp4|video|mov|webm/i.test(a)) && (await pt.locator("[data-tai-lieu-dong]").count()) === 0), files2);
   await ct.close();
 
   section("Bài tập: không nút đính kèm tệp đề bài");

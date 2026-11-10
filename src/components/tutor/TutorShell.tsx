@@ -1,8 +1,11 @@
 // TT-203 — vỏ của gia sư theo bố cục Outlook (Figma "Vỏ — Gia sư" 9:2): thanh module 79px bên trái (điện thoại: thanh dưới 60px)
 // + dải trên 48px. Chỉ hiện module đang bật; mặc định (BU-00 31/10/2026, theo quyết định chủ 25/10) = ĐỦ module, gia sư tự tắt bớt ở Cài đặt ("chế độ gọn" = Lịch + Học phí
 // là lựa chọn tường minh `modules: []`). Tắt module chỉ ẨN khỏi thanh — dữ liệu giữ nguyên.
-// 13/10/2026: bỏ menu 226px + biểu tượng emoji + nhãn 9,5px; các trang không có trên thanh (Doanh thu, Báo cáo tháng, Kế hoạch buổi,
-// Kiểm duyệt, Hồ sơ gia sư, Bài đăng, Cài đặt) vào qua bảng "Khác" như vỏ học sinh. Hộp việc đang ở đúng /lop-cua-toi, nên mục này
+// 13/10/2026: bỏ menu 226px + biểu tượng emoji + nhãn 9,5px; các trang không có trên thanh (Doanh thu, Báo cáo tháng,
+// Kiểm duyệt, Hồ sơ gia sư, Bài đăng, Cài đặt) vào qua bảng "Khác" như vỏ học sinh.
+// GS-LOP-GON (09/11/2026): "Kế hoạch buổi" (soạn giáo án SessionPlan, KHÔNG phải chốt buổi / sinh học phí) không còn lối vào ở thanh bên và bảng "Khác";
+// route /lop-cua-toi/ke-hoach-buoi* vẫn chạy, vào từ Lịch ("Soạn kế hoạch buổi này") và trang chi tiết buổi.
+// Hộp việc đang ở đúng /lop-cua-toi, nên mục này
 // chỉ sáng khi đúng đường dẫn đó (các trang con không làm nó sáng theo).
 "use client";
 import Link from "next/link";
@@ -29,7 +32,6 @@ const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 const MORE_BASE: MoreGroup[] = [
   { title: "Dạy học", links: [
-    { label: "Kế hoạch buổi", href: "/lop-cua-toi/ke-hoach-buoi", icon: "lich" },
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang", icon: "bao-cao" },
     { label: "Sổ điểm", href: "/lop-cua-toi/so-diem", icon: "bai-kt" },
     { label: "Kiểm duyệt cộng đồng", href: "/lop-cua-toi/kiem-duyet", icon: "kiem-duyet" },

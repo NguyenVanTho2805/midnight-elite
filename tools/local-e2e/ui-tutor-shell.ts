@@ -96,7 +96,7 @@ import { prisma } from "@/lib/prisma";
   const dlg = pg.getByRole("dialog", { name: "Các mục khác" });
   check("mở bảng, aria-expanded=true", await dlg.isVisible() && await mod("Khác").getAttribute("aria-expanded") === "true");
   const want: Record<string, string> = {
-    "Kế hoạch buổi": "/lop-cua-toi/ke-hoach-buoi", "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
+    "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
     "Sổ điểm": "/lop-cua-toi/so-diem", // 24/10: trang có sẵn (PT-05) nhưng trước đây không có đường vào từ menu
     "Kiểm duyệt cộng đồng": "/lop-cua-toi/kiem-duyet", "Doanh thu": "/lop-cua-toi/doanh-thu", "Hồ sơ gia sư": "/lop-cua-toi/ho-so",
     "Bài đăng tìm học sinh": "/lop-cua-toi/bai-dang", "Yêu cầu tìm gia sư": "/lop-cua-toi/yeu-cau", // B6 GS-09
@@ -104,6 +104,7 @@ import { prisma } from "@/lib/prisma";
   };
   for (const [l, href] of Object.entries(want)) check(`mục '${l}' → ${href}`, await dlg.getByRole("link", { name: l, exact: true }).getAttribute("href") === href);
   check("B1: Hộp việc bật thì KHÔNG còn mục 'Tổng quan'; B2: nhóm Tài khoản không còn 'Liên hệ hỗ trợ' (dấu hỏi trên đỉnh còn)", await dlg.getByRole("link", { name: "Tổng quan", exact: true }).count() === 0 && await dlg.getByRole("link", { name: "Liên hệ hỗ trợ" }).count() === 0 && await pg.locator("[data-help-link]").getAttribute("href") === "/lop-cua-toi/ho-tro");
+  check("GS-LOP-GON: bảng Khác KHÔNG còn mục 'Kế hoạch buổi' (trang vẫn sống ở /lop-cua-toi/ke-hoach-buoi)", await dlg.getByRole("link", { name: "Kế hoạch buổi" }).count() === 0);
   check("đủ 4 module bật thì KHÔNG còn mục 'Thêm module'", await dlg.getByRole("link", { name: "Thêm module" }).count() === 0);
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Cô Lan").isVisible());
   await shot(pg, "tutor-shell-khac");

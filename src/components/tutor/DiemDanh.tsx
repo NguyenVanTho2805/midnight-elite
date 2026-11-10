@@ -31,6 +31,7 @@ import { attendanceGroupMessage, attendanceMessage } from "@/lib/invoiceZalo";
 import { openZalo } from "@/lib/zaloShare";
 import { hmOf, isValidDateKey, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import DiemBuoi from "@/components/tutor/DiemBuoi";
+import { classBase } from "@/lib/tutorClassRoutes";
 import { STUDENT_NOTE_MAX, tallyAttendance } from "@/lib/sessionBook";
 
 const vnWhen = (iso: string) => `${hmOf(vnMinutesOfDay(new Date(iso)))} ngày ${vnDateKeyOf(new Date(iso)).slice(8, 10)}/${vnDateKeyOf(new Date(iso)).slice(5, 7)}`;
@@ -306,7 +307,7 @@ export default function DiemDanhPanel({ courseId, embedded = false, fixedDate, o
           <p>Lớp chưa có học sinh đang học.</p>
           {limited ? <p className="mt-2" style={{ color: "var(--kin-chu-mo)" }}>Chủ lớp sẽ thêm học sinh. Khi có em vào lớp, cô quay lại điểm danh.</p> : <>
           <p className="mt-2" style={{ color: "var(--kin-chu-mo)" }}>Gửi mã mời để học sinh tự vào lớp, rồi quay lại điểm danh.</p>
-          <Link href={`/lop-cua-toi/${courseId}?tab=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mở mã mời của lớp</Link></>}
+          <Link href={`${classBase(courseId)}/hoc-vien?muc=ma-moi`} className={`${kinButtonClass("secondary")} mt-4`}>Mở mã mời của lớp</Link></>}
         </div>
       ) : (
         <>

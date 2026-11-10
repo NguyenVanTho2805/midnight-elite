@@ -333,7 +333,10 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("không ghi audit enrollment.create / class_join_request.approve cho em này", (await prisma.auditLog.count({ where: { action: { in: ["enrollment.create", "class_join_request.approve"] }, resourceId: { in: [rq.X] } } })) === 0);
   const sx2 = await form(`${apBase}/${rq.X}/duyet`, T);
   check("bấm lại vẫn da-nghi, vẫn pending (không đổi gì)", loc(sx2).endsWith("duyet=da-nghi") && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "pending");
-  const page = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi`, { as: T });
+  // GS-LOP-GON (09/11/2026): chủ lớp mở /lop-cua-toi/<id>?tab=hoc-sinh… → 307 sang tab Học sinh của trang lớp (giữ duyet / n); thông điệp hiện ở trang đích, mục Xin vào lớp.
+  const page0 = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi`, { as: T });
+  check("GS-LOP-GON: link cũ ?tab=hoc-sinh&duyet=da-nghi → 307 …/quan-lop/<id>/hoc-vien?muc=xin-vao&duyet=da-nghi", page0.status === 307 && loc(page0) === `/lop-cua-toi/quan-lop/${AP.id}/hoc-vien?muc=xin-vao&duyet=da-nghi`, [page0.status, loc(page0)]);
+  const page = await api("GET", loc(page0), { as: T });
   check("trang lớp đọc ?duyet=da-nghi và HIỆN thông điệp rõ cho gia sư", page.status === 200 && page.text.includes(SUSP_MSG), page.status);
   check("lớp của gia sư khác: duyệt → 403, không đổi gì", (await form(`${apBase}/${rq.X}/duyet`, T2)).status === 403 && (await prisma.classJoinRequest.findUnique({ where: { id: rq.X } }))?.status === "pending");
 
@@ -344,7 +347,9 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("X và Z vẫn pending + vẫn suspended, không thông báo", (await prisma.classJoinRequest.count({ where: { id: { in: [rq.X, rq.Z] }, status: "pending" } })) === 2 && (await prisma.enrollment.count({ where: { userId: { in: [X.id, Z.id] }, courseId: AP.id, status: "suspended" } })) === 2 && (await prisma.notification.count({ where: { userId: { in: [X.id, Z.id] } } })) === 0);
   const bk0 = await form(`${apBase}/hang-loat`, T, [["action", "duyet"], ["id", rq.X], ["id", rq.Z]]);
   check("hàng loạt chỉ toàn em suspended → duyet=da-nghi&n=0", loc(bk0).includes("duyet=da-nghi") && loc(bk0).includes("n=0"), loc(bk0));
-  const bkPage = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi&n=1`, { as: T });
+  const bkPage0 = await api("GET", `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=da-nghi&n=1`, { as: T });
+  check("GS-LOP-GON: link cũ …&n=1 → 307 giữ duyet và n", bkPage0.status === 307 && loc(bkPage0) === `/lop-cua-toi/quan-lop/${AP.id}/hoc-vien?muc=xin-vao&duyet=da-nghi&n=1`, [bkPage0.status, loc(bkPage0)]);
+  const bkPage = await api("GET", loc(bkPage0), { as: T });
   check("trang lớp: n=1 → 'Đã duyệt 1 bạn…' + nhắc mở lại ở mục Học sinh", bkPage.text.includes("Đã duyệt 1 bạn") && bkPage.text.includes("mở lại ở mục Học sinh"), bkPage.status);
 
   section("(18c) Sau khi gia sư MỞ LẠI (active), duyệt mới đi qua và mới thông báo");

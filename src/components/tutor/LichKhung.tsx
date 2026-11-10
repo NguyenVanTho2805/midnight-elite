@@ -5,14 +5,16 @@
 // (chỉ giờ + tên lớp, không có danh sách học sinh). Lỗi tải khung lớp khác KHÔNG chặn việc sửa, chỉ mất cảnh báo trùng và được nói rõ.
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL, KIN_TWO_COL } from "@/components/kin/PageLayout";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinStatus } from "@/components/kin/Status";
+import { KinCallout } from "@/components/kin/Callout";
+import EmbeddedHead from "@/components/tutor/quan-lop/EmbeddedHead";
 import { jfetch } from "@/components/tutor/studentUi";
 import WeekScheduleEditor from "@/components/tutor/WeekScheduleEditor";
 import { classAccentFor } from "@/lib/classColor";
@@ -26,8 +28,18 @@ interface CourseInfo { id: string; name: string; color: string | null; scheduleC
 type Phase = "loading" | "error" | "ready" | "forbidden" | "notfound" | "nocourse";
 const hm = (m: number) => (m >= 1440 ? "24:00" : hmOf(m));
 
-export default function LichKhung({ courseId, selectable = false }: { courseId?: string | null; selectable?: boolean }) {
+/** ?lich=loi: lớp vừa tạo nhưng khung giờ chưa lưu (POST 303 của tạo lớp trả về đây qua chuyển hướng) → nhắc đặt lại bằng chính lưới này. Chỉ vẽ ở bản nhúng (useSearchParams cần Suspense của trang lớp). */
+function LichLoiNote() {
+  if (useSearchParams().get("lich") !== "loi") return null;
+  return <KinCallout title="Lớp đã tạo, nhưng khung giờ chưa lưu" className="mb-5">Cô đặt lại khung giờ bằng lưới bên dưới.</KinCallout>;
+}
+
+function Plain({ children }: { children: React.ReactNode }) { return <div data-lich-embedded className="min-w-0">{children}</div>; }
+
+export default function LichKhung({ courseId, selectable = false, embedded = false }: { courseId?: string | null; selectable?: boolean; /** GS-LOP-GON: trong khung lớp → không h1 "Khung giờ học của lớp" (trùng tên tab Lịch học), không "← Về trang lớp"; chỉ còn một dòng mô tả. */ embedded?: boolean }) {
   const router = useRouter();
+  const Wrap = embedded ? Plain : KinPage;
+
   const [current, setCurrent] = useState<string | null>(courseId ?? null);
   const [courses, setCourses] = useState<CourseInfo[] | null>(null);
   const [coursesFailed, setCoursesFailed] = useState(false);
@@ -152,32 +164,37 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
 
   const sortedList = [...shown].sort((a, b) => WEEK_ORDER.indexOf(a.dayOfWeek as typeof WEEK_ORDER[number]) - WEEK_ORDER.indexOf(b.dayOfWeek as typeof WEEK_ORDER[number]) || a.startMin - b.startMin);
 
-  const header = (
+  const header = embedded ? (
+    <>
+      <EmbeddedHead sub="Khung giờ hằng tuần, lặp mọi tuần: học sinh thấy buổi học và KiN nhắc lịch từ đây." />
+      <Suspense fallback={null}><LichLoiNote /></Suspense>
+    </>
+  ) : (
     <KinPageHeader title="Khung giờ học của lớp"
       sub={phase === "ready" ? `${courseName} · lặp mọi tuần` : "Khung giờ hằng tuần: học sinh thấy buổi học và KiN nhắc lịch từ đây."}
       back={{ href: current && !selectable ? `/lop-cua-toi/${encodeURIComponent(current)}` : "/lop-cua-toi/lich", label: current && !selectable ? "← Về trang lớp" : "← Lịch dạy" }} />
   );
 
   if (phase === "forbidden") return (
-    <KinPage>{header}
+    <Wrap>{header}
       <KinEmptyState title="Bạn không có quyền với lớp này" action={<Link href="/lop-cua-toi/lop" className={kinButtonClass("primary")}>Về danh sách lớp</Link>}>
         Lớp này thuộc người khác nên KiN không hiện khung giờ của lớp. Cô mở lớp của mình ở danh sách lớp.
       </KinEmptyState>
-    </KinPage>
+    </Wrap>
   );
   if (phase === "notfound") return (
-    <KinPage>{header}
+    <Wrap>{header}
       <KinEmptyState title="Không tìm thấy lớp" action={<Link href="/lop-cua-toi/lop" className={kinButtonClass("primary")}>Về danh sách lớp</Link>}>
         Lớp này không còn hoặc đường dẫn bị sai. Cô chọn lại lớp ở danh sách lớp.
       </KinEmptyState>
-    </KinPage>
+    </Wrap>
   );
   if (phase === "nocourse") return (
-    <KinPage>{header}
+    <Wrap>{header}
       <KinEmptyState title="Cô chưa có lớp nào" action={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
         Khung giờ gắn với từng lớp. Tạo lớp trước, rồi đặt lịch học cho lớp ngay trong bước Lịch học.
       </KinEmptyState>
-    </KinPage>
+    </Wrap>
   );
 
   const editor = (
@@ -188,7 +205,7 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
   );
 
   return (
-    <KinPage>
+    <Wrap>
       {header}
       {(selectable || coursesFailed) && (
         <div className="mb-5 max-w-md">
@@ -235,6 +252,6 @@ export default function LichKhung({ courseId, selectable = false }: { courseId?:
           </aside>
         )}
       </div>
-    </KinPage>
+    </Wrap>
   );
 }

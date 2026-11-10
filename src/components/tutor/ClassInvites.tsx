@@ -122,7 +122,7 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
 }
 
 const POLICY_OPTIONS: { value: JoinPolicy; title: string; hint: string }[] = [
-  { value: "approve", title: "Cô duyệt", hint: "Học sinh bấm Vào lớp hoặc nhập mã thì thành yêu cầu, cô duyệt ở tab Học sinh." },
+  { value: "approve", title: "Cô duyệt", hint: "Học sinh bấm Vào lớp hoặc nhập mã thì thành yêu cầu, cô duyệt ở mục Xin vào lớp của tab Học sinh." },
   { value: "invite_only", title: "Chỉ mã mời", hint: "Chỉ ai có mã cô gửi mới vào được, vào ngay không cần duyệt." },
   { value: "open", title: "Vào ngay", hint: "Học sinh bấm Vào lớp ở trang lớp là vào ngay. Chỉ dành cho lớp miễn phí." },
 ];
@@ -171,7 +171,7 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending, onCh
       <KinConfirm
         open={asking !== null}
         title="Đổi cách vào lớp?"
-        message={`Còn ${pending} yêu cầu đang chờ. Các yêu cầu đó vẫn giữ nguyên để cô duyệt sau ở tab Học sinh.`}
+        message={`Còn ${pending} yêu cầu đang chờ. Các yêu cầu đó vẫn giữ nguyên để cô duyệt sau ở mục Xin vào lớp của tab Học sinh.`}
         cancelLabel="Giữ nguyên"
         confirmLabel="Vẫn đổi"
         loading={busy}
@@ -183,12 +183,12 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending, onCh
 }
 
 
-/** Câu giải thích theo cách vào lớp — một nguồn cho khối "Cách học sinh vào lớp" (tab Mã mời, đầu trang lớp). */
+/** Câu giải thích theo cách vào lớp — một nguồn cho khối "Cách học sinh vào lớp" (mục Mã mời của tab Học sinh, đầu tab Học sinh). */
 export function joinHowText(policy: JoinPolicy, hasCode: boolean): string {
   if (policy === "open") return "Học sinh mở link trang lớp, bấm Vào lớp là vào ngay, không cần mã và không cần cô duyệt.";
   if (policy === "approve") return hasCode
-    ? "Học sinh nhập mã lớp (ở Lớp của tôi, mục Nhập mã lớp) hoặc mở link trang lớp rồi bấm Xin vào lớp. Cô duyệt từng em ở tab Học sinh."
-    : "Học sinh mở link trang lớp rồi bấm Xin vào lớp, hoặc nhập mã lớp. Cô duyệt từng em ở tab Học sinh.";
+    ? "Học sinh nhập mã lớp (ở Lớp của tôi, mục Nhập mã lớp) hoặc mở link trang lớp rồi bấm Xin vào lớp. Cô duyệt từng em ở mục Xin vào lớp của tab Học sinh."
+    : "Học sinh mở link trang lớp rồi bấm Xin vào lớp, hoặc nhập mã lớp. Cô duyệt từng em ở mục Xin vào lớp của tab Học sinh.";
   return "Chỉ ai có mã lớp mới vào được. Cô gửi mã này cho học sinh; em nhập ở Lớp của tôi, mục Nhập mã lớp là vào lớp ngay.";
 }
 
@@ -224,7 +224,7 @@ export function ClassJoinHowTo({ courseId, policy, code, onChanged }: { courseId
           )}
         </div>
       )}
-      {needsCode && code && <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-code-leak-hint>Mã bị lộ ra ngoài thì cô thu hồi ở tab Mã mời, rồi bấm Tạo mã lớp để lấy mã mới.</p>}
+      {needsCode && code && <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-code-leak-hint>Mã bị lộ ra ngoài thì cô thu hồi ở mục Mã mời của tab Học sinh, rồi bấm Tạo mã lớp để lấy mã mới.</p>}
       <div className="mt-3 flex items-center gap-3 flex-wrap">
         <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Link trang lớp</span>
         <KinCopyButton appearance="button" buttonVariant={needsCode ? "ghost" : "secondary"} label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`} onResult={done("link trang lớp")}>Sao chép link trang lớp</KinCopyButton>

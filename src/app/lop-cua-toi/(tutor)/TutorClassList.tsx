@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { classAccent, fillPercent } from "@/lib/classColor";
+import { giaoTrinhHref } from "@/lib/tutorRoutes";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
 
@@ -32,7 +33,7 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                 <span aria-hidden className="w-1 flex-shrink-0" style={{ background: classAccent(c.id) }} />
                 <div className="px-3 pt-2.5 pb-1 flex flex-col gap-1.5 flex-1 min-w-0">
                   <div>
-                    <Link href={`/lop-cua-toi/${c.id}`} className="font-semibold text-sm hover:underline break-words" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</Link>
+                    <Link href={giaoTrinhHref(c.id, true)} className="font-semibold text-sm hover:underline break-words" style={{ color: "var(--kin-chu-chinh)" }}>{c.name}</Link>
                     <p className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--kin-chu-phu)" }}>
                       <span aria-hidden className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: open ? "var(--kin-tt-cham-xong)" : "var(--kin-tt-cham-trung-tinh)" }} />
                       <span>{c.category} · {CLASS_STATUS_LABEL[c.classStatus] ?? c.classStatus}{!c.status ? " · đang ẩn" : ""}</span>
@@ -49,9 +50,9 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                     )}
                   </div>
                   <div className="flex gap-x-4 flex-wrap mt-auto">
-                    <Link href={`/lop-cua-toi/${c.id}`} className="text-xs font-semibold min-h-[44px] inline-flex items-center whitespace-nowrap"
+                    <Link href={giaoTrinhHref(c.id, true)} className="text-xs font-semibold min-h-[44px] inline-flex items-center whitespace-nowrap"
                       style={{ color: "var(--kin-nhan-link)" }}>Mở lớp</Link>
-                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Danh bạ lớp", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
+                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Học sinh", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
                       <Link key={h} href={h} className="text-xs min-h-[44px] inline-flex items-center whitespace-nowrap"
                         style={{ color: "var(--kin-chu-phu)" }}>{l}</Link>
                     ))}

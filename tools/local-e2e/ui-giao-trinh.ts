@@ -78,7 +78,7 @@ const seen: Page[] = [];
   const statusOf = async (id: string) => (await prisma.lesson.findUnique({ where: { id } }))?.status;
   const open = async (p: Page, courseId: string) => {
     await p.goto(G(courseId), { waitUntil: "networkidle", timeout: 120000 });
-    await p.getByRole("heading", { name: "Giáo trình", level: 1 }).waitFor({ timeout: 90000 });
+    await p.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Giáo trình" }).waitFor({ timeout: 90000 }); // GS-LOP-GON: h1 là TÊN LỚP (đầu lớp một lần); tab Giáo trình sáng thay cho h1 "Giáo trình"
     await p.locator("[data-gt-o-tai]").waitFor({ timeout: 60000 });
   };
 
@@ -313,11 +313,11 @@ const seen: Page[] = [];
   section("Quyền và cổng gia sư");
   const other = await (await ctxFor(T2, { width: 1280, height: 900 })).newPage(); watch(other);
   await other.goto(G(A.id), { waitUntil: "networkidle", timeout: 120000 });
-  await other.getByText("Bạn không có quyền với lớp này.").first().waitFor({ timeout: 60000 });
+  await other.getByText("Bạn không có quyền với lớp này").first().waitFor({ timeout: 60000 });
   const otherBody = await other.locator("body").innerText();
-  check("gia sư lớp khác: 'Bạn không có quyền với lớp này.' và KHÔNG có tên mục hay link của lớp", !otherBody.includes("Hàm số bậc nhất") && !otherBody.includes("Toán 9 Giáo trình") && !otherBody.includes("youtu"));
+  check("gia sư lớp khác: 'Bạn không có quyền với lớp này' (GS-LOP-GON mục 4.3, bỏ dấu chấm) và KHÔNG có tên mục hay link của lớp", !otherBody.includes("Hàm số bậc nhất") && !otherBody.includes("Toán 9 Giáo trình") && !otherBody.includes("youtu"));
   await other.goto(G("khong-co-lop-nay"), { waitUntil: "networkidle", timeout: 120000 });
-  check("lớp không có → cùng câu từ chối, không lộ lớp có hay không", await other.getByText("Bạn không có quyền với lớp này.").first().isVisible());
+  check("lớp không có → màn 'Không tìm thấy lớp' (GS-LOP-GON mục 4.3: 404 tách khỏi 403), KHÔNG lộ tên lớp của người khác", await other.getByText("Không tìm thấy lớp").first().isVisible() && !(await other.locator("body").innerText()).includes("Toán 9 Giáo trình"));
   const pend = await (await ctxFor(PEND, { width: 1280, height: 900 })).newPage(); watch(pend);
   await pend.goto(G(A.id), { timeout: 120000 });
   await pend.waitForURL(/\/lop-cua-toi\/cho-duyet/, { timeout: 60000 });
@@ -339,7 +339,7 @@ const seen: Page[] = [];
   check("nút Giáo trình trỏ đúng đường gia sư", (await btn.first().getAttribute("href"))?.endsWith(`/lop-cua-toi/quan-lop/${A.id}/giao-trinh`) === true, await btn.first().getAttribute("href"));
   await btn.first().click();
   await lop.waitForURL(/\/giao-trinh$/, { timeout: 60000 });
-  check("bấm nút → vào Giáo trình", await lop.getByRole("heading", { name: "Giáo trình", level: 1 }).waitFor({ timeout: 60000 }).then(() => true).catch(() => false));
+  check("bấm nút → vào Giáo trình", await lop.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Giáo trình" }).waitFor({ timeout: 60000 }).then(() => true).catch(() => false));
 
   // ───────── 390px
   section("Điện thoại 390px: một cột, hai nút lớn, hàng xếp dọc, không tràn ngang, nút >= 44px");
