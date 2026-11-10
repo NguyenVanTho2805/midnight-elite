@@ -1,7 +1,7 @@
 // Thanh bên RỘNG theo Figma "Nền móng" (khung con "Điều hướng", 25/10/2026) — màn hình thật: 272px là MẶC ĐỊNH, mục xếp theo NHÓM với biểu tượng + chữ,
 // logo + nhãn vai ở đầu, "Miễn phí ra mắt" ở chân. Gồm vỏ gia sư, học sinh, quản trị; điểm gãy 1024px; thanh hẹp / thu vẫn chọn được; điện thoại không đổi.
 // Các bài ui-* khác chạy ở thanh HẸP (ctxFor đặt sẵn "mo"); bài này dùng rail: "mac-dinh" để thấy đúng thứ người dùng mới thấy.
-import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done, BASE } from "./h";
+import { mkUser, mkTutor, mkSuper, wipe, check, eventually, section, done, BASE, api } from "./h";
 import { launch, ctxFor, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { visibleModules } from "@/lib/adminNav";
@@ -36,8 +36,8 @@ import { visibleModules } from "@/lib/adminNav";
   const gt = await groupsOf(pt, "Module của gia sư");
   check("năm nhóm đúng thứ tự Figma: Làm việc hằng ngày · Dạy học · Tiền · Giới thiệu · Tài khoản", gt.map(g => g.title).join("|") === "Làm việc hằng ngày|Dạy học|Tiền|Giới thiệu|Tài khoản", gt.map(g => g.title));
   check("tiêu đề nhóm hiện CHỮ HOA (LÀM VIỆC HẰNG NGÀY…) như Figma", gt.map(g => g.heading).join("|") === "LÀM VIỆC HẰNG NGÀY|DẠY HỌC|TIỀN|GIỚI THIỆU|TÀI KHOẢN", gt.map(g => g.heading));
-  check("chế độ gọn: nhóm đầu = Lịch + Học sinh (GS-09: Học sinh không phụ thuộc module Lớp); Tiền = Học phí + Doanh thu; Dạy học đủ 5 (có Tổng quan vì Hộp việc tắt); Giới thiệu 3 (+ Yêu cầu tìm gia sư); Tài khoản 3 (Gói của tôi, Cài đặt, + Thêm module khi còn module ẩn; B2: bỏ Liên hệ hỗ trợ)",
-    gt[0].items.join("|") === "Lịch|Học sinh" && gt[1].items.join("|") === "Tổng quan|Kế hoạch buổi|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
+  check("chế độ gọn: nhóm đầu = Lịch + Học sinh (GS-09: Học sinh không phụ thuộc module Lớp); Tiền = Học phí + Doanh thu; Dạy học đủ 4 (có Tổng quan; GS-LOP-GON: không còn Kế hoạch buổi vì Hộp việc tắt); Giới thiệu 3 (+ Yêu cầu tìm gia sư); Tài khoản 3 (Gói của tôi, Cài đặt, + Thêm module khi còn module ẩn; B2: bỏ Liên hệ hỗ trợ)",
+    gt[0].items.join("|") === "Lịch|Học sinh" && gt[1].items.join("|") === "Tổng quan|Báo cáo tháng|Sổ điểm|Kiểm duyệt cộng đồng" && gt[2].items.join("|") === "Học phí|Doanh thu"
     && gt[3].items.join("|") === "Hồ sơ gia sư|Bài đăng tìm học sinh|Yêu cầu tìm gia sư" && gt[4].items.join("|") === "Gói của tôi|Cài đặt|Thêm module", gt);
   const lichItem = nav(pt, "Module của gia sư").first().getByRole("link", { name: "Lịch", exact: true });
   check("mục đang ở ('Lịch') có aria-current=page, nền 'đang chọn', chữ đậm", await lichItem.getAttribute("aria-current") === "page" && await lichItem.evaluate((e: any) => getComputedStyle(e).backgroundColor !== "rgba(0, 0, 0, 0)" && Number(getComputedStyle(e).fontWeight) >= 600));
@@ -66,8 +66,11 @@ import { visibleModules } from "@/lib/adminNav";
   const gs = await groupsOf(ps, "Module của học sinh");
   // BU-00 bước 6 (31/10/2026): bỏ nhóm "Học tập" và rút Khám phá / Tài khoản — học sinh chỉ thấy việc học; lệch Figma 575:5571 CÓ CHỦ ĐÍCH (kế hoạch BIGUPDATE BU-00 ghi cập nhật khung).
   check("ba nhóm: Làm việc hằng ngày · Khám phá · Tự học (B2 08/11: nhóm Tài khoản rút, đã có ở menu tài khoản)", gs.map(g => g.title).join("|") === "Làm việc hằng ngày|Khám phá|Tự học", gs.map(g => g.title));
-  check("đúng mục: 3 module (B1: bỏ Bài tập); Khám phá = Lớp miễn phí, Gia sư, Cộng đồng, Tin tức (08/11: lối tìm lớp miễn phí); Tự học = Tiếng Anh tự học", gs[0].items.join("|") === "Việc của tôi|Lịch học|Lớp của tôi"
+  check("đúng mục: Trang chủ (BU-HS-TRANG-CHU 09/11) + 3 module (B1: bỏ Bài tập); Khám phá = Lớp miễn phí, Gia sư, Cộng đồng, Tin tức (08/11: lối tìm lớp miễn phí); Tự học = Tiếng Anh tự học", gs[0].items.join("|") === "Trang chủ|Việc của tôi|Lịch học|Lớp của tôi"
     && gs[1].items.join("|") === "Lớp miễn phí|Gia sư|Cộng đồng|Tin tức" && gs[2].items.join("|") === "Tiếng Anh tự học", gs);
+  check("BU-HS-TRANG-CHU: 'Trang chủ' đứng đầu thanh rộng, → '/', KHÔNG sáng ở /student/*; logo thanh bên cũng → '/' (không còn → Việc của tôi)",
+    (await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Trang chủ", exact: true }).getAttribute("href")) === "/" && (await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Trang chủ", exact: true }).getAttribute("aria-current")) === null
+    && (await ps.locator("#kin-rail [data-rail-home]").getAttribute("href")) === "/");
   check("nhãn vai 'HỌC SINH', thanh 272px, 'Việc của tôi' đang sáng", (await ps.locator("#kin-rail .kin-rail-tag").innerText()).trim() === "HỌC SINH" && (await wrapW(ps)) === 272 && await nav(ps, "Module của học sinh").first().getByRole("link", { name: /^Việc của tôi/ }).getAttribute("aria-current") === "page");
   await nav(ps, "Module của học sinh").first().getByRole("link", { name: "Lịch học", exact: true }).click();
   await ps.waitForURL(/\/student\/lich-hoc/, { timeout: 90000 });
@@ -83,6 +86,9 @@ import { visibleModules } from "@/lib/adminNav";
 
   // ───────────── Điểm gãy 1024px + điện thoại
   section("Màn 900px: dù đã chọn 'rộng' vẫn dùng thanh hẹp 79px (thanh rộng chỉ từ 1024px); điện thoại không đổi");
+  // Cách ly bài: phần 1440px ở trên đã bấm thu hẹp/thu/mở nên tài khoản S đã lưu rail="mo" (PUT /api/users/me/preferences, railStore.ts saveRailToAccount) và máy mới đăng nhập S sẽ nhận lại "mo".
+  // Muốn kiểm "người chọn rộng" ở 900px thì đặt lại tài khoản về "rong" — đây là điều kiện đầu vào, không nới điều kiện kiểm.
+  await api("PUT", "/api/users/me/preferences", { as: S, body: { rail: "rong" } });
   const ctxM = await ctxFor(S, { width: 900, height: 800, rail: "mac-dinh" });
   const pn = await ctxM.newPage(); watch(pn);
   await pn.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });

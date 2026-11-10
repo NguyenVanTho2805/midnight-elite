@@ -3,8 +3,10 @@
 // nên cùng một mã chạy trong hai vỏ: quản trị thấy vỏ quản trị ở /admin/…, gia sư thấy vỏ gia sư ở đây (vỏ do (tutor)/layout.tsx → LopCuaToiFrame cấp).
 // Layout này chỉ làm hai việc: (1) đúng vai — chỉ gia sư; quản trị về /admin (proxy đưa sang tên miền quản trị), học sinh / khách về /lop-cua-toi;
 // (2) dải tab trang con (TutorContentTabs) thay AdminTabStrip, rồi đệm nội dung như TutorAdminFrame cũ (p-4 sm:p-6) để trang gốc không đổi dáng.
+// GS-LOP-GON (09/11/2026): layout này chỉ vẽ dải của vùng "de-thi". Dải của lớp (quan-lop/[id]*) do layout lồng quan-lop/[id]/layout.tsx vẽ, sau đầu lớp — vẽ cả hai ở đây
+// là lỗi "hai dải tab chồng nhau" mà việc này sửa.
 // BU-00 bước 5: cổng đi qua src/lib/tutorGateServer.ts — gia sư CHỜ DUYỆT về /lop-cua-toi/cho-duyet thay vì danh sách lớp của học sinh.
-import { Suspense, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import TutorContentTabs from "@/components/tutor/TutorContentTabs";
@@ -14,7 +16,7 @@ export default async function TutorContentLayout({ children }: { children: React
   await redirectIfNotTutor(await getSession(), { path: "/lop-cua-toi", adminTo: "/admin" });
   return (
     <>
-      <Suspense fallback={null}><TutorContentTabs /></Suspense>
+      <TutorContentTabs scope="de-thi" />
       <main className="p-4 sm:p-6">{children}</main>
     </>
   );

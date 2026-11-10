@@ -22,6 +22,9 @@ import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinReques
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { courseRoleForPage } from "@/lib/courseAccessServer";
+import { legacyClassTarget } from "@/lib/tutorClassRoutes";
+import { loadTutorStatus } from "@/lib/tutorGateServer";
+import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +53,11 @@ export default async function LopPage({ params, searchParams }: Props) {
   const isElevated = isAdmin && session.adminRole !== "teacher";
   const isTeacher  = isAdmin && session.adminRole === "teacher"; // BU-00: lối tắt trong OutlookShell đi bí danh gia sư hay /admin/khoa-hoc tuỳ vai thật
 
+  // GS-LOP-GON (09/11/2026): CHỦ LỚP là gia sư thật chỉ có MỘT dải tab của lớp (…/quan-lop/<id>/*, mỗi tab một đường). Trang hộp việc 6 tab này không còn là
+  // menu cạnh tranh với dải đó: chuyển hướng sang đúng tab, giữ các tham số phụ (moi, lich, them, duyet, n, ma) vì các POST 303 của tạo lớp / duyệt vào lớp /
+  // thêm học sinh / mã mời trả về đây. Trang này không có loading.tsx nên redirect() ở đây là 307 thật (kiểm ở t-lop-gon). Đồng giảng, quản trị xem, học sinh: KHÔNG đổi.
+  if (isOwner && isTeacher) redirect(legacyClassTarget(courseId, sp));
+
   // TUT-dong-giang: gia sư không phải chủ lớp có thể là đồng giảng / giáo viên bộ môn (CourseTeacher active, đọc lại User từ DB). Người lạ vẫn 404 như cũ.
   let coRole: "co_teacher" | "subject_teacher" | null = null;
   if (!isOwner && !isElevated && isTeacher) {
@@ -63,7 +71,11 @@ export default async function LopPage({ params, searchParams }: Props) {
       where: { userId_courseId: { userId: session.userId, courseId } },
       select: { status: true },
     });
-    if (!enr || enr.status !== "active") notFound();
+    if (!enr || enr.status !== "active") {
+      // Gia sư CHỜ DUYỆT (vẫn là học sinh trong phiên) chưa học lớp này: về trang chờ duyệt thay vì 404 (không mang dữ liệu lớp). Người đã ghi danh vẫn thấy lớp như học sinh.
+      if (await loadTutorStatus(session) === "pending") redirect(TUTOR_PENDING_PATH);
+      notFound();
+    }
   }
 
   const roleView: "tutor" | "student" = isOwner || isElevated || coRole ? "tutor" : "student";

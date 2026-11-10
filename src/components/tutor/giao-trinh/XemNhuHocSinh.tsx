@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinPage, KinPageHeader, KinPageSkeleton } from "@/components/kin/PageLayout";
+import EmbeddedHead from "@/components/tutor/quan-lop/EmbeddedHead";
 import { KinStateCard } from "@/components/kin/StateCard";
 import { KinStatus } from "@/components/kin/Status";
 import { KinCallout } from "@/components/kin/Callout";
@@ -36,7 +37,10 @@ function lessonForOutsider<L extends { isFree?: boolean | null }>(lesson: L): L 
 type View = "da-vao" | "chua-vao";
 type Load = { phase: "loading" } | { phase: "error"; status: number } | { phase: "ready"; lesson: RawLesson };
 
-export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string; lessonId: string }) {
+function Plain({ children }: { children: React.ReactNode }) { return <div data-gt-embedded className="min-w-0">{children}</div>; }
+
+export default function XemNhuHocSinh({ courseId, lessonId, embedded = false }: { courseId: string; lessonId: string; /** GS-LOP-GON: trong khung lớp → đầu lớp đã có h1 (tên lớp), tên bài xem thử thành h2, không lề trang riêng. */ embedded?: boolean }) {
+  const Wrap = embedded ? Plain : KinPage;
   const [load, setLoad] = useState<Load>({ phase: "loading" });
   const [view, setView] = useState<View>("da-vao");
   const { ask, dialog } = useKinConfirm();
@@ -73,12 +77,14 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
     return view === "chua-vao" ? lessonForOutsider(load.lesson) : load.lesson;
   }, [load, view]);
 
-  if (load.phase === "loading") return <KinPageSkeleton label="Đang tải bản xem thử" rows={3} side={false} />;
+  if (load.phase === "loading") return embedded
+    ? <div aria-busy="true" aria-label="Đang tải bản xem thử" className="space-y-3">{[0, 1, 2].map(i => <div key={i} className="h-[var(--kin-hang-bang)] rounded kin-skel kin-skel--soft" />)}</div>
+    : <KinPageSkeleton label="Đang tải bản xem thử" rows={3} side={false} />;
   if (load.phase === "error") {
     const gone = load.status === 403 || load.status === 404;
     return (
-      <KinPage>
-        <KinPageHeader title="Xem như học sinh" back={back} />
+      <Wrap>
+        {embedded ? <EmbeddedHead title="Xem như học sinh" back={back} /> : <KinPageHeader title="Xem như học sinh" back={back} />}
         <div className="max-w-xl">
           <KinStateCard tone="loi" kicker={gone ? "Không mở được" : "Lỗi · Có thể thử lại"} title={gone ? "Không tìm thấy mục này trong lớp của bạn" : "Chưa tải được mục để xem thử"}
             status={<KinStatus tone="loi">{gone ? "Mục không tồn tại hoặc không thuộc lớp này" : "Kết nối bị gián đoạn"}</KinStatus>}
@@ -86,7 +92,7 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
             {gone ? "Chọn lại một mục ở màn Giáo trình." : "Dữ liệu của bạn không bị ảnh hưởng. Thử lại sau ít giây."}
           </KinStateCard>
         </div>
-      </KinPage>
+      </Wrap>
     );
   }
 
@@ -103,9 +109,11 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
   const nothing = !(view === "chua-vao" && notLive) && videos.length === 0 && !zoom && !azota && materials.length === 0;
 
   return (
-    <KinPage>
-      <KinPageHeader title={full.title} back={back} sub={full.duration || undefined}
-        actions={<Link href={back.href} className={kinButtonClass("secondary")}>Quay lại soạn</Link>} />
+    <Wrap>
+      {embedded
+        ? <EmbeddedHead title={full.title} back={back} sub={full.duration || undefined} actions={<Link href={back.href} className={kinButtonClass("secondary")}>Quay lại soạn</Link>} />
+        : <KinPageHeader title={full.title} back={back} sub={full.duration || undefined}
+            actions={<Link href={back.href} className={kinButtonClass("secondary")}>Quay lại soạn</Link>} />}
 
       <div role="status" data-gt-ban-xem-thu className="mb-5"><KinCallout title="Đây là bản xem thử. Không ghi tiến độ.">Bạn xem đúng thứ học sinh thấy; những gì bạn bấm ở đây không tính vào tiến độ hay bài nộp của ai.</KinCallout></div>
 
@@ -180,6 +188,6 @@ export default function XemNhuHocSinh({ courseId, lessonId }: { courseId: string
         </section>
       )}
       {dialog}
-    </KinPage>
+    </Wrap>
   );
 }

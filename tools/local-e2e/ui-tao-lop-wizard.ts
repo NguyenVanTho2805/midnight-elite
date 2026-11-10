@@ -82,13 +82,13 @@ import { prisma } from "@/lib/prisma";
   await p.locator("[data-wizard-students] summary").click();
   check("Quay lại rồi Tiếp tục → lựa chọn 2 em còn nguyên (giữ trong wizard)", await rows.filter({ hasText: "Em An Cũ" }).getByRole("checkbox").isChecked());
   await p.getByRole("button", { name: "Tạo lớp + 4 buổi" }).click();
-  await p.waitForURL(/\/lop-cua-toi\/toan-9-wizard/, { timeout: 90000 });
+  await p.waitForURL(/\/lop-cua-toi\/quan-lop\/toan-9-wizard/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Toán 9 wizard" } });
   const rate = await prisma.courseFeeRate.findFirst({ where: { courseId: made.id } });
   check("DB: lớp của cô Lan, học phí theo giờ 150.000 (đơn giá lưu ở CourseFeeRate, một buổi 90 phút)", made.ownerId === T.id && made.feeMode === "per_hour" && rate?.rate === 150000 && rate?.sessionMinutes === 90, { m: made.feeMode, r: rate });
   await eventually("DB: khung giờ T3 19:00–20:30 (đúng 1 khung)", async () => (await prisma.classSchedule.count({ where: { courseId: made.id, dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } })) === 1);
   await eventually("DB: 2 em ghi danh vào lớp mới (active)", async () => (await prisma.enrollment.count({ where: { courseId: made.id, status: "active", userId: { in: [A.id, B.id] } } })) === 2);
-  check("tới trang lớp, tab Mã mời mở sẵn + thông báo 'Đã thêm 2 học sinh'", (await p.getByRole("tab", { name: "Mã mời" }).getAttribute("aria-selected")) === "true" && await p.getByText("Đã thêm 2 học sinh vào lớp").isVisible());
+  check("tới trang lớp, mục Mã mời (tab Học sinh) mở sẵn + thông báo 'Đã thêm 2 học sinh'", /muc=ma-moi/.test(p.url()) && (await p.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời" && await p.getByText("Đã thêm 2 học sinh vào lớp").isVisible());
   check("em của cô khác KHÔNG bị ghi danh", await prisma.enrollment.count({ where: { courseId: made.id, userId: X.id } }) === 0);
 
   section("Lối thoát 'Lớp này học buổi lẻ': KinConfirm → tạo lớp KHÔNG khung (scheduleCount=0)");
@@ -111,29 +111,33 @@ import { prisma } from "@/lib/prisma";
   check("chọn 'Vẫn tạo không lịch' → tóm tắt nói lớp buổi lẻ, liên kết thoát biến mất", (await o.locator("[data-wizard-summary]").innerText()).includes("buổi lẻ") && await o.locator("[data-one-off]").count() === 0);
   await o.getByRole("button", { name: "Tiếp tục" }).click();
   await o.getByRole("button", { name: "Tạo lớp", exact: true }).click();
-  await o.waitForURL(/\/lop-cua-toi\/lop-buoi-le/, { timeout: 90000 });
+  await o.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-buoi-le/, { timeout: 90000 });
   const le = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp buổi lẻ" } });
   check("DB: lớp buổi lẻ được tạo, 0 khung giờ", (await prisma.classSchedule.count({ where: { courseId: le.id } })) === 0);
-  check("trang lớp nhắc 'Lớp chưa có lịch học' + nút 'Đặt lịch bằng lưới kéo-thả'", await o.locator("[data-no-schedule-callout]").isVisible() && await o.getByRole("link", { name: "Đặt lịch bằng lưới kéo-thả" }).isVisible());
+  await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "networkidle", timeout: 120000 });
+  await o.locator("[data-gt-chua-co-lich]").waitFor({ timeout: 90000 });
+  check("GS-LOP-GON: đầu Giáo trình nhắc 'Lớp chưa có lịch học' + liên kết 'Đặt lịch học' → tab Lịch học", await o.locator("[data-gt-chua-co-lich]").isVisible() && (await o.getByRole("link", { name: "Đặt lịch học" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${le.id}/lich-hoc`);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");
   const cNew = await mkCourse(T.id, { name: "Lớp trống" });
   const q = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(q);
-  await q.goto(`${BASE}/lop-cua-toi/${cNew.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await q.getByRole("button", { name: "Thêm học sinh", exact: true }).first().click();
-  check("bấm → sang tab Học sinh, mở khung chọn em", (await q.getByRole("tab", { name: /^Học sinh/ }).getAttribute("aria-selected")) === "true" && await q.locator("[data-lop-them]").isVisible());
+  await q.goto(`${BASE}/lop-cua-toi/quan-lop/${cNew.id}/hoc-vien`, { waitUntil: "networkidle", timeout: 120000 });
+  await q.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Thêm học sinh", exact: true }).click();
+  await q.waitForURL(/muc=them/, { timeout: 90000 });
+  check("GS-LOP-GON: bấm → mục 'Thêm học sinh' (tab Học sinh) mở khung chọn em", await q.locator("[data-lop-them]").isVisible());
   await q.locator("[data-picker-row]").first().waitFor({ timeout: 30000 });
   check("danh sách em có thể thêm: An, Bình (đã học lớp của cô), không có em cô khác", await q.locator("[data-picker-row]").count() === 2 && await q.getByText("Em Của Cô Khác").count() === 0, await q.locator("[data-picker-row]").count());
   await q.locator("[data-picker-row]").filter({ hasText: "Em Bình Cũ" }).getByRole("checkbox").check();
   await q.getByRole("button", { name: "Thêm 1 em vào lớp" }).click();
   await eventually("DB: Bình vào lớp trống", async () => (await prisma.enrollment.count({ where: { courseId: cNew.id, userId: B.id, status: "active" } })) === 1);
   await q.getByText("Đã thêm 1 em vào lớp.").waitFor({ timeout: 30000 });
-  await eventually("sau khi thêm: Bình hiện trong danh sách lớp", async () => q.getByRole("list", { name: "Học sinh của lớp" }).getByText("Em Bình Cũ").isVisible());
+  await q.getByRole("link", { name: "Xem danh bạ lớp" }).click();
+  await q.waitForURL(url => url.pathname.endsWith("/hoc-vien") && !url.search.includes("muc="), { timeout: 90000 });
+  await eventually("sau khi thêm: Bình hiện trong danh bạ lớp", async () => q.locator("text=Em Bình Cũ >> visible=true").first().isVisible());
 
   section("LO-13: tổng hợp link báo cáo của cả lớp");
   const r = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(r);
-  await r.goto(`${BASE}/lop-cua-toi/${old.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await r.getByRole("tab", { name: /^Học sinh/ }).click();
+  await r.goto(`${BASE}/lop-cua-toi/quan-lop/${old.id}/hoc-vien`, { waitUntil: "networkidle", timeout: 120000 }); // GS-LOP-GON: khối link báo cáo nằm ở danh bạ của tab Học sinh
   const brows = r.locator("[data-lop-bao-cao]");
   await brows.first().waitFor({ timeout: 30000 });
   check("2 em; An có phụ huynh liên kết (có nút 'Bật link'), Bình chưa có phụ huynh (nói rõ, không có nút bật)", await brows.count() === 2 && await brows.filter({ hasText: "Em An Cũ" }).getByText("Chưa bật").isVisible() && await brows.filter({ hasText: "Em An Cũ" }).getByRole("button", { name: /^Bật link báo cáo của/ }).isVisible()
@@ -149,7 +153,7 @@ import { prisma } from "@/lib/prisma";
 
   section("Điện thoại 390px");
   const m = await (await ctxFor(T, { width: 390, height: 844 })).newPage(); watch(m);
-  for (const path of ["/lop-cua-toi/lop/tao", `/lop-cua-toi/${old.id}?tab=hoc-sinh`]) {
+  for (const path of ["/lop-cua-toi/lop/tao", `/lop-cua-toi/quan-lop/${old.id}/hoc-vien`]) {
     await m.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await m.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 90000 });
     if (path.includes("tao")) { await m.getByLabel(/Tên lớp/).fill("Lớp thử 390"); await m.getByLabel(/^Đơn giá/).fill("120000"); await m.getByRole("button", { name: "Tiếp tục" }).click();

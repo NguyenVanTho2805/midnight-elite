@@ -1,3 +1,5 @@
+// GS-LOP-GON (09/11/2026): trang này KHÔNG còn là nơi của chủ lớp gia sư — chủ lớp được chuyển (307) sang /lop-cua-toi/quan-lop/<id>/… (Giáo trình · Học sinh · Điểm danh · Bài tập ·
+// Lịch học · Cài đặt, một dải tab duy nhất). Còn lại dùng đúng bản này: đồng giảng / giáo viên bộ môn (chỉ xem giáo trình + bản ghi) và quản trị xem thử — họ không có dải tab của lớp.
 // Chi tiết một lớp của gia sư (Figma "Gia sư · Chi tiết Toán 9" 299:112581): H1 tên lớp + dòng phụ (sĩ số, lịch), nút "Mời học sinh" (chỉ ở màn hẹp, A4c) và "Cài đặt lớp";
 // dải tab; tab "Buổi học & điểm danh" = điểm danh (thành phần DiemDanh dùng chung) ở cột trái, cột phải "Học sinh", mã mời, "Lịch sử buổi học".
 // Điện thoại: một cột, tab cuộn ngang, nút ≥ 44px. Không có (chưa có tính năng): "Chốt buổi đã dạy", "Xử lý nghỉ muộn" ngay trên trang lớp,
@@ -27,8 +29,10 @@ import { jfetch } from "@/components/tutor/studentUi";
 import { ADD_STUDENTS_MAX } from "@/lib/tutorStudentView";
 import type { FeeMode } from "@/lib/tuitionFee";
 import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
+import { classBase } from "@/lib/tutorClassRoutes";
 import GiaoVienLop, { RoleBadge } from "@/components/tutor/GiaoVienLop";
 import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
+import { duyetMessage } from "@/components/tutor/quan-lop/duyetMessage";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "giao-vien" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
@@ -57,23 +61,6 @@ export interface LopChiTietData {
   rosterHidden?: boolean;
 }
 
-/** Thông báo sau khi duyệt/từ chối (máy chủ chuyển về ?duyet=). Mã lạ thì không hiện gì. */
-function duyetMessage(code: string | null, n: number | null): { tone: "ok" | "err"; text: string } | null {
-  switch (code) {
-    case "ok": return { tone: "ok", text: n && n > 1 ? `Đã duyệt ${n} bạn, các bạn đã vào lớp.` : "Đã duyệt, bạn ấy đã vào lớp." };
-    case "tuchoi": return { tone: "ok", text: "Đã từ chối." };
-    case "day": return { tone: "err", text: "Lớp đã đầy — chưa duyệt được, yêu cầu vẫn đang chờ." };
-    case "goi": return { tone: "err", text: "Gói hiện tại chưa cho thêm học sinh — yêu cầu vẫn đang chờ." };
-    case "mot-phan": return { tone: "err", text: `Đã duyệt ${n ?? 0} bạn, còn lại chờ vì lớp đã đầy.` };
-    case "dong": return { tone: "err", text: "Lớp đang đóng, chưa duyệt thêm được" };
-    case "da-nghi": return { tone: "err", text: n && n > 0 ? `Đã duyệt ${n} bạn. Có học sinh đang tạm dừng ở lớp nên chưa duyệt được — hãy mở lại ở mục Học sinh rồi duyệt.` : "Học sinh này đang tạm dừng ở lớp. Hãy mở lại ở mục Học sinh rồi duyệt." };
-    case "khong-phai-hs": return { tone: "err", text: "Tài khoản này đã chuyển thành gia sư nên đơn được huỷ." };
-    case "da-xu-ly": return { tone: "ok", text: "Yêu cầu này đã được xử lý." };
-    case "loi-ghi-chu": return { tone: "err", text: "Lời nhắn quá dài (tối đa 200 ký tự), chưa từ chối." };
-    default: return null;
-  }
-}
-
 const dm = (key: string) => `${key.slice(8, 10)}/${key.slice(5, 7)}`;
 
 function OpenPage({ title, href, note, action }: { title: string; href: string; note: string; action: string }) {
@@ -90,7 +77,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const router = useRouter();
   const manage = (sub = "") => contentHref(d.isTeacher !== false, `/admin/khoa-hoc/${d.courseId}${sub}`);
   // Trang khung giờ kéo-thả (gia sư). Quản trị xem lớp vẫn dùng tab Lịch học của trang quản khoá.
-  const lichHref = d.isTeacher !== false ? `/lop-cua-toi/quan-lop/${encodeURIComponent(d.courseId)}/lich-hoc` : manage("?tab=lich-hoc");
+  const lichHref = d.isTeacher !== false ? `${classBase(d.courseId)}/lich-hoc` : manage("?tab=lich-hoc");
   const [tab, setTab] = useState<LopTab>(d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab) ? "diem-danh" : d.initialTab);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
@@ -126,7 +113,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           <Link href={lichHref} className={kinButtonClass("secondary")}>Lịch học</Link>
           <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
-          <Link href={manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
+          <Link href={d.isTeacher !== false ? `${classBase(d.courseId)}?tab=cai-dat` : manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </> : <>
           {/* TUT-dong-giang: đồng giảng chỉ xem giáo trình và bản ghi; không thêm/mời học sinh, không sửa lớp. */}
           <Link href={giaoTrinhHref(d.courseId, true)} className={kinButtonClass("secondary")}>Giáo trình</Link>

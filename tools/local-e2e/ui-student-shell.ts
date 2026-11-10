@@ -1,5 +1,7 @@
 // Vỏ học sinh (Figma 11:98): thanh module trái / thanh dưới 60px, "Việc của tôi" (trang dọc, Figma 299:114360), bảng "Khác",
 // phòng thi không có vỏ, trạng thái trống / tải / lỗi, điện thoại 390px.
+// 09/11/2026 (BU-HS-TRANG-CHU mục 8): thanh module có thêm mục "Trang chủ" (đầu thanh, chỉ máy tính, không `aria-current`, không lên thanh dưới điện thoại → vẫn 4 ô);
+// bảng "Khác" ở 390px có thêm hàng đầu "Trang chủ KiN" (6 liên kết nhìn thấy; ở 1280 hàng đó ẩn nên vẫn 5).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +48,9 @@ const H = 3_600_000, D = 24 * H;
   section("Thanh module");
   check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").first().isVisible());
   for (const m of ["Việc của tôi", "Lịch học", "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  check("BU-HS-TRANG-CHU: module 'Trang chủ' là liên kết tới '/', đứng ĐẦU thanh, KHÔNG có aria-current (vỏ không bao giờ hiện ở '/')",
+    await mod("Trang chủ").count() === 1 && (await mod("Trang chủ").getAttribute("href")) === "/" && (await mod("Trang chủ").getAttribute("aria-current")) === null
+    && (await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent && e.getAttribute("data-rail-home") === null)[0].textContent.trim().startsWith("Trang chủ")`)) === true);
   check("B1: chỉ còn 3 module + 'Khác' (module 'Bài tập' đã bỏ khỏi thanh)", await mod("Bài tập").count() === 0 && await rail().locator(":scope a[href='/student/bai-tap']").count() === 0);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   check("module đang ở có aria-current=page (đúng một nút)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
@@ -88,6 +93,7 @@ const H = 3_600_000, D = 24 * H;
   for (const l of ["Thư viện", "Thi thử", "Bảng xếp hạng", "Khoá học đang mở", "Lớp đang theo dõi", "Tra cứu điểm chuẩn", "Ví và Coin"]) check(`BU-00: mục '${l}' đã rời bảng Khác (route vẫn giữ, chỉ ẩn lối vào)`, await dlg.getByRole("link", { name: l, exact: true }).count() === 0);
   check("A6: bảng Khác không còn 'Nhập mã lớp'; Cộng đồng → /cong-dong, Tin tức → /tin-tuc (không qua chuyển hướng)", await dlg.getByRole("link", { name: "Nhập mã lớp", exact: true }).count() === 0 && (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("href")) === "/cong-dong" && (await dlg.getByRole("link", { name: "Tin tức", exact: true }).getAttribute("href")) === "/tin-tuc");
   check("bảng Khác đúng 5 mục, 2 nhóm (Khám phá có thêm Lớp miễn phí 08/11, Tự học)", await dlg.getByRole("link").count() === 5);
+  check("BU-HS-TRANG-CHU: ở 1280 hàng 'Trang chủ KiN' của bảng Khác không hiện (máy tính đã có mục Trang chủ ở thanh bên)", await dlg.getByRole("link", { name: "Trang chủ KiN", exact: true }).count() === 0 && (await dlg.locator("[data-more-home]").count()) === 1 && !(await dlg.locator("[data-more-home]").isVisible()));
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Minh Anh").isVisible());
   await shot(pg, "student-shell-khac");
   await pg.keyboard.press("Escape");
@@ -181,6 +187,8 @@ const H = 3_600_000, D = 24 * H;
   const db = await dm.boundingBox();
   check("bảng 'Khác' nổi ngay trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 60 && db.x >= 0 && db.x + db.width <= 390, db);
   check("mọi mục trong bảng cao ≥ 44px", (await dm.evaluate(`[...document.querySelectorAll('[role=dialog] a, [role=dialog] button')].map(e => Math.round(e.getBoundingClientRect().height))`) as number[]).every(h => h >= 44));
+  check("BU-HS-TRANG-CHU: ở 390px bảng Khác có 6 liên kết, hàng ĐẦU là 'Trang chủ KiN' → '/', cao ≥ 44px, không nằm trong nhóm nào của 5 mục cũ",
+    await dm.getByRole("link").count() === 6 && (await dm.getByRole("link").first().innerText()).trim() === "Trang chủ KiN" && (await dm.getByRole("link").first().getAttribute("href")) === "/" && ((await dm.getByRole("link").first().boundingBox())?.height ?? 0) >= 44);
   await shot(pm, "student-shell-khac-mobile");
   await pm.keyboard.press("Escape");
   await pm.getByRole("button", { name: /^Tài khoản của/ }).click();

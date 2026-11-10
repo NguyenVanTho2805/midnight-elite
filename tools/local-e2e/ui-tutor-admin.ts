@@ -132,16 +132,16 @@ const host = (loc: string | null) => { try { return loc ? new URL(loc, BASE).hos
   await rail(pg).waitFor({ timeout: 90000 });
   check("/admin/thi-thu/ngan-hang-de-thi → /lop-cua-toi/de-thi/ngan-hang-de-thi; 'Bài tập' sáng, 'Thư viện' không; tab 'Tệp đề gốc' đang chọn", (await cur(pg, "Bài tập")) === "page" && (await cur(pg, "Thư viện")) !== "page" && await tabsDeThi(pg).getByRole("link", { name: "Tệp đề gốc" }).getAttribute("aria-current") === "page", pg.url());
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}?tab=lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}\\?tab=lich-hoc`), { timeout: 60000 });
+  await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}/lich-hoc`), { timeout: 60000 }); // GS-LOP-GON: ?tab=lich-hoc của quan-lop/<id> chuyển tiếp sang trang con /lich-hoc
   await rail(pg).waitFor({ timeout: 90000 });
-  check("/admin/khoa-hoc/<lớp>?tab=lich-hoc → /lop-cua-toi/quan-lop/<lớp>?tab=lich-hoc (giữ tham số); 'Lớp' sáng; dải tab Quản lớp có 'Lịch học' đang chọn", new URL(pg.url()).searchParams.get("tab") === "lich-hoc" && (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Lịch học" }).getAttribute("aria-current") === "page", pg.url());
+  check("/admin/khoa-hoc/<lớp>?tab=lich-hoc → /lop-cua-toi/quan-lop/<lớp>?tab=lich-hoc (máy chủ 307, ở trên) → trang con /lich-hoc; 'Lớp' sáng; dải tab Quản lớp có 'Lịch học' đang chọn", new URL(pg.url()).pathname === `/lop-cua-toi/quan-lop/${A.id}/lich-hoc` && (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Lịch học" }).getAttribute("aria-current") === "page", pg.url());
   const qlText = (await tabsQuanLop(pg).innerText()).replace(/\s+/g, " ").trim();
-  check("dải tab Quản lớp: Cài đặt · Bài tập tự nộp · Lịch học · Danh bạ lớp · Điểm danh", /Cài đặt.*Bài tập tự nộp.*Lịch học.*Danh bạ lớp.*Điểm danh/.test(qlText), qlText);
+  check("dải tab Quản lớp (GS-LOP-GON): Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt", /Giáo trình.*Học sinh.*Điểm danh.*Bài tập.*Lịch học.*Cài đặt/.test(qlText), qlText);
   await shot(pg, "tutor-admin-2-quan-lop");
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}/hoc-vien`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}/hoc-vien`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
-  check("trang học viên của lớp → /lop-cua-toi/quan-lop/<lớp>/hoc-vien: 'Lớp' sáng, tab 'Danh bạ lớp' đang chọn", (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Danh bạ lớp" }).getAttribute("aria-current") === "page", pg.url());
+  check("trang học viên của lớp → /lop-cua-toi/quan-lop/<lớp>/hoc-vien: 'Lớp' sáng, tab 'Học sinh' đang chọn", (await cur(pg, "Lớp")) === "page" && await tabsQuanLop(pg).getByRole("link", { name: "Học sinh", exact: true }).getAttribute("aria-current") === "page", pg.url());
   await pg.goto(`${BASE}/admin/khoa-hoc/${A.id}/diem-danh`, { waitUntil: "networkidle", timeout: 120000 });
   await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${A.id}/diem-danh`), { timeout: 60000 });
   await rail(pg).waitFor({ timeout: 90000 });
