@@ -310,8 +310,11 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   let changed: string[] | null = null, addedFeeRefs: string[] = [];
   try {
     const BASE_REF = "f0378557";
-    changed = execSync(`git diff --name-only ${BASE_REF} HEAD -- src prisma`, { encoding: "utf8", cwd: process.cwd() }).split("\n").filter(Boolean);
-    const added = execSync(`git diff -U0 ${BASE_REF} HEAD -- src`, { encoding: "utf8", cwd: process.cwd(), maxBuffer: 64 * 1024 * 1024 }).split("\n").filter(l => l.startsWith("+") && !l.startsWith("+++"));
+    // Đầu nhánh GS-LOP-GON (PR #154). Quét diff của RIÊNG PR này, không phải của `HEAD`: khi gộp cùng PR khác (vd. #155 thêm bảng, #153 đụng học phí) `HEAD` có thay đổi
+    // không thuộc PR này và bài sẽ đỏ oan. Nếu cây không có commit này (clone nông) thì khối catch bên dưới bỏ qua quét.
+    const TIP_REF = "25fc2fa9";
+    changed = execSync(`git diff --name-only ${BASE_REF} ${TIP_REF} -- src prisma`, { encoding: "utf8", cwd: process.cwd() }).split("\n").filter(Boolean);
+    const added = execSync(`git diff -U0 ${BASE_REF} ${TIP_REF} -- src`, { encoding: "utf8", cwd: process.cwd(), maxBuffer: 64 * 1024 * 1024 }).split("\n").filter(l => l.startsWith("+") && !l.startsWith("+++"));
     addedFeeRefs = added.filter(l => /prisma\.(feeCharge|tuitionInvoice|invoice)\b|from "@\/lib\/(feeCharge|invoiceServer|sessionBook)|api\/(fees|invoices)\b/i.test(l));
   } catch { /* không có lịch sử git của mốc nền (cây đã gộp / sao chép) → bỏ qua phần quét diff, in cảnh báo */ }
   if (changed === null) console.log("    (bỏ qua quét diff: không có git f0378557 trong cây này)");

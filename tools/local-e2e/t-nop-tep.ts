@@ -177,7 +177,9 @@ async function dl(u: TUser | undefined, id: string, q = "", headers: Record<stri
     const chunk = Buffer.alloc(MiB, 2); let sent = 0;
     const stream = new ReadableStream<Uint8Array>({ pull(c) { if (sent >= 11) { c.close(); return; } c.enqueue(chunk); sent++; } });
     const res = await fetch(BASE + init2.json.upload.url, { method: "PUT", headers: { cookie: await cookieFor(atk) }, body: stream, duplex: "half" } as RequestInit);
-    check("11 MiB gửi dạng chunked (không Content-Length) ⇒ 413, tệp dở bị xoá", res.status === 413 && (await prisma.submissionFile.count({ where: { id: init2.json.fileId } })) === 0 && !!key2 && !existsSync(localPathFor(key2)), res.status);
+    const rows2 = await prisma.submissionFile.count({ where: { id: init2.json.fileId } });
+    const onDisk2 = !!key2 && existsSync(localPathFor(key2));
+    check("11 MiB gửi dạng chunked (không Content-Length) ⇒ 413, tệp dở bị xoá", res.status === 413 && rows2 === 0 && !!key2 && !onDisk2, { status: res.status, hàngConLai: rows2, key2: !!key2, tệpConTrênĐĩa: onDisk2 });
     const init3 = await api("POST", INIT, { as: atk, body: { kind: "student", assignmentId: AS.id, name: "ok.docx", size: 1000 } });
     const exact = await api("PUT", init3.json.upload.url, { as: atk, raw: Buffer.alloc(10 * MiB, 3) });
     check("ĐÚNG 10 MiB ⇒ 413 (dưới 10 MB mới nhận)", exact.status === 413, exact.status);

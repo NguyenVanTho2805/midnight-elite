@@ -7,6 +7,7 @@
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { nopTepSafeName } from "@/lib/nopTep";
 
 // ── Tệp thật dựng bằng tay: docx = zip "stored" có [Content_Types].xml + word/document.xml; pdf = đầu %PDF + %%EOF ────────
 const CRC = (() => { const t: number[] = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -305,7 +306,9 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   await p3.locator(`${BOX} [data-nop-tep-hang][data-trang-thai="san-sang"]`).waitFor({ timeout: 30000 });
   const nameEl = p3.locator(`${BOX} [data-nop-tep-ten]`).first();
   const nameInfo = { title: await nameEl.getAttribute("title"), text: await nameEl.textContent(), w: await nameEl.evaluate(e => [e.scrollWidth, (e.parentElement as HTMLElement).clientWidth]) };
-  check("tên dài: title có đủ tên, không tràn khung (cắt giữa, giữ đuôi .docx)", nameInfo.title === longName && nameInfo.w[0] <= nameInfo.w[1] + 1 && /\.docx$/.test(nameInfo.text ?? ""), nameInfo);
+  // Máy chủ làm sạch tên tệp (nopTepSafeName: ≤ 120 ký tự, cắt phần TÊN, giữ đuôi) nên `title` là tên đã làm sạch, không phải 137 ký tự gốc.
+  const safeLong = nopTepSafeName(longName);
+  check("tên dài: title là tên đã làm sạch (≤120 ký tự, giữ đuôi .docx), không tràn khung, chữ hiển thị giữ đuôi .docx", nameInfo.title === safeLong && Array.from(safeLong).length <= 120 && /\.docx$/.test(safeLong) && nameInfo.w[0] <= nameInfo.w[1] + 1 && /\.docx$/.test(nameInfo.text ?? ""), { ...nameInfo, safeLong });
   const bo = p3.locator(`${BOX} [data-nop-tep-bo]`).first();
   check("390: 'Bỏ tệp' và 'Nộp bài' cao ≥44px, status role=status có chữ", (((await bo.boundingBox())?.height ?? 0) >= 44) && (((await p3.locator(`${BOX} [data-nop-tep-nop]`).boundingBox())?.height ?? 0) >= 44) && (await p3.locator(`${BOX} [data-nop-tep-tom-tat]`).getAttribute("role")) === "status");
   await noScroll(p3, "390 có tệp");
