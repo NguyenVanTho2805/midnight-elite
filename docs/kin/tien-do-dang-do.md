@@ -919,3 +919,31 @@ Nhánh `claude/bu-gs-lop-gon` (3 commit trên `f0378557`). Đặc tả: `docs/ki
   - Chưa chạy thử trên trình duyệt thật của người dùng, chỉ bộ test cục bộ.
 - **Gộp:** nhánh `claude/hp-lop-truong` sửa 1 dòng `LopChiTiet.tsx` (`adminView` ở tab hoc-phi); nhánh này không sửa vùng quanh dòng đó nên gộp không xung đột.
 - **Việc của Thọ:** đặt `CLOUDINARY_CLOUD_NAME`/`API_KEY`/`API_SECRET` ở Vercel Production (cho tải tệp) · trả lời Q1–Q7 trong đặc tả (nhất là Q3 bài đăng ngay khi có tệp thả, và cờ TRẺ EM) · chốt các lệch Figma ở trên · kiểm tay trên điện thoại: vào lớp, kéo-thả tài liệu, tab Học sinh/Cài đặt · không có `prisma db push` cho nhánh này.
+
+## BU-HS-TRANG-CHU (gồm BU-HS-NOP-TEP, BU-HS-LANDING) (10/11/2026) — Trang chủ học sinh + nộp bài bằng tệp + landing mới — LÀM XONG PHẦN MÃ; còn đỏ có sẵn và 1 ca cố ý; Figma CHƯA ĐỐI CHIẾU
+Nhánh `claude/bu-hs-trang-chu` (5 commit từ `f0378557`). **Không push, chưa mở PR**; mô tả PR soạn sẵn. Commit: `b97a0501` (lối về Trang chủ, cây chương), `9f91b824` (nộp tệp), `16768524` (landing), `83f3429b` (test, cron AuditLog, hero ≤440px, chặn "50.000+", logo Navbar 44px), `a1010263` (form nộp bài về trang thật, nộp lại bằng link gỡ tệp cũ). Không đổi tiền. Có dữ liệu học sinh (bài nộp là tệp riêng tư, tải qua proxy có kiểm quyền). Schema chỉ thêm 1 model; cron mới chạy khô.
+- **Vì sao:** học sinh không có lối về Trang chủ; Trang chủ chưa gom Lớp của tôi / bảng tin / quiz / tính điểm; bài tập chỉ nộp được bằng link; landing cũ chưa theo bố cục hsavnu và có số liệu "50.000+" không có thật.
+- **Đã làm:**
+  - **Trang chủ:** lối về Trang chủ ở khu học sinh; Trang chủ có Lớp của tôi, bảng tin, quiz, tính điểm; cây chương trong lớp xổ ra / thu vào.
+  - **Nộp bài bằng tệp (NOP-TEP):** model `SubmissionFile` (chỉ thêm, ở cuối `prisma/schema.prisma`); chỉ `.docx`/`.pdf` (không `.doc`), <10 MiB/tệp, tối đa 3 tệp; kiểm đuôi + magic bytes + zip bomb/macro; tải qua proxy `/api/media/nop-bai/<id>` kiểm quyền mỗi lượt (không URL công khai, không URL ký rời); giữ 60 ngày cho cả bài nộp và bài trả. `api/assignments/[id]/submit` bỏ nhánh `fileUrl` công khai; nộp lại bằng link gỡ tệp cũ. Cron `het-han-tep-nop-bai` (`src/lib/adminOps.ts` + `vercel.json`) **chạy khô, không `?xoa=1`**, ghi `AuditLog` (chỉ số đếm + `fileId`).
+  - **Landing (LANDING):** theo bố cục hsavnu (gia sư, lớp theo kỳ thi, thi thử, tin tức), dữ liệu thật; `src/lib/homeContentGuard.ts` chặn "50.000+"; hero ≤440px; logo `Navbar.tsx` 44px.
+  - Bài test chỉnh: `tools/local-e2e` `t-admin-ops*`, `t-media-api` (số cron 6→7).
+- **Không làm (có chủ ý):** lời chứng thực, bảng vàng, biểu mẫu tư vấn (chờ chủ); thanh dưới 5 mục điện thoại; bật `KIN_VIDEO_UPLOAD`.
+- **Test đã chạy, xanh** (DB `kin_test`, TZ Asia/Ho_Chi_Minh, tuần tự): t-nop-tep-lib 134/0 · t-nop-tep 143/0 · t-nop-tep-het-han 47/0 · t-home-landing-lib 78/0 · t-home-landing 82/0 · t-home-layout-lib 64/0 · t-lesson-outline-lib 83/0 · t-nav-home-lib 52/0 · t-site-content-lib 73/0 · t-home-content-guard-lib 31/0 · t-home-content-admin 36/0 · t-home-feed 61/0 · t-no-hex 16/0 · t-no-fabricated 60/0 · t-db-push-guard 28/0 · t-admin-ops-lib 70/0 · t-adm-003-lib 24/0 · t-assign 91/0 · t-assign-contract 29/0 · t-assign-lib 52/0 · t-media-security 114/0 · t-course-catalog-public 13/0 · t-articles-api 71/0 · t-tutor-search 203/0 · ui-home-landing 182/0 (1600/1280/390/320) · ui-lop-outline 88/0 · ui-home-signed-in 56/0 · ui-sidebar-rong 28/0 · ui-bai-tap-hs 17/0 · ui-exam-guest-redirect 12/0 · ui-admin-home-content 32/0 · ui-journey-new-student 17/0 · `tsc --noEmit` 0 lỗi.
+- **Test ĐỎ:**
+  - **Mới, cố ý:** `ui-nop-tep` 51/1 — `BaiTap.tsx` (phòng Gia sư) chưa ghép `NopTepBox` vì nhánh `claude/bu-gs-lop-gon` đang sửa tệp đó; vá sẵn ở `scratchpad/BaiTap-ghep-NopTepBox.patch`. Ca "tên dài" từng đỏ 1 lần / 3 lượt (chập chờn).
+  - **Có sẵn (không do nhánh):** `t-links` 11/1 (4 địa chỉ `robots.ts`, AdminShell, LopChiTiet) · `ui-home-doors` 217/8 (liên kết chữ trong `FeedCard` 18–21px của BU-05; 8 ca = 2 vai × 4 cỡ; logo Navbar đã sửa 44px trong nhánh) · `ui-student-shell` 76/2 ("HỌC SINH" strict-mode, `aria-current` đôi) · `ui-kin-site` 105/1 và `ui-cong-dong` 89/1 (hydration của khách ở `/cong-dong`, `CommunityHome.tsx:67-69`, tin cậy trung bình-cao) · `ui-role-everything` khách 23/2 (`/mentor/khong-co-gia-su` cần `/etc/hosts`; `/bang-xep-hang` khách 401 honor-leaderboard) và học sinh 37/1 (môi trường `/mentor/...`; độ phủ 66/123).
+  - **KHÔNG CHẠY ĐƯỢC:** `t-media-api` (cần máy chủ video riêng `KIN_VIDEO_MAX_MB=1` qua `wt-up.sh`).
+- **Tài nguyên máy:** đĩa trống thấp nhất 18 GB, RAM trống thấp nhất 37%.
+- **Nợ từ rà soát độc lập (`kin-ra-soat`):** **P2-1:** `purgeSubmissionFiles` chưa nối vào xoá bài tập (`api/assignments/[id]` DELETE) và `account-delete.ts` — tệp mồ côi vẫn bị cron dọn tối đa 60 ngày. **P3:** chữ ký tải lên Cloudinary dùng lại được ~1 giờ; PDF quét byte thô không bắt `/JS` trong luồng nén, "Xem" PDF inline; `complete` và tải chưa có `rateLimit`; bài hẹn giờ / đề mới mở / lớp đầy hiện trễ tối đa 1 giờ vì trang tĩnh.
+- **Giới hạn còn lại:**
+  - **Chỗ lệch Figma: KHÔNG kiểm được** — phiên không truy cập Figma 702:1987, 704:2273, 704:2906, 708:3965, 711:4013, 714:4349, 716:4829; số đo lấy từ đặc tả; ảnh chụp ở `scratchpad/shots-hs-landing` để chủ/COO so.
+  - **Chưa chạy thử trên trình duyệt thật của người dùng**, chỉ Chromium trong bộ test cục bộ. Chưa thử tệp ~9 MB lên Cloudinary thật.
+  - `schema.prisma` có thể xung đột nhẹ với `claude/hp-lop-truong` (cùng tệp, khác vùng: model mới ở cuối tệp).
+- **Việc của Thọ:**
+  1. Xác nhận production có đủ `CLOUDINARY_CLOUD_NAME` / `API_KEY` / `API_SECRET` (kiểm `/api/media/config`, `document.enabled`) — thiếu thì tính năng tự TẮT.
+  2. Thử tay 1 tệp ~9 MB: tải lên + tải xuống ở Cloudinary lần đầu. Nếu Cloudinary từ chối khoảng 10.000.000–10.485.759 byte, hạ `NOP_TEP_MAX_BYTES` xuống 9.500.000.
+  3. Xem log chạy khô cron 1–2 ngày rồi mới đổi `vercel.json` + `CRON_JOBS.path` sang `?xoa=1` (commit riêng).
+  4. Quyết 4 câu: phụ huynh xem bài của con (mặc định không); cảnh báo/chặn ảnh nhúng trong Word/PDF; bài làm cũ công khai trên Cloudinary (thư mục `assignments/submissions`) có xoá hàng loạt không; 9 câu mục 9 của BU-HS-LANDING.
+  5. Duyệt ảnh chụp so Figma.
+  6. Sau khi `claude/bu-gs-lop-gon` gộp, ghép `BaiTap.tsx` bằng patch.

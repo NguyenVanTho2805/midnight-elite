@@ -54,7 +54,7 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: sáu tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: bảy tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
@@ -64,6 +64,8 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   // BU-08 (ADM-002): báo học sinh khi bài hẹn giờ đã lên. Bài hẹn giờ vẫn HIỆN đúng giờ nhờ lọc publishedAt; cron chỉ lo THÔNG BÁO.
   // Lịch hằng ngày 07:15 giờ VN (00:15 UTC): thông báo chậm tối đa một ngày. Muốn sát giờ hơn (vd */15) cần gói Vercel Pro — đổi cả vercel.json lẫn dòng này (và nới t-adm-003-lib).
   { key: "article-publish", label: "Báo bài hẹn giờ đã lên", path: "/api/cron/article-publish", schedule: "Mỗi ngày 07:15 giờ VN", maxGapHours: 36 },
+  // BU-HS-NOP-TEP: dọn tệp nộp bài hết hạn 60 ngày. Mặc định CHẠY KHÔ (đường dẫn không có ?xoa=1); chuyển sang xoá thật là commit riêng, kèm đổi `path` ở đây và ở vercel.json.
+  { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
 ];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 
@@ -95,6 +97,7 @@ const ACTION_LABEL: Record<string, string> = {
   "coin_topup.request": "Yêu cầu nạp Coin", "coin_topup.approve": "Duyệt nạp Coin", "coin_topup.reject": "Từ chối nạp Coin",
   "pro_order.create": "Tạo yêu cầu gói Pro", "pro_order.activate": "Kích hoạt gói Pro", "pro_order.cancel": "Huỷ yêu cầu gói Pro", "pro_order.grant_legacy": "Tặng Pro cho gia sư hiện có", "pro_config.update": "Sửa cấu hình gói Pro",
   "tutor_subscription.expire": "Hết hạn gói VIP gia sư",
+  "submission_file.download": "Quản trị tải tệp bài nộp của học sinh", "submission_file.expire_run": "Dọn tệp bài nộp hết hạn 60 ngày", "submission_file.expire_dry_run": "Chạy khô dọn tệp bài nộp hết hạn",
   "student_profile.create": "Tạo hồ sơ học sinh", "student_profile.update": "Sửa hồ sơ học sinh", "student_profile.delete": "Xoá hồ sơ học sinh", "student_profile.import": "Nhập danh sách học sinh",
   "student_profile.consent": "Ghi đồng ý hồ sơ học sinh", "student_profile.revoke": "Rút đồng ý hồ sơ học sinh",
   "parent_link.verify": "Xác nhận liên kết phụ huynh", "parent_link.revoke": "Gỡ liên kết phụ huynh",
@@ -150,7 +153,7 @@ const RESOURCE_LABEL: Record<string, string> = {
   TutorProfileReport: "Báo cáo hồ sơ gia sư", SiteContent: "Nội dung trang công khai", AttendanceSession: "Phiên điểm danh", BankTransaction: "Giao dịch ngân hàng", CourseCategory: "Danh mục khoá học",
   // ADM-001 (mục 7.3): resourceType đang được ghi nhưng chưa có nhãn. Giữ `Invoice` cũ; các route thật ghi `TuitionInvoice`.
   Article: "Bài viết", AdmissionScore: "Điểm chuẩn", AdmissionFormula: "Công thức xét tuyển", LibraryVideo: "Video thư viện", ProPayment: "Thanh toán gói Pro",
-  ParentConsent: "Đồng ý của phụ huynh", AssignmentSubmission: "Bài nộp", AssignmentAnswer: "Câu trả lời bài tập", Exam: "Đề thi", ExamAttempt: "Lượt thi", ExamAnswer: "Câu trả lời đề thi",
+  ParentConsent: "Đồng ý của phụ huynh", SubmissionFile: "Tệp bài nộp", AssignmentSubmission: "Bài nộp", AssignmentAnswer: "Câu trả lời bài tập", Exam: "Đề thi", ExamAttempt: "Lượt thi", ExamAnswer: "Câu trả lời đề thi",
   ClassSchedule: "Lịch lớp", FamilyGroup: "Nhóm gia đình", MonthlyCourseFee: "Học phí tháng", SessionPackage: "Gói buổi học", StudentDiscount: "Mức giảm học viên",
   StudentFieldDef: "Trường hồ sơ tuỳ chỉnh", TuitionInvoice: "Phiếu học phí", TutorPayoutAccount: "Tài khoản nhận tiền", TutorRequest: "Yêu cầu tới gia sư",
   ThreadReport: "Báo cáo bài viết", AnswerReport: "Báo cáo câu trả lời", CourseReview: "Đánh giá khoá học", thread: "Bài cộng đồng",

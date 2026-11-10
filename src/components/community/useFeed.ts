@@ -14,8 +14,9 @@ function dedupe(list: FeedItem[], seen: Set<string>): FeedItem[] {
   return out;
 }
 
-export function useFeed(opts: { tab: string; scope: string; saved: boolean; enabled?: boolean }) {
-  const { tab, scope, saved, enabled = true } = opts;
+/** `limit`: số bài mỗi trang (mặc định 20; máy chủ nhận 1–50). Trang chủ chỉ cần 5 bài đầu nên truyền 5; CommunityHome không truyền. */
+export function useFeed(opts: { tab: string; scope: string; saved: boolean; enabled?: boolean; limit?: number }) {
+  const { tab, scope, saved, enabled = true, limit = 20 } = opts;
   const [status, setStatus] = useState<FeedStatus>("loading");
   const [failure, setFailure] = useState<FeedFailure>("other");
   const [pinned, setPinned] = useState<FeedItem[]>([]);
@@ -26,13 +27,13 @@ export function useFeed(opts: { tab: string; scope: string; saved: boolean; enab
   const ctl = useRef<AbortController | null>(null); // huỷ yêu cầu cũ khi tải lại / đổi tab / rời trang: không bỏ request mở
 
   const urlFor = useCallback((cursor: string | null) => {
-    const q = new URLSearchParams({ limit: "20" });
+    const q = new URLSearchParams({ limit: String(limit) });
     if (cursor) q.set("cursor", cursor);
     if (saved) return `/api/community/bookmarks?${q}`;
     q.set("tab", tab);
     if (scope && scope !== "all") q.set("scope", scope);
     return `/api/community/feed?${q}`;
-  }, [tab, scope, saved]);
+  }, [tab, scope, saved, limit]);
 
   const load = useCallback(async () => {
     if (!enabled) return;

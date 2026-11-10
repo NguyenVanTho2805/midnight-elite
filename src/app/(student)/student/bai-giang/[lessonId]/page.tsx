@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
@@ -8,20 +8,20 @@ import { parseLessonType } from "@/lib/types";
 import { formatStamp } from "@/lib/mediaLink";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { api, type AssignmentFull, type AssignmentAnswerData, type AssignmentAnswerView } from "@/lib/api";
-import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
-import { DropZone } from "@/components/DropZone";
+import { NopTepBox } from "@/components/student/nop-tep/NopTepBox";
+import { nopTepResultMessage } from "@/lib/nopTep";
 import { MathText } from "@/components/MathText";
 import {
   Flash, Alarm, Edit, ClipboardList, Play,
   FileDownload, Lock, CheckCircle,
-  ChevronDown, ArrowLeft, ArrowRight,
+  ArrowLeft, ArrowRight,
   StickyNote,
 } from "griddy-icons";
 import { LessonVideo, type PlayerControl } from "@/components/media/LessonVideo";
 import { DocumentRows, AzotaPanel, StampedNotes, parseMaterials } from "@/components/media/StudentLessonPanels";
-import { useKinConfirm } from "@/components/kin/useConfirm";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
+import CourseOutline from "@/components/student/CourseOutline";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -162,35 +162,12 @@ function fmtDue(d: string | null): string {
   return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
 }
 
-function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFull; onSubmitted: (a: AssignmentFull) => void }) {
-  const [uploading, setUploading] = useState(false);
-  const { ask, dialog } = useKinConfirm();
-  const fileRef = useRef<HTMLInputElement>(null);
+// BU-HS-NOP-TEP: khối nộp bài là <NopTepBox> (kéo-thả Word/PDF, riêng tư, lưu 60 ngày). Thẻ này giữ tiêu đề, hướng dẫn, tệp đề bài, hạn và khối điểm/nhận xét.
+// Nộp bằng link Azota và "Em đã làm xong" vẫn nằm ở <AzotaPanel> phía trên danh sách, không đổi.
+function AssignmentCard({ assignment }: { assignment: AssignmentFull }) {
   const sub = assignment.mySubmission;
-
-  async function submitFile(file: File) {
-    if (sub && sub.gradedAt && !(await ask({ title: "Nộp lại bài đã chấm?", message: "Bài này đã được chấm điểm — nộp lại sẽ xoá điểm cũ và chờ chấm lại.", confirmLabel: "Nộp lại" }))) return;
-    setUploading(true);
-    try {
-      const result = await uploadToCloudinary(file, "assignments/submissions");
-      const updated = await api.assignments.submit(assignment.id, { fileUrl: result.url, fileName: file.name });
-      onSubmitted({ ...assignment, mySubmission: updated, submissionCount: assignment.submissionCount + (sub ? 0 : 1) });
-    } catch (err) {
-      alert("Nộp bài thất bại: " + (err instanceof Error ? err.message : "Lỗi không xác định"));
-    } finally {
-      setUploading(false);
-    }
-  }
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) submitFile(file);
-  }
-
   return (
-    <DropZone onFiles={files => files[0] && submitFile(files[0])} disabled={uploading || !cloudinaryConfigured}
-      className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-      {dialog}
+    <div data-bai-tap-the={assignment.id} className="rounded-xl p-4" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className="font-semibold text-sm" style={{ color: "var(--kin-chu-chinh)" }}>{assignment.title}</p>
@@ -205,31 +182,21 @@ function AssignmentCard({ assignment, onSubmitted }: { assignment: AssignmentFul
 
       {assignment.fileUrl && (
         <a href={viewerHref(assignment.fileName || "de-bai", assignment.fileUrl)} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold mb-3" style={{ color: "var(--kin-tt-chu-xong)" }}>
+          className="inline-flex items-center gap-1.5 min-h-11 text-xs font-semibold mb-2" style={{ color: "var(--kin-tt-chu-xong)" }}>
           <FileDownload size={14} /> {assignment.fileName || "Tải đề bài"}
         </a>
       )}
 
-      {sub?.gradedAt ? (
-        <div className="p-3 rounded-lg mb-2" style={{ background: "var(--kin-tt-nen-xong)" }}>
+      {sub?.gradedAt && (
+        <div className="p-3 rounded-lg mb-3" style={{ background: "var(--kin-tt-nen-xong)" }}>
           <p className="text-sm font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Điểm: {sub.score}/{assignment.maxPoints}</p>
           {sub.comment && <p className="text-xs mt-1" style={{ color: "var(--kin-tt-chu-xong)" }}>Nhận xét: {sub.comment}</p>}
         </div>
-      ) : sub ? (
-        <p className="text-xs mb-2" style={{ color: "var(--kin-nhan-link)" }}>Đã nộp lúc {new Date(sub.submittedAt).toLocaleString("vi-VN")} — chờ chấm điểm.</p>
-      ) : null}
-
-      {cloudinaryConfigured && (
-        <>
-          <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="px-4 py-2 text-xs font-bold text-[var(--kin-chu-tren-nut-chinh)] rounded-lg disabled:opacity-50"
-            style={{ background: "var(--kin-tt-cham-cho)" }}>
-            {uploading ? "Đang nộp..." : sub ? "Nộp lại bài (hoặc kéo-thả file)" : "Nộp bài (hoặc kéo-thả file)"}
-          </button>
-        </>
       )}
-    </DropZone>
+
+      <NopTepBox mode="student" assignmentId={assignment.id}
+        submission={sub ? { submittedAt: sub.submittedAt, fileUrl: sub.fileUrl, fileName: sub.fileName, gradedAt: sub.gradedAt } : null} />
+    </div>
   );
 }
 
@@ -409,7 +376,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
   );
 }
 
-function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUrl?: string; deadline?: string }) {
+function TabBaiTap({ lessonId, azotaUrl, deadline, nopCode }: { lessonId: string; azotaUrl?: string; deadline?: string; nopCode?: string | null }) {
   const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -418,19 +385,28 @@ function TabBaiTap({ lessonId, azotaUrl, deadline }: { lessonId: string; azotaUr
     api.assignments.listByLesson(lessonId).then(setAssignments).catch(() => setAssignments([])).finally(() => setLoading(false));
   }, [lessonId]);
 
+  const nopText = nopTepResultMessage(nopCode);
+
   if (!azotaUrl && !loading && assignments.length === 0) {
     return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>Bài học này không có bài kiểm tra.</p>;
   }
 
   return (
     <div className="space-y-3">
+      {nopText && (
+        <p role={nopCode === "ok" ? "status" : "alert"} data-nop-tep-ket-qua={nopCode} className="px-4 py-3 rounded-xl text-sm font-medium"
+          style={nopCode === "ok"
+            ? { background: "var(--kin-tt-nen-xong)", border: "1px solid var(--kin-tt-vien-xong)", color: "var(--kin-tt-chu-xong)" }
+            : { background: "var(--kin-tt-nen-loi)", border: "1px solid var(--kin-tt-vien-loi)", color: "var(--kin-tt-chu-loi)" }}>
+          {nopText}
+        </p>
+      )}
       <AzotaPanel lessonId={lessonId} azotaUrl={azotaUrl} deadline={deadline} canSubmit />
 
       {assignments.map(a => a.mode === "interactive" ? (
         <InteractiveAssignmentCard key={a.id} assignment={a} />
       ) : (
-        <AssignmentCard key={a.id} assignment={a}
-          onSubmitted={updated => setAssignments(prev => prev.map(x => x.id === updated.id ? updated : x))} />
+        <AssignmentCard key={a.id} assignment={a} />
       ))}
     </div>
   );
@@ -463,6 +439,8 @@ function TabLich({ items }: { items: ScheduleItem[] }) {
 }
 
 // ─── Left Sidebar (HSA-style) ────────────────────────────────────────────────
+// BU-HS-TRANG-CHU: phần cây Phần > Chương > Bài là component dùng chung CourseOutline (chương xổ ra/thu vào, tìm bài, Mở hết/Thu hết, đếm theo chương); ở đây chỉ còn
+// khung thanh bên (tên lớp + tiến độ + nút thu/mở). Chọn bài vẫn qua `onSelect` (handleSelectLesson). `mobile` = tờ trượt trên điện thoại.
 function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watching, courseId, courseName, isOpen, onToggle, mobile = false }: {
   sections: Section[]; currentId: string;
   watching: Record<string, number>;
@@ -472,22 +450,17 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watchi
   isOpen: boolean; onToggle: () => void;
   mobile?: boolean;
 }) {
-  const [openSections, setOpenSections] = useState(() => new Set(
-    sections.filter(s => s.chapters.some(c => c.lessons.some(l => l.id === currentId))).map(s => s.id)
-  ));
-
-  function toggleSection(id: string) {
-    setOpenSections(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  }
-
   const allLessons = useMemo(() => sections.flatMap(s => s.chapters.flatMap(c => c.lessons)), [sections]);
   const completedCount = allLessons.filter(l => completedIds.has(l.id)).length;
   const pct = Math.round(completedCount * 100 / Math.max(allLessons.length, 1));
+  const pick = (id: string) => { const l = allLessons.find(x => x.id === id); if (l) onSelect(l); };
+  const outlineId = mobile ? "bg-to" : "bg-cot";
 
   return (
     <div className={mobile ? "flex flex-col w-full" : "hidden xl:flex flex-shrink-0"}>
       {/* Panel */}
       <div
+        id={mobile ? undefined : "bai-giang-cot"}
         className="flex flex-col overflow-hidden transition-all duration-250"
         style={mobile ? { width: "100%", background: "var(--kin-nen-trang)" } : {
           width: isOpen ? 268 : 0,
@@ -500,9 +473,9 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watchi
         {(isOpen || mobile) && (
           <div className={mobile ? "w-full flex flex-col" : "w-[268px] flex flex-col h-full"}>
             {/* Header */}
-            <div className="px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
+            <div className="px-4 pt-2 pb-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
               <Link href={`/student/hoc-tap?course=${courseId}`}
-                className="inline-flex items-center gap-1 text-xs font-semibold mb-3 hover:opacity-70 transition-opacity"
+                className="inline-flex items-center gap-1 min-h-11 text-xs font-semibold hover:opacity-70 transition-opacity"
                 style={{ color: "var(--kin-chu-mo)" }}>
                 ← Khóa học
               </Link>
@@ -517,106 +490,16 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watchi
               </div>
             </div>
 
-            {/* Section list */}
-            <div className="flex-1 overflow-y-auto">
-              {sections.map((section) => {
-                const lessons = section.chapters.flatMap(c => c.lessons);
-                const done    = lessons.filter(l => completedIds.has(l.id)).length;
-                const secOpen = openSections.has(section.id);
-                return (
-                  <div key={section.id}>
-                    {/* Section header */}
-                    <button onClick={() => toggleSection(section.id)}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left"
-                      style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-thuong)" }}>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-extrabold uppercase tracking-wide leading-tight" style={{ color: "var(--kin-chu-chinh)" }}>
-                          {section.title}
-                        </p>
-                        <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{done}/{lessons.length} bài</p>
-                      </div>
-                      <ChevronDown size={13} style={{ color: "var(--kin-chu-mo)", transform: secOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
-                    </button>
-
-                    {secOpen && (
-                      <div>
-                        {section.chapters.map((chapter, ci) => (
-                          <div key={chapter.id}>
-                            {/* Chapter sub-label (only if >1 chapter in section) */}
-                            {section.chapters.length > 1 && (
-                              <div className="px-4 py-1.5" style={{ background: "var(--kin-nen-bang)", borderBottom: "1px solid var(--kin-vien-nhat)" }}>
-                                <p className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>
-                                  {ci + 1}. {chapter.title}
-                                </p>
-                              </div>
-                            )}
-                            {chapter.lessons.map((lesson) => {
-                              const isCurrent = lesson.id === currentId;
-                              const isDone    = completedIds.has(lesson.id);
-                              return (
-                                <button key={lesson.id}
-                                  onClick={() => onSelect(lesson)}
-                                  disabled={lesson.isLocked}
-                                  className="w-full flex items-start gap-3 px-4 py-2.5 text-left transition-colors"
-                                  style={{
-                                    background: isCurrent ? "var(--kin-nhan-nen-nhat)" : "transparent",
-                                    borderLeft: isCurrent ? "3px solid var(--kin-nhan-nen)" : "3px solid transparent",
-                                    borderBottom: "1px solid var(--kin-vien-nhat)",
-                                    opacity: lesson.isLocked ? 0.55 : 1,
-                                    cursor: lesson.isLocked ? "not-allowed" : "pointer",
-                                  }}>
-                                  {/* Circle */}
-                                  <div className="flex-shrink-0 mt-0.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center"
-                                    style={{
-                                      borderColor: isDone ? "var(--kin-tt-chu-xong)" : isCurrent ? "var(--kin-nhan-nen)" : "var(--kin-vien-o-nhap)",
-                                      background: isDone ? "var(--kin-tt-chu-xong)" : isCurrent ? "var(--kin-nhan-nen)" : "transparent",
-                                    }}>
-                                    {isDone && (
-                                      <svg viewBox="0 0 10 8" width="8" height="8" fill="none">
-                                        <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                      </svg>
-                                    )}
-                                    {!isDone && isCurrent && <div className="w-1.5 h-1.5 rounded-full bg-[var(--kin-nen-trang)]" />}
-                                    {lesson.isLocked && <Lock size={8} style={{ color: "var(--kin-chu-mo)" }} />}
-                                  </div>
-
-                                  {/* Text */}
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs leading-snug"
-                                      style={{ color: isCurrent ? "var(--kin-nhan-link)" : "var(--kin-chu-phu)", fontWeight: isCurrent ? 700 : 500 }}>
-                                      {lesson.title}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <TypeBadge type={lesson.type} small />
-                                      {!isDone && lesson.id in watching && (
-                                        <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" }}>Đang xem</span>
-                                      )}
-                                      {isDone && (
-                                        <span className="text-xs font-bold" style={{ color: "var(--kin-tt-chu-xong)" }}>Đã xong</span>
-                                      )}
-                                      {lesson.isFree && !lesson.isLocked && (
-                                        <span className="text-xs font-bold px-1.5 rounded-full" style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>FREE</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            {/* Cây nội dung: ô tìm + Mở hết/Thu hết đứng yên dưới tiến độ, cây cuộn riêng (rail) hoặc cuộn cùng tờ (sheet). */}
+            <CourseOutline variant={mobile ? "sheet" : "rail"} idPrefix={outlineId} sections={sections} completedIds={completedIds} currentId={currentId} watching={watching}
+              onSelect={pick} lessonExtra={l => <TypeBadge type={(l as ChapterLesson).type} small />} className={mobile ? "" : "flex-1"} />
           </div>
         )}
       </div>
 
       {/* Toggle tab — desktop only */}
       {!mobile && (
-        <button onClick={onToggle} aria-label={isOpen ? "Thu gọn danh sách bài học" : "Mở danh sách bài học"} aria-expanded={isOpen}
+        <button onClick={onToggle} aria-label={isOpen ? "Thu gọn danh sách bài học" : "Mở danh sách bài học"} aria-expanded={isOpen} aria-controls="bai-giang-cot"
           className="flex-shrink-0 self-start mt-10 flex items-center justify-center rounded-r-lg text-sm font-bold transition-colors hover:bg-[var(--kin-vien-thuong)]"
           style={{
             width: 16, height: 48,
@@ -640,7 +523,10 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const router = useRouter();
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<SidebarTabKey>("tailieu");
+  // ?nop=<mã> là đích của 303 sau khi bấm "Nộp bài": mở thẳng tab Bài tập và đọc kết quả (mã, không phải chữ người dùng).
+  const [nopCode] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("nop")));
+  const [firstLessonId] = useState(params.lessonId);
+  const [activeTab, setActiveTab] = useState<SidebarTabKey>(nopCode ? "baitap" : "tailieu");
   const { completedIds, watching, positions, markComplete, unmarkComplete } = useProgress();
   const [player, setPlayer] = useState<PlayerControl | null>(null);
   const [session, setSession] = useState<{ email?: string; role?: string } | null>(null);
@@ -649,7 +535,16 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     fetch("/api/auth/me", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => setSession(d?.user ?? d ?? null)).catch(() => {});
   }, []);
 
-  useEffect(() => { setActiveTab("tailieu"); }, [params.lessonId]);
+  useEffect(() => {
+    if (nopCode && params.lessonId === firstLessonId) return; // vừa nộp bài xong: giữ tab Bài tập
+    setActiveTab("tailieu");
+  }, [params.lessonId, nopCode, firstLessonId]);
+  useEffect(() => { // bỏ ?nop khỏi địa chỉ để tải lại trang không báo lại
+    if (!nopCode) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("nop");
+    window.history.replaceState(null, "", u.pathname + u.search + u.hash);
+  }, [nopCode]);
 
   useEffect(() => {
     const saved = localStorage.getItem("lessonSidebar");
@@ -904,7 +799,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </div>
             <div className="p-4">
               {activeTab === "tailieu" && <DocumentRows materials={lesson.materials} />}
-              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} />}
+              {activeTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.azotaUrl ?? undefined} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />}
               {activeTab === "ghichu"  && <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />}
             </div>
           </div>
@@ -946,9 +841,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           <div className="absolute inset-0 bg-black/40" onClick={() => setOutlineOpen(false)} />
           <div className="relative rounded-t-3xl p-4 max-h-[75vh] flex flex-col"
             style={{ background: "var(--kin-nen-trang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-1">
               <p className="font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nội dung khóa học</p>
-              <button onClick={() => setOutlineOpen(false)} className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>✕ Đóng</button>
+              <button onClick={() => setOutlineOpen(false)} className="min-h-11 min-w-11 px-2 text-sm font-semibold" style={{ color: "var(--kin-chu-mo)" }}>✕ Đóng</button>
             </div>
             <div className="overflow-y-auto flex-1">
               <LeftCourseSidebar

@@ -7,6 +7,8 @@ import { HOME_LIMITS, type HomeContent, type HomeIssue } from "@/lib/siteContent
  *  (có bài khoá trong t-home-content-guard-lib). Khi t-no-fabricated đổi, đổi cả đây. */
 export const CLAIM_BLOCKLIST: readonly { re: RegExp; reason: string }[] = [
   { re: /1\.200\+|10\.000\+/, reason: "số liệu chưa có nguồn" },
+  // BU-HS-LANDING: dạng "50.000+" / "3.500+ gia sư" / "200+ đề" (số tròn kèm dấu cộng là kiểu số bịa của trang bán hàng).
+  { re: /\d{1,3}(\.\d{3})+\s?\+|\d+\s?\+\s*(học viên|học sinh|gia sư|giáo viên|đề)/i, reason: "số liệu chưa có nguồn" },
   { re: /Hoàn tiền 100%/i, reason: "KiN không thu học phí hộ nên không có hoàn tiền" },
   { re: /hàng đầu|số 1\b|số một|tốt nhất/i, reason: "lời tự xưng không có căn cứ" },
   { re: /Học trọn đời|Mua 1 lần, xem không giới hạn|miễn phí[^.]*(trọn đời|mãi mãi)/i, reason: "trái cách bán thật (học phí theo tháng)" },

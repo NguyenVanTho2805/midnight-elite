@@ -23,9 +23,11 @@ export const isUnder = (pathname: string, href: string) => {
   return pathname === path || pathname.startsWith(path + "/");
 };
 
-export function MorePanel({ id, groups, onClose, user, onLogout }: {
+export function MorePanel({ id, groups, onClose, user, onLogout, homeLink }: {
   id: string;
   groups: MoreGroup[];
+  /** Lối về Trang chủ: một hàng ĐẦU bảng, chỉ điện thoại (máy tính đã có mục "Trang chủ" ở thanh bên). Không nằm trong `groups` để thanh rộng không nhân đôi mục. */
+  homeLink?: { label: string; href: string };
   onClose: () => void;
   user?: { name: string; email?: string } | null;
   onLogout: () => void;
@@ -57,6 +59,14 @@ export function MorePanel({ id, groups, onClose, user, onLogout }: {
         <div className="px-3 pt-2 pb-2 border-b border-[var(--kin-vien-nhat)] mb-1">
           <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)] truncate">{user.name}</p>
           {user.email && <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)] truncate">{user.email}</p>}
+        </div>
+      )}
+      {homeLink && (
+        <div className="md:hidden pb-1 mb-1 border-b border-[var(--kin-vien-nhat)]">
+          <Link href={homeLink.href} onClick={onClose} data-more-home
+            className="flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
+            {homeLink.label}
+          </Link>
         </div>
       )}
       {groups.map(g => {

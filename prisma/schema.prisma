@@ -3155,3 +3155,37 @@ model CourseTeacher {
   @@index([courseId, status])
   @@map("course_teachers")
 }
+
+// ─── BU-HS-NOP-TEP — tệp bài nộp của học sinh và tệp gia sư trả bài ───────────────
+// Riêng tư: chỉ mở qua GET /api/media/nop-bai/<id> sau khi kiểm quyền; lưu 60 ngày rồi cron xoá tệp gốc (hàng giữ lại làm dấu vết).
+// KHÔNG khai báo quan hệ tới AssignmentSubmission / User / Course (cùng kiểu ClassRecording.sessionId): xoá bài tập, xoá bài nộp hay ẩn danh tài khoản
+// không được âm thầm làm mất hàng ghi còn trỏ tới tệp gốc trên kho; cron dọn theo expiresAt. Chỉ THÊM, bảng mới.
+model SubmissionFile {
+  id            String    @id @default(cuid())
+  kind          String // "student" (học sinh nộp) | "tutor_return" (gia sư trả bài). Kiểm bằng hằng số trong nopTep.ts, không CHECK ở DB.
+  assignmentId  String // bài tập
+  submissionId  String? // AssignmentSubmission.id; null = đang chuẩn bị, CHƯA nộp / CHƯA trả (người khác không thấy)
+  studentUserId String // học sinh có bài nộp (luôn có; kind "student" thì = ownerUserId)
+  ownerUserId   String // người tải lên: học sinh, hoặc gia sư/quản trị khi kind "tutor_return"
+  courseId      String // lớp chứa bài, chốt lúc tải
+  driver        String // "cloudinary" | "local" (local chỉ máy dev/test)
+  storageKey    String    @unique // Cloudinary public_id hoặc đường dẫn local; do MÁY CHỦ sinh, không bao giờ từ tên tệp, không bao giờ trả ra API
+  originalName  String // tên đã làm sạch (nopTepSafeName). Có thể chứa tên thật: không log, không đưa vào thông báo/audit/cron log
+  ext           String // "docx" | "pdf"
+  mimeType      String // lấy từ BẢNG đuôi, không từ trình duyệt
+  sizeBytes     Int? // null tới khi complete đo dung lượng thật
+  sha256        String? // băm nội dung đã kiểm (chỉ để phát hiện nộp trùng; không trả ra API)
+  status        String    @default("pending") // pending | ready | removed | expired
+  createdAt     DateTime  @default(now())
+  readyAt       DateTime?
+  expiresAt     DateTime // = createdAt + 60 ngày, CHỐT lúc tạo (đổi chính sách sau này không xoá hồi tố)
+  removedAt     DateTime? // học sinh/gia sư bỏ tệp, hoặc bị thay khi nộp lại
+  expiredAt     DateTime? // cron đánh dấu hết hạn
+  deletedAt     DateTime? // thời điểm tệp gốc THẬT SỰ đã xoá khỏi kho (null = còn trên kho)
+
+  @@index([deletedAt, expiresAt])
+  @@index([assignmentId, studentUserId, kind, status])
+  @@index([submissionId])
+  @@index([status, createdAt])
+  @@map("submission_files")
+}
