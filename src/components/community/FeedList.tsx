@@ -16,14 +16,15 @@ function emptyCopy(tab: string, scope: string, saved: boolean, signedIn: boolean
   return { title: "Chưa có bài viết. Hãy là người đầu tiên chia sẻ.", body: "Một câu hỏi hay hay một mẹo học nhỏ đều giúp được bạn khác.", link: signedIn ? { href: "/cong-dong?tab=hoi-dap-qa", label: "Xem Hỏi đáp" } : { href: loginHref("/cong-dong"), label: "Đăng nhập để chia sẻ" } };
 }
 
-export function FeedList({ feed, tab, scope, saved, signedIn }: { feed: Feed; tab: string; scope: string; saved: boolean; signedIn: boolean }) {
+// LOI-01: `exit` = bảng tin chung đang ẩn (chỉ còn hỏi đáp trong lớp) — mọi lối "Về / Xem Bảng tin chung" đổi thành lối về trang của người xem.
+export function FeedList({ feed, tab, scope, saved, signedIn, exit }: { feed: Feed; tab: string; scope: string; saved: boolean; signedIn: boolean; exit?: { href: string; label: string } }) {
   if (feed.status === "loading") return <div role="status" aria-busy="true" aria-label="Đang tải bài viết"><FeedSkeleton /></div>;
 
   if (feed.status === "error") {
     if (feed.failure === "not_member") {
       return (
         <div className="p-4"><KinStateCard tone="loi" kicker="Không xem được" title="Bạn không còn là thành viên của lớp này."
-          actions={<Link href="/cong-dong?tab=all" className={kinButtonClass("secondary")}>Về Bảng tin chung</Link>} /></div>
+          actions={<Link href={exit?.href ?? "/cong-dong?tab=all"} className={kinButtonClass("secondary")}>{exit?.label ?? "Về Bảng tin chung"}</Link>} /></div>
       );
     }
     return (
@@ -40,7 +41,9 @@ export function FeedList({ feed, tab, scope, saved, signedIn }: { feed: Feed; ta
 
   const all: FeedItem[] = [...feed.pinned, ...feed.items];
   if (all.length === 0) {
-    const c = emptyCopy(tab, scope, saved, signedIn);
+    const c = exit
+      ? { title: "Lớp này chưa có câu hỏi nào.", body: "Em có chỗ nào chưa hiểu thì viết ở ô phía trên. Gia sư và các bạn trong lớp sẽ thấy và trả lời.", link: exit }
+      : emptyCopy(tab, scope, saved, signedIn);
     return <KinEmptyState title={c.title} action={<Link href={c.link.href} className={kinButtonClass("secondary")}>{c.link.label}</Link>}>{c.body}</KinEmptyState>;
   }
 

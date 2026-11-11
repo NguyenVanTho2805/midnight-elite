@@ -103,7 +103,7 @@ const GRAB = `(() => {
   const qz = await api("POST", "/api/questions", { as: zero, body: { title: "Hỏi khi ví rỗng", content: "Vẫn hỏi được." } });
   check("ví 0 vẫn đặt được câu hỏi (không 402)", qz.status === 201, qz.status);
   const src = (await import("node:fs")).readFileSync("src/app/api/questions/route.ts", "utf8");
-  check("mã: khi cờ bật lại thì vẫn trừ QUESTION_COST (COIN_VISIBLE ? QUESTION_COST : 0) và ghi bountyPaid", /COIN_VISIBLE \? QUESTION_COST : 0/.test(src) && /bountyPaid:\s*charge/.test(src) && QUESTION_COST > 0);
+  check("mã: trừ xu theo HẰNG logic Coin (COIN_LOGIC_ON ? QUESTION_COST : 0 — LOI-01: tách khỏi cờ hiển thị) và ghi bountyPaid", /COIN_LOGIC_ON \? QUESTION_COST : 0/.test(src) && /bountyPaid:\s*charge/.test(src) && QUESTION_COST > 0);
 
   await launch();
   const sizes = [[390, 844], [1280, 900]] as const;

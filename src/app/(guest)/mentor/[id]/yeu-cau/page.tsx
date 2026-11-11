@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { publicTutor } from "@/lib/tutorRequestServer";
 import YeuCauForm from "@/components/guest/YeuCauForm";
+import { featureOn } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Gửi yêu cầu tìm gia sư — KiN", robots: { index: false, follow: false } };
@@ -15,7 +16,8 @@ export default async function YeuCauPage({ params }: { params: Promise<{ id: str
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
         <h1 className="text-2xl font-extrabold mb-2" style={{ color: "var(--kin-chu-chinh)" }}>Không tìm thấy gia sư</h1>
         <p className="text-sm mb-6" style={{ color: "var(--kin-chu-mo)" }}>Gia sư này không tồn tại hoặc chưa được duyệt công khai.</p>
-        <Link href="/giang-vien" className="px-6 py-3 rounded-lg font-semibold text-sm" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", borderRadius: "8px" }}>Xem danh sách gia sư</Link>
+        {/* LOI-01: sàn /giang-vien đang ẩn thì đi tiếp sang lớp đang mở. */}
+        <Link href={featureOn("TIM_GIA_SU") ? "/giang-vien" : "/khoa-hoc"} className="px-6 py-3 rounded-lg font-semibold text-sm" style={{ background: "var(--kin-nhan-nen)", color: "var(--kin-nhan-chu-tren-nen)", borderRadius: "8px" }}>{featureOn("TIM_GIA_SU") ? "Xem danh sách gia sư" : "Xem lớp đang mở"}</Link>
       </div>
     );
   }

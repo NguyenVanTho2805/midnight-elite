@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { KinMark } from "@/components/kin/KinLogo";
+import { visibleLinks } from "@/lib/features";
 
 // Figma KiN 152:36 "Footer": thương hiệu + hai cột "Công cụ học tập" và "Vai trò".
 // Thêm cột "Hỗ trợ" (hotline, Zalo) vì đó là thông tin liên hệ thật đang dùng.
-const tools = [
+// LOI-01: mục dẫn vào phần đang ẩn (xếp hạng, điểm chuẩn, tin tức, tìm gia sư — src/lib/features.ts) không hiện; bật lại bằng cờ NEXT_PUBLIC_KIN_MO_<TÊN>=1.
+const tools = visibleLinks([
   { label: "Thi thử ĐGNL miễn phí", href: "/thi-thu"       },
   { label: "Bảng xếp hạng",         href: "/bang-xep-hang" },
   { label: "Tra cứu điểm chuẩn",    href: "/diem-chuan"    },
   { label: "Tin tức tuyển sinh",    href: "/tin-tuc"       },
   // Figma chỉ có 4 mục ở cột này; thêm "Gia sư" vì thanh trên không còn mục này và /giang-vien không có lối vào nào khác.
   { label: "Danh sách gia sư",      href: "/giang-vien"    },
-];
+]);
 
 const roles = [
   { label: "Dành cho học sinh",  href: "/dang-ky"    },

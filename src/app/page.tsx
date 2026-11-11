@@ -57,9 +57,9 @@ async function loadStats(): Promise<{ value: string; label: string }[]> {
 export default async function HomePage() {
   // Công thức tính điểm: lỗi đọc (vd. bảng chưa có ở môi trường này) coi như chưa có công thức, không làm hỏng trang chủ.
   // Bốn khối dữ liệu thật: mỗi bộ tải đã tự bọc lỗi; `.catch` ngoài cùng là lớp bảo hiểm cuối (lỗi bất ngờ → trang chủ vẫn dựng, chỉ thiếu bốn khối).
-  const [stats, c, formulas, landing] = await Promise.all([loadStats(), loadHomeContent(), loadPublicFormulas().catch(() => []), loadHomeLanding().catch(() => EMPTY_LANDING)]);
   // Khung quiz HIỆN mặc định (rỗng nói thật điều đó); chỉ ẩn khi đặt tường minh KIN_HOME_QUIZ=0. Đọc ở máy chủ (biến môi trường, không theo người dùng) nên trang vẫn tĩnh.
   const blocks = homeBlocksFor({ kind: "guest" }, { quiz: process.env.KIN_HOME_QUIZ !== "0" });
+  const [stats, c, formulas, landing] = await Promise.all([loadStats(), loadHomeContent(), blocks.score ? loadPublicFormulas().catch(() => []) : Promise.resolve([]), loadHomeLanding().catch(() => EMPTY_LANDING)]);
   return (
     <div data-vung="sang" className="kin-chu-than min-h-screen flex flex-col bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]">
       <Navbar />
@@ -68,9 +68,10 @@ export default async function HomePage() {
         <HomeSections content={c} stats={stats} slots={{
           landing: <HomeLandingBlocks landing={landing} findTutor={c.findTutor} />,
           afterHero: <HomeMyClass />,
+          // LOI-01: bảng tin (+ quiz bên cạnh) và tính điểm chỉ dựng khi phần Cộng đồng / Điểm chuẩn đang mở (src/lib/features.ts qua homeBlocksFor).
           afterWhyIntro: (<>
-            <HomeCommunity aside={blocks.quiz ? <HomeQuiz /> : undefined} />
-            <HomeScore formulas={formulas} />
+            {blocks.community && <HomeCommunity aside={blocks.quiz ? <HomeQuiz /> : undefined} />}
+            {blocks.score && <HomeScore formulas={formulas} />}
           </>),
           CtaWrap: HomeCtaGuard,
         }} />

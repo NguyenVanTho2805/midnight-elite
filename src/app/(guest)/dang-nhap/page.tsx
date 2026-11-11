@@ -34,6 +34,7 @@ import { SocialButtons } from "@/components/guest/SocialButtons";
 import { SOCIAL_NOTICES } from "@/lib/socialNotices";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
 import { landingPath } from "@/lib/landing";
+import { featureOn } from "@/lib/features";
 import { isAdminHost, mainLoginUrl } from "@/lib/hostRouting";
 import { AUTO_NOT_ALLOWED, forgetSilentAccess, readSavedLogin } from "@/lib/savedLogin";
 
@@ -290,7 +291,8 @@ function DangNhapForm() {
                 <Link href="/phu-huynh" className="font-semibold text-[var(--kin-nhan-link)] underline">Tìm hiểu thêm</Link>
               </p>
             </div>
-            <Link href="/giang-vien" className={kinButtonClass("secondary")}>Tìm gia sư</Link>
+            {/* LOI-01: /giang-vien bị chặn khi phần Tìm gia sư đang ẩn (src/lib/features.ts). */}
+            {featureOn("TIM_GIA_SU") && <Link href="/giang-vien" className={kinButtonClass("secondary")}>Tìm gia sư</Link>}
           </div>
         </>
       )}

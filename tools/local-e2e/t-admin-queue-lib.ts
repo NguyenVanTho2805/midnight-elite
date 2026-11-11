@@ -8,7 +8,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { check, section, done } from "./h";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng chờ nạp Coin theo LOGIC Coin (hằng COIN_LOGIC_ON), không theo cờ hiển thị
 import {
   JOIN_SLOW_DAYS, MAX_QUEUE_ITEMS, QUEUE_KINDS, QUEUE_KIND_GROUP, SNIPPET, afterCursor, agoLabel, badgeOf, buildAdminQueue, canSeeKind, decodeCursor, encodeCursor,
   formatVndText, isQueueKind, shortName, visibleKinds, waitedText,
@@ -126,8 +126,8 @@ check("vao-lop không tính vào badge của kết quả dựng", run({ joins: [
 section("Quyền từng loại (ma trận vai × loại)");
 const SUPER: AdminRole = "admin_super", CONTENT: AdminRole = "admin_content", TEACHER: AdminRole = "teacher";
 const ext = { joinRequests: true, guestQuestions: true };
-check("admin_super thấy các loại thật khi chưa có nhánh B (gia-su, bai-viet, ho-so, tra-loi, danh-gia; thêm nap-coin chỉ khi cờ Coin bật)", visibleKinds(SUPER).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia" + (COIN_VISIBLE ? ",nap-coin" : ""), visibleKinds(SUPER));
-check("admin_super thấy đủ khi nhánh B đã gộp (8, hoặc 7 khi Coin ẩn)", visibleKinds(SUPER, ext).length === (COIN_VISIBLE ? 8 : 7));
+check("admin_super thấy các loại thật khi chưa có nhánh B (gia-su, bai-viet, ho-so, tra-loi, danh-gia; thêm nap-coin chỉ khi cờ Coin bật)", visibleKinds(SUPER).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia" + (COIN_LOGIC_ON ? ",nap-coin" : ""), visibleKinds(SUPER));
+check("admin_super thấy đủ khi nhánh B đã gộp (8, hoặc 7 khi Coin ẩn)", visibleKinds(SUPER, ext).length === (COIN_LOGIC_ON ? 8 : 7));
 check("admin_content thấy 5 loại, KHÔNG có nap-coin (cần MANAGE_REVENUE)", visibleKinds(CONTENT).join() === "gia-su,bai-viet,ho-so,tra-loi,danh-gia" && !canSeeKind(CONTENT, "nap-coin"), visibleKinds(CONTENT));
 check("admin_content có khach-hoi và vao-lop khi nhánh B đã gộp", visibleKinds(CONTENT, ext).includes("khach-hoi") && visibleKinds(CONTENT, ext).includes("vao-lop") && visibleKinds(CONTENT, ext).length === 7);
 check("gia sư (teacher) KHÔNG thấy loại nào dù có MANAGE_COURSES (danh-gia) — kể cả khi nhánh B đã gộp", QUEUE_KINDS.every(k => !canSeeKind(TEACHER, k)) && visibleKinds(TEACHER, ext).length === 0 && checkPermission(TEACHER, PERMISSIONS.MANAGE_COURSES));

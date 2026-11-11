@@ -3,6 +3,40 @@
 Mọi việc "sẵn sàng làm ngay" đã làm hoặc đã ghi rõ vì sao chưa làm. Ghi chú từng việc nằm trong Google Sheet (cột H/I của Thọ; không đụng cột J/K của Thanh).
 Bộ test chạy với Postgres + Next dev + Chromium thật nằm ở `tools/local-e2e/` (xem README ở đó).
 
+## LOI-01 (11/11/2026) — Lõi dạy học: ẩn tính năng chưa dùng bằng cờ — LÀM XONG PHẦN MÃ, đã chạy test, chờ COO kiểm rồi đẩy
+
+Lời chủ: "giờ không cố làm nhiều chức năng một lúc nữa, xây web dùng trước mắt đáp ứng nhu cầu dạy học, kết nối học sinh". Nhánh `claude/loi-an-bang-co` (worktree `loi-co`, rẽ từ `c5f6fb7d`).
+
+- Một nguồn: `src/lib/features.ts` — 9 cờ `NEXT_PUBLIC_KIN_MO_<TÊN>` (TIM_GIA_SU, CONG_DONG, LICH, TIN_TUC, THU_VIEN, TIENG_ANH, XEP_HANG, COIN, DIEM_CHUAN), mặc định ẨN, chỉ đúng "1" mới mở. `PATH_RULES` (đường dẫn → cờ) dùng chung cho menu 3 vai, trang chủ, chân trang, `/ban-do`, sitemap và chốt chặn route (`hostRouting.decideRoute` → 307 + `no-store` về trang đầu theo vai, khách → `/`).
+- Quyết định sau rà soát COO: Tìm gia sư chỉ ẩn SÀN `/giang-vien` (hồ sơ `/mentor/<id>` và `/mentor/<id>/yeu-cau` vẫn mở để link đã chia sẻ không chết); Lịch chỉ gỡ menu, route giữ; Thư viện chỉ chặn khách + quản trị (học sinh / gia sư vẫn vào thư viện lớp và "Thư viện của tôi"); logic Coin (trừ xu khi hỏi, hàng chờ nạp Coin) là HẰNG `COIN_LOGIC_ON = false`, tách khỏi cờ hiển thị — bật phải sửa mã có rà.
+- Cộng đồng ẩn nhưng HỎI TRONG LỚP còn chạy: `/cong-dong?scope=<mã lớp>` mở cho học sinh / gia sư (khung gọn, ô soạn khoá vào lớp, quyền thành viên do API), lối vào ở trang lớp của học sinh ("Hỏi gia sư trong lớp") và mục Cộng đồng lớp của gia sư. `/cong-dong/<id>`: bài lớp mà người xem thuộc lớp thì ở lại (khung gọn `data-kc-bare`); mã không có, bài chung, bài lớp ngoài quyền, DB lỗi → cùng một kết quả (về trang đầu theo vai). Chuyển hướng ở trang này là phía máy khách (nhóm `(guest)` có `loading.tsx`), COO chấp nhận.
+- Bài: `t-features-lib.ts` (mới, có ca phá cố ý), `ui-loi-cong-dong-lop.ts` (mới, 1280 + 390, có ca phá cố ý); cập nhật kỳ vọng theo cờ ở `t-host-routing-lib`, `t-links`, `t-home-layout-lib`, `t-admin-nav-lib`, `t-sitemap`, `t-admin-*`/`ui-admin-*` phần Coin, `ui-links-everywhere`, `ui-role-everything` (thu hẹp `loiHidden`: bài lớp của chính học sinh bị chuyển nhầm là đỏ), `ui-student-shell`, `ui-tutor-shell`. Các bài đọc cờ ở tiến trình bài: chạy với CÙNG biến `NEXT_PUBLIC_KIN_MO_*` như máy chủ dev.
+
+Số chạy thật (cổng 3183, DB `kin_wt_loi_co`, `TZ=Asia/Ho_Chi_Minh`, tuần tự):
+
+| Bài | Cờ tắt hết | Bật đủ 9 cờ |
+|---|---|---|
+| t-features-lib | 117/0 | 107/0 |
+| t-host-routing-lib | 89/0 | 89/0 |
+| ui-loi-cong-dong-lop | 28/0 (2 lần liền; lần chạy ĐẦU sau khi bật máy chủ có 1 đỏ "Rendered more hooks…" không lặp lại được) | tự bỏ qua (chỉ cho chế độ ẩn) |
+| ui-links-everywhere | 7/0 | 7/0 |
+| ui-student-shell | 75/2 | 77/2 |
+| ui-tutor-shell | 92/0 | 92/0 |
+| ui-role-everything ROLE=guest | 28/1 | 23/2 |
+| ui-role-everything ROLE=student | 42/1 | 37/1 |
+| t-no-hex | 16/0 | — |
+| tsc --noEmit | 0 lỗi | — |
+
+Đỏ còn lại đều CÓ SẴN, không do LOI-01 (cùng đỏ khi bật đủ cờ, tức mã chạy như main):
+- ui-student-shell: "nhãn vai trò 'HỌC SINH'" và "module đang ở có aria-current=page (đúng một nút)" — bộ chọn chưa lọc bản sr-only / `:visible` như ui-tutor-shell.
+- ui-role-everything (cả hai vai): `/mentor/khong-co-gia-su` hiện "Chưa mở được hồ sơ / Hệ thống đang bận" — trang tự gọi lại API theo tên miền, hỏng ở `next dev` cục bộ. Vai khách khi bật cờ: thêm 401 `/api/honor-leaderboard` ở `/bang-xep-hang` (đỏ có sẵn).
+- t-links 11/1: `robots.ts /xac-`, `AdminShell /xem-truoc`, `LopChiTiet /hoc-vien` (tệp LOI-01 không đụng).
+
+Nợ P3 KHÔNG sửa (COO đã biết):
+- Thông báo cũ (bài tin tức, trả lời cộng đồng chung, câu hỏi cũ `/student/hoi-dap/<id>`) trỏ vào phần đang ẩn → bấm thì về trang đầu theo vai, không báo vì sao.
+- Liên kết quản trị tự nhập ở màn sửa trang chủ (hero, CTA) có thể trỏ vào phần ẩn: gợi ý không còn đường ẩn và màn sửa nhắc "mở thử", nhưng không chặn lưu.
+- API `/api/community/threads/<id>` (và các API cộng đồng / tin tức khác) vẫn mở — chỉ chặn lối vào giao diện; API tự giữ quyền xem bài lớp như cũ.
+
 ## BU-02 (Bigupdate 02/11/2026) — Học liệu: tab Giáo trình, ô tải lên chung, Thư viện của tôi — LÀM XONG PHẦN MÃ, chưa chạy bài CSDL
 Nhánh `claude/bu-02-hoc-lieu` (rẽ từ `claude/bu-01-lop`, phụ thuộc BU-01 PR #103), HEAD `1335f62`. PR chưa mở. Đặc tả: `phong-ban/dac-ta/BU-02.md`. Backlog: `backlog/bigupdate.csv` dòng BU-02.
 - **Vì sao:** gia sư cần một chỗ trong lớp xếp học liệu (link + tệp) rõ kiểu, tải tài liệu có ký, có thư viện riêng và xem lớp như học sinh.

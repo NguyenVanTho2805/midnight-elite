@@ -4,19 +4,22 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { listPublicArticleSlugs } from "@/lib/articlesPublic";
 import { publicCourseWhere, siteUrl } from "@/lib/seoPublic";
+import { featureOn, isLinkHidden } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
 export const SITEMAP_MAX = 5000;
 export const SITEMAP_STATIC = ["/", "/tin-tuc", "/khoa-hoc", "/giang-vien", "/diem-chuan", "/chinh-sach"] as const;
+// LOI-01: trang của phần đang ẩn (src/lib/features.ts) không vào sơ đồ trang — route đó đang 307 về trang chủ.
+export const sitemapStatic = (): string[] => SITEMAP_STATIC.filter(p => !isLinkHidden(p));
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const now = new Date();
-  const tinh: MetadataRoute.Sitemap = SITEMAP_STATIC.map((p) => ({ url: base + (p === "/" ? "" : p) }));
+  const tinh: MetadataRoute.Sitemap = sitemapStatic().map((p) => ({ url: base + (p === "/" ? "" : p) }));
   const con = SITEMAP_MAX - tinh.length;
   const [bai, khoa] = await Promise.all([
-    listPublicArticleSlugs(con, now),
+    featureOn("TIN_TUC") ? listPublicArticleSlugs(con, now) : Promise.resolve([]),
     prisma.course.findMany({ where: publicCourseWhere(), orderBy: { sortOrder: "asc" }, take: con, select: { id: true } }),
   ]);
   const out: MetadataRoute.Sitemap = [

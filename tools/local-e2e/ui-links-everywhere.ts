@@ -16,6 +16,7 @@ import { launch, closeAll } from "./ui";
 import { mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done, cookieFor, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { toTutorPath } from "@/lib/tutorRoutes";
+import { blockedRouteFeature, type FeatureViewer } from "@/lib/features";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -48,7 +49,13 @@ const STUDENT_ALIASES: Record<string, string> = {
 // Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
 // BU-00 bước 3: gia sư dùng bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi*; trang tao-moi của quản lớp chỉ chuyển tiếp; /lop-cua-toi/de-thi/tao-moi (BU-03) là trang thật (bốn lối tạo đề), không chuyển tiếp nữa.
 const PAGE_REDIRECTS: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop" };
+// LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai — có chủ đích. Cờ đọc ở tiến trình bài: chạy với CÙNG biến
+// NEXT_PUBLIC_KIN_MO_* như máy chủ dev. Quản trị: tên miền admin "/admin"; đi qua tên miền chính không có phiên thì là khách → "/".
+const LOI_VIEWER: Record<Scenario["role"], FeatureViewer> = { guest: "guest", student: "student", tutor: "tutor", super: "admin", content: "admin" };
+const LOI_HOME: Record<FeatureViewer, string[]> = { guest: ["/"], student: ["/student/viec-cua-toi"], tutor: ["/lop-cua-toi"], admin: ["/admin", "/"] };
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
+  const viewer = LOI_VIEWER[sc.role];
+  if (blockedRouteFeature(reqPath, viewer)) return LOI_HOME[viewer].includes(finPath);
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
   if (PAGE_REDIRECTS[reqPath] === finPath) return true;
   // Gia sư mở đường cũ /admin/...: proxy 307 sang bí danh (src/lib/tutorRoutes.ts), không có bí danh → Hộp việc (BU-00 bước 3).

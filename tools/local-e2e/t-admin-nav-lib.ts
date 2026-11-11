@@ -7,9 +7,12 @@
 import { ADMIN_MODULES, groupSubs, matchSub, visibleModules } from "@/lib/adminNav";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type AdminRole, type Permission } from "@/lib/permissions";
 import { check, section, done } from "./h";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_VISIBLE, FEATURES, type FeatureEnv } from "@/lib/features";
+// LOI-01 (11/11/2026): trang con của phần đang ẩn (Tin tức, Video tham khảo, Cộng đồng, Vinh danh, Điểm chuẩn) rút khỏi menu theo cờ src/lib/features.ts. Các ca dưới
+// kiểm phân quyền KHI CÁC PHẦN ĐANG MỞ (FE = cả 9 cờ =1, Coin vẫn theo COIN_VISIBLE như cũ); khi tắt: ca "LOI-01" cuối tệp và t-features-lib.ts.
+const FE: FeatureEnv = Object.fromEntries(FEATURES.map(k => [k, "1"])) as FeatureEnv;
 
-const hrefsOf = (r: AdminRole | null | undefined) => visibleModules(r).flatMap(m => m.subs.map(s => s.href));
+const hrefsOf = (r: AdminRole | null | undefined) => visibleModules(r, FE).flatMap(m => m.subs.map(s => s.href));
 const needs = (p: Permission) => ADMIN_MODULES.flatMap(m => m.subs).filter(s => s.permission === p).map(s => s.href);
 const allSubs = ADMIN_MODULES.flatMap(m => m.subs);
 
@@ -27,7 +30,7 @@ check("hai đường đã gỡ không còn là trang con riêng (đã 308)", !al
 check("groupSubs giữ thứ tự xuất hiện và gom đúng: Học vụ có 4 nhóm", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group).join("|") === "Lớp|Đề và ngân hàng|Truyền thông|Tuyển sinh", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group));
 
 section("Gia sư (teacher): không dùng vỏ quản trị");
-check("visibleModules('teacher') → [] (không module nào)", visibleModules("teacher").length === 0, visibleModules("teacher").map(m => m.key));
+check("visibleModules('teacher') → [] (không module nào)", visibleModules("teacher", FE).length === 0, visibleModules("teacher", FE).map(m => m.key));
 check("teacher không thấy trang không đòi quyền (Hàng chờ) và không có lối vào Hôm nay", !hrefsOf("teacher").includes("/admin/kiem-duyet") && !hrefsOf("teacher").includes("/admin"));
 check("teacher không thấy Lớp / Đề thi dù permissions.ts vẫn cho MANAGE_COURSES + MANAGE_CURRICULUM (quyền API giữ, chỉ bỏ lối vào)",
   !hrefsOf("teacher").includes("/admin/khoa-hoc") && !hrefsOf("teacher").includes("/admin/thi-thu")
@@ -35,7 +38,7 @@ check("teacher không thấy Lớp / Đề thi dù permissions.ts vẫn cho MANA
 check("permissions.ts KHÔNG bị đụng: teacher vẫn đúng 2 quyền MANAGE_COURSES + MANAGE_CURRICULUM", ROLE_PERMISSIONS.teacher.length === 2 && ROLE_PERMISSIONS.teacher.includes(PERMISSIONS.MANAGE_COURSES) && ROLE_PERMISSIONS.teacher.includes(PERMISSIONS.MANAGE_CURRICULUM), ROLE_PERMISSIONS.teacher);
 
 section("Quản trị cấp 1 (admin_super): đủ mọi module");
-const sup = visibleModules("admin_super");
+const sup = visibleModules("admin_super", FE);
 check("admin_super thấy đủ 4 module theo đúng thứ tự", sup.length === 4 && sup.map(m => m.key).join("|") === ADMIN_MODULES.map(m => m.key).join("|"), sup.map(m => m.key));
 check("admin_super thấy đủ mọi trang con (không trang nào bị lọc)", sup.flatMap(m => m.subs).length === allSubs.length);
 check("lối vào module = trang con đầu tiên được phép (Con người → /admin/gia-su; Vận hành → /admin/doanh-thu, không còn /admin vì Hôm nay chỉ vào bằng logo)", sup.find(m => m.key === "con-nguoi")?.href === "/admin/gia-su" && sup.find(m => m.key === "van-hanh")?.href === "/admin/doanh-thu");
@@ -49,7 +52,7 @@ check("admin_content KHÔNG thấy Gói KiN Pro, Triển khai và hạn mức, L
 check("admin_content KHÔNG thấy Học sinh (MANAGE_STUDENTS) và Doanh thu (VIEW_REVENUE)", !content.includes("/admin/hoc-sinh") && !content.includes("/admin/doanh-thu"));
 check("admin_content vẫn thấy Hàng chờ, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
   ["/admin/kiem-duyet", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)));
-check("module không còn trang con nào thì ẩn cả module (không có trường hợp này với admin_content: Con người còn Gia sư)", visibleModules("admin_content").some(m => m.key === "con-nguoi") && visibleModules("admin_content").find(m => m.key === "con-nguoi")!.subs.length === 1);
+check("module không còn trang con nào thì ẩn cả module (không có trường hợp này với admin_content: Con người còn Gia sư)", visibleModules("admin_content", FE).some(m => m.key === "con-nguoi") && visibleModules("admin_content", FE).find(m => m.key === "con-nguoi")!.subs.length === 1);
 check("mọi trang admin_content thấy đều đúng quyền của vai đó (không lọt trang ngoài quyền)", allSubs.filter(s => content.includes(s.href)).every(s => !s.permission || checkPermission("admin_content", s.permission)));
 check("Hôm nay chỉ có MỘT đường vào: không vai nào có /admin trong menu (logo dẫn /admin ở vỏ); mọi vai quản lý vẫn thấy Hàng chờ", !hrefsOf("admin_super").includes("/admin") && !hrefsOf("admin_content").includes("/admin") && hrefsOf("admin_super").includes("/admin/kiem-duyet") && hrefsOf("admin_content").includes("/admin/kiem-duyet"));
 
@@ -64,5 +67,12 @@ check("khớp dài nhất thắng: /admin/khoa-hoc/danh-muc → Danh mục lớp
 check("không khớp nhầm tiền tố chữ: /admin/khoa-hocxyz không phải Lớp", at("/admin/khoa-hocxyz") === null);
 check(COIN_VISIBLE ? "/admin/topups thuộc Vận hành · Lịch sử nạp Coin; /admin/nhat-ky thuộc Vận hành · Nhật ký" : "Coin ẩn: /admin/topups KHÔNG còn trong menu; /admin/nhat-ky thuộc Vận hành · Nhật ký", (COIN_VISIBLE ? at("/admin/topups")?.sub.label === "Lịch sử nạp Coin" && at("/admin/topups")?.moduleKey === "van-hanh" : at("/admin/topups") === null) && at("/admin/nhat-ky")?.moduleKey === "van-hanh");
 check("/admin/danh-gia thuộc Học vụ · Lịch sử đánh giá (còn lịch sử + xoá)", at("/admin/danh-gia")?.moduleKey === "hoc-vu" && at("/admin/danh-gia")?.sub.label === "Lịch sử đánh giá");
+
+section("LOI-01 — các phần đang ẩn (không cờ nào)");
+const hidden = ["/admin/tin-tuc", "/admin/thu-vien-video", "/admin/cong-dong", "/admin/vinh-danh", "/admin/diem-chuan", "/admin/diem-chuan/cong-thuc"];
+for (const role of ["admin_super", "admin_content"] as const) {
+  const hs = visibleModules(role, {}).flatMap(m => m.subs.map(x => x.href));
+  check(`${role}: không thấy trang của phần ẩn; vẫn thấy Hàng chờ, Lớp, Đề thi, Chữ trang chủ`, hidden.every(h => !hs.includes(h)) && ["/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu", "/admin/trang-chu"].every(h => hs.includes(h)), hs);
+}
 
 done();

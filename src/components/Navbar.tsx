@@ -9,16 +9,18 @@ import NotificationBell from "@/components/NotificationBell";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { landingPath } from "@/lib/landing";
 import { homeNavFor, toHomeViewer } from "@/lib/homeLayout";
+import { visibleLinks } from "@/lib/features";
 
 // Figma KiN 146:2 "Header": 4 mục (Lớp học · Thi thử · Cộng đồng · Tin tức). BU-HS-TRANG-CHU (09/11/2026): HỌC SINH thêm mục thứ 5 "Lớp của tôi" (→ /student/hoc-tap) ở cuối —
 // lệch Figma có chủ đích (một chạm từ mặt tiền vào lớp). Danh sách mục do homeNavFor() quyết (src/lib/homeLayout.ts); lúc chưa biết là ai (isLoading) vẫn là 4 mục của khách, không nháy.
 
-const accountLinks = [
+// LOI-01: "Lịch học" rời menu khi phần Lịch đang ẩn (route vẫn chạy) — visibleLinks lọc theo src/lib/features.ts.
+const accountLinks = visibleLinks([
   { label: "Thông tin cá nhân", href: "/student/ho-so",     icon: <><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></> },
   { label: "Khoá học của tôi",  href: "/student/hoc-tap",   icon: <><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></> },
   { label: "Lịch học",          href: "/student/lich-hoc",  icon: <path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/> },
   { label: "Lớp đang theo dõi", href: "/khoa-hoc-da-luu",   icon: <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/> },
-];
+]);
 
 // Đích có thể nằm ở tên miền admin (quản trị cấp 1 / nội dung): dùng <a> tải cứng, vì next/link tải trước RSC và router.push sang tên miền khác bị CORS chặn.
 const isCrossHostLanding = (href: string) => href === "/admin";
