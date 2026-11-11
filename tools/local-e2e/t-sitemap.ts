@@ -2,6 +2,7 @@
 // Có: bài đang hiển thị, khoá học status=true, trang tĩnh. Không có: nháp, lên lịch tương lai, khoá ẩn, /admin, /api, /student, /lop-cua-toi, /thi-thu. ≤ 5000 mục.
 import { api, mkSuper, wipe, check, section, done, BASE } from "./h";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 import { request as httpRequest } from "node:http";
 
 (async () => {
@@ -28,8 +29,14 @@ import { request as httpRequest } from "node:http";
   const sm = await api("GET", "/sitemap.xml");
   check("200 và là XML", sm.status === 200 && /<urlset/.test(sm.text), sm.status);
   const locs = [...sm.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
-  check("có trang tĩnh /tin-tuc và gốc", locs.some(l => /\/tin-tuc$/.test(l)) && locs.some(l => /^https:\/\/[^/]+$/.test(l)));
-  check("có bài đã đăng (cả bài cũ publishedAt=null)", locs.some(l => l.endsWith("/tin-tuc/hien-1")) && locs.some(l => l.endsWith("/tin-tuc/hien-cu")));
+  // LOI-01 (11/11/2026): trang của phần đang ẩn (src/lib/features.ts) không vào sitemap. Cờ đọc ở tiến trình bài này — chạy bài với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
+  if (featureOn("TIN_TUC")) {
+    check("có trang tĩnh /tin-tuc và gốc", locs.some(l => /\/tin-tuc$/.test(l)) && locs.some(l => /^https:\/\/[^/]+$/.test(l)));
+    check("có bài đã đăng (cả bài cũ publishedAt=null)", locs.some(l => l.endsWith("/tin-tuc/hien-1")) && locs.some(l => l.endsWith("/tin-tuc/hien-cu")));
+  } else {
+    check("Tin tức đang ẩn: có gốc, KHÔNG có /tin-tuc và bài nào", locs.some(l => /^https:\/\/[^/]+$/.test(l)) && !locs.some(l => /\/tin-tuc(\/|$)/.test(l)), locs.filter(l => /tin-tuc/.test(l)));
+  }
+  check("trang của phần đang ẩn (/giang-vien, /diem-chuan) không có khi cờ tắt", (featureOn("TIM_GIA_SU") || !locs.some(l => /\/giang-vien$/.test(l))) && (featureOn("DIEM_CHUAN") || !locs.some(l => /\/diem-chuan$/.test(l))), locs);
   check("KHÔNG có nháp và bài lên lịch tương lai", !locs.some(l => l.endsWith("/tin-tuc/nhap-x")) && !locs.some(l => l.endsWith("/tin-tuc/lich-x")));
   check("có khoá học status=true, KHÔNG có khoá ẩn", locs.some(l => l.endsWith("/khoa-hoc/lop-hien")) && !locs.some(l => l.endsWith("/khoa-hoc/lop-an")));
   check("không có /admin, /api, /student, /lop-cua-toi, /phu-huynh, /thi-thu, ?muc=", !locs.some(l => /\/(admin|api|student|lop-cua-toi|phu-huynh|thi-thu)(\/|$)|\?muc=/.test(l)), locs.filter(l => /admin|api|student|lop-cua-toi|phu-huynh|thi-thu|muc=/.test(l)));

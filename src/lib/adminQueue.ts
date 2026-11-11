@@ -7,7 +7,7 @@
 //  • Tiền chỉ ở dạng chuỗi hiển thị; không có phép tính tiền nào ở đây.
 import { addDaysKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
-import { COIN_VISIBLE, COIN_QUEUE_KIND } from "@/lib/features";
+import { COIN_VISIBLE, COIN_QUEUE_KIND, visibleLinks } from "@/lib/features";
 import type { ExternalSupport } from "@/lib/adminQueueExternal";
 
 export const MAX_QUEUE_ITEMS = 100;
@@ -243,7 +243,8 @@ function profileItem(r: ProfileRep, now: Date): QueueItem {
         { key: "lock", label: "Khoá hồ sơ công khai", kind: "primary", method: "PATCH", url: `/api/admin/profile-reports/${r.id}`, body: { action: "lock" }, reason: { label: "Lý do khoá hồ sơ", max: 500 } },
         { key: "dismiss", label: "Bỏ qua báo cáo", kind: "secondary", method: "PATCH", url: `/api/admin/profile-reports/${r.id}`, body: { action: "dismiss" } },
       ],
-      links: [{ label: "Xem hồ sơ công khai", href: `/mentor/${r.tutorId}` }, { label: "Mở bảng phễu gia sư", href: "/admin/pheu" }],
+      // LOI-01: hồ sơ công khai /mentor/<id> bị chặn khi phần Tìm gia sư đang ẩn (src/lib/features.ts) → không hiện liên kết dẫn vào đó.
+      links: visibleLinks([{ label: "Xem hồ sơ công khai", href: `/mentor/${r.tutorId}` }, { label: "Mở bảng phễu gia sư", href: "/admin/pheu" }]),
     },
   };
 }

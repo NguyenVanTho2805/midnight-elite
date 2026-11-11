@@ -9,14 +9,16 @@ import HomeTutors from "./HomeTutors";
 import HomeCourses from "./HomeCourses";
 import HomeExams from "./HomeExams";
 import HomeNews from "./HomeNews";
+import { featureOn } from "@/lib/features";
 
 export default function HomeLandingBlocks({ landing, findTutor }: { landing: HomeLanding; findTutor: HomeContent["findTutor"] }) {
   return (
     <>
-      <HomeTutors tutors={landing.tutors} findTutor={findTutor} />
+      {/* LOI-01: khối Gia sư / Tin tức chỉ dựng khi phần Tìm gia sư / Tin tức đang mở (src/lib/features.ts). */}
+      {featureOn("TIM_GIA_SU") && <HomeTutors tutors={landing.tutors} findTutor={findTutor} />}
       <HomeCourses courses={landing.courses} chips={landing.courseChips} />
       <HomeExams exams={landing.exams} />
-      <HomeNews articles={landing.articles} />
+      {featureOn("TIN_TUC") && <HomeNews articles={landing.articles} />}
     </>
   );
 }

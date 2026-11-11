@@ -27,6 +27,7 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinSectionHead } from "@/components/kin/SectionHead";
+import { featureOn } from "@/lib/features";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
@@ -362,11 +363,14 @@ function Content() {
             </ul>
           </section>
         )}
+        {/* LOI-01: khối Tự học chỉ hiện khi phần Tiếng Anh tự học đang mở (src/lib/features.ts). */}
+        {featureOn("TIENG_ANH") && (
         <section aria-labelledby="lop-tu-hoc" data-self-study>
           <KinSectionHead id="lop-tu-hoc" title="Tự học" />
           <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lộ trình Tiếng Anh IELTS, từ vựng, đọc, nghe, viết và thi thử — không cần vào lớp.</p>
           <Link href="/student/tieng-anh" className={`${kinButtonClass("secondary")} mt-4`}>Mở Tiếng Anh tự học</Link>
         </section>
+        )}
 
         <PendingJoinBlock className="mt-8" />
         <JoinAnotherClass className="mt-8" />

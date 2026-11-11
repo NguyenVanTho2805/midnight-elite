@@ -20,6 +20,7 @@ import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
+import { visibleLinks } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -69,10 +70,11 @@ export default async function LopCuaToiPage() {
       }))
     : enrolled.map(e => ({ id: e.course.id, name: e.course.name, category: e.course.category,
          hrefOpen: `/lop-cua-toi/${e.course.id}`,
-         actions: [
+         // LOI-01: lối nhanh "Lịch học" rời khi phần Lịch đang ẩn (src/lib/features.ts); route vẫn chạy.
+         actions: visibleLinks([
            { label: "Lịch học",   href: "/student/lich-hoc" },
            { label: "Học phí",    href: "/student/hoc-phi" },
-         ],
+         ]),
          subtitle: "Đang học",
       }));
 

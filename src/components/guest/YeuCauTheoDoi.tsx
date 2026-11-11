@@ -9,6 +9,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { MODE_LABEL, type TeachingMode } from "@/lib/tutorArea";
 import { jfetch, fmtVnDate } from "@/components/tutor/studentUi";
+import { featureOn } from "@/lib/features";
 
 interface Data {
   status: "new" | "accepted" | "declined" | "closed"; title: string; detail: string; canWithdraw: boolean;
@@ -42,8 +43,13 @@ export default function YeuCauTheoDoi({ token }: { token: string }) {
   if (state === "load") return <p aria-busy="true" className="py-10 text-[var(--kin-chu-mo)]">Đang tải trạng thái yêu cầu…</p>;
   if (state === "404") return (
     <div className="py-10 space-y-3"><h2 className="text-[length:var(--kin-co-tieu-de)] font-medium">Không tìm thấy yêu cầu</h2>
-      <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem gia sư khác trên KiN.</p>
-      <Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem danh sách gia sư</Link></div>
+      {featureOn("TIM_GIA_SU") ? <>
+        <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem gia sư khác trên KiN.</p>
+        <Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem danh sách gia sư</Link>
+      </> : <>
+        <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem các lớp đang mở trên KiN.</p>
+        <Link href="/khoa-hoc" className={kinButtonClass("secondary")}>Xem lớp đang mở</Link>
+      </>}</div>
   );
   if (state === "err" || !d) return (
     <div role="alert" className="py-10 space-y-3"><p className="text-[var(--kin-tt-chu-loi)]">Không tải được trạng thái yêu cầu.</p>
@@ -59,7 +65,7 @@ export default function YeuCauTheoDoi({ token }: { token: string }) {
       <section aria-label="Yêu cầu đã gửi">
         <h2 className="text-[length:var(--kin-co-tieu-de)] font-medium">Anh/chị đã gửi</h2>
         <dl className="mt-2 grid gap-1 text-[length:var(--kin-co-goc)]">
-          {d.tutor && <div className="flex gap-2"><dt className="w-36 text-[var(--kin-chu-mo)]">Gửi tới</dt><dd><Link href={`/mentor/${d.tutor.id}`} className="inline-flex items-center min-h-11 underline text-[var(--kin-nhan-link)]">{d.tutor.name}</Link></dd></div>}
+          {d.tutor && <div className="flex gap-2"><dt className="w-36 text-[var(--kin-chu-mo)]">Gửi tới</dt><dd>{featureOn("TIM_GIA_SU") ? <Link href={`/mentor/${d.tutor.id}`} className="inline-flex items-center min-h-11 underline text-[var(--kin-nhan-link)]">{d.tutor.name}</Link> : d.tutor.name}</dd></div>}
           <div className="flex gap-2"><dt className="w-36 text-[var(--kin-chu-mo)]">Cấp học</dt><dd>{r.level}</dd></div>
           <div className="flex gap-2"><dt className="w-36 text-[var(--kin-chu-mo)]">Môn</dt><dd className="break-words min-w-0">{r.subject}</dd></div>
           {r.mode && <div className="flex gap-2"><dt className="w-36 text-[var(--kin-chu-mo)]">Hình thức</dt><dd>{MODE_LABEL[r.mode as TeachingMode] ?? r.mode}</dd></div>}
@@ -69,7 +75,8 @@ export default function YeuCauTheoDoi({ token }: { token: string }) {
       </section>
       <div className="flex flex-wrap gap-3">
         {d.canWithdraw && <button type="button" data-withdraw onClick={withdraw} className={kinButtonClass("secondary")}>Rút yêu cầu</button>}
-        {d.tutor && <Link href={`/mentor/${d.tutor.id}`} className={kinButtonClass("ghost")}>Xem hồ sơ gia sư</Link>}
+        {/* LOI-01: hồ sơ công khai /mentor bị chặn khi phần Tìm gia sư đang ẩn (src/lib/features.ts) — chỉ ghi tên, không đưa liên kết vào đó. */}
+        {d.tutor && featureOn("TIM_GIA_SU") && <Link href={`/mentor/${d.tutor.id}`} className={kinButtonClass("ghost")}>Xem hồ sơ gia sư</Link>}
       </div>
       <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Anh/chị tự thoả thuận lịch học và học phí trực tiếp với gia sư. Không chuyển khoản trước buổi học thử. KiN không thu phí kết nối.</p>
     </div>

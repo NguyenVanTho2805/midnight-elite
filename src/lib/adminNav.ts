@@ -3,7 +3,7 @@
 // Quy tắc: trang không đủ quyền thì KHÔNG hiện lối vào; module không còn trang con nào thì ẩn cả module.
 // Trang chủ duy nhất của quản trị là "Hôm nay" (/admin): MỘT lối vào là logo ở đầu thanh bên / dải trên; nó không nằm trong module nào (không lặp ở Vận hành).
 // `group` (BU-08): nhóm con trong module. Vỏ chỉ hiện dải tab của NHÓM đang ở (≤ 6 tab) và đặt tên nhóm làm tiêu đề phụ ở thanh bên rộng.
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_VISIBLE, isLinkHidden, type FeatureEnv } from "@/lib/features";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
 
 export interface AdminSub { label: string; href: string; permission?: Permission; group?: string }
@@ -75,16 +75,19 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
 
 const allowed = (role: AdminRole | undefined | null, s: AdminSub) => !s.permission || checkPermission(role, s.permission);
 
+// LOI-01 (11/11/2026): trang con của phần đang ẨN (src/lib/features.ts — Tin tức & Blog, Video tham khảo, Cộng đồng, Bảng vinh danh, Điểm chuẩn, Công thức tính điểm)
+// không hiện lối vào. Vẫn nằm trong ADMIN_MODULES để `matchSub` nhận ra (mở thẳng đường dẫn vẫn sáng đúng module; t-admin-queue-lib quét thư mục không báo mồ côi).
+
 /**
  * Các module người này thấy, mỗi module kèm các trang con được phép và đường dẫn vào (trang con đầu tiên được phép).
  * BU-00 (31/10/2026): GIA SƯ (`teacher`) không còn dùng vỏ quản trị → trả RỖNG. Quyền API của gia sư (MANAGE_COURSES / MANAGE_CURRICULUM
  * trong permissions.ts) giữ nguyên — chỉ bỏ lối vào trên thanh quản trị.
  */
-export function visibleModules(role: AdminRole | undefined | null): AdminModuleView[] {
+export function visibleModules(role: AdminRole | undefined | null, env?: FeatureEnv): AdminModuleView[] {
   if (role === "teacher") return [];
   const out: AdminModuleView[] = [];
   for (const m of ADMIN_MODULES) {
-    const subs = m.subs.filter(s => allowed(role, s));
+    const subs = m.subs.filter(s => allowed(role, s) && !isLinkHidden(s.href, env));
     if (subs.length) out.push({ key: m.key, label: m.label, icon: m.icon, href: subs[0].href, subs });
   }
   return out;

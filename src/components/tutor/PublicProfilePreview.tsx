@@ -3,6 +3,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { featureOn } from "@/lib/features";
 import TutorProfileHeader, { type ProfileHeaderStats, type ProfileHeaderTutor } from "@/components/tutor/TutorProfileHeader";
 
 type State = { kind: "loading" } | { kind: "ready"; tutor: ProfileHeaderTutor; stats: ProfileHeaderStats } | { kind: "hidden" } | { kind: "error" };
@@ -48,7 +49,10 @@ export default function PublicProfilePreview({ tutorId, reason, hidden = false }
           {hidden && <p role="status" data-testid="xem-truoc-dang-an" className="rounded-xl p-3 mb-2 text-sm font-semibold" style={{ background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)", border: "1px solid var(--kin-tt-vien-cho)" }}>Hồ sơ đang ẩn — khách không thấy trang này. Đây là bản xem trước của riêng bạn.</p>}
           <TutorProfileHeader tutor={state.tutor} stats={state.stats} as="h2" />
           <p className="text-xs mt-2" style={{ color: "var(--kin-chu-phu)" }}>
-            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp (không có ô nhập tay); một buổi chỉ được tính khi đã diễn ra và có ít nhất 1 em có mặt. Nhãn “Có dạy trong 30 ngày qua” hiện khi có ít nhất 1 buổi như vậy trong 30 ngày gần nhất. {hidden ? "Trang công khai đang báo không tìm thấy vì hồ sơ đang ẩn." : <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>}
+            Giới thiệu và môn dạy sửa ở form bên dưới. Số buổi, số lớp lấy từ sổ lớp (không có ô nhập tay); một buổi chỉ được tính khi đã diễn ra và có ít nhất 1 em có mặt. Nhãn “Có dạy trong 30 ngày qua” hiện khi có ít nhất 1 buổi như vậy trong 30 ngày gần nhất. {hidden ? "Trang công khai đang báo không tìm thấy vì hồ sơ đang ẩn."
+              // LOI-01: Tìm gia sư đang ẩn (src/lib/features.ts) thì trang công khai /mentor chưa mở cho ai — nói rõ, không đưa liên kết bị chặn.
+              : featureOn("TIM_GIA_SU") ? <Link href={`/mentor/${tutorId}`} className="underline" style={{ color: "var(--kin-th-xanh-link)" }}>Mở trang công khai</Link>
+              : "KiN chưa mở trang tìm gia sư công khai, nên hiện chỉ bạn thấy bản xem trước này."}
           </p>
         </>
       )}
