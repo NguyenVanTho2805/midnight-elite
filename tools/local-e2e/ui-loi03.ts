@@ -6,6 +6,7 @@
 //   → /student/viec-cua-toi: [data-hom-nay] có bài 19:30 (không bài NHÁP), tài liệu mở tab mới, "Sắp tới" có "Ngày mai · 00:30"; em không có bài hẹn ⇒ không có [data-hom-nay];
 //     /api/student/hom-nay trả 500 ⇒ ErrorStrip + Thử lại. /lop-cua-toi (học sinh) = thư viện; /lop-cua-toi/<X> ⇒ /student/hoc-tap?course=<X> (307).
 //   390: không cuộn ngang ở mọi màn; nút / hàng trong các khối LOI-03 cao ≥ 44px.
+//   Thẻ tiến độ: "Hỏi gia sư trong lớp →" [data-hoi-trong-lop] → /cong-dong?scope=<lớp> chỉ cho học sinh đang học lớp (≥ 44px ở 390); không ghi danh / khách: không có.
 // Dữ liệu tự tạo (wipe() trên DB riêng của worktree). Ngày giờ "hôm nay" theo giờ VN lúc chạy (instantOf) — chạy sát 00:00 VN có thể đỏ giả, chạy lại.
 // Ảnh bìa: địa chỉ https giả, trình duyệt được chặn route trả về một ảnh PNG 1×1 (không ra mạng ngoài). Kho tệp: chặn danh-sach trả enabled:true / false để kiểm trình bày
 // độc lập với cấu hình kho của máy.
@@ -126,6 +127,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("số thứ tự chương '01', '02'", (await p.locator("[data-chapter-no]").allInnerTexts()).join() === "01,02");
     const hero = p.locator("[data-course-hero]");
     check("thẻ tiến độ: 'Bạn đã hoàn thành 1/6 bài', nút 'Học tiếp →' → bài 2 (đang xem dở), có 'Tài liệu & bản ghi của lớp này →'", /Bạn đã hoàn thành 1\/6 bài/.test(await hero.innerText()) && (await hero.locator("[data-hoc-tiep]").getAttribute("href")) === `/student/bai-giang/${L(2)}` && (await hero.locator("[data-hoc-tiep]").innerText()).trim() === "Học tiếp →" && await p.locator("[data-thu-vien-link]").isVisible());
+    const hoi = hero.locator("[data-hoi-trong-lop]");
+    check("thẻ tiến độ (đang học): 'Hỏi gia sư trong lớp →' [data-hoi-trong-lop] → /cong-dong?scope=<mã lớp>, thấy được", (await hoi.count()) === 1 && await hoi.isVisible() && (await hoi.innerText()).trim() === "Hỏi gia sư trong lớp →" && (await hoi.getAttribute("href")) === `/cong-dong?scope=${encodeURIComponent(X.id)}`, await hoi.getAttribute("href"));
+    if (w === 390) { const hb = await hoi.boundingBox(); check("390: 'Hỏi gia sư trong lớp →' cao ≥ 44px", !!hb && hb.height >= 44, hb); }
     const chap = (i: number) => p.locator(`[data-outline-chapter="${chs[i]}"]`);
     check("chương chứa bài kế (chương 01) mở sẵn, chương 02 thu", (await chap(0).getAttribute("aria-expanded")) === "true" && (await chap(1).getAttribute("aria-expanded")) === "false");
     await p.locator("[data-outline-open-all]").click();
@@ -257,6 +261,22 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await p.waitForTimeout(2500);
     check("1 lớp: ở /student/hoc-tap không ?course=, đúng 1 thẻ", new URL(p.url()).searchParams.get("course") === null && (await p.locator("[data-class-card]").count()) === 1);
     await c.close();
+  }
+
+  // ═════════ "Hỏi gia sư trong lớp" chỉ cho học sinh đang học lớp ═════════
+  section("390 · trang lớp Toán với học sinh KHÔNG ghi danh / khách: không có [data-hoi-trong-lop]");
+  {
+    const { c, p } = await open(S1, 390, `/student/hoc-tap?course=${X.id}`);
+    const hero = p.locator("[data-course-hero]");
+    await hero.waitFor({ timeout: 120000 });
+    await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+    check("không ghi danh: thẻ tiến độ 'Bạn chưa vào lớp này', KHÔNG có 'Hỏi gia sư trong lớp →'", /Bạn chưa vào lớp này/.test(await hero.innerText()) && (await p.locator("[data-hoi-trong-lop]").count()) === 0 && (await p.getByText("Hỏi gia sư trong lớp").count()) === 0);
+    await c.close();
+    const { c: c2, p: p2 } = await open(null, 390, `/student/hoc-tap?course=${X.id}`);
+    await p2.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+    await p2.waitForTimeout(1500);
+    check("khách: (bị chuyển tới đăng nhập hoặc thấy trang) không có [data-hoi-trong-lop]", (await p2.locator("[data-hoi-trong-lop]").count()) === 0, p2.url());
+    await c2.close();
   }
 
   // ═════════ /lop-cua-toi vai học sinh ═════════

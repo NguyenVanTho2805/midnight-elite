@@ -240,6 +240,13 @@ function Content({ courseId }: { courseId: string }) {
           Tài liệu &amp; bản ghi của lớp này →
         </Link>
       )}
+      {/* LOI-01: lối hỏi gia sư TRONG lớp (/cong-dong?scope=<mã lớp>, chỉ thành viên lớp và gia sư) — lối duy nhất khi bảng tin chung bị ẩn. */}
+      {/* TODO(LOI-01): khi gộp, bọc bằng !featureOn("CONG_DONG") — COO ghép. */}
+      {isEnrolled && (
+        <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className={`mt-1 flex items-center min-h-11 ${GOC} text-[var(--kin-nhan-link)] underline`}>
+          Hỏi gia sư trong lớp →
+        </Link>
+      )}
     </section>
   );
 
