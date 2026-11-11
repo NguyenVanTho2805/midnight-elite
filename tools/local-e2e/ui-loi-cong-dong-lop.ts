@@ -6,7 +6,7 @@
 //  C. Lối vào: trang lớp của học sinh có "Hỏi gia sư trong lớp" → đúng địa chỉ; bảng tin chung không còn lối nào.
 //  D. 390px: một cột, không tràn ngang, nút ≥ 44px.
 // Chạy với máy chủ dev KHÔNG đặt NEXT_PUBLIC_KIN_MO_CONG_DONG (bài tự bỏ qua nếu cờ đang bật).
-// Ca phá cố ý (đã chạy): bỏ dòng ngoại lệ classScopeOf trong features.blockedRouteFeature → phần B đỏ (học sinh bị đẩy về Việc của tôi);
+// Ca phá cố ý (đã chạy): bỏ dòng ngoại lệ classScopeOf trong features.blockedRouteFeature → bài sập ở phần B (học sinh bị đẩy về Việc của tôi, không thấy tiêu đề);
 // trong src/app/(guest)/cong-dong/[id]/page.tsx bỏ `&& (await canAccessClass(...))` → ca "người ngoài lớp" đỏ.
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
@@ -25,7 +25,7 @@ import { featureOn } from "@/lib/features";
 
   await launch();
   const errors: string[] = [];
-  const watch = (p: any) => { p.on("pageerror", (e: unknown) => errors.push(String(e))); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of [45]/i.test(m.text())) errors.push(m.text()); }); };
+  const watch = (p: any) => { p.on("pageerror", (e: any) => errors.push(`[${new URL(p.url()).pathname}${new URL(p.url()).search}] ${String(e)} ${String(e?.stack ?? "").split("\n").slice(1, 6).join(" | ")}`)); p.on("console", (m: any) => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of [45]/i.test(m.text())) errors.push(`[${new URL(p.url()).pathname}] ${m.text()}`); }); };
   const bare = async (p: any) => (await p.locator("[data-kc-bare]").count()) > 0;
   const settle = async (p: any, path: string) => { await p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {}); };
 
@@ -87,7 +87,9 @@ import { featureOn } from "@/lib/features";
   check("trang lớp của học sinh có 'Hỏi gia sư trong lớp' → /cong-dong?scope=<mã lớp>, cao ≥ 44px", (await ask.getAttribute("href")) === `/cong-dong?scope=${C.id}` && ((await ask.boundingBox())?.height ?? 0) >= 44);
   await ask.click();
   await ps.waitForURL(u => new URL(u).pathname === "/cong-dong" && new URL(u).searchParams.get("scope") === C.id, { timeout: 60000 });
-  check("bấm lối đó → hỏi đáp của lớp (không bị đẩy đi)", await ps.getByRole("heading", { level: 1, name: /Hỏi đáp trong lớp/ }).isVisible().catch(async () => { await ps.getByRole("heading", { level: 1, name: /Hỏi đáp trong lớp/ }).waitFor({ timeout: 60000 }); return true; }));
+  const h1 = ps.getByRole("heading", { level: 1, name: /Hỏi đáp trong lớp/ });
+  await h1.waitFor({ timeout: 90000 }).catch(() => {});
+  check("bấm lối đó → hỏi đáp của lớp (không bị đẩy đi)", await h1.isVisible() && new URL(ps.url()).pathname === "/cong-dong", ps.url());
   check("không còn liên kết nào tới bảng tin chung trên trang này", await ps.locator("a[href='/cong-dong'], a[href='/cong-dong?tab=all'], a[href='/cong-dong?tab=hoi-dap-qa'], a[href^='/cong-dong?tab=da-luu']").count() === 0);
 
   section("D. Điện thoại 390px");
@@ -95,8 +97,9 @@ import { featureOn } from "@/lib/features";
   await settle(pm, `/cong-dong?scope=${C.id}`);
   await pm.locator("[data-kc-feed]").waitFor({ timeout: 90000 });
   check("390px: không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
-  const small = await pm.evaluate(`[...document.querySelectorAll('[data-kc-root] a, [data-kc-root] button')].filter(e => e.offsetParent && !e.closest('[data-kc-thread] .kc-body p')).map(e => ({ t: (e.innerText || e.getAttribute('aria-label') || '').trim().slice(0, 30), h: Math.round(e.getBoundingClientRect().height) })).filter(x => x.h < 44 && x.t)`) as { t: string; h: number }[];
-  check("390px: nút / liên kết trong khung hỏi đáp cao ≥ 44px", small.length === 0, small.slice(0, 5));
+  const small = await pm.evaluate(`[...document.querySelectorAll('[data-kc-root] a, [data-kc-root] button')].filter(e => e.offsetParent && !(e.tagName === 'A' && e.closest('[data-kc-feed] .kc-body'))).map(e => ({ t: (e.innerText || e.getAttribute('aria-label') || '').trim().slice(0, 30), h: Math.round(e.getBoundingClientRect().height) })).filter(x => x.h < 44 && x.t)`) as { t: string; h: number }[];
+  // Liên kết CHỮ trong thân thẻ bài (giờ đăng, tiêu đề, đoạn trích — FeedCard có sẵn, giống bảng tin công khai) không tính: vùng chạm của thẻ là hàng hành động bên dưới.
+  check("390px: nút và liên kết điều hướng trong khung hỏi đáp cao ≥ 44px", small.length === 0, small.slice(0, 5));
   await shot(pm, "loi-hoi-dap-lop-390");
   await settle(pm, `/cong-dong/${classT.id}`);
   await pm.locator("[data-kc-thread]").waitFor({ timeout: 90000 });
