@@ -3,9 +3,12 @@
 // (không tính là việc gia sư cần làm); cột phải "Buổi học sắp tới", "Lớp thường dùng", ghi chú chân.
 // Điện thoại: một cột, buổi học sắp tới lên trước. Lỗi tải: giữ số cũ, dải báo lỗi có "Thử lại". Đang tải lần đầu: khung xương, không vòng xoay.
 // Dữ liệu: /api/tutor/hop-viec ({ items, total, overview }); tải lại khi cửa sổ lấy lại focus.
+// LOI-02 (mục 2.F): "Cần cô xử lý · N việc" = `total` của API (một nguồn sự thật với số đỏ ở thanh bên, todoBadgeTotal), KHÔNG đếm bằng số đầu tiêu đề.
+// "Chờ phụ huynh" vẫn hiện nhưng không tính vào số. Lấy lại focus ⇒ tải lại danh sách VÀ router.refresh() để layout máy chủ tính lại số đỏ (số đỏ không cũ sau khi xử lý việc).
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { InboxItem } from "@/lib/tutorInbox";
 import type { HopViecOverview } from "@/lib/tutorOverview";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
@@ -40,25 +43,30 @@ function Skeleton() {
 export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [overview, setOverview] = useState<HopViecOverview | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState(false);
+  const router = useRouter();
 
   const load = useCallback(() => {
     fetch("/api/tutor/hop-viec", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setItems(Array.isArray(d.items) ? d.items : []); setOverview(d.overview ?? null); setError(false); })
+      .then(d => {
+        setItems(Array.isArray(d.items) ? d.items : []); setOverview(d.overview ?? null);
+        setTotal(typeof d.total === "number" && Number.isFinite(d.total) ? d.total : null); setError(false);
+      })
       .catch(() => setError(true));
   }, []);
 
   useEffect(() => {
     load();
-    const onFocus = () => load();
+    const onFocus = () => { load(); router.refresh(); };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [load]);
+  }, [load, router]);
 
   const todo = (items ?? []).filter(i => !i.waiting);
   const waiting = (items ?? []).filter(i => i.waiting);
-  const todoCount = todo.reduce((n, i) => n + (Number(i.title.match(/^\d+/)?.[0]) || 1), 0);
+  const todoCount = total ?? todo.length; // API cũ chưa có `total` ⇒ đếm dòng
   const o = overview;
 
   return (
