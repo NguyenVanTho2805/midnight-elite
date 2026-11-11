@@ -5,7 +5,6 @@
 // Không import "@/lib/enrollment" (chỉ import tệp thuần enrollmentMessages.ts): tệp đó nạp muộn "@/lib/prisma" nên kéo Prisma vào gói trình duyệt (trang bài giảng là Client Component dùng SuspendedNotice).
 
 import { ENROLLMENT_SUSPENDED_CODE } from "@/lib/enrollmentMessages";
-import { featureOn } from "@/lib/features";
 
 export const SUSPENDED_CONTENT_MESSAGE = "Bạn đã nghỉ lớp này nên chưa xem được bài. Liên hệ gia sư nếu cần tham gia lại.";
 /** Trường `code` trong JSON 403 để giao diện nhận ra và hiện trang thông báo thay vì lỗi chung. */
@@ -25,9 +24,9 @@ export function suspendedBody(contactHref: string | null) {
   return { error: SUSPENDED_CONTENT_MESSAGE, code: SUSPENDED_CONTENT_CODE, contactHref };
 }
 
-/** Đích nút "Liên hệ gia sư": hồ sơ công khai của gia sư chủ lớp; lớp không có chủ — hoặc phần Tìm gia sư đang ẩn (LOI-01, /mentor bị chặn) — thì trang lớp. */
+/** Đích nút "Liên hệ gia sư": hồ sơ công khai của gia sư chủ lớp; lớp không có chủ thì trang lớp. */
 export function contactTutorHref(course: { id: string; ownerId: string | null }): string {
-  return course.ownerId && featureOn("TIM_GIA_SU") ? `/mentor/${encodeURIComponent(course.ownerId)}` : `/khoa-hoc/${encodeURIComponent(course.id)}`;
+  return course.ownerId ? `/mentor/${encodeURIComponent(course.ownerId)}` : `/khoa-hoc/${encodeURIComponent(course.id)}`;
 }
 
 /** Dùng mã mời / mã cá nhân khi đã nghỉ lớp (suspended): KHÔNG tự vào lại, cũng không báo "đã trong lớp". Chỉ gia sư mở lại được. */

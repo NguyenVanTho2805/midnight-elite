@@ -105,7 +105,7 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
 
   // LOI-01: phần đang ẩn → trang đầu theo vai. Quản trị đi thẳng sang tên miền admin (ở tên miền chính /admin lại bị đẩy sang đó — bớt một vòng).
   const viewer = featureViewerOf(session);
-  if (blockedRouteFeature(pathname, viewer)) {
+  if (blockedRouteFeature(pathname, viewer, undefined, search)) {
     if (viewer === "guest") return { kind: "redirect", status: 307, pathname: "/" };
     if (viewer === "admin") return { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "" };
     return { kind: "redirect", status: 307, pathname: landingPath(session!.role, session!.adminRole) };

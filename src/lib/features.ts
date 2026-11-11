@@ -47,12 +47,12 @@ interface PathRule {
 
 // Thứ tự không quan trọng (không có hai quy tắc chồng nhau). Mỗi dòng ghi lý do khi KHÔNG chặn route.
 const PATH_RULES: readonly PathRule[] = [
-  // 1. Tìm gia sư: danh sách, hồ sơ công khai /mentor/<id> và biểu mẫu "Yêu cầu tìm gia sư" công khai (/mentor/<id>/yeu-cau — không có trang /yeu-cau trần).
-  //    /yeu-cau/<mã> (trang theo dõi yêu cầu đã gửi, chỉ người có đường dẫn) KHÔNG chặn: không phải lối vào, và chặn thì liên kết đã gửi qua thư thành ngõ cụt.
+  // 1. Tìm gia sư: chỉ ẩn SÀN (/giang-vien: danh sách, lọc; menu; khối trang chủ; liên kết dẫn tới sàn). Rà soát LOI-01 (COO): hồ sơ từng gia sư /mentor/<id>
+  //    (kể cả /mentor/<id>/yeu-cau) vẫn MỞ cho mọi người để link gia sư đã chia sẻ không chết. /yeu-cau/<mã> (theo dõi yêu cầu đã gửi) cũng không chặn.
   { feature: "TIM_GIA_SU", path: "/giang-vien", sub: true, route: true },
-  { feature: "TIM_GIA_SU", path: "/mentor", sub: true, route: true },
   // 2. Cộng đồng: bảng tin chung. /cong-dong/<id> KHÔNG khớp (chỉ đúng "/cong-dong"): câu hỏi trong LỚP (thread gắn course) vẫn mở cho gia sư và thành viên lớp —
   //    Hộp việc gia sư và thông báo trả lời trỏ /cong-dong/<id>. Trang đó tự chặn bài chung (courseId = null) ở máy chủ: src/app/(guest)/cong-dong/[id]/page.tsx.
+  //    Lối HỎI TRONG LỚP: /cong-dong?scope=<mã lớp> vẫn mở với học sinh / gia sư (xem `classScopeOf`); bảng tin chung vẫn chặn.
   { feature: "CONG_DONG", path: "/cong-dong", route: true },
   { feature: "CONG_DONG", path: "/cong-dong/hoi-dap", sub: true, route: true },
   { feature: "CONG_DONG", path: "/cong-dong/ho-so", sub: true, route: true },
@@ -114,10 +114,26 @@ export function visibleLinks<T extends { href: string }>(items: readonly T[], en
   return items.filter(i => !isLinkHidden(i.href, env));
 }
 
-/** Route `pathname` có bị chặn với người xem này không (phần đang ẩn và quy tắc có chặn route cho vai này). Trả về phần bị ẩn, hoặc null = cho qua. */
-export function blockedRouteFeature(pathname: string, viewer: FeatureViewer, env: FeatureEnv = readFeatureEnv()): FeatureKey | null {
+/**
+ * Lối hỏi trong lớp khi bảng tin chung ẩn (rà soát LOI-01, lời hứa với chủ "giữ hỏi gia sư trong lớp"): `/cong-dong?scope=<mã lớp>` là feed + ô soạn CHỈ của lớp đó.
+ * Trả mã lớp nếu `search` chỉ một lớp (không phải "all" / "common", không phải tab "Đã lưu" — tab đó gom bài từ mọi nơi); ngược lại null.
+ * Quyền là thành viên lớp do API quyết (loadFeedPage / POST threads gọi canAccessClass); proxy chỉ cho học sinh / gia sư đi qua.
+ */
+export function classScopeOf(search: string | null | undefined): string | null {
+  if (!search) return null;
+  const q = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const s = q.get("scope");
+  if (!s || s === "all" || s === "common" || !/^[A-Za-z0-9_-]{1,64}$/.test(s)) return null;
+  if (q.get("tab") === "da-luu") return null;
+  return s;
+}
+
+/** Route `pathname` có bị chặn với người xem này không (phần đang ẩn và quy tắc có chặn route cho vai này). Trả về phần bị ẩn, hoặc null = cho qua.
+ *  `search`: chỉ dùng cho ngoại lệ hỏi trong lớp `/cong-dong?scope=<mã lớp>` (học sinh / gia sư). */
+export function blockedRouteFeature(pathname: string, viewer: FeatureViewer, env: FeatureEnv = readFeatureEnv(), search?: string): FeatureKey | null {
   const p = pathOf(pathname);
   if (!p) return null;
+  if (p === "/cong-dong" && (viewer === "student" || viewer === "tutor") && classScopeOf(search)) return null;
   const r = PATH_RULES.find(x => x.route && matches(x, p) && (x.route === true || x.route.includes(viewer)) && !featureOn(x.feature, env));
   return r ? r.feature : null;
 }
@@ -128,10 +144,13 @@ export function mayBlockRoute(pathname: string, env: FeatureEnv = readFeatureEnv
   return !!p && PATH_RULES.some(x => x.route && matches(x, p) && !featureOn(x.feature, env));
 }
 
-// COIN_VISIBLE (quyết định chủ CHỦ-02, 05/11/2026): false = ẩn mọi hiển thị Coin khỏi giao diện
-// học sinh, gia sư, khách và quản trị (số dư, ví, thưởng, nạp, hàng chờ nạp). Từ LOI-01 đọc cờ NEXT_PUBLIC_KIN_MO_COIN (mặc định ẩn); bật lại: đặt =1.
-// Dữ liệu cũ và API ghi Coin giữ nguyên; chỉ không còn lối vào từ giao diện.
+// COIN_VISIBLE (quyết định chủ CHỦ-02, 05/11/2026): false = ẩn mọi HIỂN THỊ Coin khỏi giao diện học sinh, gia sư, khách và quản trị (số dư, ví, thưởng,
+// lịch sử nạp). Từ LOI-01 đọc cờ NEXT_PUBLIC_KIN_MO_COIN (mặc định ẩn); bật lại phần hiển thị: đặt =1.
 export const COIN_VISIBLE = featureOn("COIN");
+
+// COIN_LOGIC_ON (rà soát LOI-01, COO 11/11/2026): phần LOGIC Coin — trừ xu khi hỏi (src/app/api/questions/route.ts) và hàng chờ duyệt nạp Coin — TÁCH khỏi cờ hiển thị,
+// giữ đúng hành vi của main (tắt, như hằng `false` cũ). Là HẰNG, cố ý không đọc biến môi trường: bật trừ xu phải qua sửa mã có rà, không bật bằng cấu hình.
+export const COIN_LOGIC_ON = false;
 
 /** Loại hàng chờ thuộc Coin: không hiện khi COIN_VISIBLE = false. */
 export const COIN_QUEUE_KIND = "nap-coin";
