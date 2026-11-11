@@ -65,6 +65,30 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   }
   check("không còn chữ nhỏ hơn 11,1px trong .tsx", small.length === 0, small.slice(0, 8));
 
+  // LOI-02 (11/11/2026) mục 2.G: ô chọn KinSelect thay <select> gốc ở màn gia sư (Học sinh, panel bài, Cài đặt lớp).
+  section("KinSelect (LOI-02)");
+  const ks = read("src/components/kin/KinSelect.tsx");
+  check("KinSelect: nút role=combobox + aria-haspopup=listbox + aria-expanded + aria-controls + aria-activedescendant",
+    /role="combobox"/.test(ks) && /aria-haspopup="listbox"/.test(ks) && /aria-expanded=\{open\}/.test(ks) && /aria-controls=\{listId\}/.test(ks) && /aria-activedescendant=/.test(ks));
+  check("KinSelect: danh sách role=listbox, mục role=option có aria-selected / aria-disabled", /role="listbox"/.test(ks) && /role="option"/.test(ks) && /aria-selected=\{on\}/.test(ks) && /aria-disabled=/.test(ks));
+  check("KinSelect: bàn phím ↑ ↓ Home End Enter Esc Tab + gõ chữ (so không dấu)",
+    ["ArrowDown", "ArrowUp", "Home", "End", "Enter", "Escape", "Tab"].every(k => ks.includes(`"${k}"`)) && /typeahead\(/.test(ks) && /normalize\("NFD"\)/.test(ks));
+  check("KinSelect: ô tìm khi > 8 lựa chọn (ngưỡng 9) + chữ \"Không có lựa chọn khớp\"", /KIN_SELECT_SEARCH_MIN = 9/.test(ks) && /options\.length >= KIN_SELECT_SEARCH_MIN/.test(ks) && ks.includes("Không có lựa chọn khớp"));
+  check("KinSelect: nút và mỗi mục cao ≥ 44px (--kin-cham-toi-thieu), danh sách max-height min(320px, 50vh), không rộng quá khung nhìn",
+    (ks.match(/min-h-\[var\(--kin-cham-toi-thieu\)\]/g) ?? []).length >= 3 && ks.includes('maxHeight: "min(320px, 50vh)"') && ks.includes("max-w-[calc(100vw-2rem)]"));
+  check("KinSelect: bấm ngoài đóng; `name` ⇒ input hidden; tắt ⇒ mờ 45%", /addEventListener\("mousedown"/.test(ks) && /type="hidden" name=\{name\}/.test(ks) && /disabled:opacity-45/.test(ks));
+  check("KinSelect: không mã hex, không rgba viết tay", !/#[0-9a-fA-F]{3,8}\b/.test(ks.replace(/#\$\{|`#/g, "")) && !/rgba?\(/.test(ks));
+  check("KinSelect: tên nút = nhãn + giá trị đang chọn (aria-labelledby gồm id nhãn và id span giá trị; chỉ aria-label ⇒ span ẩn mang nhãn)",
+    /id=\{valueId\}/.test(ks) && /aria-labelledby=\{nameId \? `\$\{nameId\} \$\{valueId\}` : undefined\}/.test(ks) && /<span id=\{labelId\} hidden>\{ariaLabel\}<\/span>/.test(ks)
+    && !/aria-label=\{aria\["aria-label"\]\}/.test(ks));
+  check("TabCaiDat.tsx: hai KinSelect nối nhãn bằng aria-labelledby (để đọc cả giá trị)", /aria-labelledby="class-category-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")) && /aria-labelledby="class-status-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")));
+  check("KinSelect không xuất qua kin/index.ts (import thẳng tệp — tệp chung không đổi)", !/KinSelect/.test(idx));
+  for (const f of ["src/components/tutor/HocSinh.tsx", "src/components/tutor/quan-lop/AssignmentEditor.tsx", "src/components/tutor/quan-lop/TabCaiDat.tsx", "src/components/tutor/quan-lop/TabChuongBai.tsx"]) {
+    const t = read(f).replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, ""); // bỏ chú thích
+    check(`${f.split("/").pop()}: dùng KinSelect, không còn <select> gốc`, /<KinSelect\b/.test(t) && !/<select\b/.test(t));
+  }
+  check("HocSinh.tsx: KinSelect không bọc trong <label> (nối bằng aria-labelledby)", !/<label[^>]*>\s*<span[^>]*>[^<]*<\/span>\s*<KinSelect/.test(read("src/components/tutor/HocSinh.tsx")) && /aria-labelledby="hs-loc-lop"/.test(read("src/components/tutor/HocSinh.tsx")));
+
   section("Token bóng / lớp phủ");
   const site = read("src/app/kin-site.css");
   const derived = site.slice(site.indexOf(':root, [data-vung="sang"] {'));

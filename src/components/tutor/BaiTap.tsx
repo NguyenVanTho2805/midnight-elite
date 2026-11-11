@@ -4,10 +4,13 @@
 // Dữ liệu: /api/tutor/bai-tap; bài nộp: GET /api/assignments/[id]/submissions; chấm: PATCH …/grade (API cũ, không đổi cách chấm).
 // Figma có nhưng chưa có dữ liệu thật (không bịa): ảnh xem trước từng trang bài nộp, ô "Nhận xét nhanh" tách khỏi "Phản hồi" (DB chỉ có một cột comment),
 // "Lưu nháp" (chưa có bản nháp điểm), tên gia sư ở đầu từng lớp.
+// LOI-02 (mục 2.E): bài nộp bằng tệp KiN (/api/media/nop-bai/…) ⇒ danh sách tệp của học sinh (NopTepStudentFiles); khung chấm có "Tệp trả bài (không bắt buộc)"
+// (NopTepBox mode="tutor_return"). Gửi: CHẤM ĐIỂM TRƯỚC, chỉ khi điểm lưu xong mới đính tệp trả bài; đính lỗi ⇒ điểm GIỮ, báo riêng. Chấm lỗi ⇒ không đính.
+// TRẺ EM: tên học sinh chỉ hiện trong khung chấm của người có quyền chấm (như cũ); thông báo "đã trả bài" do máy chủ gửi không tên, không điểm, không tên tệp.
 "use client";
 import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BaiTapItem, BaiTapGroup } from "@/lib/baiTap";
 import { countGroups } from "@/lib/baiTap";
 import { api, type AssignmentSubmissionFull } from "@/lib/api";
@@ -18,6 +21,7 @@ import { KinTabs } from "@/components/kin/Tabs";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinCallout } from "@/components/kin/Callout";
+import { NopTepBox, NopTepStudentFiles, type NopTepBoxHandle } from "@/components/student/nop-tep/NopTepBox"; // BU-HS-NOP-TEP: tệp học sinh nộp + tệp trả bài (chỉ import)
 import { dayAt } from "@/lib/baiTap";
 import { deThiSubHref, taoDeHref } from "@/components/tutor/de-thi/deThiClient";
 import { contentHref } from "@/lib/tutorRoutes";
@@ -46,9 +50,12 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** Lỗi RIÊNG của bước đính tệp trả bài (điểm đã lưu). */
+  const [attachErr, setAttachErr] = useState<string | null>(null);
+  const returnRef = useRef<NopTepBoxHandle>(null);
 
   const pick = useCallback((s: AssignmentSubmissionFull) => {
-    setSel(s.id); setScore(s.score != null ? String(s.score) : ""); setComment(s.comment ?? ""); setMsg(null);
+    setSel(s.id); setScore(s.score != null ? String(s.score) : ""); setComment(s.comment ?? ""); setMsg(null); setAttachErr(null);
   }, []);
 
   const fetchSubs = useCallback(() => {
@@ -70,15 +77,27 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
     if (!cur) return;
     const n = Number(score.replace(",", "."));
     if (score.trim() === "" || Number.isNaN(n) || n < 0 || n > item.maxPoints) { setMsg({ ok: false, text: `Điểm phải từ 0 đến ${item.maxPoints}.` }); return; }
-    setSaving(true); setMsg(null);
+    setSaving(true); setMsg(null); setAttachErr(null);
+    let graded = false;
     try {
       const updated = await api.assignments.grade(item.id, cur.id, { score: n, comment: comment.trim() || undefined });
+      graded = true;
       setSubs(prev => (prev ?? []).map(s => s.id === cur.id ? { ...s, ...updated, user: s.user } : s));
       setMsg({ ok: true, text: "Đã gửi điểm và phản hồi cho học sinh." });
-      onGraded();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Chưa gửi được điểm. Thử lại sau ít phút." });
-    } finally { setSaving(false); }
+    }
+    // Tệp trả bài (nếu có) chỉ đính SAU khi điểm đã lưu; lỗi đính ⇒ điểm vẫn giữ, báo riêng một dòng.
+    if (graded) {
+      try {
+        const att = await returnRef.current?.attach();
+        if (att && !att.ok) setAttachErr(/đang tải/i.test(att.message ?? "") ? `Điểm đã gửi. ${att.message}` : "Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm.");
+      } catch {
+        setAttachErr("Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm.");
+      }
+      onGraded();
+    }
+    setSaving(false);
   }
 
   if (err) return <ErrorStrip message="Không tải được bài nộp." onRetry={retry} />;
@@ -109,7 +128,9 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
           <div>
             <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] break-words">{cur.fileName || "Bài nộp"}</p>
             <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{cur.user?.name ?? "Học viên"} · nộp {dayAt(new Date(cur.submittedAt))}</p>
-            <a href={cur.fileUrl} target="_blank" rel="noopener noreferrer" className={`${kinButtonClass("secondary")} mt-4`}>Mở bài nộp gốc ↗</a>
+            {cur.fileUrl.startsWith("/api/media/nop-bai/")
+              ? <div className="mt-4"><NopTepStudentFiles assignmentId={item.id} submissionId={cur.id} /></div>
+              : <a href={cur.fileUrl} target="_blank" rel="noopener noreferrer" className={`${kinButtonClass("secondary")} mt-4`}>Mở bài nộp gốc ↗</a>}
           </div>
           <form className="mt-6" onSubmit={e => { e.preventDefault(); void send(); }}>
             <div className="max-w-[200px]">
@@ -120,12 +141,14 @@ function GradePanel({ item, onGraded }: { item: BaiTapItem; onGraded: () => void
               <label htmlFor="bt-comment" className={LABEL}>Phản hồi cho học sinh</label>
               <textarea id="bt-comment" rows={4} className={`${FIELD} py-3 resize-y`} value={comment} onChange={e => setComment(e.target.value)} />
             </div>
+            <div className="mt-5" data-tra-bai><NopTepBox key={cur.id} ref={returnRef} mode="tutor_return" assignmentId={item.id} submissionId={cur.id} /></div>
             <div className="mt-5">
               <KinButton type="submit" variant="primary" loading={saving} loadingLabel="Đang gửi…">Gửi điểm &amp; phản hồi</KinButton>
             </div>
             <p role="status" className={`mt-4 text-[length:var(--kin-co-goc)] ${msg && !msg.ok ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-mo)]"}`}>
               {msg ? msg.text : cur.gradedAt ? `Đã chấm ${dayAt(new Date(cur.gradedAt))}. Gửi lại nếu cô muốn sửa điểm.` : "Chưa gửi điểm. Bài vẫn ở trạng thái chờ chấm."}
             </p>
+            {attachErr && <p role="status" data-tra-bai-loi className="mt-2 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-tt-chu-loi)]">{attachErr}</p>}
           </form>
         </>
       )}

@@ -2,6 +2,8 @@
 // Ca: hai tệp thả CÙNG LÚC (tiến trình hiện, xong thành hàng tài liệu, lưu bài rồi còn tệp, FileAsset gắn vào bài); chưa tích cam kết → KHÔNG có yêu cầu mạng; thả .mp4 → lỗi tại chỗ,
 // KHÔNG có yêu cầu /api/media/document/init; 31 tệp → "Mỗi bài tối đa 30 tài liệu." không mạng; ép /api/media/config document.enabled=false → hiện đúng lý do, khung thả khoá, dán link còn chạy;
 // ép init 403 → chữ lỗi tại hàng; quản trị không phải chủ → "Chỉ chủ lớp…"; đóng ngăn không Lưu → có DELETE và FileAsset mồ côi biến mất; 390 / 320 không tràn ngang khi hàng đợi đang hiện.
+// LOI-02 (11/11/2026): ngăn mở từ "+ Thêm bài" → "Chi tiết…"; vùng thả là upload/OThaTep (data-o-tha: dang-kiem · loi-kiem · tat · khong-chu · san-sang · keo-vao);
+// đã BỎ ô dán link Drive ⇒ ca "kho tắt" nay kiểm chữ "Kho tệp chưa bật — chủ cần cấu hình." và KHÔNG có ô dán link; mở lại bài bằng "Chi tiết bài …".
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-gs-lop-gon-tha.ts   (máy chủ thử ở BASE, DB riêng — bài gọi wipe()). Tệp thử ghi vào .kin-media của worktree (kho cục bộ của máy dev).
 // Ghi chú: ở máy dev kho tài liệu LUÔN bật (driver local); ca "kho tắt" dùng route() ép /api/media/config, vì production thiếu 3 biến Cloudinary mới tắt thật (việc của chủ).
 import { BASE, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
@@ -43,14 +45,15 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   };
   const drop = async (pg: any, files: F[]) => {
     const dt = await pg.evaluateHandle((fs: F[]) => { const d = new DataTransfer(); for (const x of fs) d.items.add(new File([new Uint8Array(x.bytes)], x.name, { type: x.type })); return d; }, files);
-    await pg.locator("[data-tai-lieu-tha]").dispatchEvent("drop", { dataTransfer: dt });
+    await pg.locator("[data-o-tha]").first().dispatchEvent("drop", { dataTransfer: dt });
   };
   const openDrawer = async (pg: any, url = URL_TAB) => {
     await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
-    await pg.getByRole("button", { name: /Thêm bài học/ }).first().click({ timeout: 120000 });
+    await pg.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
+    await pg.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
     await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 60000 });
-    await pg.locator("[data-tai-lieu-khung]").first().waitFor({ timeout: 60000 });
-    await pg.waitForFunction(() => document.querySelector("[data-tai-lieu-khung]")?.getAttribute("data-tai-lieu-khung") !== "dang-kiem", undefined, { timeout: 60000 });
+    await pg.locator("[data-o-tha]").first().waitFor({ timeout: 60000 });
+    await pg.waitForFunction(() => document.querySelector("[data-o-tha]")?.getAttribute("data-o-tha") !== "dang-kiem", undefined, { timeout: 60000 });
     await pg.waitForTimeout(500); // ngăn trượt vào 0,28s
   };
   const noOverflow = (pg: any) => pg.evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`);
@@ -63,7 +66,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const net = track(pg);
   await openDrawer(pg);
   const cfg = await pg.evaluate(`fetch("/api/media/config", { credentials: "same-origin" }).then(r => r.json())`) as { document?: { enabled?: boolean } };
-  check("máy dev: kho tài liệu bật (driver local) → khung 'san-sang'", cfg.document?.enabled === true && (await pg.locator('[data-tai-lieu-khung="san-sang"]').count()) === 1, cfg.document);
+  check("máy dev: kho tài liệu bật (driver local) → khung 'san-sang'", cfg.document?.enabled === true && (await pg.locator('[data-o-tha="san-sang"]').count()) === 1, cfg.document);
   const accept = (await pg.locator('[data-tai-lieu] input[type=file]').first().getAttribute("accept")) ?? "";
   check("ô chọn tệp nhận Word / PDF / ảnh, KHÔNG nhận video, cho chọn nhiều tệp", /\.docx?/.test(accept) && /\.pdf/.test(accept) && /\.png/.test(accept) && !/mp4|mov|webm|mkv|avi|video\//i.test(accept) && (await pg.locator('[data-tai-lieu] input[type=file]').first().getAttribute("multiple")) !== null, accept);
 
@@ -114,7 +117,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   // mở lại bài → còn tệp
   await pg.reload({ waitUntil: "domcontentloaded" });
   await pg.getByText("Bài có hai tệp").first().waitFor({ timeout: 120000 });
-  await pg.locator('main button[title="Sửa"]').first().click();
+  await pg.getByRole("button", { name: "Chi tiết bài Bài có hai tệp" }).click();
   await pg.locator("[data-tai-lieu]").first().waitFor({ timeout: 60000 });
   await pg.locator("[data-tai-lieu-hang]").nth(1).waitFor({ timeout: 30000 });
   check("lưu bài rồi MỞ LẠI → vẫn thấy 2 hàng tài liệu", (await pg.locator("[data-tai-lieu-hang]").count()) === 2);
@@ -136,7 +139,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await pg2.close();
 
   // ── 3. Kho tắt (ép cấu hình) ───────────────────────────────────────────────────────────────────────
-  section("3. /api/media/config trả document.enabled=false → hiện lý do, khung thả khoá, dán link còn chạy");
+  section("3. /api/media/config trả document.enabled=false → 'Kho tệp chưa bật — chủ cần cấu hình.', khung thả khoá, không còn ô dán link (LOI-02)");
   const REASON = "Tải tệp tài liệu lên chưa bật (kho chưa cấu hình). Hãy dán link Google Drive hoặc link tài liệu.";
   const pg3 = await ctx.newPage(); watch(pg3);
   const net3 = track(pg3);
@@ -145,18 +148,17 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     document: { enabled: false, driver: "none", maxBytes: 20971520, reason: REASON, exts: ["pdf"], quotaBytes: 0, usedBytes: 0 },
   }) }));
   await openDrawer(pg3);
-  check("khung = 'tat' và KHÔNG có vùng thả / ô chọn tệp", (await pg3.locator('[data-tai-lieu-khung="tat"]').count()) === 1 && (await pg3.locator("[data-tai-lieu-tha]").count()) === 0 && (await pg3.locator('[data-tai-lieu] input[type=file]').count()) === 0);
-  check("hiện NGUYÊN VĂN lý do của máy chủ", (await pg3.locator("[data-tai-lieu-ly-do]").innerText()).trim() === REASON, await pg3.locator("[data-tai-lieu-ly-do]").innerText());
-  await pg3.getByPlaceholder(/Tên tài liệu/).fill("Đề cương Drive");
-  await pg3.getByPlaceholder(/Dán link Google Drive/).fill("https://drive.google.com/file/d/ABC123KHOTAT/view?usp=sharing");
-  await pg3.locator("[data-tai-lieu]").getByRole("button", { name: "+ Thêm link" }).click();
-  check("kho tắt: dán link Drive vẫn thêm được thành hàng tài liệu", (await pg3.locator("[data-tai-lieu-hang]").count()) === 1 && (await drawer(pg3).innerText()).includes("Đề cương Drive"));
-  check("kho tắt: không có yêu cầu tải nào", net3.init === 0 && net3.put === 0, net3);
-  check("kho tắt: không có đường video file (chỉ nhắc link YouTube)", /Video: chỉ dán link YouTube/.test(await drawer(pg3).innerText()));
+  check("khung = 'tat' và KHÔNG có ô chọn tệp", (await pg3.locator('[data-o-tha="tat"]').count()) === 1 && (await pg3.locator('[data-tai-lieu] input[type=file]').count()) === 0);
+  const offTxt = await pg3.locator("[data-o-tha-ly-do]").innerText();
+  check("hiện 'Kho tệp chưa bật — chủ cần cấu hình.' (KHÔNG hiện lý do máy chủ bảo dán link Drive)", offTxt.trim() === "Kho tệp chưa bật — chủ cần cấu hình." && !(await drawer(pg3).innerText()).includes(REASON), offTxt);
+  check("kho tắt: không còn ô dán link Drive (LOI-02)", (await pg3.getByPlaceholder(/Dán link Google Drive/).count()) === 0);
+  await drop(pg3, [f("de-cuong.pdf", "application/pdf", PDF)]);
+  await sleep(600);
+  check("kho tắt: thả tệp không gọi mạng", net3.init === 0 && net3.put === 0, net3);
   await pg3.close();
 
   // ── 4. Kho báo lỗi ở init (403) và kiểm kho lỗi ────────────────────────────────────────────────────
-  section("4. init trả 403 → chữ lỗi tại hàng; kiểm kho lỗi → 'Thử lại', vẫn dán link được");
+  section("4. init trả 403 → chữ lỗi tại hàng; kiểm kho lỗi → 'Thử lại'");
   const pg4 = await ctx.newPage(); watch(pg4);
   await pg4.route("**/api/media/document/init", r => r.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: "Bạn không có quyền với lớp này." }) }));
   await openDrawer(pg4);
@@ -169,9 +171,10 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const pg4b = await ctx.newPage(); watch(pg4b);
   await pg4b.route("**/api/media/config", r => r.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
   await pg4b.goto(URL_TAB, { waitUntil: "domcontentloaded", timeout: 180000 });
-  await pg4b.getByRole("button", { name: /Thêm bài học/ }).first().click({ timeout: 120000 });
-  await pg4b.locator('[data-tai-lieu-khung="loi"]').waitFor({ timeout: 30000 });
-  check("kiểm kho lỗi (500) → khung 'loi' có nút 'Thử lại'; vẫn có ô dán link", (await pg4b.locator('[data-tai-lieu-khung="loi"]').getByRole("button", { name: "Thử lại" }).count()) === 1 && (await pg4b.getByPlaceholder(/Dán link Google Drive/).count()) === 1);
+  await pg4b.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
+  await pg4b.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
+  await pg4b.locator('[data-o-tha="loi-kiem"]').waitFor({ timeout: 30000 });
+  check("kiểm kho lỗi (500) → ô 'loi-kiem' có chữ 'Chưa kiểm được kho tệp.' + nút 'Thử lại'", (await pg4b.locator('[data-o-tha="loi-kiem"]').getByRole("button", { name: "Thử lại" }).count()) === 1 && (await pg4b.locator('[data-o-tha="loi-kiem"]').innerText()).includes("Chưa kiểm được kho tệp."));
   await pg4b.close();
 
   // ── 5. Đóng ngăn không Lưu → dọn tệp mồ côi ─────────────────────────────────────────────────────────
@@ -205,7 +208,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await pa.getByRole("button", { name: /Chương bài/ }).first().click({ timeout: 120000 }).catch(() => {});
   await pa.getByRole("button", { name: /\+ Thêm bài học/ }).first().click({ timeout: 120000 });
   await pa.getByText("Tài liệu đính kèm").first().waitFor({ timeout: 60000 });
-  check("quản trị: KHÔNG có vùng thả / ô chọn tệp tài liệu, KHÔNG gọi /api/media/config hay init", (await pa.locator("[data-tai-lieu-tha]").count()) === 0 && (await pa.locator('input[type=file]').count()) === 0 && neta.init === 0);
+  check("quản trị: KHÔNG có vùng thả / ô chọn tệp tài liệu, KHÔNG gọi /api/media/config hay init", (await pa.locator("[data-tai-lieu-tha], [data-o-tha]").count()) === 0 && (await pa.locator('input[type=file]').count()) === 0 && neta.init === 0);
   check("quản trị: vẫn có ô dán link", (await pa.getByPlaceholder(/paste link Google Drive/i).count()) === 1);
   await ca.close();
 

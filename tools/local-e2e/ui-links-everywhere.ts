@@ -57,10 +57,13 @@ function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boole
     return finPath === (alias ?? "/lop-cua-toi") || (alias !== null && PAGE_REDIRECTS[alias] === finPath);
   }
   // GS-LOP-GON (PR #154): trang lớp cũ /lop-cua-toi/<id> của CHỦ lớp là 307 có chủ đích (legacyClassTarget ở src/lib/tutorClassRoutes.ts, kiểm ở t-lop-gon) sang tab đầu
-  // "Giáo trình" của dải tab mới; đồng giảng / học sinh vẫn ở trang này nên không vào nhánh này.
+  // "Bài học" (LOI-02: gốc lớp /lop-cua-toi/quan-lop/<id>, trước là …/giao-trinh) của dải tab mới; đồng giảng / học sinh vẫn ở trang này nên không vào nhánh này.
+  // LOI-02: …/quan-lop/<id>/giao-trinh (đường cũ) là 307 có chủ đích về gốc lớp.
   if (sc.role === "tutor") {
     const m = /^\/lop-cua-toi\/([^/]+)$/.exec(reqPath);
-    if (m && finPath === `/lop-cua-toi/quan-lop/${m[1]}/giao-trinh`) return true;
+    if (m && finPath === `/lop-cua-toi/quan-lop/${m[1]}`) return true;
+    const g = /^\/lop-cua-toi\/quan-lop\/([^/]+)\/giao-trinh$/.exec(reqPath);
+    if (g && finPath === `/lop-cua-toi/quan-lop/${g[1]}`) return true;
   }
   // /ban-do là bản đồ cho MỌI người, có mục "Gia sư" (Lịch / Lớp / Học phí): quản trị không có vỏ gia sư nên các trang này đưa họ về danh sách lớp /lop-cua-toi.
   if ((sc.role === "super" || sc.role === "content") && /^\/lop-cua-toi\/(lich|lop|hoc-phi)$/.test(reqPath)) return finPath === "/lop-cua-toi";

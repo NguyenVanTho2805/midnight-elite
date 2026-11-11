@@ -1,5 +1,7 @@
 // GS-LOP-GON — kiểu dữ liệu + hàm thuần của form bài học, CẮT NGUYÊN VĂN từ admin/khoa-hoc/[id]/page.tsx (chỉ thêm `export`).
 // Khác bản gốc: LsForm không còn `pendingDocuments` (tệp tài liệu giờ tải NGAY khi thả, xem DocumentsEditor) .
+// LOI-02 (11/11/2026): LessonDB có `scheduledAt` (ISO hoặc null) + `status` (published / draft / hidden); LsForm có ngày + giờ học (giờ VN) và trạng thái.
+// Ô Zoom đã bỏ khỏi panel: `zoomUrls` vẫn nạp từ bài (để giữ nhãn "Live" của bài cũ) nhưng KHÔNG gửi khoá zoomUrl khi lưu, và firstBadLink không kiểm ô live nữa.
 import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
 
 export interface LessonDB {
@@ -20,9 +22,14 @@ export interface LessonDB {
   statsMaterials: number;
   statsViews: number;
   order: number;
+  /** LOI-02: ngày giờ học (ISO UTC) hoặc null = bài không gắn ngày. */
+  scheduledAt?: string | null;
+  /** "published" | "draft" | "hidden" (BU-02-PHẲNG). Vắng ⇒ coi là "published". */
+  status?: string;
   _count?: { assignments: number };
 }
-export interface ChapterDB { id: string; title: string; order: number; lessons: LessonDB[] }
+/** teacherId (TUT-dong-giang): chương giao cho giáo viên bộ môn này; null = chủ lớp. */
+export interface ChapterDB { id: string; title: string; order: number; teacherId?: string | null; lessons: LessonDB[] }
 export interface SectionDB { id: string; title: string; order: number; chapters: ChapterDB[] }
 export interface CourseDB {
   id: string; adminId: number; name: string;
@@ -59,13 +66,32 @@ export interface LsForm {
   isLocked: boolean; isFree: boolean;
   documentsRaw: string;
   adminNote: string;
+  /** LOI-02: "YYYY-MM-DD" và "HH:mm" theo giờ VN; cả hai rỗng = không gắn ngày. */
+  scheduledDate: string;
+  scheduledTime: string;
+  /** Trạng thái bài (đổi qua PATCH …/giao-trinh/trang-thai, không qua PUT bài). */
+  status: LessonStatusValue;
 }
+
+export type LessonStatusValue = "published" | "draft" | "hidden";
+export const LESSON_STATUS_OPTIONS: { value: LessonStatusValue; label: string }[] = [
+  { value: "published", label: "Đã đăng" },
+  { value: "draft", label: "Nháp" },
+  { value: "hidden", label: "Ẩn" },
+];
+/** Chip CHỮ trên hàng bài (chỉ khi không phải Đã đăng — TRẺ EM: cô phải biết học sinh chưa thấy bài). */
+export const LESSON_STATUS_CHIP: Record<string, string> = {
+  draft: "Nháp · học sinh chưa thấy",
+  hidden: "Ẩn · học sinh không thấy",
+};
+export const lessonStatusOf = (s: string | null | undefined): LessonStatusValue => (s === "draft" || s === "hidden" ? s : "published");
 
 export const INIT_LS: LsForm = {
   title: "",
   videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
   documentsRaw: "[]", adminNote: "",
+  scheduledDate: "", scheduledTime: "", status: "published",
 };
 
 export function parseUrls(raw: string | null | undefined): string[] {
@@ -84,9 +110,10 @@ export function serializeUrls(urls: string[]): string | null {
   return JSON.stringify(filtered);
 }
 
-/** Câu lỗi đầu tiên nếu có link sai ô (máy chủ cũng kiểm lại lúc lưu: đây chỉ để báo sớm, trước khi tải tài liệu lên). */
+/** Câu lỗi đầu tiên nếu có link sai ô (máy chủ cũng kiểm lại lúc lưu: đây chỉ để báo sớm, trước khi tải tài liệu lên).
+ *  LOI-02: không kiểm ô "live" (Zoom) — ô đã bỏ khỏi panel, link cũ cô không sửa được nên không được chặn lưu. */
 export function firstBadLink(ls: LsForm): string | null {
-  const slots: [string[], MediaSlot, string][] = [[ls.videoUrls, "video", "Video bài giảng"], [ls.zoomUrls, "live", "Phòng Zoom"], [ls.azotaUrls, "azota", "Bài Azota"]];
+  const slots: [string[], MediaSlot, string][] = [[ls.videoUrls, "video", "Video bài giảng"], [ls.azotaUrls, "azota", "Bài Azota"]];
   for (const [urls, slot, name] of slots) {
     for (const u of urls) { if (!u.trim()) continue; const r = checkLinkForSlot(u, slot); if (!r.ok) return `${name}: ${r.error}`; }
   }

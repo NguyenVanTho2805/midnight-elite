@@ -8,7 +8,7 @@ import { useId, useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinStatus } from "@/components/kin/Status";
 import { viewerHref } from "@/lib/library";
-import { giaoTrinhHref } from "@/lib/tutorRoutes";
+import { baiHocHref } from "@/lib/tutorRoutes";
 import type { GtEntry, GtGroup, GtItem } from "@/lib/giaoTrinh";
 import type { LessonStatus } from "@/lib/lessonStatus";
 import { ChipKieu, ChipTrangThai, KIND_LABEL } from "./ChipTrangThai";
@@ -144,7 +144,7 @@ export default function MucHang({ entry: e, courseId, groups, canUp, canDown, bu
 
       {more && (
         <div data-gt-them-thao-tac className="mx-4 mb-3 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-2">
-          <Link href={`${giaoTrinhHref(courseId, true)}/xem/${e.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
+          <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${e.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
           <KinButton type="button" variant="secondary" disabled={busy} onClick={onDuplicate}>Nhân bản</KinButton>
           {e.status === "hidden" && <KinButton type="button" variant="secondary" disabled={busy} onClick={() => onSetStatus("draft")}>Đưa về Nháp</KinButton>}
           {groups.length > 0 && (

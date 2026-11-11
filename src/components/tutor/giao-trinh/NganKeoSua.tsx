@@ -8,7 +8,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KIN_FIELD } from "@/components/kin/PageLayout";
 import { formatDeadlineVn } from "@/components/media/StudentLessonPanels";
-import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
+import { contentHref, baiHocHref } from "@/lib/tutorRoutes";
 import type { GtEntry, GtGroup, GtItem } from "@/lib/giaoTrinh";
 import { ChipKieu, ChipTrangThai } from "./ChipTrangThai";
 import { NoiDungKem } from "./MucHang";
@@ -105,7 +105,7 @@ export default function NganKeoSua({ entry, courseId, groups, busy, error, onSav
           </section>
 
           <div className="flex flex-wrap gap-2">
-            <Link href={`${giaoTrinhHref(courseId, true)}/xem/${entry.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
+            <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${entry.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
             <KinButton type="button" variant="secondary" disabled={busy} onClick={onDuplicate}>Nhân bản</KinButton>
             <KinButton type="button" variant="danger" disabled={busy} onClick={onDelete}>Xoá mục</KinButton>
           </div>

@@ -18,6 +18,7 @@ import { STATUS_LABEL, type ProfileStatus } from "@/lib/studentProfile";
 import { payerLabel } from "@/lib/consentPolicy";
 import { ALERT_LABEL, REPORT_LINK_LABEL, alertsOf, filterStudents, type StudentAlert, type StudentSignals } from "@/lib/tutorStudentView";
 import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type TabKey = "active" | "suspended" | "profiles" | "waitlist";
 /** Hồ sơ riêng của gia sư (đã che theo đồng ý): chỉ các trường dùng ở danh sách. */
@@ -120,21 +121,18 @@ export default function HocSinh() {
               <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tìm học sinh</span>
               <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Nhập tên, email, số liên hệ…" className={FIELD} />
             </label>
-            <label className="block min-w-0">
-              <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lớp</span>
-              <select value={courseId} onChange={e => setCourseId(e.target.value)} className={FIELD}>
-                <option value="">Tất cả lớp</option>
-                {courses.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
-            </label>
+            {/* LOI-02 (2.G): KinSelect thay <select> gốc. Không bọc trong <label> (nhãn sẽ biến cú bấm vào mục thành cú bấm vào nút) — nối bằng aria-labelledby. */}
+            <div className="block min-w-0">
+              <span id="hs-loc-lop" className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lớp</span>
+              <KinSelect aria-labelledby="hs-loc-lop" value={courseId} onChange={setCourseId}
+                options={[{ value: "", label: "Tất cả lớp" }, ...courses.map(([id, name]) => ({ value: id, label: name }))]} />
+            </div>
             {(tab === "active" || tab === "suspended") && (
-              <label className="block min-w-0">
-                <span className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Cảnh báo</span>
-                <select value={alertF} onChange={e => setAlert(e.target.value as StudentAlert | "")} className={FIELD}>
-                  <option value="">Tất cả</option>
-                  {(Object.keys(ALERT_LABEL) as StudentAlert[]).map(k => <option key={k} value={k}>{ALERT_LABEL[k]}</option>)}
-                </select>
-              </label>
+              <div className="block min-w-0">
+                <span id="hs-loc-canh-bao" className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Cảnh báo</span>
+                <KinSelect aria-labelledby="hs-loc-canh-bao" value={alertF} onChange={v => setAlert(v as StudentAlert | "")}
+                  options={[{ value: "", label: "Tất cả" }, ...(Object.keys(ALERT_LABEL) as StudentAlert[]).map(k => ({ value: k, label: ALERT_LABEL[k] }))]} />
+              </div>
             )}
           </div>
 

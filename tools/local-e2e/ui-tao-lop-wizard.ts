@@ -114,9 +114,11 @@ import { prisma } from "@/lib/prisma";
   await o.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-buoi-le/, { timeout: 90000 });
   const le = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp buổi lẻ" } });
   check("DB: lớp buổi lẻ được tạo, 0 khung giờ", (await prisma.classSchedule.count({ where: { courseId: le.id } })) === 0);
-  await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "networkidle", timeout: 120000 });
-  await o.locator("[data-gt-chua-co-lich]").waitFor({ timeout: 90000 });
-  check("GS-LOP-GON: đầu Giáo trình nhắc 'Lớp chưa có lịch học' + liên kết 'Đặt lịch học' → tab Lịch học", await o.locator("[data-gt-chua-co-lich]").isVisible() && (await o.getByRole("link", { name: "Đặt lịch học" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${le.id}/lich-hoc`);
+  // LOI-02: tab Giáo trình đã bỏ — …/giao-trinh 307 về gốc lớp (tab "Bài học"); dòng nhắc "Lớp chưa có lịch học" của Giáo trình không còn với chủ lớp (tab Lịch học bỏ khỏi dải).
+  await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await o.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${le.id}`, { timeout: 90000 });
+  await o.getByText("Lớp chưa có bài học").first().waitFor({ timeout: 90000 });
+  check("LOI-02: lớp mới mở vào 'Bài học' rỗng ('Lớp chưa có bài học' + 'Tạo chương đầu tiên'), không còn dòng nhắc đặt lịch", await o.getByRole("button", { name: "Tạo chương đầu tiên" }).isVisible() && (await o.locator("[data-gt-chua-co-lich]").count()) === 0);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");
   const cNew = await mkCourse(T.id, { name: "Lớp trống" });
