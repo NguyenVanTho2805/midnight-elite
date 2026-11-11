@@ -4,8 +4,8 @@
 // Điện thoại: một cột, buổi học sắp tới lên trước. Lỗi tải: giữ số cũ, dải báo lỗi có "Thử lại". Đang tải lần đầu: khung xương, không vòng xoay.
 // Dữ liệu: /api/tutor/hop-viec ({ items, total, overview }); tải lại khi cửa sổ lấy lại focus.
 // LOI-02 (mục 2.F): "Cần cô xử lý · N việc" = `total` của API (một nguồn sự thật với số đỏ ở thanh bên, todoBadgeTotal), KHÔNG đếm bằng số đầu tiêu đề.
-// "Chờ phụ huynh" vẫn hiện nhưng không tính vào số. Lấy lại focus ⇒ tải lại danh sách VÀ router.refresh() để layout máy chủ tính lại số đỏ (số đỏ không cũ sau khi xử lý việc).
-// router.refresh() vẽ lại cả layout máy chủ (nặng) ⇒ tối đa một lần mỗi REFRESH_MIN_MS (30 giây, tính từ lúc trang gắn hoặc lần refresh trước); danh sách vẫn tải lại mỗi lần focus.
+// "Chờ phụ huynh" vẫn hiện nhưng không tính vào số. Lấy lại focus ⇒ tải lại danh sách; CHỈ khi `total` mới KHÁC `total` lần trước mới router.refresh() (vẽ lại layout
+// máy chủ để số đỏ tính lại). Không đổi ⇒ không refresh (rẻ); đổi ⇒ refresh ngay (số đỏ không bao giờ cũ hơn danh sách — rà soát LOI-02 vòng 2 P3-A).
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -41,8 +41,6 @@ function Skeleton() {
   );
 }
 
-/** Khoảng tối thiểu giữa hai lần router.refresh() do lấy lại focus. */
-export const REFRESH_MIN_MS = 30_000;
 
 export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
   const [items, setItems] = useState<InboxItem[] | null>(null);
@@ -50,29 +48,27 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState(false);
   const router = useRouter();
-  const lastRefresh = useRef(0);
+  const lastTotal = useRef<number | null>(null); // total của lần tải trước (lần đầu = cùng lượt với layout máy chủ ⇒ số đỏ đang khớp)
 
   const load = useCallback(() => {
     fetch("/api/tutor/hop-viec", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
       .then(d => {
         setItems(Array.isArray(d.items) ? d.items : []); setOverview(d.overview ?? null);
-        setTotal(typeof d.total === "number" && Number.isFinite(d.total) ? d.total : null); setError(false);
+        const t = typeof d.total === "number" && Number.isFinite(d.total) ? d.total : null;
+        setTotal(t); setError(false);
+        if (t !== null && lastTotal.current !== null && t !== lastTotal.current) router.refresh(); // số việc đổi ⇒ layout tính lại số đỏ
+        if (t !== null) lastTotal.current = t;
       })
       .catch(() => setError(true));
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     load();
-    lastRefresh.current = Date.now(); // layout vừa vẽ ở máy chủ cùng lượt tải trang ⇒ số đỏ đang mới
-    const onFocus = () => {
-      load();
-      const now = Date.now();
-      if (now - lastRefresh.current >= REFRESH_MIN_MS) { lastRefresh.current = now; router.refresh(); }
-    };
+    const onFocus = () => load();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [load, router]);
+  }, [load]);
 
   const todo = (items ?? []).filter(i => !i.waiting);
   const waiting = (items ?? []).filter(i => i.waiting);
