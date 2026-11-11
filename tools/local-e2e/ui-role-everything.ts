@@ -143,7 +143,14 @@ const notes = new Map<string, string>();   // đổi đích CÓ CHỦ ĐÍCH đ�
 // LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai (khách "/", học sinh "Việc của tôi"); bài cộng đồng CHUNG /cong-dong/<id>
 // khi bảng tin ẩn cũng vậy (trang tự kiểm courseId). Cờ đọc ở tiến trình bài: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
 const LOI_HOME = ROLE === "guest" ? "/" : "/student/viec-cua-toi";
-const loiHidden = (reqPath: string) => !!blockedRouteFeature(reqPath, ROLE) || (!featureOn("CONG_DONG") && /^\/(student\/)?cong-dong\/[^/]+$/.test(reqPath) && !/^\/cong-dong\/(hoi-dap|ho-so)$/.test(reqPath));
+// Rà soát COO: CHỈ bài mà người xem KHÔNG được xem (bài chung, bài lớp khác, mã không có) mới được phép chuyển về; bài trong lớp của học sinh này (memberThreads,
+// điền sau khi dựng thế giới) mà bị chuyển về là ĐỎ ("đổi đích").
+const memberThreads = new Set<string>();
+const loiHidden = (reqPath: string) => {
+  if (blockedRouteFeature(reqPath, ROLE)) return true;
+  const m = /^\/(?:student\/)?cong-dong\/([^/]+)$/.exec(reqPath);
+  return !featureOn("CONG_DONG") && !!m && m[1] !== "hoi-dap" && m[1] !== "ho-so" && !memberThreads.has(m[1]);
+};
 function expected(reqPath: string, finPath: string, redir = ""): string | null {
   if (loiHidden(reqPath) && finPath === LOI_HOME) return "LOI-01: phần đang ẩn (src/lib/features.ts) → về trang đầu theo vai";
   if (ROLE === "guest") return null;
@@ -281,6 +288,10 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   mkdirSync("scratchpad", { recursive: true });
   await wipe();
   const w = await seedStudentWorld({ empty: EMPTY });
+  if (ROLE === "student") {
+    const mine = (await prisma.enrollment.findMany({ where: { userId: w.S.id, status: "active" }, select: { courseId: true } })).map(e => e.courseId);
+    for (const t of await prisma.thread.findMany({ where: { courseId: { in: mine } }, select: { id: true } })) memberThreads.add(t.id);
+  }
   console.log(`  vai: ${ROLE === "guest" ? "KHÁCH (chưa đăng nhập)" : EMPTY ? "HỌC SINH mới tinh (chưa vào lớp)" : "HỌC SINH có dữ liệu đầy đủ"}; khung nhìn ${VW}x${VH}`);
   const browser = await launch();
   // x-forwarded-proto: Vercel luôn đặt; không có thì trang /mentor/[id] (tự gọi lại API của chính nó theo https) hỏng ở `next dev` chạy http.
@@ -538,6 +549,22 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // ── Địa chỉ sai / đã xoá ──
   // Liên kết cũ, bookmark, tin nhắn cắt dở: mở một địa chỉ có dạng đúng nhưng đích không còn → phải có lời giải thích (hoặc chuyển sang đăng nhập), không sập, không trang trắng.
   // Phản hồi 400/401/403/404 của API ở đây là KỲ VỌNG (loại khỏi mục C); lỗi JS / console.error của trang thì KHÔNG được có, và 5xx vẫn tính vào mục C.
+  // ── LOI-01: bài trong lớp vẫn mở khi bảng tin chung ẩn ──
+  if (!featureOn("CONG_DONG")) {
+    section("LOI-01: /cong-dong/<id> khi bảng tin ẩn — bài trong lớp mình ở lại; bài chung / lớp khác / mã không có cùng một kết quả");
+    const bareOf = async () => (await p.locator("[data-kc-bare]").count().catch(() => 0)) > 0;
+    const classT = w.th2.id, publicT = w.th1.id, otherT = w.th3.id;
+    if (ROLE === "student" && !EMPTY) {
+      const r = await open(p, `${MAIN}/cong-dong/${classT}`);
+      check("học sinh mở bài trong LỚP MÌNH → ở lại đúng trang, khung gọn (data-kc-bare), trong vỏ học sinh", norm(r.final.pathname) === `/cong-dong/${classT}` && await bareOf() && r.shell === SHELL_STUDENT, [abs(r.final), r.shell]);
+      check("bài lớp: nút quay lại về hỏi đáp của chính lớp đó", (await p.getByRole("link", { name: /Hỏi đáp của lớp/ }).first().getAttribute("href").catch(() => null)) === `/cong-dong?scope=${encodeURIComponent(w.C1.id)}`);
+    }
+    for (const [what, id] of [["bài chung", publicT], ["bài của lớp KHÁC", otherT], ["mã không có", "khong-co-bai-nay"], ...(ROLE === "guest" ? [["bài lớp (khách không thuộc lớp)", classT]] : [])] as const) {
+      const r = await open(p, `${MAIN}/cong-dong/${id}`);
+      check(`${ROLE === "guest" ? "khách" : "học sinh"} mở ${what} → về ${LOI_HOME} (cùng một kết quả, không lộ bài nào tồn tại)`, norm(r.final.pathname) === LOI_HOME && !(await bareOf()), abs(r.final));
+    }
+  }
+
   section("Địa chỉ sai hoặc đã bị xoá → có lời giải thích, không sập, không trang trắng");
   {
     const FRIENDLY = /không tìm thấy|không tồn tại|không hợp lệ|hết hạn|đã bị gỡ|đã bị xoá|đã bị xóa|không có quyền|chưa vào lớp|chưa đăng ký|404|đã được dùng|không đúng|không còn|sai/i;
