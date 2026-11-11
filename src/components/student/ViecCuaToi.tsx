@@ -5,6 +5,7 @@
 // (đề thi được giao, thi thử sắp tới) nằm ở cột phải. "Kết quả gần đây" chỉ hiện 5 bài mới nhất kèm nút "Xem thêm" khi nhiều hơn.
 // KHÔNG có dữ liệu thật nên BỎ khỏi Figma: "Chuẩn bị cho buổi học" (danh sách tích), "Học trực tuyến · Buổi 3/5", số trang ảnh đã nộp, số câu của bài tự luận.
 // Dữ liệu: /api/student/viec-cua-toi ({ items }) + /api/schedule (buổi thi); tải lại khi cửa sổ lấy lại focus.
+// LOI-03 (11/11/2026): ngay dưới tiêu đề là phiếu "Hôm nay có lớp" (components/student/HomNayCoLop, GET /api/student/hom-nay) — full-width ở mọi cỡ màn.
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ import { choCham, chuaNop, examTarget, nextExam, NextSession, TaskRow, todayLine
 import { dmOfKey } from "@/components/student/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
+import HomNayCoLop from "@/components/student/HomNayCoLop";
 
 const RESULT_LIMIT = 5; // "Kết quả gần đây": 5 bài mới nhất, còn lại sau nút "Xem thêm"
 const ASSIGN_LIMIT = 3; // "Đề thi được giao": 3 đề đầu (đã sắp theo hạn), còn lại sau nút "Xem thêm"
@@ -101,6 +103,9 @@ export default function ViecCuaToi() {
         </div>
         <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} self-start flex-shrink-0 max-md:hidden`}>Xem lịch tuần</Link>
       </header>
+
+      {/* LOI-03 mục 4.4: phiếu "Hôm nay có lớp" (bài có ngày học hôm nay + 7 ngày tới). Không có bài hẹn thì không vẽ gì. */}
+      <HomNayCoLop />
 
       {tutorPending && (
         <div role="status" data-tutor-pending className="mb-6">
