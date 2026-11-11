@@ -4,7 +4,7 @@
 "use client";
 import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinSectionHead } from "@/components/kin/SectionHead";
@@ -12,7 +12,8 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi, useNotify } from "@/components/tutor/shared";
-import { FEE_MODE_LABEL, FEE_RATE_FROM_START, FEE_RATE_UNIT, isNewFeeMode, pickClassRate, pickStudentRate, type FeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_LABEL, FEE_RATE_FROM_START, FEE_RATE_UNIT, isNewFeeMode, isSheetFeeMode, pickClassRate, pickStudentRate, type FeeMode } from "@/lib/tuitionFee";
+import LopBangHocPhi, { SheetEnableOffer } from "@/components/tutor/LopBangHocPhi";
 
 const vnd = (n: number) => `${n.toLocaleString("vi-VN")}đ`;
 const dmy = (k: string) => (k === FEE_RATE_FROM_START ? "khi tạo lớp" : `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`);
@@ -30,8 +31,21 @@ interface Plan {
 }
 interface Preview { plan: Plan; perCourse: { pendingStudents: number; beforeEach: number | null; afterEach: number | null } | null }
 
-/** adminView: nhúng trong trang quản trị (quản trị không vào được /lop-cua-toi/hoc-phi nên ẩn nút mở đối soát). Gọi đúng API fee-rates. */
-export default function LopHocPhi({ courseId, feeMode, adminView = false }: { courseId: string; feeMode: FeeMode; adminView?: boolean }) {
+/** adminView: nhúng trong trang quản trị (quản trị không vào được /lop-cua-toi/hoc-phi nên ẩn nút mở đối soát). Gọi đúng API fee-rates.
+ *  HP-LOP-TRUONG: lớp "Theo bảng học phí tháng" (monthly_sheet) rẽ TRƯỚC isNewFeeMode sang bảng học phí tháng (không có đơn giá lớp, không gọi fee-rates);
+ *  quản trị chỉ XEM ở đây (giao diện sửa cho quản trị chưa làm, quản trị dùng được API). */
+export default function LopHocPhi(props: { courseId: string; feeMode: FeeMode; adminView?: boolean }) {
+  if (isSheetFeeMode(props.feeMode)) {
+    return (
+      <Suspense fallback={<div aria-busy="true" aria-label="Đang tải bảng học phí tháng" className="h-32 rounded kin-skel kin-skel--soft" />}>
+        <LopBangHocPhi courseId={props.courseId} readOnly={props.adminView === true} />
+      </Suspense>
+    );
+  }
+  return <LopHocPhiDonGia {...props} />;
+}
+
+function LopHocPhiDonGia({ courseId, feeMode, adminView = false }: { courseId: string; feeMode: FeeMode; adminView?: boolean }) {
   const notify = useNotify();
   const [ov, setOv] = useState<Overview | null>(null);
   const [failed, setFailed] = useState(false);
@@ -58,6 +72,7 @@ export default function LopHocPhi({ courseId, feeMode, adminView = false }: { co
           Lớp này tính học phí theo số buổi trong tháng, như cách cô đang dùng. Lập phiếu có mã, theo dõi tiền vào, nhận tiền thẳng vào tài khoản của cô.
         </p>
         {!adminView && <Link href="/lop-cua-toi/hoc-phi" className={`${kinButtonClass("secondary")} mt-4`}>Mở Học phí</Link>}
+        {!adminView && <div className="pt-8"><SheetEnableOffer courseId={courseId} /></div>}
       </section>
     );
   }
@@ -133,6 +148,8 @@ export default function LopHocPhi({ courseId, feeMode, adminView = false }: { co
         )}
         <StudentRateForm courseId={courseId} ov={ov} feeMode={feeMode} onApplied={override => { notify.ok(override ? "Đã lưu đơn giá riêng. Chủ lớp sẽ được báo." : "Đã lưu đơn giá riêng."); reload(); }} />
       </section>
+
+      {!adminView && <SheetEnableOffer courseId={courseId} />}
     </div>
   );
 }

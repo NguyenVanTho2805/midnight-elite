@@ -18,7 +18,7 @@ import { api } from "@/lib/api";
 import { toSlug } from "@/lib/slug";
 import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { FEE_MODE_HINT, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type NewFeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_HINT, FEE_MODE_SHEET, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type NewFeeMode } from "@/lib/tuitionFee";
 import {
   ADD_STUDENTS_MAX, WIZARD_WEEKS_MAX, WIZARD_WEEKS_MIN, createButtonLabel, previewSessionCount,
 } from "@/lib/tutorStudentView";
@@ -93,7 +93,8 @@ export default function TaoLop() {
   const formRef = useRef<HTMLFormElement>(null);
   const rules = useMemo<Record<string, readonly FieldRule[]>>(() => {
     const r: Record<string, readonly FieldRule[]> = { name: [required("Cô nhập tên lớp trước nhé.")] };
-    if (!free && isNewFeeMode(feeMode)) {
+    // HP-LOP-TRUONG: "Theo bảng học phí tháng" không hỏi đơn giá lúc tạo lớp (cô đặt bảng bậc ở tab Học phí sau).
+    if (!free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) {
       r.feeRate = [v => { const x = validateFeeSetup({ mode: feeMode, rate: Number(v), sessionMinutes: 90 }); return x.ok ? null : x.error; }];
       if (feeMode === "per_hour") r.feeMinutes = [v => { const x = validateFeeSetup({ mode: feeMode, rate: FEE_RATE_MIN, sessionMinutes: Number(v) }); return x.ok ? null : x.error; }];
     }
@@ -116,7 +117,7 @@ export default function TaoLop() {
 
   function checkInfo(): string | null {
     if (!name.trim()) return "Cô nhập tên lớp trước nhé.";
-    if (!free && isNewFeeMode(feeMode)) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
+    if (!free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
     return null;
   }
   function next() {
@@ -153,7 +154,9 @@ export default function TaoLop() {
     if (slotErr) { setError(slotErr); setStep(2); return; }
     if (activeBlocks.length === 0 && !noFixed) { setError("Cô thêm ít nhất một khung giờ học hằng tuần, hoặc chọn 'Lớp này học buổi lẻ'."); setStep(2); return; }
     let fee: Record<string, unknown> = {};
-    if (!free && isNewFeeMode(feeMode)) {
+    if (!free && feeMode === FEE_MODE_SHEET) {
+      fee = { feeMode: FEE_MODE_SHEET }; // không gửi feeRate: lớp bảng tháng không có đơn giá lớp
+    } else if (!free && isNewFeeMode(feeMode)) {
       const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) });
       if (v.ok) fee = { feeMode, feeRate: v.value.rate, ...(v.value.sessionMinutes != null ? { feeSessionMinutes: v.value.sessionMinutes } : {}) };
     }
@@ -259,25 +262,31 @@ export default function TaoLop() {
                   </label>
                 </fieldset>
                 <div className="pt-4 grid sm:grid-cols-2 gap-5">
-                  <KinInput label={`Đơn giá (${FEE_RATE_UNIT[feeMode]}) *`} inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
-                    placeholder="Ví dụ: 150000" aria-required {...fv.bind("feeRate", feeRate)} />
+                  {feeMode !== FEE_MODE_SHEET && <KinInput label={`Đơn giá (${FEE_RATE_UNIT[feeMode]}) *`} inputMode="numeric" value={feeRate} onChange={e => { setFeeRate(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
+                    placeholder="Ví dụ: 150000" aria-required {...fv.bind("feeRate", feeRate)} />}
                   {feeMode === "per_hour" && (
                     <KinInput label="Một buổi dài (phút) *" inputMode="numeric" value={feeMinutes} onChange={e => { setFeeMinutes(e.target.value.replace(/[^\d]/g, "")); setError(null); }}
                       aria-required {...fv.bind("feeMinutes", feeMinutes)} />
                   )}
+                  {feeMode === FEE_MODE_SHEET ? (
+                    <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]" data-fee-sheet-note>
+                      Cô chưa cần nhập đơn giá lúc này. Sau khi tạo lớp, cô vào tab Học phí để đặt bảng bậc theo số môn (KiN điền sẵn từ lớp trước của cô nếu có), rồi mỗi tháng nhập số buổi từng môn của từng em từ Excel hoặc Google Sheet. KiN cho cô xem trước, cô xác nhận mới ghi.
+                    </p>
+                  ) : (
                   <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
                     {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
                       ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
                       : ""}
                     Học phí sinh ra khi cô bấm Đã dạy xong, cho em có mặt hoặc đi muộn. Em vắng hoặc có phép không tính. Phiếu đã chốt không đổi khi cô đổi đơn giá sau.
                   </p>
+                  )}
                 </div>
                 <details className="mt-4 border-t border-[var(--kin-vien-nhat)] pt-2" data-fee-other open={feeMode !== "per_session"}>
                   <summary className="inline-flex items-center min-h-11 cursor-pointer text-[var(--kin-nhan-link)] underline">Cách tính khác (ít dùng){feeMode !== "per_session" ? ` · đang chọn: ${FEE_MODE_LABEL[feeMode]}` : ""}</summary>
                   <fieldset className="pt-2">
                     <legend className="sr-only">Cách tính học phí khác</legend>
                     <div className="space-y-2">
-                      {(["per_hour", "per_course"] as const).map(m => (
+                      {(["per_hour", "per_course", FEE_MODE_SHEET] as const).map(m => (
                         <label key={m} className="flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] py-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
                           <input type="radio" name="tl-fee-mode" className="mt-1" checked={feeMode === m} onChange={() => { setFeeMode(m); setError(null); }} />
                           <span><span className="font-medium">{FEE_MODE_LABEL[m]}</span>

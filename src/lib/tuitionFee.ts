@@ -13,7 +13,10 @@ import { isValidDateKey } from "@/lib/classSessions";
 
 // ─── Hình thức học phí của lớp ───────────────────────────────────────────────
 export const FEE_MODE_LEGACY = "monthly_sessions";
-export const NEW_FEE_MODES = ["per_session", "per_hour", "per_course"] as const;
+/** HP-LOP-TRUONG: gia sư nhập số buổi từng môn của từng em theo tháng / kỳ; bậc đơn giá theo số môn ở CourseFeeTable; mỗi em một FeeCharge kind "sheet".
+ *  Thuộc nhóm "kiểu mới" nên không vào đường tính cách cũ (invoiceServer) và không sinh phí theo buổi (feeChargeServer trả sớm) — không sửa chữ nào ở hai tệp đó. */
+export const FEE_MODE_SHEET = "monthly_sheet";
+export const NEW_FEE_MODES = ["per_session", "per_hour", "per_course", FEE_MODE_SHEET] as const;
 export type NewFeeMode = (typeof NEW_FEE_MODES)[number];
 export type FeeMode = typeof FEE_MODE_LEGACY | NewFeeMode;
 export const FEE_MODES: readonly FeeMode[] = [FEE_MODE_LEGACY, ...NEW_FEE_MODES];
@@ -23,17 +26,22 @@ export const FEE_MODE_LABEL: Record<FeeMode, string> = {
   per_session: "Theo buổi",
   per_hour: "Theo giờ",
   per_course: "Theo khoá",
+  monthly_sheet: "Theo bảng học phí tháng (nhập từ Excel)",
 };
 export const FEE_MODE_HINT: Record<FeeMode, string> = {
   monthly_sessions: "Cô tự nhập số buổi của từng tháng, như đang dùng. Phiếu cũ và lớp cũ không đổi.",
   per_session: "Mỗi buổi em có mặt hoặc đi muộn được tính một khoản bằng đơn giá một buổi, tự sinh khi cô bấm Đã dạy xong cho buổi đó.",
   per_hour: "Mỗi buổi tính theo thời lượng buổi (phút) × đơn giá một giờ, tự sinh khi cô bấm Đã dạy xong cho buổi đó. Làm tròn từng buổi đến đồng.",
   per_course: "Một khoản cho cả khoá, tính một lần cho mỗi em vào phiếu đầu tiên sau khi em vào lớp.",
+  monthly_sheet: "Cô nhập số buổi từng môn của từng em theo tháng (dán từ Google Sheet hoặc tải mẫu Excel), KiN tính theo bảng bậc cô đặt cho lớp. Xem trước rồi mới ghi; không cần đơn giá lúc tạo lớp.",
 };
-export const FEE_RATE_UNIT: Record<NewFeeMode, string> = { per_session: "đ / buổi", per_hour: "đ / giờ", per_course: "đ / khoá" };
+export const FEE_RATE_UNIT: Record<NewFeeMode, string> = { per_session: "đ / buổi", per_hour: "đ / giờ", per_course: "đ / khoá", monthly_sheet: "đ / buổi" };
 
 export function isNewFeeMode(v: unknown): v is NewFeeMode {
   return typeof v === "string" && (NEW_FEE_MODES as readonly string[]).includes(v);
+}
+export function isSheetFeeMode(v: unknown): v is typeof FEE_MODE_SHEET {
+  return v === FEE_MODE_SHEET;
 }
 /** Giá trị lạ / null (lớp cũ, cột chưa có) đều về cách cũ — an toàn nhất cho tiền. */
 export function normalizeFeeMode(v: unknown): FeeMode {
@@ -53,7 +61,9 @@ export const SESSION_MINUTES_MAX = 480;
 
 export type FeeSetup = { mode: NewFeeMode; rate: number; sessionMinutes: number | null };
 export function validateFeeSetup(i: { mode: unknown; rate: unknown; sessionMinutes?: unknown }): { ok: true; value: FeeSetup } | { ok: false; error: string } {
-  if (!isNewFeeMode(i.mode)) return { ok: false, error: "Hình thức học phí phải là theo buổi, theo giờ hoặc theo khoá" };
+  if (!isNewFeeMode(i.mode)) return { ok: false, error: "Hình thức học phí phải là theo buổi, theo giờ, theo khoá hoặc theo bảng học phí tháng" };
+  // HP-LOP-TRUONG: lớp theo bảng tháng KHÔNG có đơn giá lớp (bậc theo số môn ở CourseFeeTable): không bắt buộc đơn giá, `rate` luôn 0 và KHÔNG BAO GIỜ được ghi thành CourseFeeRate.
+  if (i.mode === FEE_MODE_SHEET) return { ok: true, value: { mode: FEE_MODE_SHEET, rate: 0, sessionMinutes: null } };
   const rate = i.rate;
   if (typeof rate !== "number" || !Number.isInteger(rate) || rate < FEE_RATE_MIN || rate > FEE_RATE_MAX) {
     return { ok: false, error: `Đơn giá phải là số nguyên đồng từ ${FEE_RATE_MIN.toLocaleString("vi-VN")} đến ${FEE_RATE_MAX.toLocaleString("vi-VN")}` };

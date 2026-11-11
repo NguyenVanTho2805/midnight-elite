@@ -63,7 +63,9 @@ export interface BuildInput {
   hideInactive?: boolean;
 }
 
-const TUITION_KINDS = new Set(["session", "course"]);
+// HP-LOP-TRUONG: "sheet" = học phí lớp theo bảng tháng (FeeCharge kind "sheet"). Số này là SAU học bổng / giảm trừ (Phải đóng), khác lớp theo buổi / khoá là TRƯỚC giảm:
+// chú thích dưới bảng "Học phí theo tháng" nói rõ điều đó.
+const TUITION_KINDS = new Set(["session", "course", "sheet"]);
 const monthOfDate = (d: Date | string) => new Date(d).toISOString().slice(0, 7);
 
 /** Học phí một lớp trong một tháng, theo hệ phí HIỆU LỰC của tháng đó. */

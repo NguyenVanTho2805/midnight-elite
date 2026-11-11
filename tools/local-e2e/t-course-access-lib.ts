@@ -51,6 +51,7 @@ const MATRIX: Record<string, string> = {
   "schedule.edit.own": "1101",
   "schedule.edit.other": "1001",
   "money.view": "1001",
+  "money.edit": "1001", // HP-LOP-TRUONG: chủ lớp VÀ quản trị sửa được bảng học phí; đồng giảng / bộ môn không
   "attendance.export": "1001",
   "community.post": "1111",
   "community.moderate": "1001",
@@ -62,7 +63,7 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
 
 (async () => {
   section("Ma trận 4.3: đủ 31+ hành động × 4 vai (so với bảng gõ lại độc lập)");
-  check("bảng độc lập có đúng 33 hàng hành động (mục 4.3 có 31 hàng, hàng 8 / 23 gộp 2 và 3 hành động)", Object.keys(MATRIX).length === 33, Object.keys(MATRIX).length);
+  check("bảng độc lập có đúng 34 hàng hành động (mục 4.3 có 31 hàng, hàng 8 / 23 gộp 2 và 3 hành động; +1 money.edit của HP-LOP-TRUONG)", Object.keys(MATRIX).length === 34, Object.keys(MATRIX).length);
   let cells = 0;
   for (const [action, row] of Object.entries(MATRIX)) {
     ROLES.forEach((role, i) => {
@@ -71,7 +72,7 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
       check(`${role} × ${action} = ${want ? "✔" : "✘"}`, canDo(role, action as CourseAction) === want);
     });
   }
-  check(`đã so ${cells} ô (33 × 4)`, cells === 132);
+  check(`đã so ${cells} ô (34 × 4)`, cells === 136);
 
   section("Vai 'none' (gia sư lạ / học sinh / khách) ✘ mọi hành động");
   for (const action of Object.keys(MATRIX)) check(`none × ${action} = ✘`, canDo("none", action as CourseAction) === false);
@@ -83,12 +84,13 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
 
   section("Đồng giảng KHÔNG có tiền / liên hệ / điểm / quản trị người (ca phá a, b)");
   for (const r of ["co_teacher", "subject_teacher"] as const) {
-    for (const a of ["money.view", "roster.contact", "score.write", "session.close", "course.edit", "course.delete", "student.invite", "student.decide", "student.remove",
+    for (const a of ["money.view", "money.edit", "roster.contact", "score.write", "session.close", "course.edit", "course.delete", "student.invite", "student.decide", "student.remove",
       "invite_code.rotate", "teacher.invite", "teacher.remove", "teacher.role", "attendance.export", "community.moderate", "attendance.mark.other", "session.reassign", "schedule.edit.other"] as CourseAction[]) {
       check(`${r} KHÔNG có ${a}`, canDo(r, a) === false);
     }
   }
   check("chủ nhiệm và quản trị có money.view", canDo("owner", "money.view") && canDo("admin", "money.view"));
+  check("chủ nhiệm và quản trị có money.edit; đồng giảng / bộ môn / người ngoài không (HP-LOP-TRUONG)", canDo("owner", "money.edit") && canDo("admin", "money.edit") && !canDo("co_teacher", "money.edit") && !canDo("subject_teacher", "money.edit") && !canDo("none", "money.edit"));
   check("chủ nhiệm không có hành động chỉ-đồng-giảng (request_close / leave)", !canDo("owner", "session.request_close") && !canDo("owner", "teacher.leave"));
 
   section("effectiveSessionTeacher: taughtBy > khung > chủ (ca phá g)");

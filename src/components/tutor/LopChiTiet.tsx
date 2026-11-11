@@ -270,7 +270,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
 
         {mgr && tab === "hoc-phi" && (
           <div className="space-y-[var(--kin-cach-muc)]">
-            <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
+            <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} adminView={d.isTeacher === false} />
             <LopPhiKhac courseId={d.courseId} />
             {/* HP-31: "Gói buổi trả trước" đã ẩn theo quyết định của chủ 25/10/2026 (học xong mới thu học phí). Mã (LopGoiBuoi, API /packages) và hai bảng giữ nguyên để có thể bật lại. */}
           </div>
