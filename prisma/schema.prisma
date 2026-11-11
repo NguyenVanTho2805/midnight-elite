@@ -90,6 +90,7 @@ model Course {
   classJoinUrl  String?
   studentProfiles    StudentProfile[]
   joinRequests       ClassJoinRequest[]
+  studentReminders   StudentReminder[] // LOI-04
 
   @@index([ownerId])
   @@map("courses")
@@ -207,6 +208,7 @@ model Lesson {
   notes          LessonNote[]
   azotaDone      LessonAzotaDone[]
   assignments    Assignment[]
+  studentReminders StudentReminder[] // LOI-04
   // BU-02-PHẲNG: "draft" | "published" | "hidden". Mặc định "published" ⇒ mọi bài cũ vẫn hiện. Chuỗi, không enum.
   status         String           @default("published")
   // LOI-0111: ngày giờ học của bài (gia sư ghi ở màn sửa bài). Null = bài không gắn ngày. Dùng cho phiếu "Hôm nay có lớp" của học sinh.
@@ -1040,6 +1042,7 @@ model User {
   tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
   sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
   personalEvents       StudentPersonalEvent[] @relation("PersonalEventOwner") // NC2-043: lịch riêng của học sinh
+  studentReminders     StudentReminder[] @relation("StudentReminderOwner") // LOI-04
 
   // Tiếng Anh tự học (docs/tieng-anh/DAC-TA.md) — mọi bản ghi gắn với một người học, xoá tài khoản thì xoá theo.
   engProfile      EngProfile?
@@ -1959,6 +1962,31 @@ model StudentPersonalEvent {
 
   @@index([userId, dateKey])
   @@map("student_personal_events")
+}
+
+// LOI-04: nhắc học của học sinh (kiểu Reminders). Chỉ chủ đọc/sửa. Ghi chú là dữ liệu cá nhân: không vào thông báo, không gửi AI.
+model StudentReminder {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  note       String?   @db.Text
+  tags       String[]  @default([])
+  dueAt      DateTime?            // mốc UTC; có ngày mà không giờ ⇒ 00:00 VN của ngày đó + dueHasTime=false
+  dueHasTime Boolean   @default(false)
+  doneAt     DateTime?
+  courseId   String?
+  lessonId   String?
+  notifiedAt DateTime?            // đã vào tóm tắt sáng; đổi ngày/giờ hẹn ⇒ về null
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user   User    @relation("StudentReminderOwner", fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([userId, dueAt])
+  @@index([dueAt])
+  @@map("student_reminders")
 }
 
 model ExamResult {
