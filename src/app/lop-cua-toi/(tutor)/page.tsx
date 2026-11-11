@@ -20,7 +20,7 @@ import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
-import { visibleLinks } from "@/lib/features";
+import ThuVienLop from "@/components/student/ThuVienLop";
 
 export const dynamic = "force-dynamic";
 
@@ -40,23 +40,18 @@ export default async function LopCuaToiPage() {
   // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
   if (session.role === "student" && isApplicant(await loadTutorStatus(session))) redirect(TUTOR_PENDING_PATH);
 
+  // LOI-03 mục 4.5 (Q4): học sinh thấy ĐÚNG thư viện lớp của /student/hoc-tap (thẻ lớp, tiến độ, "Học tiếp"), trong vỏ học sinh của LopCuaToiFrame; URL giữ /lop-cua-toi.
+  // Bỏ danh sách thô cũ có hai nút "Lịch học" / "Học phí" trên từng lớp. Nhánh gia sư / quản trị bên dưới không đổi.
+  if (session.role === "student") return <ThuVienLop />;
+
   // 2 danh sách tuỳ role.
-  const [owned, enrolled] = await Promise.all([
-    session.role === "admin"
-      ? prisma.course.findMany({
-          where:   { ownerId: session.userId },
-          select:  { id: true, name: true, category: true, status: true },
-          orderBy: { createdAt: "desc" },
-        })
-      : Promise.resolve([]),
-    session.role === "student"
-      ? prisma.enrollment.findMany({
-          where:   { userId: session.userId, status: "active" },
-          include: { course: { select: { id: true, name: true, category: true } } },
-          orderBy: { createdAt: "desc" },
-        })
-      : Promise.resolve([]),
-  ]);
+  const owned = session.role === "admin"
+    ? await prisma.course.findMany({
+        where:   { ownerId: session.userId },
+        select:  { id: true, name: true, category: true, status: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   const items = session.role === "admin"
     ? owned.map(c => ({ id: c.id, name: c.name, category: c.category,
@@ -68,15 +63,7 @@ export default async function LopCuaToiPage() {
          ],
          subtitle: c.status ? "Đang mở" : "Đã đóng",
       }))
-    : enrolled.map(e => ({ id: e.course.id, name: e.course.name, category: e.course.category,
-         hrefOpen: `/lop-cua-toi/${e.course.id}`,
-         // LOI-01: lối nhanh "Lịch học" rời khi phần Lịch đang ẩn (src/lib/features.ts); route vẫn chạy.
-         actions: visibleLinks([
-           { label: "Lịch học",   href: "/student/lich-hoc" },
-           { label: "Học phí",    href: "/student/hoc-phi" },
-         ]),
-         subtitle: "Đang học",
-      }));
+    : [];
 
   const roleLabel = session.role === "admin" ? "Lớp bạn đang dạy" : "Lớp bạn đang học";
 

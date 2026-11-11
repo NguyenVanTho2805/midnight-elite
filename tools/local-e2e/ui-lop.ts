@@ -20,7 +20,9 @@ import { BASE } from "./h";
   await p.getByRole("heading", { name: "Lớp học", level: 1 }).waitFor({ timeout: 90000 });
   await p.getByRole("list", { name: "Danh sách lớp" }).waitFor({ timeout: 60000 });
   const body = async () => (await p.locator("body").innerText()).replace(/\s+/g, " ");
-  check("hiện lịch cố định thật 'T6 · 19:00–20:30' và 'Chưa xếp lịch' cho lớp chưa có khung", (await body()).includes("T6 · 19:00–20:30") && (await body()).includes("Chưa xếp lịch"));
+  // LOI-02: "Chưa xếp lịch" chỉ hiện khi cờ lịch bật (NEXT_PUBLIC_KIN_MO_LICH=1); lớp CÓ lịch thì luôn hiện.
+  const lichOn = process.env.NEXT_PUBLIC_KIN_MO_LICH === "1";
+  check(`hiện lịch cố định thật 'T6 · 19:00–20:30'; 'Chưa xếp lịch' ${lichOn ? "có" : "KHÔNG có (cờ lịch tắt)"} ở lớp chưa có khung`, (await body()).includes("T6 · 19:00–20:30") && (await body()).includes("Chưa xếp lịch") === lichOn);
   check("không có cột 'Cách tính phí' (chưa có dữ liệu)", !(await body()).includes("Cách tính phí"));
   check("lớp chưa có học sinh có lối 'Mời học sinh' + khối nhắc tên lớp đó", (await p.getByRole("link", { name: /Mời học sinh/ }).count()) >= 1 && (await body()).includes("Toán 8 chưa có học sinh"));
   await p.getByLabel("Tìm lớp").fill("toán 8");
@@ -29,14 +31,14 @@ import { BASE } from "./h";
   check("không khớp → trạng thái rỗng có 'Xoá bộ lọc'", await p.getByRole("button", { name: "Xoá bộ lọc" }).isVisible());
   await p.getByRole("button", { name: "Xoá bộ lọc" }).click();
   await p.getByRole("link", { name: "Mở lớp Toán 9" }).click();
-  await p.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${c1.id}/giao-trinh$`), { timeout: 90000 }); // GS-LOP-GON: mở lớp vào Giáo trình
+  await p.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${c1.id}` && u.search === "", { timeout: 90000 }); // LOI-02: mở lớp vào tab Bài học (gốc lớp)
 
   section("Chi tiết lớp");
   await p.getByRole("heading", { name: "Toán 9", level: 1 }).waitFor({ timeout: 90000 });
-  // GS-LOP-GON: đầu lớp một lần + MỘT dải 6 tab (điều hướng, không role=tab); Mã mời là mục con của Học sinh (?muc=ma-moi).
+  // GS-LOP-GON → LOI-02: đầu lớp một lần + MỘT dải 4 tab (điều hướng, không role=tab); Mã mời là mục con của Học sinh (?muc=ma-moi).
   check("dòng phụ: 1 học sinh", (await body()).includes("1 học sinh"));
   const strip = p.getByRole("navigation", { name: /^Trang của/ });
-  check("dải tab: Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt; Giáo trình sáng", (await strip.getByRole("link").allInnerTexts()).join("|") === "Giáo trình|Học sinh|Điểm danh|Bài tập|Lịch học|Cài đặt" && (await strip.locator("[aria-current=page]").innerText()) === "Giáo trình");
+  check("dải tab: Bài học · Học sinh · Điểm danh · Cài đặt; Bài học sáng", (await strip.getByRole("link").allInnerTexts()).join("|") === "Bài học|Học sinh|Điểm danh|Cài đặt" && (await strip.locator("[aria-current=page]").innerText()) === "Bài học");
   await strip.getByRole("link", { name: "Điểm danh", exact: true }).click();
   await p.waitForURL(/\/quan-lop\/[^/]+\/diem-danh/, { timeout: 90000 });
   await p.getByRole("button", { name: "Tạo buổi điểm danh" }).waitFor({ timeout: 90000 });

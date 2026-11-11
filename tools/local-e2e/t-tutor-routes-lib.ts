@@ -7,7 +7,10 @@
 //   - contentHref trả `adminPath` khi toTutorPath null → ca "không map được thì về /lop-cua-toi" đỏ;
 //   - BU-02: bỏ tab "Giáo trình" khỏi contentTabsFor → ca "6 tab đúng thứ tự" đỏ; làm sáng cả "Giáo trình" lẫn "Bài tập tự nộp" cùng lúc → ca "chỉ một tab sáng" đỏ;
 //     giaoTrinhHref không encode courseId → ca "id lạ không thoát khỏi đường dẫn" đỏ.
-import { toTutorPath, toAdminPath, contentHref, contentTabsFor, giaoTrinhHref } from "@/lib/tutorRoutes";
+//   - LOI-02: để lại tab "Giáo trình"/"Lịch học"/"Bài tập" → ca "KHÔNG còn nhãn…" đỏ; bỏ điều kiện `!ROOT_NON_BAI_HOC_TABS` → hàng "?tab=lich-hoc → không tab nào"
+//     và "?tab=cai-dat → Cài đặt" (hai tab sáng) đỏ; bỏ lọc vai → hai ca A3 đỏ; giaoTrinhHref(…, true) còn trả …/giao-trinh → ca đầu mục giaoTrinhHref đỏ.
+import { toTutorPath, toAdminPath, contentHref, contentTabsFor, giaoTrinhHref, baiHocHref } from "@/lib/tutorRoutes";
+import { classBase } from "@/lib/tutorClassRoutes";
 import { check, section, done } from "./h";
 
 const PAIRS: [admin: string, tutor: string][] = [
@@ -67,11 +70,12 @@ check("gia sư: giữ query (/admin/khoa-hoc/x?tab=chuong-bai)", contentHref(tru
 check("gia sư: không map được thì về /lop-cua-toi (không để rơi vào /admin)", contentHref(true, "/admin/khoa-hoc/danh-muc") === "/lop-cua-toi" && contentHref(true, "/admin") === "/lop-cua-toi");
 check("quản trị: giữ nguyên /admin/... kể cả query", contentHref(false, "/admin/khoa-hoc/x?tab=chuong-bai") === "/admin/khoa-hoc/x?tab=chuong-bai" && contentHref(false, "/admin/khoa-hoc/danh-muc") === "/admin/khoa-hoc/danh-muc");
 
-section("giaoTrinhHref (BU-02)");
-check("gia sư → /lop-cua-toi/quan-lop/<id>/giao-trinh", giaoTrinhHref("toan-9", true) === "/lop-cua-toi/quan-lop/toan-9/giao-trinh");
+section("giaoTrinhHref / baiHocHref (BU-02 → LOI-02)");
+check("LOI-02: gia sư → gốc lớp /lop-cua-toi/quan-lop/<id> (bí danh cũ của Giáo trình; …/giao-trinh nay chỉ 307 về gốc)", giaoTrinhHref("toan-9", true) === "/lop-cua-toi/quan-lop/toan-9", giaoTrinhHref("toan-9", true));
+check("LOI-02: baiHocHref = classBase (không query)", baiHocHref("toan-9") === "/lop-cua-toi/quan-lop/toan-9" && baiHocHref("toan-9") === classBase("toan-9"));
 check("quản trị (không có màn này) → tab Chương bài của trang quản lớp /admin", giaoTrinhHref("toan-9", false) === "/admin/khoa-hoc/toan-9?tab=chuong-bai");
-check("id lạ (có '/', '?', '#', '..') bị mã hoá, không thoát khỏi đường dẫn của lớp", ["a/b", "a?x=1", "a#h", "../admin", "a b"].every(id => { const h = giaoTrinhHref(id, true); return h.startsWith("/lop-cua-toi/quan-lop/") && h.endsWith("/giao-trinh") && h.split("/").length === 5 && !h.includes("?") && !h.includes("#"); }));
-check("đi vòng: đường giáo trình KHÔNG có bản /admin (toAdminPath → null, đúng quyết định 'không sửa FAMILIES')", toAdminPath("/lop-cua-toi/quan-lop/toan-9/giao-trinh") === null);
+check("phá: id lạ (có '/', '?', '#', '..', '.', ' ') bị mã hoá, không thoát khỏi đường dẫn của lớp", ["a/b", "a?x=1", "a#h", "../admin", "..", ".", "a b"].every(id => [giaoTrinhHref(id, true), baiHocHref(id)].every(h => h.startsWith("/lop-cua-toi/quan-lop/") && h.split("/").length === 4 && !h.includes("?") && !h.includes("#") && !/\/\.{1,2}$/.test(h) && new URL(h, "https://x.vn").pathname.startsWith("/lop-cua-toi/quan-lop/"))), ["..", "../admin"].map(id => baiHocHref(id)));
+check("đi vòng: đường gốc lớp / giáo trình KHÔNG có bản /admin riêng cho …/giao-trinh (toAdminPath → null, đúng quyết định 'không sửa FAMILIES')", toAdminPath("/lop-cua-toi/quan-lop/toan-9/giao-trinh") === null);
 
 section("contentTabsFor — dải tab vỏ nội dung gia sư");
 const dt = contentTabsFor("/lop-cua-toi/de-thi");
@@ -80,30 +84,55 @@ check("/lop-cua-toi/de-thi/abc (một đề) → 'Đề thi' sáng", contentTabs
 check("/lop-cua-toi/de-thi/ma-tran/m1 → 'Ma trận đề' sáng; /de-thi/abc/ma-de → 'Đề thi' sáng", contentTabsFor("/lop-cua-toi/de-thi/ma-tran/m1")?.tabs.filter(t => t.active).map(t => t.label).join() === "Ma trận đề" && contentTabsFor("/lop-cua-toi/de-thi/abc/ma-de")?.tabs.filter(t => t.active).map(t => t.label).join() === "Đề thi");
 check("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1 → 'Ngân hàng câu hỏi' sáng (tiền tố dài nhất, không phải 'Đề thi')", contentTabsFor("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1")?.tabs.filter(t => t.active).map(t => t.label).join() === "Ngân hàng câu hỏi");
 check("/lop-cua-toi/de-thi/ngan-hang-de-thi → 'Tệp đề gốc' sáng; href các tab là đường gia sư", (() => { const g = contentTabsFor("/lop-cua-toi/de-thi/ngan-hang-de-thi")!; return g.tabs.find(t => t.active)?.label === "Tệp đề gốc" && g.tabs.every(t => t.href.startsWith("/lop-cua-toi/de-thi")); })());
-const ql = contentTabsFor("/lop-cua-toi/quan-lop/toan-9");
-check("GS-LOP-GON: /lop-cua-toi/quan-lop/toan-9 (gốc trần) → nhóm Quản lớp 6 tab đúng thứ tự Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt; KHÔNG tab nào sáng (gốc trần đã 307 sang Giáo trình)", ql?.label === "Quản lớp" && ql.tabs.map(t => t.label).join(" · ") === "Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt" && ql.tabs.filter(t => t.active).length === 0, ql);
-check("href: Giáo trình / Học sinh / Điểm danh / Lịch học trỏ trang con; Bài tập ?tab=chuong-bai; Cài đặt ?tab=cai-dat", ql?.tabs[0].href === "/lop-cua-toi/quan-lop/toan-9/giao-trinh" && ql.tabs[1].href === "/lop-cua-toi/quan-lop/toan-9/hoc-vien" && ql.tabs[2].href === "/lop-cua-toi/quan-lop/toan-9/diem-danh" && ql.tabs[3].href === "/lop-cua-toi/quan-lop/toan-9?tab=chuong-bai" && ql.tabs[4].href === "/lop-cua-toi/quan-lop/toan-9/lich-hoc" && ql.tabs[5].href === "/lop-cua-toi/quan-lop/toan-9?tab=cai-dat");
-check("?tab=cai-dat → 'Cài đặt' sáng, chỉ một tab", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "cai-dat")?.tabs.filter(t => t.active).map(t => t.label).join() === "Cài đặt");
-check("?tab=lich-hoc → 'Lịch học' sáng, chỉ một tab sáng", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "lich-hoc")?.tabs.filter(t => t.active).map(t => t.label).join() === "Lịch học");
-check("?tab=hoc-vien (liên kết cũ 'Học viên đăng ký') → tab 'Học sinh' sáng", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "hoc-vien")?.tabs.filter(t => t.active).map(t => t.label).join() === "Học sinh");
-check("?tab=rác → KHÔNG tab nào sáng (không còn 'về Cài đặt' mặc định)", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "xyz")?.tabs.filter(t => t.active).length === 0);
-check("/hoc-vien → 'Học sinh' sáng; /diem-danh và /diem-danh/in → 'Điểm danh' sáng", contentTabsFor("/lop-cua-toi/quan-lop/toan-9/hoc-vien")?.tabs.find(t => t.active)?.label === "Học sinh" && contentTabsFor("/lop-cua-toi/quan-lop/toan-9/diem-danh")?.tabs.find(t => t.active)?.label === "Điểm danh" && contentTabsFor("/lop-cua-toi/quan-lop/toan-9/diem-danh/in", "cai-dat")?.tabs.filter(t => t.active).map(t => t.label).join() === "Điểm danh");
-check("BU-02: /giao-trinh → 'Giáo trình' sáng và CHỈ một tab sáng (Bài tập KHÔNG sáng theo)", contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh")?.tabs.filter(t => t.active).map(t => t.label).join() === "Giáo trình");
-check("BU-02: /giao-trinh/xem/<bài> (Xem như học sinh) vẫn sáng 'Giáo trình', kể cả khi có ?tab= lạ", contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh/xem/l-123")?.tabs.filter(t => t.active).map(t => t.label).join() === "Giáo trình" && contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh", "chuong-bai")?.tabs.filter(t => t.active).map(t => t.label).join() === "Giáo trình");
-check("GS-LOP-GON: ?tab=chuong-bai → nhãn 'Bài tập' (đổi từ 'Bài tập tự nộp'), sáng với ?tab=chuong-bai", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "chuong-bai")?.tabs.filter(t => t.active).map(t => t.label).join() === "Bài tập");
-check("BU-02: /giao-trinh-khac (tiền tố giả) KHÔNG làm sáng Giáo trình", !contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh-khac")?.tabs.some(t => t.active && t.label === "Giáo trình"));
-check("BU-02: tao-moi vẫn không có dải tab", contentTabsFor("/lop-cua-toi/quan-lop/tao-moi/giao-trinh") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null);
-check("GS-LOP-GON: đồng giảng / bộ môn (tham số vai) → chỉ 'Giáo trình · Lịch học'", contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh", null, "co_teacher")?.tabs.map(t => t.label).join(" · ") === "Giáo trình · Lịch học" && contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh", null, "subject_teacher")?.tabs.length === 2 && contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh", null, "owner")?.tabs.length === 6);
-check("danh sách lớp, tao-moi, trang khác → không dải tab", contentTabsFor("/lop-cua-toi/quan-lop") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null && contentTabsFor("/lop-cua-toi/lich") === null && contentTabsFor("/admin/thi-thu") === null);
 
-section("TUT-lich-keo-tha — tab Lịch học là trang khung giờ kéo-thả");
-const lh = contentTabsFor("/lop-cua-toi/quan-lop/toan-9/lich-hoc");
-check("/quan-lop/<id>/lich-hoc → nhóm Quản lớp, chỉ 'Lịch học' sáng", lh?.label === "Quản lớp" && lh.tabs.filter(t => t.active).map(t => t.label).join() === "Lịch học", lh);
-check("tab 'Lịch học' trỏ trang /lich-hoc của đúng lớp (không còn ?tab=lich-hoc)", contentTabsFor("/lop-cua-toi/quan-lop/toan-9")?.tabs.find(t => t.label === "Lịch học")?.href === "/lop-cua-toi/quan-lop/toan-9/lich-hoc");
-check("liên kết cũ ?tab=lich-hoc vẫn làm sáng 'Lịch học'", contentTabsFor("/lop-cua-toi/quan-lop/toan-9", "lich-hoc")?.tabs.filter(t => t.active).map(t => t.label).join() === "Lịch học");
+section("LOI-02 A2 — dải 4 tab của chủ lớp");
+const Q = "/lop-cua-toi/quan-lop/toan-9";
+const lit = (p: string, tab: string | null = null, role: Parameters<typeof contentTabsFor>[2] = null) => contentTabsFor(p, tab, role)?.tabs.filter(t => t.active).map(t => t.label).join(",") ?? "<null>";
+const ql = contentTabsFor(Q);
+check("gốc trần → nhóm 'Quản lớp', ĐÚNG 4 tab theo thứ tự Bài học · Học sinh · Điểm danh · Cài đặt", ql?.label === "Quản lớp" && ql.tabs.map(t => t.label).join(" · ") === "Bài học · Học sinh · Điểm danh · Cài đặt", ql);
+check("href: Bài học = gốc lớp (không query) · Học sinh /hoc-vien · Điểm danh /diem-danh · Cài đặt ?tab=cai-dat", ql?.tabs.map(t => t.href).join(" ") === `${Q} ${Q}/hoc-vien ${Q}/diem-danh ${Q}?tab=cai-dat`, ql?.tabs.map(t => t.href));
+check("phá: dải KHÔNG còn nhãn 'Giáo trình', 'Lịch học', 'Bài tập' (ở mọi trang của lớp, mọi vai)", [[Q, null], [Q, "chuong-bai"], [Q, "lich-hoc"], [`${Q}/lich-hoc`, null], [`${Q}/giao-trinh`, null], [`${Q}/hoc-vien`, null]].every(([p, t]) => ["owner", "admin", "co_teacher", "subject_teacher", null].every(r => !contentTabsFor(p as string, t, r as any)?.tabs.some(x => ["Giáo trình", "Lịch học", "Bài tập", "Bài tập tự nộp"].includes(x.label)))));
+// Bảng A2 + A4: [đường, ?tab=, tab sáng]
+const rows: [string, string | null, string][] = [
+  [Q, null, "Bài học"],                         // gốc trần
+  [Q, "chuong-bai", "Bài học"],                 // liên kết cũ "Bài tập" — render thẳng, tab Bài học sáng
+  [Q, "giao-trinh", "Bài học"],
+  [Q, "xyz", "Bài học"],                        // ?tab lạ ⇒ thân Bài học
+  [Q, "", "Bài học"],
+  [Q, "cai-dat", "Cài đặt"],
+  [Q, "hoc-vien", "Học sinh"],                  // liên kết cũ (trang chuyển hướng sang /hoc-vien)
+  [Q, "diem-danh", ""],                         // gốc ?tab=diem-danh chỉ là bước chuyển hướng ⇒ không sáng Bài học
+  [Q, "lich-hoc", ""],                          // tab Lịch học đã bỏ ⇒ không tab nào sáng
+  [`${Q}/hoc-vien`, null, "Học sinh"],
+  [`${Q}/hoc-vien/x`, null, "Học sinh"],
+  [`${Q}/diem-danh`, null, "Điểm danh"],
+  [`${Q}/diem-danh/in`, "cai-dat", "Điểm danh"],
+  [`${Q}/giao-trinh`, null, "Bài học"],          // (route 307 về gốc; nếu có vẽ thì vẫn là Bài học)
+  [`${Q}/giao-trinh/xem/l-123`, null, "Bài học"],// "Xem như học sinh"
+  [`${Q}/giao-trinh/xem/l-123`, "cai-dat", "Bài học"],
+  [`${Q}/lich-hoc`, null, ""],                  // mở bằng link: dải vẫn hiện, KHÔNG tab nào sáng
+  [`${Q}/lich-hoc`, "cai-dat", ""],
+  [`${Q}/giao-trinh-khac`, null, ""],           // phá: tiền tố giả
+  [`${Q}/hoc-vienx`, null, ""],
+];
+for (const [p, t, want] of rows) check(`${p.replace(Q, "<lớp>") || "<lớp>"}${t !== null ? `?tab=${t}` : ""} → sáng: ${want || "(không tab nào)"}`, lit(p, t) === want, lit(p, t));
+check("…/lich-hoc: dải VẪN hiện (4 tab) dù không tab nào sáng", contentTabsFor(`${Q}/lich-hoc`)?.tabs.length === 4);
+check("phá: mọi hàng của bảng có nhiều nhất MỘT tab sáng", rows.every(([p, t]) => (contentTabsFor(p, t)?.tabs.filter(x => x.active).length ?? 0) <= 1));
+// Đường của lớp có id ".." luôn là classBase("..") = …/%252E%252E (trình duyệt đã chuẩn hoá "%2E%2E" trước khi tới đây, nên không có pathname đó).
+check("phá: lớp id '..' / '.' (qua classBase) — dải không trỏ ra ngoài quan-lop", ["..", "."].map(id => classBase(id).split("/").pop()!).every(id => contentTabsFor(`/lop-cua-toi/quan-lop/${id}`)?.tabs.every(t => new URL(t.href, "https://x.vn").pathname.startsWith("/lop-cua-toi/quan-lop/"))));
+check("tao-moi, danh sách lớp, trang khác → không dải tab", contentTabsFor("/lop-cua-toi/quan-lop/tao-moi/giao-trinh") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null && contentTabsFor("/lop-cua-toi/quan-lop") === null && contentTabsFor("/lop-cua-toi/lich") === null && contentTabsFor("/admin/thi-thu") === null);
+
+section("LOI-02 A3 — đồng giảng / giáo viên bộ môn chỉ có 'Bài học'");
+for (const r of ["co_teacher", "subject_teacher"] as const) {
+  check(`${r}: dải đúng MỘT tab 'Bài học' trỏ gốc lớp`, contentTabsFor(Q, null, r)?.tabs.map(t => `${t.label}|${t.href}`).join() === `Bài học|${Q}`, contentTabsFor(Q, null, r));
+  check(`${r}: gốc / giao-trinh/xem → 'Bài học' sáng; /lich-hoc (mở bằng link) → không sáng`, lit(Q, null, r) === "Bài học" && lit(`${Q}/giao-trinh/xem/l1`, null, r) === "Bài học" && lit(`${Q}/lich-hoc`, null, r) === "");
+}
+check("owner / admin / không vai → 4 tab", (["owner", "admin", null, undefined] as const).every(r => contentTabsFor(Q, null, r)?.tabs.length === 4));
+
+section("TUT-lich-keo-tha — trang khung giờ kéo-thả vẫn còn (mở bằng link)");
 check("toAdminPath(/lich-hoc) → /admin/khoa-hoc/<id>?tab=lich-hoc; giữ query khác", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc") === "/admin/khoa-hoc/toan-9?tab=lich-hoc" && toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1") === "/admin/khoa-hoc/toan-9?x=1&tab=lich-hoc", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1"));
 check("chiều xuôi không đổi: /admin/khoa-hoc/toan-9?tab=lich-hoc → /quan-lop/toan-9?tab=lich-hoc", toTutorPath("/admin/khoa-hoc/toan-9?tab=lich-hoc") === "/lop-cua-toi/quan-lop/toan-9?tab=lich-hoc");
+check("A4: /admin/khoa-hoc/<id>?tab=chuong-bai (gia sư) → /quan-lop/<id>?tab=chuong-bai (proxy giữ nguyên, trang vẽ Bài học)", toTutorPath("/admin/khoa-hoc/toan-9?tab=chuong-bai") === "/lop-cua-toi/quan-lop/toan-9?tab=chuong-bai" && lit(Q, "chuong-bai") === "Bài học");
 check("phá: tao-moi/danh-muc/đuôi lạ không map: /quan-lop/tao-moi/lich-hoc, /quan-lop/danh-muc/lich-hoc, /quan-lop/a/lich-hoc/x, /quan-lop/a/lich-hocx", ["/lop-cua-toi/quan-lop/tao-moi/lich-hoc", "/lop-cua-toi/quan-lop/danh-muc/lich-hoc", "/lop-cua-toi/quan-lop/a/lich-hoc/x", "/lop-cua-toi/quan-lop/a/lich-hocx"].every(p => toAdminPath(p) === null), ["/lop-cua-toi/quan-lop/tao-moi/lich-hoc", "/lop-cua-toi/quan-lop/a/lich-hoc/x"].map(toAdminPath));
-check("phá: 'Lịch học' KHÔNG sáng ở trang giáo trình", !contentTabsFor("/lop-cua-toi/quan-lop/toan-9/giao-trinh")?.tabs.some(t => t.active && t.label === "Lịch học"));
 
 done();

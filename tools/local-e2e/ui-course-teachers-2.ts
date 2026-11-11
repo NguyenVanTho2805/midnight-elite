@@ -68,7 +68,8 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
       return r.fulfill({ response: res, json: j });
     });
   };
-  const GT = `/lop-cua-toi/quan-lop/${K.id}/giao-trinh`;
+  // LOI-02: tab "Bài học" = gốc lớp. Chủ lớp → cây Chương · Bài (ô "Giao cho" nằm ở hàng chương); đồng giảng / bộ môn → màn Giáo trình như cũ. …/giao-trinh 307 về đây.
+  const GT = `/lop-cua-toi/quan-lop/${K.id}`;
 
   for (const [w, h] of [[1280, 900], [390, 844]] as const) {
     const tag = `${w}px`;

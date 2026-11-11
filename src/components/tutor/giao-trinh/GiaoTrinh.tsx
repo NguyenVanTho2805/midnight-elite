@@ -14,7 +14,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { useKinConfirm } from "@/components/kin/useConfirm";
-import { giaoTrinhHref, contentHref } from "@/lib/tutorRoutes";
+import { contentHref, baiHocHref } from "@/lib/tutorRoutes";
 import { classBase } from "@/lib/tutorClassRoutes";
 import { formatMegabytes } from "@/lib/mediaStorage";
 import { moveEntry, type GtEntry, type GtGroup } from "@/lib/giaoTrinh";
@@ -143,7 +143,7 @@ export default function GiaoTrinh({ courseId, embedded = false, noSchedule = fal
     <>
       <div className="max-md:hidden flex items-center gap-3">
         <KinButton type="button" variant="secondary" aria-expanded={addingGroup} onClick={() => setAddingGroup(a => !a)}>Thêm chương</KinButton>
-        {first && <Link href={`${giaoTrinhHref(courseId, true)}/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
+        {first && <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
       </div>
       <KinButton type="button" variant="secondary" className="md:hidden" aria-expanded={pageMenu} aria-label="Thêm thao tác của trang" onClick={() => setPageMenu(m => !m)}><span aria-hidden>⋯</span></KinButton>
     </>
@@ -166,7 +166,7 @@ export default function GiaoTrinh({ courseId, embedded = false, noSchedule = fal
       {pageMenu && (
         <div data-gt-menu-trang className="md:hidden mb-4 flex flex-col gap-2">
           <KinButton type="button" variant="secondary" onClick={() => { setAddingGroup(true); setPageMenu(false); }}>Thêm chương</KinButton>
-          {first && <Link href={`${giaoTrinhHref(courseId, true)}/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
+          {first && <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${first.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>}
         </div>
       )}
 

@@ -2,7 +2,8 @@
 // Kiểm: 6 tab, chuyên cần 90 ngày, dữ liệu trẻ bị che khi thiếu đồng ý, bật / xem thử / thu hồi link, Đã nghỉ giữ dữ liệu, quyền (gia sư B, học sinh, khách), 390px.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-tutor-student-profile.ts
 import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinPick } from "./ui";
+import { ALERT_LABEL } from "@/lib/tutorStudentView";
 import { prisma } from "@/lib/prisma";
 
 const day = (ago: number) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); return new Date(d.getTime() - ago * 86_400_000); };
@@ -56,11 +57,11 @@ const day = (ago: number) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); 
   const rows = pg.locator("[data-hoc-sinh]");
   check("2 dòng; dòng Bảo: 'Báo cáo: Chưa bật' và cảnh báo còn phiếu (1)", await rows.count() === 2 && await rows.filter({ hasText: "Trần Gia Bảo" }).getByText("Báo cáo: Chưa bật").isVisible() && await rows.filter({ hasText: "Trần Gia Bảo" }).getByText("Còn phiếu chưa đóng đủ (1)").isVisible());
   check("dòng Hà: 'Chưa có phụ huynh liên kết' và 'Vắng liên tiếp 3 buổi'", await rows.filter({ hasText: "Đỗ Hà" }).getByText("Báo cáo: Chưa có phụ huynh liên kết").isVisible() && await rows.filter({ hasText: "Đỗ Hà" }).getByText("Vắng liên tiếp 3 buổi").isVisible());
-  await pg.getByRole("combobox", { name: "Cảnh báo" }).selectOption("absent_streak");
+  await kinPick(pg.getByRole("combobox", { name: "Cảnh báo" }), ALERT_LABEL.absent_streak); // LOI-02: KinSelect
   check("lọc 'Vắng liên tiếp': chỉ Hà", await rows.count() === 1 && await rows.first().getByText("Đỗ Hà").isVisible());
-  await pg.getByRole("combobox", { name: "Cảnh báo" }).selectOption("unpaid");
+  await kinPick(pg.getByRole("combobox", { name: "Cảnh báo" }), ALERT_LABEL.unpaid); // LOI-02: KinSelect
   check("lọc 'Còn phiếu chưa đóng đủ': chỉ Bảo", await rows.count() === 1 && await rows.first().getByText("Trần Gia Bảo").isVisible());
-  await pg.getByRole("combobox", { name: "Cảnh báo" }).selectOption("makeup");
+  await kinPick(pg.getByRole("combobox", { name: "Cảnh báo" }), ALERT_LABEL.makeup); // LOI-02: KinSelect
   check("lọc 'Còn buổi bù': không ai → nói rõ + 'Bỏ lọc'", await pg.getByText("Không có em nào khớp").isVisible());
   await pg.getByRole("button", { name: "Bỏ lọc" }).click();
   check("sau 'Bỏ lọc' đủ 2 dòng", await rows.count() === 2);

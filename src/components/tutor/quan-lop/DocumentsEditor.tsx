@@ -1,17 +1,17 @@
-// GS-LOP-GON — "Tài liệu đính kèm" của ngăn Thêm / Sửa bài học. Trước đây chỉ có ô tên + dán link Drive và dòng "Tải tệp lên: dùng tab Giáo trình (sắp có)".
-// Nay có VÙNG KÉO THẢ thật (Word, PDF, ảnh…; nhiều tệp): thả hoặc "Chọn tệp từ máy" ⇒ tải NGAY (init → gửi byte có tiến trình → complete, cùng đường với ô tải của màn Giáo trình,
-// hook dùng chung upload/useTaiLenTep) ⇒ xong thành một dòng tài liệu của bài (link `/api/media/<mã>/file` trong JSON `documents`, lưu cùng bài; máy chủ gắn tệp vào bài lúc lưu).
-// Dán link Google Drive vẫn còn, là lối phụ. Kho tắt (document.enabled=false) ⇒ hiện nguyên văn lý do, khung thả khoá, vẫn dán link được.
-// VIDEO tệp vẫn bị chặn (chỉ dán link YouTube): KHÔNG đọc config.video, không có đuôi video trong `accept`; thả .mp4 ⇒ lỗi tại chỗ, không có yêu cầu mạng.
+// GS-LOP-GON → LOI-02 (11/11/2026) — "Tài liệu" của panel Thêm / Sửa bài học.
+// Một Ô THẢ TỆP rộng (upload/OThaTep: kéo-thả hoặc "Chọn tệp từ máy", nhiều tệp) ⇒ tải NGAY (init → gửi byte có tiến trình → complete, hook dùng chung upload/useTaiLenTep,
+// tối đa 2 tệp song song, 30 tài liệu/bài, 25 MB/tệp) ⇒ xong thành một dòng tài liệu của bài (link `/api/media/<mã>/file` trong JSON `documents`, máy chủ gắn tệp vào bài lúc lưu).
+// LOI-02 bỏ hộp "Hoặc dán link tài liệu" và dòng hướng dẫn Drive. Tài liệu CŨ dạng link Drive trong JSON vẫn hiện (tên + đường), đổi thứ tự và xoá được. Không đổi hợp đồng Lesson.documents.
+// Kho tắt (document.enabled=false) ⇒ ô thả nói "Kho tệp chưa bật — chủ cần cấu hình." (KHÔNG hiện document.reason — câu đó bảo dán link Drive, lối đã bỏ); panel vẫn lưu được các ô khác.
+// Tệp sai loại / quá cỡ / video ⇒ báo ngay tại hàng, KHÔNG có yêu cầu mạng (routeInput ở trình duyệt). Không đọc config.video.
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DropZone } from "@/components/DropZone";
 import { KinButton } from "@/components/kin/Button";
 import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
-import { checkLinkForSlot } from "@/lib/mediaLink";
 import { MAX_DOCUMENTS_PER_LESSON, formatMegabytes } from "@/lib/mediaStorage";
 import type { GtConfig } from "@/lib/giaoTrinh";
 import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLenTep";
+import { OThaTep, type OThaTrangThai } from "@/components/tutor/upload/OThaTep";
 
 export interface DocItem { name: string; url: string; type?: string }
 
@@ -52,7 +52,7 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   value: string; onChange: (v: string) => void;
   /** Lớp nhận tệp (init chỉ nhận chủ lớp). */
   courseId: string;
-  /** false ⇒ không phải chủ lớp (vd quản trị xem): không có khung thả, vẫn dán link. */
+  /** false ⇒ không phải chủ lớp: ô thả nói "Chỉ chủ lớp tải tệp lên KiN." (tài liệu cũ vẫn sửa thứ tự / xoá được). */
   canUpload: boolean;
   /** Tệp vừa tải xong (mã FileAsset) — nơi bọc dùng để xoá nếu đóng ngăn không Lưu. */
   onAssetUploaded?: (assetId: string) => void;
@@ -62,12 +62,9 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   const docs = parseDocs(value);
   const latest = useRef(value);
   useEffect(() => { latest.current = value; }, [value]);
-  const [newName, setNewName] = useState("");
-  const [newUrl,  setNewUrl]  = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [pledge, setPledge] = useState(false);
   const [cfg, setCfg] = useState<Cfg>({ state: "loading" });
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } }, []);
@@ -114,17 +111,6 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
     if (r.needPledge) setProblem("Hãy tích ô cam kết bản quyền trước khi tải tệp lên.");
   }
 
-  function add() {
-    if (!newName.trim() || !newUrl.trim()) return;
-    if (docs.length + inflight >= MAX_DOCUMENTS_PER_LESSON) { setProblem(`Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.`); return; }
-    const chk = checkLinkForSlot(newUrl, "document");
-    if (!chk.ok) { setProblem(chk.error); return; }
-    setProblem(null);
-    const url = chk.info?.url ?? newUrl.trim();
-    save([...docs, { name: newName.trim(), url, type: detectType(url, newName.trim()) }]);
-    setNewName(""); setNewUrl("");
-  }
-
   function move(i: number, dir: -1 | 1) {
     const j = i + dir;
     if (j < 0 || j >= docs.length) return;
@@ -132,14 +118,14 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   }
   function remove(i: number) { save(docs.filter((_, idx) => idx !== i)); }
 
-  const inp = "px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 bg-[var(--kin-nen-trang)] min-h-11";
   const ready = cfg.state === "ok" && cfg.document.enabled;
+  const zone: OThaTrangThai = !canUpload ? "khong-chu" : cfg.state === "loading" ? "dang-kiem" : cfg.state === "error" ? "loi-kiem" : ready ? "san-sang" : "tat";
   const d = cfg.state === "ok" ? cfg.document : null;
   const accept = ready && d ? d.exts.map(x => "." + x).join(",") : undefined;
 
   return (
     <div data-tai-lieu>
-      <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu đính kèm</p>
+      <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu</p>
 
       {(docs.length > 0 || up.queue.length > 0) && (
         <div className="space-y-2 mb-3">
@@ -182,64 +168,12 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
         </div>
       )}
 
-      {/* Vùng tải tệp lên KiN: 5 trạng thái — đang kiểm / lỗi kiểm / kho tắt / không phải chủ lớp / sẵn sàng. */}
-      {!canUpload ? (
-        <div data-tai-lieu-khung="khong-chu" className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-center mb-3" style={{ color: "var(--kin-chu-mo)" }}>
-          Chỉ chủ lớp tải tệp lên KiN. Bạn vẫn dán link được.
-        </div>
-      ) : cfg.state === "loading" ? (
-        <div data-tai-lieu-khung="dang-kiem" role="status" aria-busy className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-center mb-3" style={{ color: "var(--kin-chu-mo)" }}>Đang kiểm kho tệp…</div>
-      ) : cfg.state === "error" ? (
-        <div data-tai-lieu-khung="loi" role="alert" className="rounded-xl border border-dashed p-4 text-sm text-center mb-3 flex flex-col items-center gap-2" style={{ borderColor: "var(--kin-tt-chu-loi)", color: "var(--kin-tt-chu-loi)" }}>
-          <span>Chưa kiểm được kho tệp. Cô vẫn dán link được.</span>
-          <KinButton type="button" variant="secondary" onClick={loadCfg}>Thử lại</KinButton>
-        </div>
-      ) : !ready ? (
-        <div data-tai-lieu-khung="tat" className="rounded-xl border border-dashed border-gray-300 p-4 text-sm text-center mb-3" style={{ color: "var(--kin-chu-mo)", background: "var(--kin-nen-bang)" }}>
-          <p data-tai-lieu-ly-do>{d?.reason ?? "Tải tệp lên KiN chưa bật."}</p>
-          <p className="mt-1 text-xs">Cô vẫn dán link Google Drive ở dưới được.</p>
-        </div>
-      ) : (
-        <DropZone onFiles={onFiles} className="rounded-xl mb-3">
-          <div data-tai-lieu-khung="san-sang" data-tai-lieu-tha className="rounded-xl border border-dashed p-4 text-center" style={{ borderColor: "var(--kin-vien-o-nhap)" }}>
-            <p className="text-sm font-semibold text-gray-700">Kéo thả tệp Word, PDF hoặc ảnh vào đây</p>
-            <p className="mt-1 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
-              {d!.exts.map(x => x.toUpperCase()).join(", ")} · tối đa {formatMegabytes(d!.maxBytes)} mỗi tệp · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài
-            </p>
-            <input ref={fileRef} type="file" multiple accept={accept} className="hidden" aria-label="Chọn tệp tài liệu từ máy"
-              onChange={e => { const l = e.target.files; if (l) onFiles(l); e.target.value = ""; }} />
-            <KinButton type="button" variant="secondary" className="mt-3" onClick={() => fileRef.current?.click()}>Chọn tệp từ máy</KinButton>
-            <label className="mt-3 flex items-start gap-3 min-h-11 py-2 text-left text-xs leading-5 cursor-pointer" style={{ color: "var(--kin-chu-chinh)" }}>
-              <input type="checkbox" data-tai-lieu-cam-ket checked={pledge} onChange={e => setPledgeSaved(e.target.checked)} className="mt-0.5 w-5 h-5 flex-shrink-0" />
-              <span>{COPYRIGHT_PLEDGE_LABEL}</span>
-            </label>
-            <p data-tai-lieu-nhac className="text-xs text-left" style={{ color: "var(--kin-chu-mo)" }}>Tệp sẽ hiện cho học sinh của lớp ngay khi bài được lưu.</p>
-          </div>
-        </DropZone>
-      )}
+      {/* Ô thả: đang kiểm / lỗi kiểm / kho tắt / không phải chủ lớp / sẵn sàng (+ kéo vào). */}
+      <OThaTep state={zone} onFiles={onFiles} onRetry={loadCfg} accept={accept} pledge={pledge} onPledgeChange={setPledgeSaved}
+        hint={ready && d ? `${d.exts.map(x => x.toUpperCase()).join(", ")} · tối đa ${formatMegabytes(d.maxBytes)} mỗi tệp · tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài` : undefined} />
 
-      <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
-        <p className="text-xs font-semibold" style={{ color: "var(--kin-chu-mo)" }}>Hoặc dán link tài liệu</p>
-        <input className={inp + " w-full"} placeholder="Tên tài liệu (VD: File Lý thuyết, File BTVN...)"
-          value={newName} onChange={e => setNewName(e.target.value)} />
-
-        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-          <input className={inp + " flex-1 min-w-0 w-full"} placeholder="Dán link Google Drive..."
-            value={newUrl} onChange={e => setNewUrl(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && add()} />
-          <button type="button" onClick={add} disabled={!newName.trim() || !newUrl.trim()}
-            className="px-4 min-h-11 rounded-lg text-xs font-semibold text-white disabled:opacity-40 flex-shrink-0"
-            style={{ background: "var(--kin-nhan-nen)" }}>
-            + Thêm link
-          </button>
-        </div>
-      </div>
-
-      <p className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>
-        Link Google Drive: chia sẻ &quot;Bất kỳ ai có liên kết&quot; · tối đa {MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài. Video: chỉ dán link YouTube.
-      </p>
       {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
-      <p data-copyright-notice className="text-xs mt-2" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
+      <p data-copyright-notice className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
       {problem && <p role="status" data-loi className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && up.queue.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
