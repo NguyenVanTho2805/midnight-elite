@@ -8,6 +8,7 @@
 //   - Gia sư
 //   - Phụ huynh
 import Link from "next/link";
+import { visibleLinks } from "@/lib/features";
 
 type Section = {
   role: string;
@@ -16,7 +17,8 @@ type Section = {
   entries: Array<{ href: string; label: string; note: string; external?: boolean }>;
 };
 
-const SECTIONS: Section[] = [
+// LOI-01 (11/11/2026): mục dẫn vào phần đang ẩn (Lịch, Thư viện chung, Cộng đồng… — src/lib/features.ts) bị lọc ở `SECTIONS` bên dưới.
+const SECTIONS_ALL: Section[] = [
   {
     role: "Mọi người (chưa cần đăng nhập)",
     roleNote: "Nhìn qua trước khi quyết",
@@ -67,6 +69,7 @@ const SECTIONS: Section[] = [
     ],
   },
 ];
+const SECTIONS: Section[] = SECTIONS_ALL.map(sec => ({ ...sec, entries: visibleLinks(sec.entries) })).filter(sec => sec.entries.length > 0);
 
 export default function BanDoPage() {
   return (

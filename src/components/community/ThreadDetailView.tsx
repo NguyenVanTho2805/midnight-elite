@@ -11,6 +11,7 @@ import type { ReplyNode, ThreadDetail } from "@/lib/communityTypes";
 import { ActionRow, type ActionItem } from "./ActionRow";
 import { AuthorLine } from "./AuthorLine";
 import { CommunityFrame } from "./CommunityFrame";
+import "./community.css";
 import { ClipIcon } from "./Icons";
 import { MediaGrid } from "./MediaGrid";
 import { ReplyForm, ReplyTree } from "./ReplyTree";
@@ -24,15 +25,27 @@ function mapNode(list: ReplyNode[], id: string, fn: (n: ReplyNode) => ReplyNode)
 }
 function countAll(list: ReplyNode[]): number { return list.reduce((a, n) => a + 1 + n.children.length, 0); }
 
-export function ThreadDetailView({ id }: { id: string }) {
+// LOI-01: `bare` = bảng tin cộng đồng đang ẩn, chỉ còn câu hỏi trong lớp — không khung Cộng đồng (thanh trái / cột phải dẫn vào bảng tin), nút quay lại là `backHref`.
+type Back = { href: string; label: string };
+const COMMUNITY_BACK: Back = { href: "/cong-dong", label: "Cộng đồng" };
+
+export function ThreadDetailView({ id, bare = false, backHref, backLabel }: { id: string; bare?: boolean; backHref?: string; backLabel?: string }) {
+  const back: Back = backHref ? { href: backHref, label: backLabel ?? "Quay lại" } : COMMUNITY_BACK;
+  if (bare) {
+    return (
+      <div className="kc-root" data-kc-root data-kc-bare>
+        <div className="mx-auto max-w-[680px] min-w-0"><Inner id={id} back={back} /></div>
+      </div>
+    );
+  }
   return (
     <CommunityFrame active={null}>
-      <Inner id={id} />
+      <Inner id={id} back={back} />
     </CommunityFrame>
   );
 }
 
-function Inner({ id }: { id: string }) {
+function Inner({ id, back }: { id: string; back: Back }) {
   const router = useRouter();
   const { user } = useAuth();
   const { ask, dialog } = useKinConfirm();
@@ -132,7 +145,7 @@ function Inner({ id }: { id: string }) {
   }
   if (view.s === "notfound") {
     return <div className="p-4"><KinStateCard as="h1" kicker="Không tìm thấy" title="Không tìm thấy bài viết"
-      actions={<Link href="/cong-dong" className={kinButtonClass("secondary")}>Về Cộng đồng</Link>}>
+      actions={<Link href={back.href} className={kinButtonClass("secondary")}>{back === COMMUNITY_BACK ? "Về Cộng đồng" : back.label}</Link>}>
       Bài viết có thể đã bị xoá, đang chờ duyệt hoặc không còn trong phạm vi bạn xem được.</KinStateCard></div>;
   }
   if (view.s === "error") {
@@ -150,7 +163,7 @@ function Inner({ id }: { id: string }) {
     <div>
       {dialog}
       <div className="px-4 pt-2">
-        <Link href="/cong-dong" className="kc-focus inline-flex min-h-11 items-center text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-phu)] hover:underline">← Cộng đồng</Link>
+        <Link href={back.href} className="kc-focus inline-flex min-h-11 items-center text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-phu)] hover:underline">← {back.label}</Link>
       </div>
       <article className="kc-card" data-flat data-kc-thread={t.id}>
         <ThreadCol label={t.author.label} line={hasReplies} />

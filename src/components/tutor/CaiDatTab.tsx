@@ -13,6 +13,7 @@ import MucNav from "@/components/tutor/quan-lop/MucNav";
 import QuanLopCourse from "@/components/tutor/quan-lop/QuanLopCourse";
 import { classBase, MUC_CAI_DAT, type MucCaiDat } from "@/lib/tutorClassRoutes";
 import type { ClassSettingsData } from "@/lib/tutorClassPageServer";
+import { featureOn } from "@/lib/features";
 
 const LABEL: Record<MucCaiDat, string> = { "thong-tin": "Thông tin", "hoc-phi": "Học phí", "dong-giang": "Đồng giảng", "cong-dong": "Cộng đồng", "ban-ghi": "Bản ghi" };
 
@@ -46,8 +47,15 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
       {d.muc === "dong-giang" && <GiaoVienLop courseId={d.courseId} viewRole="owner" />}
 
       {d.muc === "cong-dong" && (
-        <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"
-          note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
+        <div className="space-y-[var(--kin-cach-muc)]">
+          {/* LOI-01 (rà soát): bảng tin chung ẩn thì hỏi đáp của lớp mở ở /cong-dong?scope=<mã lớp> (chỉ thành viên lớp và gia sư). */}
+          {!featureOn("CONG_DONG") && (
+            <OpenPage title="Hỏi đáp trong lớp" href={`/cong-dong?scope=${encodeURIComponent(d.courseId)}`} action="Mở hỏi đáp của lớp"
+              note="Câu hỏi học sinh của lớp gửi cho cô. Chỉ thành viên lớp và gia sư thấy; câu chưa trả lời cũng hiện ở Hộp việc." />
+          )}
+          <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"
+            note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
+        </div>
       )}
 
       {d.muc === "ban-ghi" && (

@@ -9,6 +9,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { MODE_LABEL, type TeachingMode } from "@/lib/tutorArea";
 import { jfetch, fmtVnDate } from "@/components/tutor/studentUi";
+import { featureOn } from "@/lib/features";
 
 interface Data {
   status: "new" | "accepted" | "declined" | "closed"; title: string; detail: string; canWithdraw: boolean;
@@ -42,8 +43,13 @@ export default function YeuCauTheoDoi({ token }: { token: string }) {
   if (state === "load") return <p aria-busy="true" className="py-10 text-[var(--kin-chu-mo)]">Đang tải trạng thái yêu cầu…</p>;
   if (state === "404") return (
     <div className="py-10 space-y-3"><h2 className="text-[length:var(--kin-co-tieu-de)] font-medium">Không tìm thấy yêu cầu</h2>
-      <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem gia sư khác trên KiN.</p>
-      <Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem danh sách gia sư</Link></div>
+      {featureOn("TIM_GIA_SU") ? <>
+        <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem gia sư khác trên KiN.</p>
+        <Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem danh sách gia sư</Link>
+      </> : <>
+        <p className="text-[var(--kin-chu-mo)]">Link có thể sai hoặc yêu cầu không còn. Anh/chị có thể xem các lớp đang mở trên KiN.</p>
+        <Link href="/khoa-hoc" className={kinButtonClass("secondary")}>Xem lớp đang mở</Link>
+      </>}</div>
   );
   if (state === "err" || !d) return (
     <div role="alert" className="py-10 space-y-3"><p className="text-[var(--kin-tt-chu-loi)]">Không tải được trạng thái yêu cầu.</p>

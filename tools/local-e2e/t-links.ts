@@ -37,7 +37,8 @@ const expandTernary = (str: string): string[] => {
   const STR = /(["'`])(\/[A-Za-z0-9\-_/${}.?=&#:%,\[\]+*]*)\1/g;
   const norm = (p: string) => p.split("#")[0].split("?")[0].replace(/\$\{[^}]*\}/g, "*").replace(/\/+$/, "").split("/").filter(Boolean);
   // Tiền tố / bản mẫu không phải liên kết: proxy.ts (so sánh tiền tố), StudentShell (`also` = tiền tố module).
-  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts"]); // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết
+  // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết. features.ts (LOI-01): bản đồ TIỀN TỐ đường dẫn → cờ ("/mentor" khớp /mentor/<id>, "/vinh-danh" giữ chỗ cho route chưa có).
+  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts", "src/lib/features.ts"]);
   const IGNORE_PATH = new Set(["/student/bai-giang"]);
   const badPages: string[] = [];
   let nLinks = 0;

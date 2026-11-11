@@ -1,5 +1,7 @@
 // Trang chủ "/" (BU-HS-TRANG-CHU): khối nào hiện cho ai, thanh trên có mục nào, và đường về Trang chủ từ khu học sinh. THUẦN: không prisma, không next, không react.
 // Test: tools/local-e2e/t-home-layout-lib.ts, t-nav-home-lib.ts. Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-TRANG-CHU.md mục 4.1.
+// LOI-01 (11/11/2026): mục / khối dẫn vào phần đang ẩn (src/lib/features.ts) bị bỏ ở đây — Cộng đồng, Tin tức trên thanh trên; khối bảng tin, tính điểm ở thân trang.
+import { featureOn, visibleLinks, type FeatureEnv } from "@/lib/features";
 //
 // Trang chủ là trang TĨNH (không đọc cookie ở máy chủ): HTML ban đầu luôn là bản của khách, rồi các khối máy khách tự quyết theo `useAuth()`.
 // Vì vậy `loading` (chưa biết là ai) phải giống khách NHƯNG không được hiện "Lớp của tôi" (tránh nháy khối cho khách) và không hiện nút đăng ký cuối trang.
@@ -31,19 +33,20 @@ export interface HomeFlags { quiz: boolean }
 
 export interface HomeBlocks {
   myClass: boolean;   // "Lớp của tôi": chỉ học sinh thường
-  community: true;    // bảng tin: mọi người, mọi vai
-  quiz: boolean;      // theo cờ, cùng một giá trị cho mọi vai
-  score: true;        // tính điểm thi: mọi người
+  community: boolean; // bảng tin: mọi người, mọi vai — khi phần Cộng đồng đang mở (LOI-01)
+  quiz: boolean;      // theo cờ, cùng một giá trị cho mọi vai; nằm trong khối bảng tin nên ẩn theo nó
+  score: boolean;     // tính điểm thi: mọi người — khi phần Điểm chuẩn đang mở (LOI-01)
   ctaFinal: boolean;  // nút đăng ký cuối trang: khách (và lúc chưa biết) — người đã có tài khoản không cần
 }
 
-export function homeBlocksFor(v: HomeViewer, f: HomeFlags): HomeBlocks {
+export function homeBlocksFor(v: HomeViewer, f: HomeFlags, env?: FeatureEnv): HomeBlocks {
   const kind = v?.kind;
+  const community = featureOn("CONG_DONG", env);
   return {
     myClass: kind === "student",
-    community: true,
-    quiz: f?.quiz === true,
-    score: true,
+    community,
+    quiz: community && f?.quiz === true,
+    score: featureOn("DIEM_CHUAN", env),
     // `loading` KHÔNG hiện ctaFinal theo đặc tả 5.1 ("ẩn CTA cuối khi biết đã đăng nhập"): HTML tĩnh đã có sẵn CTA cho khách, khối này chỉ quyết việc ẨN sau khi biết.
     // Hai điều kiện đều đúng với bảng: khách → true; loading → false (không vẽ thêm gì lúc chưa biết); mọi vai đã đăng nhập → false.
     ctaFinal: kind === "guest",
@@ -53,7 +56,7 @@ export function homeBlocksFor(v: HomeViewer, f: HomeFlags): HomeBlocks {
 export interface HomeNavItem { label: string; href: string }
 
 /** Mục thanh trên của Trang chủ: bốn mục chung cho mọi người; học sinh thường thêm "Lớp của tôi" ở CUỐI. Gia sư chờ duyệt không có lớp để học. */
-export function homeNavFor(v: HomeViewer): HomeNavItem[] {
+export function homeNavFor(v: HomeViewer, env?: FeatureEnv): HomeNavItem[] {
   const items: HomeNavItem[] = [
     { label: "Lớp học", href: "/khoa-hoc" },
     { label: "Thi thử", href: "/thi-thu" },
@@ -61,7 +64,7 @@ export function homeNavFor(v: HomeViewer): HomeNavItem[] {
     { label: "Tin tức", href: "/tin-tuc" },
   ];
   if (v?.kind === "student") items.push({ label: "Lớp của tôi", href: "/student/hoc-tap" });
-  return items;
+  return visibleLinks(items, env);
 }
 
 // ─── Lối về Trang chủ trong khu học sinh (mục 1.3) ───────────────────────────────────────────────────────────────
