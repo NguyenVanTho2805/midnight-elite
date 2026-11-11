@@ -58,7 +58,8 @@ export default async function TutorDashboard({ tutorId, name }: { tutorId: strin
   const now = new Date();
   const todayKey = vnDateKeyOf(now);
   const [d, sched] = await Promise.all([loadTutorDashboard(tutorId), loadTutorSchedule(tutorId, todayKey, addDaysKey(todayKey, 6), now)]);
-  const todo = buildTodoItems(d.todo);
+  // LOI-02 F: "Việc cần làm" đếm cùng nguồn với số đỏ Hộp việc (todoBadgeTotal) — bỏ "consent" (việc chờ PHỤ HUYNH, không phải việc của cô).
+  const todo = buildTodoItems(d.todo).filter(t => t.key !== "consent");
   const todoTotal = todo.reduce((n, t) => n + t.count, 0);
   const anyUrgent = todo.some(t => t.urgent);
   const nowMs = now.getTime();
