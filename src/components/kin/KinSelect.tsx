@@ -3,6 +3,8 @@
 // Bàn phím — đóng: ↓ ↑ Enter Space mở (tô mục đang chọn), gõ chữ chọn mục đầu khớp (so không dấu, như <select>); mở: ↑ ↓ Home End đi, Enter chọn + đóng,
 // Esc đóng + trả tiêu điểm về nút, Tab đóng. Bấm ngoài đóng. > 8 lựa chọn ⇒ ô tìm ở đầu (lọc không dấu, chứa chuỗi). Nút và mỗi mục cao ≥ 44px; danh sách rộng bằng nút,
 // max-height min(320px, 50vh), không rộng quá khung nhìn (390 không tràn). Chỉ token --kin-*, không mã hex. Không xuất qua kin/index.ts (import thẳng tệp này).
+// Tên đọc được của nút = nhãn + giá trị đang chọn: aria-labelledby="<id nhãn> <id span giá trị>" (chỉ có aria-label ⇒ span ẩn giữ nhãn) — trình đọc màn hình
+// đọc "Lớp, Tất cả lớp" thay vì chỉ "Lớp". Không có cả hai (dùng <label htmlFor>) thì giữ nguyên tên theo nhãn của trang.
 // Lưu ý dùng: KHÔNG bọc trong <label> (bấm vào mục trong danh sách sẽ bị nhãn chuyển thành cú bấm vào nút ⇒ mở lại); dùng id + <label htmlFor> hoặc aria-labelledby.
 "use client";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
@@ -33,6 +35,11 @@ export function KinSelect({ value, onChange, options, name, id, disabled, placeh
   const auto = useId();
   const baseId = id ?? `kin-select-${auto.replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const listId = `${baseId}-list`;
+  const valueId = `${baseId}-value`;
+  const labelId = `${baseId}-label`;
+  const ariaLabel = aria["aria-label"], ariaLabelledby = aria["aria-labelledby"];
+  // Nhãn của nút (cũng là nhãn của danh sách): id nhãn bên ngoài, hoặc span ẩn mang aria-label.
+  const nameId = ariaLabelledby ?? (ariaLabel ? labelId : undefined);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1); // chỉ số trong `shown`
   const [query, setQuery] = useState("");
@@ -142,12 +149,13 @@ export function KinSelect({ value, onChange, options, name, id, disabled, placeh
   return (
     <div ref={wrap} data-kin-select className={`relative min-w-0 ${className}`}>
       {name !== undefined && <input type="hidden" name={name} value={value} />}
+      {ariaLabel && !ariaLabelledby && <span id={labelId} hidden>{ariaLabel}</span>}
       <button ref={btn} type="button" id={baseId} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
-        aria-activedescendant={searchable ? undefined : activeId} aria-label={aria["aria-label"]} aria-labelledby={aria["aria-labelledby"]}
+        aria-activedescendant={searchable ? undefined : activeId} aria-labelledby={nameId ? `${nameId} ${valueId}` : undefined}
         disabled={disabled} data-kin-select-nut
         onClick={() => (open ? close(false) : openList())} onKeyDown={e => onKey(e, false)}
         className="flex w-full min-h-[var(--kin-cham-toi-thieu)] items-center justify-between gap-2 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] px-3 text-left text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed disabled:opacity-45">
-        <span className={`min-w-0 flex-1 truncate ${selected ? "" : "text-[var(--kin-chu-mo)]"}`}>{selected ? selected.label : placeholder}</span>
+        <span id={valueId} className={`min-w-0 flex-1 truncate ${selected ? "" : "text-[var(--kin-chu-mo)]"}`}>{selected ? selected.label : placeholder}</span>
         <svg aria-hidden viewBox="0 0 12 12" className={`h-3 w-3 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 4.5 6 8l3.5-3.5" /></svg>
       </button>
       {open && (
@@ -160,7 +168,7 @@ export function KinSelect({ value, onChange, options, name, id, disabled, placeh
                 className="w-full min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-sm)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] px-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)]" />
             </div>
           )}
-          <ul ref={list} id={listId} role="listbox" aria-label={aria["aria-label"]} aria-labelledby={aria["aria-label"] ? undefined : aria["aria-labelledby"] ?? baseId}
+          <ul ref={list} id={listId} role="listbox" aria-labelledby={nameId ?? baseId}
             className="min-h-0 flex-1 overflow-y-auto py-1">
             {shown.map((o, i) => {
               const on = o.value === value;

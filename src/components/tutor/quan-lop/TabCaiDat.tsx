@@ -145,9 +145,9 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
             <input className={inp} value={form.instructor} onChange={e => setForm(f => ({ ...f, instructor: e.target.value }))} />
           </div>
           <div>
-            <label htmlFor="class-category" className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
+            <label id="class-category-nhan" htmlFor="class-category" className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
             {/* LOI-02 (2.G): KinSelect thay <select> gốc. Luôn giữ giá trị hiện tại nếu danh mục chưa tải xong. */}
-            <KinSelect id="class-category" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} placeholder="— Chọn danh mục —"
+            <KinSelect id="class-category" aria-labelledby="class-category-nhan" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} placeholder="— Chọn danh mục —"
               options={[{ value: "", label: "— Chọn danh mục —" }, ...categoryOptions.map(c => ({ value: c, label: c })),
                 ...(form.category && !categoryOptions.includes(form.category) ? [{ value: form.category, label: form.category }] : [])]} />
           </div>
@@ -269,8 +269,8 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
             <p className="text-xs text-gray-400 mt-1">Không thể đặt thấp hơn số học viên đang theo học.</p>
           </div>
           <div>
-            <label htmlFor="class-status" className="block text-xs font-medium text-gray-600 mb-1">Trạng thái nhận học viên</label>
-            <KinSelect id="class-status" value={form.classStatus} onChange={v => setForm(f => ({ ...f, classStatus: v }))}
+            <label id="class-status-nhan" htmlFor="class-status" className="block text-xs font-medium text-gray-600 mb-1">Trạng thái nhận học viên</label>
+            <KinSelect id="class-status" aria-labelledby="class-status-nhan" value={form.classStatus} onChange={v => setForm(f => ({ ...f, classStatus: v }))}
               options={[{ value: "open", label: "Đang nhận học viên" }, { value: "paused", label: "Tạm dừng nhận (có thể mở lại)" }, { value: "closed", label: "Đã đóng lớp" }]} />
             <p className="text-xs text-gray-400 mt-1">Học viên đã vào lớp vẫn học bình thường; chỉ chặn người mới vào.</p>
           </div>

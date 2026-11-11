@@ -258,6 +258,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
       await ps.keyboard.type("toan 8");
       await ps.keyboard.press("Enter");
       check(`${W}: Enter mở, gõ lọc 'toan 8', Enter chọn → nút đọc 'Toán 8', đóng`, (await sel.innerText()).includes("Toán 8") && (await sel.getAttribute("aria-expanded")) === "false");
+      check(`${W}: tên đọc được của nút = nhãn + giá trị ("Lớp Toán 8") — trình đọc màn hình đọc cả lựa chọn đang chọn`, (await ps.getByRole("combobox", { name: "Lớp Toán 8", exact: true }).count()) === 1);
       await sel.click();
       await ps.mouse.click(5, 5);
       check(`${W}: bấm ngoài → đóng`, (await sel.getAttribute("aria-expanded")) === "false");
