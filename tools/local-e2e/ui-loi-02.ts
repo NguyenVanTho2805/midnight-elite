@@ -33,12 +33,13 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await prisma.enrollment.create({ data: { userId: S.id, courseId: A.id, status: "active" } });
   await prisma.section.create({ data: { id: "loi-s", title: "Nội dung lớp", order: 1, courseId: A.id } });
   await prisma.chapter.create({ data: { id: "loi-c", title: "Chương 1: Hàm số", order: 1, sectionId: "loi-s" } });
-  const DRIVE = "https://drive.google.com/file/d/LOI02DRIVECU/view?usp=sharing";
+  const DRIVE = "https://drive.google.com/file/d/1Xq9LoiHaiDriveCuAbcdEfGhIjKlMnO/view?usp=sharing";
   const ZOOM = "https://us02web.zoom.us/j/81234567890?pwd=LoiHai";
   const mkLesson = (id: string, title: string, order: number, o: Record<string, unknown>) =>
     prisma.lesson.create({ data: { id, code: id, title, type: "document", order, chapterId: "loi-c", isLocked: false, ...o } as never });
   await mkLesson("loi-l1", "Bài có Drive cũ", 1, { type: "live", zoomUrl: ZOOM, documents: JSON.stringify([{ name: "Đề cương Drive", url: DRIVE, type: "file" }]), status: "published" });
-  await mkLesson("loi-l2", "Bài soạn nháp", 2, { status: "draft" });
+  // Bài nháp CÓ nội dung (luật G4: bài rỗng không đăng được — publishBlockFor).
+  await mkLesson("loi-l2", "Bài soạn nháp", 2, { status: "draft", documents: JSON.stringify([{ name: "Phiếu nháp", url: "https://drive.google.com/file/d/1Xq9LoiHaiNhapAbcdEfGhIjKlMnOpQr/view?usp=sharing", type: "file" }]) });
   await mkLesson("loi-l3", "Bài đổi trạng thái lỗi", 3, { status: "published" });
   await prisma.section.create({ data: { id: "loi-sb", title: "Phần của thầy Bình", order: 1, courseId: B.id } });
 
@@ -161,11 +162,10 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("panel không có ô 'Link phòng Zoom'", !panelText.includes("Link phòng Zoom") && (await pg.getByPlaceholder("https://zoom.us/j/...").count()) === 0);
   check("panel không có ô 'Dán link Google Drive' / 'Hoặc dán link tài liệu'", (await pg.getByPlaceholder(/Dán link Google Drive/).count()) === 0 && !panelText.includes("Hoặc dán link tài liệu"));
   check("bài có Zoom cũ: dòng chỉ đọc 'Bài này có link phòng Zoom cũ — học sinh vẫn thấy.'", (await pg.locator("[data-zoom-cu]").innerText()).includes("Bài này có link phòng Zoom cũ — học sinh vẫn thấy."));
-  check("thứ tự khối: Tên → Ngày học → Trạng thái → Tài liệu → Thêm link → Ghi chú → Xem như học sinh", await pg.evaluate(() => {
-    const y = (sel: string) => document.querySelector(sel)?.getBoundingClientRect().top ?? -1;
-    const order = [y("#ls-ten"), y("[data-ngay-hoc]"), y("#ls-trang-thai"), y("[data-tai-lieu]"), y("[data-them-link]"), y("#ls-ghi-chu"), y("[data-xem-nhu-hoc-sinh]")];
+  check("thứ tự khối: Tên → Ngày học → Trạng thái → Tài liệu → Thêm link → Ghi chú → Xem như học sinh", await pg.evaluate(`(() => {
+    const order = ["#ls-ten", "[data-ngay-hoc]", "#ls-trang-thai", "[data-tai-lieu]", "[data-them-link]", "#ls-ghi-chu", "[data-xem-nhu-hoc-sinh]"].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().top : -1; });
     return order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1]));
-  }));
+  })()`));
   check("'Xem như học sinh ↗' trỏ …/giao-trinh/xem/<id>", (await pg.locator("[data-xem-nhu-hoc-sinh]").getAttribute("href")) === `${base(A.id)}/giao-trinh/xem/loi-l1`);
   check("tài liệu cũ dạng link Drive vẫn hiện (tên + đường)", (await pg.locator("[data-tai-lieu-hang]").count()) === 1 && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("Đề cương Drive") && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("drive.google.com"));
   await pg.getByRole("button", { name: 'Bỏ "Đề cương Drive"' }).click();
@@ -234,7 +234,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   section("6. Sửa nhanh · 1600: đổi tên + ngày (Enter) → tải lại thấy chip đúng giờ VN");
   await pg.goto(`${BASE}${base(A.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await lessonRow(pg, "Bài soạn nháp").waitFor({ timeout: 120000 });
-  await lessonRow(pg, "Bài soạn nháp").getByRole("button", { name: "Sửa nhanh" }).click();
+  await lessonRow(pg, "Bài soạn nháp").getByRole("button", { name: "Sửa nhanh", exact: true }).click();
   const qf = pg.locator('[data-sua-nhanh="sua"]');
   await qf.waitFor({ timeout: 10000 });
   await qf.getByLabel("Tên bài").fill("Buổi 2 — đổi tên");
@@ -279,7 +279,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("bấm chuột chọn 'Đã đăng' → đóng, hiện 'Đã đăng'", (await sel.innerText()).includes("Đã đăng") && (await sel.getAttribute("aria-expanded")) === "false");
   const p0 = net.patchStatus;
   await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
-  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 });
+  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 })
+    .catch(async e => { console.log("  · panel còn mở:", await pg.locator("[data-trang-thai-loi], [data-panel-loi]").allInnerTexts()); throw e; });
   let st = "";
   for (let k = 0; k < 20 && st !== "published"; k++) { await sleep(300); st = (await prisma.lesson.findUnique({ where: { id: "loi-l2" } }))?.status ?? ""; }
   check("Lưu → đổi trạng thái qua PATCH …/giao-trinh/trang-thai (DB = published), chip Nháp biến mất", st === "published" && net.patchStatus === p0 + 1 && (await lessonRow(pg, "Buổi 2 — đổi tên").locator("[data-bai-trang-thai]").count()) === 0, { st, patch: net.patchStatus - p0 });
@@ -319,7 +320,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const pm = await cm.newPage(); watch(pm);
   await pm.goto(`${BASE}${base(A.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await lessonRow(pm, "Buổi 2 — đổi tên").waitFor({ timeout: 120000 });
-  await lessonRow(pm, "Buổi 2 — đổi tên").getByRole("button", { name: "Sửa nhanh" }).click();
+  await lessonRow(pm, "Buổi 2 — đổi tên").getByRole("button", { name: "Sửa nhanh", exact: true }).click();
   await pm.locator('[data-sua-nhanh="sua"]').waitFor({ timeout: 10000 });
   check("390: form Sửa nhanh không tràn ngang", await noOverflow(pm));
   const dY = await pm.locator('[data-sua-nhanh="sua"]').evaluate(f => { const t = f.querySelector('input[type="date"]')!.getBoundingClientRect(), g = f.querySelector('input[type="time"]')!.getBoundingClientRect(); return Math.abs(t.top - g.top); });
