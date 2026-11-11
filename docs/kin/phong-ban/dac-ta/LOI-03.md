@@ -310,3 +310,8 @@ Thư viện (thẻ, ảnh bìa/khối màu, nhãn chữ, vòng %, "Học tiếp 
 - **Q2:** KHÔNG lọc `Course.status`. Phiếu giao COO chỉ nói "bài nháp/ẩn (status ≠ published) không hiện" — "ẩn" là của BÀI. Lớp riêng (`Course.status=false`) vẫn có học sinh học, bài hôm nay của các em phải hiện. Kiểm quyền = enrollment active của chính em + `Lesson.status = "published"`.
 - **Q3:** chấp nhận trong đợt này; ghi vào gói phát hành cho COO quyết (tut-code nếu muốn chặn).
 - **Q4:** stu-dev sửa đúng hai chỗ nhánh học sinh; trưởng phòng ghi vào gói phát hành để COO báo pb-gia-su (nhánh LOI-02).
+
+## Bổ sung theo COO (11/11/2026, sau khi giao)
+
+- Nhánh LOI-01 (`claude/loi-an-bang-co`) gộp vào main trước, thêm liên kết "Hỏi gia sư trong lớp →" (`/cong-dong?scope=<courseId>`, `data-hoi-trong-lop`, ≥44px, chỉ học sinh đang học lớp, khi `!featureOn("CONG_DONG")`) — lối duy nhất để học sinh hỏi gia sư khi bảng tin chung ẩn. COO yêu cầu trang lớp mới chừa chỗ: liên kết nằm trong thẻ tiến độ `[data-course-hero]` (cột phải 1600, trên dải tab 390), vẽ vô điều kiện cờ, có `TODO(LOI-01)`; COO bọc cờ khi ghép, chỉ giữ MỘT liên kết. Khối "Tự học" đã bỏ khỏi trang lớp — đúng với LOI-01.
+- Rà soát lượt 1 (P2): khối cảnh báo trẻ em của ô nộp tệp phải đứng TRƯỚC danh sách tệp và nút Nộp (như cũ).
