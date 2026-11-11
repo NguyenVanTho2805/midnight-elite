@@ -209,6 +209,8 @@ model Lesson {
   assignments    Assignment[]
   // BU-02-PHẲNG: "draft" | "published" | "hidden". Mặc định "published" ⇒ mọi bài cũ vẫn hiện. Chuỗi, không enum.
   status         String           @default("published")
+  // LOI-0111: ngày giờ học của bài (gia sư ghi ở màn sửa bài). Null = bài không gắn ngày. Dùng cho phiếu "Hôm nay có lớp" của học sinh.
+  scheduledAt    DateTime?
 
   @@map("lessons")
 }
