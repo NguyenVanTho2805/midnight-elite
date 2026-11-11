@@ -4,7 +4,8 @@
 // "Lịch học" và không tab nào sáng; panel không có "Link phòng Zoom", không có ô "Dán link Google Drive"; bài cũ có link Drive vẫn hiện và XOÁ được, link Zoom cũ còn nguyên
 // trong DB (không gửi khoá zoomUrl); thả 2 tệp có % ; .exe và tệp 26 MB báo lỗi NGAY (0 yêu cầu /init cho chúng); kho tắt (ép /api/media/config) → "Kho tệp chưa bật — chủ cần
 // cấu hình.", trang không lỗi; chip "Nháp · học sinh chưa thấy"; Sửa nhanh đổi tên + ngày (Enter) → tải lại thấy chip đúng giờ VN, DB đúng ISO; KinSelect bằng bàn phím
-// (↓ Enter, Esc trả tiêu điểm, gõ chữ không dấu); đổi trạng thái lỗi → giữ phần đã lưu, báo riêng; lớp rỗng → "Tạo chương đầu tiên" → thêm bài ngay trong cây;
+// (↓ Enter, Esc trả tiêu điểm, gõ chữ không dấu); đổi trạng thái lỗi → giữ phần đã lưu, báo riêng; bài mới chỉ Đã đăng · Nháp (Nháp đi trong POST, không PATCH);
+// nhân bản bài Nháp / chương có bài Nháp · Ẩn ⇒ bản sao Nháp; lớp rỗng → "Tạo chương đầu tiên" → thêm bài ngay trong cây;
 // 390: không cuộn ngang ở cây / Sửa nhanh / panel, nút ≥ 44px. Phá: gia sư B mở lớp của A → "Bạn không có quyền với lớp này" (không tên lớp A); lớp không có →
 // "Không tìm thấy lớp"; gia sư chờ duyệt mở gốc lớp và …/giao-trinh → /lop-cua-toi/cho-duyet.
 // Chạy: TZ=Asia/Ho_Chi_Minh; source tools/local-e2e/env.sh && SHOTS=<thư mục ảnh> npx tsx tools/local-e2e/ui-loi-02.ts   (máy chủ thử ở BASE, DB riêng — bài gọi wipe()).
@@ -72,7 +73,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const base = (id: string) => `/lop-cua-toi/quan-lop/${id}`;
   const lessonRow = (pg: any, title: string) => pg.locator("[data-bai]", { hasText: title }).first();
   const openDetail = async (pg: any, title: string) => {
-    await pg.getByRole("button", { name: `Chi tiết bài ${title}` }).click();
+    await pg.getByRole("button", { name: `Chi tiết bài ${title}` }).first().click(); // 7b nhân bản chương ⇒ tên bài lặp ở chương bản sao
     await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ timeout: 30000 });
     await pg.waitForTimeout(450); // panel trượt vào 0,28s
   };
@@ -296,6 +297,59 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("…phần đã lưu GIỮ (ghi chú mới trong DB), trạng thái vẫn published", l3?.adminNote === "Ghi chú mới đã lưu" && l3?.status === "published", { note: l3?.adminNote, st: l3?.status });
   await pg.unroute("**/giao-trinh/trang-thai");
   await closePanel(pg);
+
+  // ── 7b. Bài mới: chỉ Đã đăng · Nháp, Nháp gửi thẳng trong POST (không PATCH); nhân bản bài / chương Nháp · Ẩn ⇒ bản sao Nháp ──────────
+  section("7b. Bài mới không có 'Ẩn'; Nháp đi trong POST; nhân bản bài Nháp / chương có bài Nháp · Ẩn ⇒ bản sao Nháp (TRẺ EM)");
+  const posts: { url: string; body: Record<string, unknown> }[] = [];
+  const onReq = (r: any) => { if (r.method() === "POST" && /\/api\/chapters\/[^/]+\/lessons$/.test(new URL(r.url()).pathname)) posts.push({ url: r.url(), body: JSON.parse(r.postData() || "{}") }); };
+  pg.on("request", onReq);
+  await pg.locator("[data-them-bai]").first().click();
+  const qn = pg.locator('[data-sua-nhanh="them"]');
+  await qn.waitFor({ timeout: 10000 });
+  await qn.getByLabel("Tên bài").fill("Bài mới để nháp");
+  await qn.getByRole("button", { name: "Chi tiết…" }).click();
+  await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
+  await pg.waitForTimeout(450);
+  await pg.locator("#ls-trang-thai").click();
+  const addOpts = (await pg.locator('[role="listbox"] [role="option"]').allInnerTexts()).map(t => t.replace("✓", "").trim()); // mục đang chọn có dấu ✓
+  check("panel Thêm bài: ô Trạng thái chỉ có 'Đã đăng' · 'Nháp' (không 'Ẩn')", JSON.stringify(addOpts) === JSON.stringify(["Đã đăng", "Nháp"]), addOpts);
+  check("…có chữ gợi ý 'Bài mới chưa muốn hiện thì chọn Nháp.'", (await pg.locator("[data-goi-y-nhap]").innerText()).trim() === "Bài mới chưa muốn hiện thì chọn Nháp.");
+  await pg.locator('[role="option"]', { hasText: "Nháp" }).click();
+  await shot(pg, "loi-02-them-bai-nhap-1600");
+  const pAdd = net.patchStatus, nPost = posts.length;
+  await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
+  await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 });
+  await lessonRow(pg, "Bài mới để nháp").waitFor({ timeout: 30000 });
+  const ln = await prisma.lesson.findFirst({ where: { title: "Bài mới để nháp" } });
+  check("Lưu bài mới Nháp → POST mang status:'draft', KHÔNG gọi PATCH trạng thái, DB = draft, chip Nháp", ln?.status === "draft" && posts.length === nPost + 1 && posts[nPost].body.status === "draft" && net.patchStatus === pAdd
+    && (await lessonRow(pg, "Bài mới để nháp").locator('[data-bai-trang-thai="draft"]').count()) === 1, { st: ln?.status, post: posts[nPost]?.body.status, patch: net.patchStatus - pAdd });
+
+  await mkLesson("loi-l4", "Bài ẩn để sao", 20, { status: "hidden", documents: JSON.stringify([{ name: "Phiếu ẩn", url: DRIVE, type: "file" }]) });
+  await pg.reload({ waitUntil: "domcontentloaded" });
+  await lessonRow(pg, "Bài ẩn để sao").waitFor({ timeout: 120000 });
+  await pg.getByRole("button", { name: 'Thêm thao tác cho bài "Bài mới để nháp"' }).click();
+  await pg.getByRole("menuitem", { name: "Sao chép bài" }).click();
+  await lessonRow(pg, "Bài mới để nháp (bản sao)").waitFor({ timeout: 30000 });
+  const cp1 = await prisma.lesson.findFirst({ where: { title: "Bài mới để nháp (bản sao)" } });
+  check("nhân bản bài Nháp → bản sao Nháp (DB + chip 'Nháp · học sinh chưa thấy'), POST mang status:'draft'", cp1?.status === "draft"
+    && (await lessonRow(pg, "Bài mới để nháp (bản sao)").locator('[data-bai-trang-thai="draft"]').innerText()).includes("Nháp · học sinh chưa thấy") && posts[posts.length - 1].body.status === "draft", cp1?.status);
+  const src = await prisma.lesson.findMany({ where: { chapterId: "loi-c" }, select: { title: true, status: true } });
+  await pg.getByRole("button", { name: "Sao chép chương" }).first().click();
+  let copies: { title: string; status: string }[] = [];
+  for (let k = 0; k < 60; k++) {
+    await sleep(300);
+    const ch = await prisma.chapter.findFirst({ where: { title: "Chương 1: Hàm số (bản sao)" }, include: { lessons: { select: { title: true, status: true } } } });
+    copies = ch?.lessons ?? [];
+    if (copies.length === src.length) break;
+  }
+  const stOf = (t: string) => copies.find(c => c.title === t)?.status;
+  check("nhân bản chương → đủ bài; bài Nháp → Nháp, bài Ẩn → Nháp, bài Đã đăng → Đã đăng (không bài nào lộ thêm)", copies.length === src.length
+    && src.every(x => stOf(x.title) === (x.status === "published" ? "published" : "draft")), { src, copies });
+  await pg.getByText("Chương 1: Hàm số (bản sao)").first().waitFor({ timeout: 30000 });
+  const chCopy = pg.locator("[data-bai]", { hasText: "Bài ẩn để sao" });
+  check("…cây hiện chip Nháp ở bài sao của bài Ẩn", (await chCopy.count()) === 2 && (await chCopy.nth(1).locator('[data-bai-trang-thai="draft"]').count()) === 1, await chCopy.count());
+  await shot(pg, "loi-02-nhan-ban-nhap-1600");
+  pg.off("request", onReq);
 
   // ── 8. Lớp rỗng → Tạo chương đầu tiên → thêm bài ngay trong cây ─────────────────────────────────────
   section("8. Lớp rỗng: 'Lớp chưa có bài học' → 'Tạo chương đầu tiên' → + bài nhanh");

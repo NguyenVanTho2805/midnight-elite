@@ -6,6 +6,7 @@
 //    Bài có Zoom cũ: một dòng chỉ đọc. Thứ tự khối: Tên → Ngày học → Trạng thái → Khoá / Học thử → Tài liệu (ô thả) → Thêm link (gập) → Zoom cũ → Azota / Bài tập tự nộp → Ghi chú → Xem như học sinh.
 //  - Ngày học (giờ VN): hai ô date + time, "Bỏ ngày"; lưu `scheduledAt` (ISO hoặc null) qua PUT / POST. Nhân bản KHÔNG chép ngày (bài sao là buổi khác).
 //  - Trạng thái (Đã đăng · Nháp · Ẩn) đổi bằng PATCH …/giao-trinh/trang-thai (luật G4), KHÔNG qua PUT bài. Lỗi đổi trạng thái: giữ phần đã lưu, báo riêng.
+//    Bài MỚI chỉ Đã đăng · Nháp, gửi thẳng trong POST (không POST-rồi-PATCH). Nhân bản bài Nháp / Ẩn ⇒ bản sao Nháp.
 //  - Hàng bài: chip CHỮ "Nháp · học sinh chưa thấy" / "Ẩn · học sinh không thấy" (TRẺ EM), chip ngày bấm được, "Sửa nhanh" (tên + ngày + giờ ngay trong hàng, Enter lưu, Esc huỷ),
 //    "Chi tiết…" mở panel. Cuối chương "+ Thêm bài" cùng form một dòng (thêm nhanh = Đã đăng như cây cũ). Lớp rỗng ⇒ "Tạo chương đầu tiên".
 //  - Hàng chương giữ "Giao cho giáo viên" (GiaoChoNhom, TUT-dong-giang) — trước chỉ có ở màn Giáo trình phẳng; chỉ hiện khi lớp có giáo viên bộ môn hoặc chương đã giao.
@@ -228,6 +229,8 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
   }
 
   // Nhân bản: KHÔNG chép scheduledAt (bài sao là buổi khác). Link Zoom cũ được chép theo (giữ nguyên nội dung bài gốc).
+  // TRẺ EM: bài gốc Nháp / Ẩn ⇒ bản sao là Nháp (gửi thẳng trong POST — POST chỉ nhận "draft"), không để bản sao thành Đã đăng cho học sinh thấy ngay.
+  const copyStatus = (l: LessonDB) => (lessonStatusOf(l.status) === "published" ? {} : { status: "draft" as const });
   async function duplicateChapter(sectionId: string, chapterId: string) {
     const sec = sections.find(s => s.id === sectionId)!;
     const ch  = sec.chapters.find(c => c.id === chapterId)!;
@@ -242,6 +245,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           azotaDeadline: l.azotaDeadline, duration: l.duration,
           isLocked: l.isLocked, isFree: l.isFree,
           documents: l.documents, adminNote: l.adminNote,
+          ...copyStatus(l),
         });
         newLessons.push(nl);
       }
@@ -268,6 +272,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
         azotaDeadline: l.azotaDeadline, duration: l.duration,
         isLocked: l.isLocked, isFree: l.isFree,
         documents: l.documents, adminNote: l.adminNote,
+        ...copyStatus(l),
       });
       setSections(p => p.map(s => s.id === sectionId
         ? { ...s, chapters: s.chapters.map(c => c.id === chapterId
@@ -435,21 +440,30 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree, documents, adminNote: ls.adminNote || null,
           scheduledAt: when.iso,
         };
-        let lessonId: string;
-        let from: LessonStatusValue;
         if (panel.type === "add-lesson") {
-          const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, { ...common, ...(ls.status === "draft" ? { status: "draft" } : {}) });
+          // Bài mới: trạng thái đi THẲNG trong POST (Đã đăng / Nháp), KHÔNG PATCH sau — POST-rồi-PATCH sang Ẩn để lộ bài cho học sinh nếu PATCH hỏng.
+          // Ô Trạng thái của bài mới không có "Ẩn" (API chặn Nháp → Ẩn nên cũng không tạo Nháp trước được); muốn chưa hiện thì chọn Nháp.
+          const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, { ...common, ...(ls.status === "published" ? {} : { status: "draft" as const }) });
           addLessonLocal(panel.sectionId, panel.chapterId, lesson);
-          lessonId = lesson.id; from = lessonStatusOf(lesson.status);
+          discardUploads(ls.documentsRaw);
           flash(`Đã thêm bài "${lesson.title}"`);
-        } else {
-          await apiPut(`/api/lessons/${panel.lessonId}`, common);
-          setLessonLocal(panel.sectionId, panel.chapterId, panel.lessonId, {
-            ...common, type: type as LessonDB["type"], scheduledAt: when.iso,
-          });
-          lessonId = panel.lessonId; from = origStatus;
-          flash("Đã cập nhật bài học");
+          if (ls.status !== "published" && lessonStatusOf(lesson.status) !== "draft") {
+            // Máy chủ cũ bỏ qua "draft": báo thật, panel thành "Sửa bài học" để cô thấy bài đang Đã đăng.
+            const got = lessonStatusOf(lesson.status);
+            setStatusNote("Đã lưu bài, chưa đặt được trạng thái Nháp — bài đang Đã đăng. Cô đổi sang Ẩn nếu chưa muốn học sinh thấy.");
+            setOrigStatus(got); setLs(f => ({ ...f, status: got }));
+            setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
+            return;
+          }
+          setPanel({ type: "none" });
+          return;
         }
+        await apiPut(`/api/lessons/${panel.lessonId}`, common);
+        setLessonLocal(panel.sectionId, panel.chapterId, panel.lessonId, {
+          ...common, type: type as LessonDB["type"], scheduledAt: when.iso,
+        });
+        const lessonId = panel.lessonId, from = origStatus;
+        flash("Đã cập nhật bài học");
         // Đã lưu: tệp đã bị bỏ khỏi danh sách trước khi lưu thì xoá, tệp còn trong bài thì giữ.
         discardUploads(ls.documentsRaw);
         if (ls.status !== from) {
@@ -613,7 +627,10 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
     "edit-lesson":    "Sửa bài học",
     none: "",
   }[panel.type];
-  const statusOptions = LESSON_STATUS_OPTIONS.map(o => ({ ...o, disabled: panel.type === "edit-lesson" ? !statusAllowed(origStatus, o.value) : false }));
+  // Bài mới: chỉ Đã đăng · Nháp (không "Ẩn" — xem savePanel). Sửa bài: đủ ba, mục không chuyển được theo luật G4 thì khoá.
+  const statusOptions = panel.type === "add-lesson"
+    ? LESSON_STATUS_OPTIONS.filter(o => o.value !== "hidden")
+    : LESSON_STATUS_OPTIONS.map(o => ({ ...o, disabled: panel.type === "edit-lesson" ? !statusAllowed(origStatus, o.value) : false }));
   const hasOldZoom = ls.zoomUrls.some(u => u.trim());
 
   const totals = { ch: sections.reduce((a, s) => a + s.chapters.length, 0), ls: sections.reduce((a, s) => a + s.chapters.reduce((b, c) => b + c.lessons.length, 0), 0) };
@@ -670,6 +687,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                 {ls.status === "published" ? "Học sinh của lớp thấy bài này." : ls.status === "draft" ? "Nháp · học sinh chưa thấy." : "Ẩn · học sinh không thấy."}
                 {panel.type === "edit-lesson" && origStatus === "published" && " Bài đã đăng không đưa về Nháp được — dùng Ẩn."}
               </p>
+              {panel.type === "add-lesson" && <p data-goi-y-nhap className="mt-0.5 text-xs text-[var(--kin-chu-mo)]">Bài mới chưa muốn hiện thì chọn Nháp.</p>}
             </div>
 
             <DrawerToggle checked={ls.isLocked} onChange={() => setLs(f => ({ ...f, isLocked: !f.isLocked }))} label="Khoá bài (yêu cầu đăng ký)" />
