@@ -221,6 +221,52 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   const btns = await md.getByRole("button").evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && r.height >= 44; }));
   check("hộp nằm gọn trong 390px (rộng ≤ 358) và cả hai nút thấy được, cao ≥ 44px", !!mb && mb.width <= 358 && mb.x >= 16 - 1 && btns.length === 2 && btns.every(Boolean), [mb, btns]);
 
+  // ───────── KinSelect (LOI-02 mục 2.G + 4.4) — chưa có trên /kin-mau (trang mẫu là tệp chung), đo trên ô "Lớp" của trang Học sinh gia sư (10 lớp ⇒ có ô tìm).
+  section("KinSelect · ô 'Lớp' ở /lop-cua-toi/hoc-sinh (1280 + 390)");
+  {
+    const { mkTutor, mkUser, mkCourse } = await import("./h");
+    const { prisma } = await import("@/lib/prisma");
+    const T = await mkTutor("Cô Chọn");
+    const S = await mkUser({ name: "Em Chọn" });
+    const names = ["Toán 6", "Toán 7", "Toán 8", "Toán 9", "Lý 10", "Hoá 11", "Sinh 12", "Văn 9", "Anh 8", "Địa lý 7"];
+    for (const n of names) { const c = await mkCourse(T.id, { name: n }); await prisma.enrollment.create({ data: { userId: S.id, courseId: c.id, status: "active" } }); }
+    for (const [W, H] of [[1280, 900], [390, 844]] as const) {
+      const cs = await ctxFor(T, { width: W, height: H });
+      const ps = await cs.newPage();
+      ps.on("pageerror", e => errors.push(String(e)));
+      await ps.goto(`${BASE}/lop-cua-toi/hoc-sinh`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const sel = ps.getByRole("combobox", { name: "Lớp" });
+      await sel.waitFor({ timeout: 120000 });
+      check(`${W}: KinSelect role=combobox, aria-haspopup=listbox, đóng (aria-expanded=false), cao ≥ 44px`, (await sel.getAttribute("aria-haspopup")) === "listbox" && (await sel.getAttribute("aria-expanded")) === "false" && ((await sel.boundingBox())?.height ?? 0) >= 43.5);
+      await sel.focus();
+      await ps.keyboard.press("ArrowDown");
+      const lb = ps.getByRole("listbox");
+      await lb.waitFor({ timeout: 5000 });
+      check(`${W}: ↓ mở listbox, 11 option (Tất cả lớp + 10 lớp), mục đang chọn aria-selected`, (await lb.getByRole("option").count()) === 11 && (await lb.getByRole("option", { selected: true }).innerText()).includes("Tất cả lớp"));
+      check(`${W}: > 8 lựa chọn ⇒ có ô tìm, tiêu điểm vào ô tìm`, (await ps.getByRole("searchbox", { name: "Tìm lựa chọn" }).count()) === 1 && (await ps.evaluate(() => document.activeElement?.getAttribute("role"))) === "searchbox");
+      const geo = await ps.locator("[data-kin-select-mo]").evaluate(e => { const r = e.getBoundingClientRect(); return { h: r.height, right: r.right, vw: innerWidth, vh: innerHeight }; });
+      check(`${W}: danh sách cao ≤ min(320px, 50vh), không vượt mép phải`, geo.h <= Math.min(320, geo.vh / 2) + 1 && geo.right <= geo.vw, geo);
+      const oh = await lb.getByRole("option").evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+      check(`${W}: mỗi option ≥ 44px`, oh.every(h => h >= 43.5), oh);
+      await ps.keyboard.type("dia ly"); // không dấu
+      check(`${W}: gõ 'dia ly' (không dấu) lọc còn 'Địa lý 7'`, (await lb.getByRole("option").count()) === 1 && (await lb.getByRole("option").innerText()).includes("Địa lý 7"));
+      await ps.keyboard.type("zzz");
+      check(`${W}: không khớp → 'Không có lựa chọn khớp'`, (await ps.getByText("Không có lựa chọn khớp").count()) === 1);
+      await ps.keyboard.press("Escape");
+      check(`${W}: Esc đóng, tiêu điểm về nút`, (await sel.getAttribute("aria-expanded")) === "false" && (await ps.evaluate(() => document.activeElement?.getAttribute("role"))) === "combobox");
+      await ps.keyboard.press("Enter");
+      await ps.keyboard.type("toan 8");
+      await ps.keyboard.press("Enter");
+      check(`${W}: Enter mở, gõ lọc 'toan 8', Enter chọn → nút đọc 'Toán 8', đóng`, (await sel.innerText()).includes("Toán 8") && (await sel.getAttribute("aria-expanded")) === "false");
+      check(`${W}: tên đọc được của nút = nhãn + giá trị ("Lớp Toán 8") — trình đọc màn hình đọc cả lựa chọn đang chọn`, (await ps.getByRole("combobox", { name: "Lớp Toán 8", exact: true }).count()) === 1);
+      await sel.click();
+      await ps.mouse.click(5, 5);
+      check(`${W}: bấm ngoài → đóng`, (await sel.getAttribute("aria-expanded")) === "false");
+      check(`${W}: không tràn ngang`, await ps.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await cs.close();
+    }
+  }
+
   check("không lỗi console/pageerror", errors.length === 0, errors.slice(0, 3));
   await closeAll();
   await done();

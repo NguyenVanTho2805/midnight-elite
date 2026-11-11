@@ -1,4 +1,7 @@
 // BU-02-PHẲNG — màn Giáo trình của gia sư (/lop-cua-toi/quan-lop/<id>/giao-trinh) + "Xem như học sinh", trên trình duyệt thật (1280 + 390, có chụp ảnh).
+// LOI-02 (11/11/2026): tab Giáo trình bỏ — …/giao-trinh 307 về gốc lớp (tab "Bài học"). Màn danh sách phẳng nay CHỈ còn cho ĐỒNG GIẢNG / bộ môn (chủ lớp thấy cây
+// Chương · Bài, kiểm ở ui-loi-02). Bài này chạy màn phẳng bằng vai đồng giảng "Cô Đồng Giảng" ở gốc lớp. Tải tệp lên KiN chỉ của chủ lớp (init 403) ⇒ ca "3 PDF"
+// kiểm 3 hàng báo lỗi quyền, rồi dựng 3 mục Nháp bằng DB để các ca sau giữ nguyên số đếm.
 // Figma: chưa đọc trực tiếp (606:5, 607:218, 607:491) — bài này kiểm hành vi và số đo theo mục 5/6/8.3 của dac-ta/BU-02-PHANG.md, không kiểm giống bản vẽ.
 // Kiểm: ba trạng thái (tải / lỗi giả lập 500 / lớp rỗng), lớp rỗng dán link YouTube ⇒ MỘT mục Nháp và KHÔNG có chữ Phần/Chương, Đăng → Ẩn → Hiện lại → Đưa về Nháp, "Đăng ngay",
 // KHÔNG có giao diện tải video (không ô xác nhận video, không đuôi video trong accept; thả .mp4 ⇒ lỗi tại chỗ, không có yêu cầu mạng; Vimeo ⇒ lỗi "chỉ nhận link YouTube"),
@@ -33,6 +36,7 @@ const seen: Page[] = [];
   const S = await mkUser({ name: "Em Mai" });
   const PEND = await mkUser({ name: "Người nộp đơn" });
   await prisma.user.update({ where: { id: PEND.id }, data: { tutorAppliedAt: new Date() } });
+  const CO = await mkTutor("Cô Đồng Giảng"); // LOI-02: người dùng màn phẳng
 
   // Lớp A: cây CŨ nhiều tầng (Phần Đại số › Chương Hàm số) với đủ ba trạng thái ⇒ hiện thành MỘT nhóm, không mục nào mất.
   const A = await mkCourse(T.id, { name: "Toán 9 Giáo trình" });
@@ -41,6 +45,7 @@ const seen: Page[] = [];
   // Lớp D: cây "chung" (Phần 1 › Chương 1) ⇒ danh sách phẳng, không nhóm.
   const D = await mkCourse(T.id, { name: "Lớp phẳng" });
   await prisma.enrollment.create({ data: { userId: S.id, courseId: A.id, status: "active" } });
+  for (const k of [A, B, D]) await prisma.courseTeacher.create({ data: { courseId: k.id, userId: CO.id, role: "co_teacher", status: "active", subjects: [], invitedBy: T.id, respondedAt: new Date() } });
   const sec = await prisma.section.create({ data: { id: "gt-s", title: "Phần Đại số", order: 1, courseId: A.id } });
   const ch = await prisma.chapter.create({ data: { id: "gt-c", title: "Chương Hàm số", order: 1, sectionId: sec.id } });
   const les = (cid: string) => (id: string, title: string, order: number, o: Record<string, unknown>) =>
@@ -70,7 +75,8 @@ const seen: Page[] = [];
   const errors: string[] = [];
   // 'Encountered a script tag': <script> chủ đề trong src/app/layout.tsx (có sẵn trên main, lỗi React 19, không thuộc BU-02) — nợ riêng, lọc có chủ đích.
   const watch = (p: Page) => { seen.push(p); p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|Encountered a script tag/i.test(m.text())) errors.push(m.text()); }); };
-  const G = (id: string) => `${BASE}/lop-cua-toi/quan-lop/${id}/giao-trinh`;
+  const G = (id: string) => `${BASE}/lop-cua-toi/quan-lop/${id}`; // LOI-02: gốc lớp = tab "Bài học" (đồng giảng thấy màn phẳng)
+  const GX = (id: string) => `${BASE}/lop-cua-toi/quan-lop/${id}/giao-trinh`; // "Xem như học sinh" vẫn ở …/giao-trinh/xem/<id>
   const g1 = "**/api/tutor/lop/*/giao-trinh";
   const row = (p: Page, id: string) => p.locator(`[data-gt-muc][data-gt-id="${id}"]`);
   const chip = async (p: Page, id: string) => await row(p, id).locator("[data-gt-chip-trang-thai]").getAttribute("data-gt-chip-trang-thai");
@@ -78,13 +84,13 @@ const seen: Page[] = [];
   const statusOf = async (id: string) => (await prisma.lesson.findUnique({ where: { id } }))?.status;
   const open = async (p: Page, courseId: string) => {
     await p.goto(G(courseId), { waitUntil: "networkidle", timeout: 120000 });
-    await p.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Giáo trình" }).waitFor({ timeout: 90000 }); // GS-LOP-GON: h1 là TÊN LỚP (đầu lớp một lần); tab Giáo trình sáng thay cho h1 "Giáo trình"
+    await p.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Bài học" }).waitFor({ timeout: 90000 }); // LOI-02: tab "Bài học" (một tab duy nhất của đồng giảng) sáng
     await p.locator("[data-gt-o-tai]").waitFor({ timeout: 60000 });
   };
 
   // ───────── 1280px
   section("Giáo trình — máy tính 1280px: lớp cây cũ hiện thành nhóm, đủ ba trạng thái");
-  const dctx = await ctxFor(T, { width: 1280, height: 900 });
+  const dctx = await ctxFor(CO, { width: 1280, height: 900 });
   const progress: string[] = []; dctx.on("request", r => { if (/\/api\/(progress|lesson-notes)/.test(r.url())) progress.push(r.url()); });
   const pg = await dctx.newPage(); watch(pg);
   const initCalls: string[] = []; pg.on("request", r => { if (/\/api\/media\/(document|video)\/init/.test(r.url())) initCalls.push(r.url()); });
@@ -127,10 +133,10 @@ const seen: Page[] = [];
   await pg.locator("[data-gt-ban-chua-dang]").waitFor({ state: "detached", timeout: 30000 });
   await pg.getByRole("button", { name: "Học sinh đã vào lớp" }).click();
   check("sau khi đăng: băng cam biến mất; góc nhìn 'đã vào lớp' có video", await pg.locator("[data-xem-video]").count() >= 1);
-  await pg.getByRole("link", { name: "← Giáo trình" }).click();
-  await pg.waitForURL(/\/giao-trinh$/, { timeout: 60000 });
+  await pg.getByRole("link", { name: "← Bài học" }).click();
+  await pg.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${A.id}`, { timeout: 60000 });
   const xemBad = await dctx.newPage(); watch(xemBad);
-  await xemBad.goto(`${G(B.id)}/xem/gt-l1`, { waitUntil: "networkidle", timeout: 120000 });
+  await xemBad.goto(`${GX(B.id)}/xem/gt-l1`, { waitUntil: "networkidle", timeout: 120000 });
   check("mở mục của lớp khác qua đường dẫn lạ → 'Không tìm thấy mục này trong lớp của bạn'", await xemBad.getByText("Không tìm thấy mục này trong lớp của bạn").isVisible());
 
   section("Lớp rỗng: ô tải phóng lớn, KHÔNG nhắc Phần/Chương");
@@ -205,14 +211,15 @@ const seen: Page[] = [];
   check(".exe → lỗi ngay tại chỗ, KHÔNG có yêu cầu mạng", await emp.locator('[data-gt-tep="err"]').getByText(/không nhận loại tệp này/).isVisible() && empInit.length === before, empInit);
   await emp.locator('[data-gt-tep="err"]').getByRole("button", { name: /^Đóng/ }).click();
   const countBefore = await emp.locator("[data-gt-muc]").count();
-  await emp.route("**/api/media/document/init", async r => { await sleep(1500); await r.continue(); });
+  // LOI-02: đồng giảng KHÔNG tải tệp lên KiN được (init chỉ nhận chủ lớp ⇒ 403) — mỗi hàng báo lỗi quyền, không tạo mục.
   await fileInput.setInputFiles([1, 2, 3].map(n => ({ name: `bai-tap-${n}.pdf`, mimeType: "application/pdf", buffer: PDF })));
-  await eventually("3 hàng 'Đang tải' hiện cùng lúc (chỉ ở trình duyệt, có nút Huỷ)", async () => (await emp.locator('[data-gt-hang-doi] [data-gt-chip-trang-thai="uploading"]').count()) === 3 && (await emp.getByRole("button", { name: /^Huỷ tải/ }).count()) >= 1, 15000);
-  await eventually("DB: thêm đúng 3 mục Nháp, mỗi mục một tài liệu trỏ /api/media/<mã>/file", async () => {
-    const ls = await prisma.lesson.findMany({ where: { chapter: { section: { courseId: B.id } }, documents: { contains: "/api/media/" } } });
-    return ls.length === 3 && ls.every(l => l.status === "draft");
-  }, 60000);
-  await emp.unroute("**/api/media/document/init"); // gỡ SAU khi mọi yêu cầu đang trễ đã xong (gỡ sớm ⇒ "Route is already handled")
+  await eventually("đồng giảng thả 3 PDF → 3 hàng báo 'Bạn không có quyền với lớp này.' (init 403), không tạo mục", async () =>
+    (await emp.locator('[data-gt-tep="err"]').getByText(/không có quyền/).count()) === 3
+    && (await prisma.lesson.count({ where: { chapter: { section: { courseId: B.id } }, documents: { contains: "/api/media/" } } })) === 0, 30000);
+  for (let k = 0; k < 3; k++) await emp.locator('[data-gt-tep="err"]').first().getByRole("button", { name: /^Đóng/ }).click();
+  // Dựng 3 mục Nháp bằng DB (thay cho tải tệp) để các ca sau giữ nguyên số đếm.
+  for (const n of [1, 2, 3]) await prisma.lesson.create({ data: { id: `gt-b-tep-${n}`, code: `gt-b-tep-${n}`, title: `bai-tap-${n}`, type: "document", order: 100 + n, chapterId: b1.chapterId, status: "draft",
+    documents: JSON.stringify([{ name: `bai-tap-${n}.pdf`, url: `https://files.example/bai-tap-${n}.pdf`, type: "pdf" }]) } as never });
   await emp.reload({ waitUntil: "networkidle" });
   await emp.locator("[data-gt-muc]").first().waitFor({ timeout: 60000 });
   check("F5: 3 mục mới vẫn còn, ở dạng Nháp", await emp.locator("[data-gt-muc]").count() === countBefore + 3 && await emp.locator('[data-gt-muc][data-gt-trang-thai="draft"]').count() >= 4);
@@ -324,26 +331,26 @@ const seen: Page[] = [];
   check("gia sư chờ duyệt → /lop-cua-toi/cho-duyet", /cho-duyet/.test(pend.url()), pend.url());
   const stu = await (await ctxFor(S, { width: 1280, height: 900 })).newPage(); watch(stu);
   await stu.goto(G(A.id), { timeout: 120000 });
-  await stu.waitForURL(u => !u.pathname.includes("giao-trinh"), { timeout: 60000 });
-  check("học sinh không vào được Giáo trình", !stu.url().includes("giao-trinh"), stu.url());
+  await stu.waitForURL(u => !u.pathname.includes("/quan-lop/"), { timeout: 60000 });
+  check("học sinh không vào được trang lớp của gia sư", !stu.url().includes("/quan-lop/"), stu.url());
   const g = await (await ctxFor(null, { width: 1280, height: 900 })).newPage(); watch(g);
   await g.goto(G(A.id), { timeout: 120000 });
   await g.waitForURL(/dang-nhap/, { timeout: 60000 });
   check("khách → đăng nhập", /dang-nhap/.test(g.url()));
 
-  section("Nút 'Giáo trình' ở trang lớp");
+  section("Nút 'Bài học' ở trang lớp của đồng giảng (LopChiTiet)");
   const lop = await dctx.newPage(); watch(lop);
   await lop.goto(`${BASE}/lop-cua-toi/${A.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  const btn = lop.getByRole("link", { name: "Giáo trình", exact: true });
+  const btn = lop.getByRole("link", { name: "Bài học", exact: true });
   await btn.first().waitFor({ timeout: 60000 });
-  check("nút Giáo trình trỏ đúng đường gia sư", (await btn.first().getAttribute("href"))?.endsWith(`/lop-cua-toi/quan-lop/${A.id}/giao-trinh`) === true, await btn.first().getAttribute("href"));
+  check("nút 'Bài học' trỏ gốc lớp (LOI-02, không còn …/giao-trinh)", (await btn.first().getAttribute("href"))?.endsWith(`/lop-cua-toi/quan-lop/${A.id}`) === true, await btn.first().getAttribute("href"));
   await btn.first().click();
-  await lop.waitForURL(/\/giao-trinh$/, { timeout: 60000 });
-  check("bấm nút → vào Giáo trình", await lop.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Giáo trình" }).waitFor({ timeout: 60000 }).then(() => true).catch(() => false));
+  await lop.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${A.id}`, { timeout: 60000 });
+  check("bấm nút → vào Bài học (màn phẳng của đồng giảng)", await lop.locator('nav[aria-label^="Trang của"] [aria-current="page"]', { hasText: "Bài học" }).waitFor({ timeout: 60000 }).then(() => true).catch(() => false) && await lop.locator("[data-gt-o-tai]").waitFor({ timeout: 60000 }).then(() => true).catch(() => false));
 
   // ───────── 390px
   section("Điện thoại 390px: một cột, hai nút lớn, hàng xếp dọc, không tràn ngang, nút >= 44px");
-  const mctx = await ctxFor(T, { width: 390, height: 844 });
+  const mctx = await ctxFor(CO, { width: 390, height: 844 });
   const mp = await mctx.newPage(); watch(mp);
   await open(mp, D.id);
   check("có hai nút lớn 'Chọn tệp từ máy' và 'Dán link'; thao tác phụ của trang thu vào ⋯", await mp.getByRole("button", { name: "Chọn tệp từ máy" }).isVisible() && await mp.getByRole("button", { name: "Dán link", exact: true }).isVisible()
@@ -364,7 +371,7 @@ const seen: Page[] = [];
   await shot(mp, "giao-trinh-phang-ngan-keo-390");
   await md.getByRole("button", { name: "Đóng" }).click();
   const mxem = await mctx.newPage(); watch(mxem);
-  await mxem.goto(`${G(A.id)}/xem/gt-l4`, { waitUntil: "networkidle", timeout: 120000 });
+  await mxem.goto(`${GX(A.id)}/xem/gt-l4`, { waitUntil: "networkidle", timeout: 120000 });
   await mxem.getByText("Đây là bản xem thử. Không ghi tiến độ.").waitFor({ timeout: 60000 });
   check("390 xem mục Ẩn: có băng cam", await mxem.locator("[data-gt-ban-chua-dang]").getByText(/trạng thái Ẩn/).isVisible());
   const r3 = await report(mxem);

@@ -48,5 +48,21 @@ export async function adminGet(page: Page, url: string) {
     req.on("error", reject); req.end();
   });
 }
+/**
+ * Chọn một mục trong KinSelect (src/components/kin/KinSelect.tsx — `<button role="combobox">` + listbox tự vẽ, KHÔNG phải <select>, nên selectOption() ném lỗi).
+ * `combo`: locator tới nút combobox (tên đọc được = "<nhãn> <giá trị đang chọn>" ⇒ tìm theo chuỗi con, không exact). `optionLabel`: nhãn hiển thị của mục (exact).
+ * Bấm mở → bấm mục → đợi danh sách đóng và nút hiện nhãn vừa chọn.
+ */
+export async function kinPick(combo: import("playwright").Locator, optionLabel: string) {
+  await combo.click();
+  const listId = await combo.getAttribute("aria-controls");
+  const list = combo.page().locator(`[id="${listId}"]`);
+  await list.waitFor({ timeout: 30000 });
+  await list.getByRole("option", { name: optionLabel, exact: true }).click();
+  await list.waitFor({ state: "detached", timeout: 30000 });
+  for (let i = 0; i < 50 && !(await combo.innerText()).includes(optionLabel); i++) await combo.page().waitForTimeout(100);
+}
+/** Nhãn đang hiện trên nút KinSelect (thay cho inputValue() của <select>). */
+export async function kinValue(combo: import("playwright").Locator) { return (await combo.innerText()).trim(); }
 export async function closeAll() { await browser?.close(); }
 export type { Page };
