@@ -8,6 +8,7 @@
 //  - Trạng thái (Đã đăng · Nháp · Ẩn) đổi bằng PATCH …/giao-trinh/trang-thai (luật G4), KHÔNG qua PUT bài. Lỗi đổi trạng thái: giữ phần đã lưu, báo riêng.
 //  - Hàng bài: chip CHỮ "Nháp · học sinh chưa thấy" / "Ẩn · học sinh không thấy" (TRẺ EM), chip ngày bấm được, "Sửa nhanh" (tên + ngày + giờ ngay trong hàng, Enter lưu, Esc huỷ),
 //    "Chi tiết…" mở panel. Cuối chương "+ Thêm bài" cùng form một dòng (thêm nhanh = Đã đăng như cây cũ). Lớp rỗng ⇒ "Tạo chương đầu tiên".
+//  - Hàng chương giữ "Giao cho giáo viên" (GiaoChoNhom, TUT-dong-giang) — trước chỉ có ở màn Giáo trình phẳng; chỉ hiện khi lớp có giáo viên bộ môn hoặc chương đã giao.
 //  - 390: hàng bài 3 dòng (tên / chip / nút ≥ 44px), ẩn tay kéo; không cuộn ngang. Xoá hỏi bằng KinConfirm (không window.confirm / alert).
 "use client";
 import Link from "next/link";
@@ -24,6 +25,7 @@ import { parseVnDateTime, isoToVnParts, formatVnLessonWhen } from "@/lib/tutorLe
 import { Drawer, DrawerToggle } from "./DrawerBaiHoc";
 import { DocumentsEditor, type DocItem } from "./DocumentsEditor";
 import { AssignmentEditor } from "./AssignmentEditor";
+import GiaoChoNhom, { useGiaoVienLop } from "@/components/tutor/giao-trinh/GiaoChoNhom";
 import {
   type SectionDB, type ChapterDB, type LessonDB, type PanelMode, type DelTarget, type LsForm, type LessonStatusValue, INIT_LS,
   parseUrls, serializeUrls, firstBadLink, parseTypes, deriveTypes, serializeTypes, TYPE_BADGE, ASSIGNMENT_BADGE, hasRealDocuments,
@@ -124,6 +126,16 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
   const sessionUploads = useRef<string[]>([]);
   const [uploadBusy, setUploadBusy] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gv = useGiaoVienLop(courseSlug);
+  /** Sau khi giao chương: đọc lại teacherId của các chương (một lần tải lớp, không đụng phần khác của cây). */
+  async function reloadChapterTeachers() {
+    const r = await fetch(`/api/courses/${encodeURIComponent(courseSlug)}`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+    if (!r || !r.ok) return;
+    const c = await r.json().catch(() => null) as { sections?: SectionDB[] } | null;
+    const map = new Map<string, string | null>();
+    for (const s of c?.sections ?? []) for (const ch of s.chapters) map.set(ch.id, ch.teacherId ?? null);
+    setSections(p => p.map(s => ({ ...s, chapters: s.chapters.map(ch => map.has(ch.id) ? { ...ch, teacherId: map.get(ch.id) } : ch) })));
+  }
 
   function flash(text: string, tone: "xong" | "loi" = "xong") {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -840,6 +852,11 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                           <button type="button" onClick={() => openEditChapter(section.id, chapter.id)} className={BTN_TEXT}>Sửa</button>
                           <button type="button" onClick={() => setDel({ kind: "chapter", sectionId: section.id, chapterId: chapter.id, label: chapter.title })} className={BTN_DANGER}>Xoá</button>
                         </div>
+                        {gv.phase === "ready" && (gv.assignable.length > 0 || !!chapter.teacherId) && (
+                          <div className="pl-3 sm:pl-[4.5rem] pr-2 sm:pr-4 pb-2">
+                            <GiaoChoNhom courseId={courseSlug} chapterId={chapter.id} teacherId={chapter.teacherId ?? null} assignedTo="owner" info={gv} onChanged={reloadChapterTeachers} />
+                          </div>
+                        )}
                         {expanded.chapters.has(chapter.id) && (
                           <div>
                             {chapter.lessons.length === 0 && !(quick?.mode === "add" && quick.chapterId === chapter.id) && (

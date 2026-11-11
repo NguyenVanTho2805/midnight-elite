@@ -28,7 +28,8 @@ export interface LessonDB {
   status?: string;
   _count?: { assignments: number };
 }
-export interface ChapterDB { id: string; title: string; order: number; lessons: LessonDB[] }
+/** teacherId (TUT-dong-giang): chương giao cho giáo viên bộ môn này; null = chủ lớp. */
+export interface ChapterDB { id: string; title: string; order: number; teacherId?: string | null; lessons: LessonDB[] }
 export interface SectionDB { id: string; title: string; order: number; chapters: ChapterDB[] }
 export interface CourseDB {
   id: string; adminId: number; name: string;
