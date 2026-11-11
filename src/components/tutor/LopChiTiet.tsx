@@ -111,12 +111,12 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           {/* A4c: ở máy rộng đã có tab "Mã mời" ngay dưới → bỏ nút. Ở điện thoại tab "Mã mời" nằm ngoài khung nhìn (đo 320px: x=317..397; 390px: ..397), nên GIỮ nút ở màn hẹp. */}
           <button type="button" onClick={() => setTab("ma-moi")} className={`${kinButtonClass("secondary")} sm:hidden`}>Mời học sinh</button>
           <Link href={lichHref} className={kinButtonClass("secondary")}>Lịch học</Link>
-          <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Giáo trình</Link>
+          <Link href={giaoTrinhHref(d.courseId, d.isTeacher !== false)} className={kinButtonClass("secondary")}>Bài học</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
           <Link href={d.isTeacher !== false ? `${classBase(d.courseId)}?tab=cai-dat` : manage()} className={kinButtonClass("ghost")}>Cài đặt lớp</Link>
         </> : <>
           {/* TUT-dong-giang: đồng giảng chỉ xem giáo trình và bản ghi; không thêm/mời học sinh, không sửa lớp. */}
-          <Link href={giaoTrinhHref(d.courseId, true)} className={kinButtonClass("secondary")}>Giáo trình</Link>
+          <Link href={giaoTrinhHref(d.courseId, true)} className={kinButtonClass("secondary")}>Bài học</Link>
           <Link href={`/lop-cua-toi/${d.courseId}/ban-ghi`} className={kinButtonClass("secondary")}>Bản ghi của lớp</Link>
         </>} />
 
