@@ -59,6 +59,10 @@ export default function ViecCuaToi() {
   const nothing = items !== null && list.length === 0;
 
   const sessionBlock = next && <NextSession item={next} />;
+  // LOI-03 (vòng test 2): phiếu "Hôm nay có lớp" (Lesson.scheduledAt) đang có bài mà khung buổi học rỗng ⇒ KHÔNG vẽ "3 ngày tới chưa có buổi học" (hai khối nói ngược nhau);
+  // bỏ hẳn cột aside, khối đề thi lên hàng 1 cột phải. Phiếu rỗng / lỗi / đang tải ⇒ như cũ.
+  const [homNayHas, setHomNayHas] = useState(false);
+  const showAside = !!sessionBlock || !homNayHas;
   const examBlock = exam && (
     <KinPanel data-exam-card>
       <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Kiểm tra sắp mở</p>
@@ -105,7 +109,7 @@ export default function ViecCuaToi() {
       </header>
 
       {/* LOI-03 mục 4.4: phiếu "Hôm nay có lớp" (bài có ngày học hôm nay + 7 ngày tới). Không có bài hẹn thì không vẽ gì. */}
-      <HomNayCoLop />
+      <HomNayCoLop onHasItems={setHomNayHas} />
 
       {tutorPending && (
         <div role="status" data-tutor-pending className="mb-6">
@@ -123,13 +127,15 @@ export default function ViecCuaToi() {
       ) : (
         <div className="mt-2 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
           {/* Điện thoại: buổi học lên đầu; máy tính: cột phải. */}
-          <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
-            {sessionBlock || (
-              <KinEmptyState title="3 ngày tới chưa có buổi học">
-                Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
-              </KinEmptyState>
-            )}
-          </aside>
+          {showAside && (
+            <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
+              {sessionBlock || (
+                <KinEmptyState title="3 ngày tới chưa có buổi học">
+                  Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
+                </KinEmptyState>
+              )}
+            </aside>
+          )}
 
           <div className="lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0">
             <section aria-labelledby="vc-todo">
@@ -193,7 +199,7 @@ export default function ViecCuaToi() {
               </section>
             )}
           </div>
-          <div className="lg:col-start-2 lg:row-start-2 min-w-0">
+          <div className={`lg:col-start-2 ${showAside ? "lg:row-start-2" : "lg:row-start-1"} min-w-0`}>
             {assignBlock}
             {exam && <div className="mt-8">{examBlock}</div>}
             {moreExamBlock}

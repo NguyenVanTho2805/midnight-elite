@@ -162,6 +162,16 @@ function Content({ courseId }: { courseId: string }) {
     })),
   })), [sections, todayKey]);
   const summary = useMemo(() => contentSummary(sections), [sections]);
+  // LOI-03 (vòng test 2): lớp có bài Đã đăng hẹn ngày học từ hôm nay (ngày VN) trở đi ⇒ ngày học đã hiện ở từng dòng bài; khi lịch buổi học rỗng thì
+  // KHÔNG vẽ khối "Buổi học sắp tới" (tránh hai khối nói ngược nhau: "chưa có buổi học nào" cạnh "Học Hôm nay · 19:30").
+  const hasScheduledLesson = useMemo(() => {
+    const published = new Set(ids);
+    return allLessons.some(l => {
+      if (!published.has(l.id) || !l.scheduledAt) return false;
+      const at = new Date(l.scheduledAt);
+      return Number.isFinite(at.getTime()) && vnDateKeyOf(at) >= todayKey;
+    });
+  }, [allLessons, ids, todayKey]);
 
   const back = <Link href="/student/hoc-tap" data-all-classes className={`inline-flex items-center min-h-11 -ml-1 pr-3 ${GOC} text-[var(--kin-nhan-link)] underline`}>← Lớp của tôi</Link>;
   const head = (title: string, sub?: string) => (
@@ -197,6 +207,8 @@ function Content({ courseId }: { courseId: string }) {
   ];
   // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
   const nextSessions = (work.events ?? []).filter(e => e.type === "class" && e.courseId === courseId).slice(0, 4);
+  // Lịch đã tải xong, không lỗi, không buổi nào, nhưng có bài hẹn ⇒ bỏ cả khối (đang tải / lỗi vẫn vẽ như cũ — không im lặng khi lỗi).
+  const hideSessions = work.events !== null && !work.eventsError && nextSessions.length === 0 && hasScheduledLesson;
   const inCourse = (work.items ?? []).filter(i => i.task && i.task.courseId === course.id);
   const needCount = inCourse.filter(i => !i.done).length;
   const waitCount = inCourse.filter(i => i.task?.phase === "cho-cham").length;
@@ -353,7 +365,7 @@ function Content({ courseId }: { courseId: string }) {
         </div>
       </div>
       <aside aria-label="Lịch và các lớp của bạn" className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">
-        {isEnrolled && (
+        {isEnrolled && !hideSessions && (
           <section aria-labelledby="lop-lich" data-course-sessions>
             <KinSectionHead id="lop-lich" title="Buổi học sắp tới" />
             {work.events === null && !work.eventsError ? (

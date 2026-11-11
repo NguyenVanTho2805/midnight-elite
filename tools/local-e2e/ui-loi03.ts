@@ -7,6 +7,7 @@
 //     /api/student/hom-nay trả 500 ⇒ ErrorStrip + Thử lại. /lop-cua-toi (học sinh) = thư viện; /lop-cua-toi/<X> ⇒ /student/hoc-tap?course=<X> (307).
 //   390: không cuộn ngang ở mọi màn; nút / hàng trong các khối LOI-03 cao ≥ 44px.
 //   Rà soát lượt 1: cảnh báo [data-nop-tep-canh-bao] TRÊN nút Nộp bài; gia sư chủ lớp / quản trị mở /lop-cua-toi/<X> vẫn như cũ (quan-lop / trang lớp), không sang /student/hoc-tap.
+//   Vòng test 2: có bài hẹn hôm nay mà chưa có buổi học ⇒ /student/viec-cua-toi không "3 ngày tới chưa có buổi học", trang lớp không "chưa có buổi học nào trong 90 ngày tới".
 //   Thẻ tiến độ: "Hỏi gia sư trong lớp →" [data-hoi-trong-lop] → /cong-dong?scope=<lớp> chỉ cho học sinh đang học lớp (≥ 44px ở 390); không ghi danh / khách: không có.
 // Dữ liệu tự tạo (wipe() trên DB riêng của worktree). Ngày giờ "hôm nay" theo giờ VN lúc chạy (instantOf) — chạy sát 00:00 VN có thể đỏ giả, chạy lại.
 // Ảnh bìa: địa chỉ https giả, trình duyệt được chặn route trả về một ảnh PNG 1×1 (không ra mạng ngoài). Kho tệp: chặn danh-sach trả enabled:true / false để kiểm trình bày
@@ -140,6 +141,12 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("dòng bài 3: '1 tài liệu · Có bài tập · Học Hôm nay · 19:30'", meta3 === "1 tài liệu · Có bài tập · Học Hôm nay · 19:30", meta3);
     check("dòng bài 5: '… Học Ngày mai · 00:30'; bài không có dữ liệu thì không dòng phụ (bài 1)", /Học Ngày mai · 00:30/.test(await p.locator(`[data-outline-lesson="${L(5)}"]`).innerText()) && (await p.locator(`[data-outline-lesson="${L(1)}"] [data-lesson-meta]`).count()) === 0);
     check("nhãn chữ: bài 1 'Đã học', bài 2 'Học tiếp', bài 4 'Chưa học'", await p.locator(`[data-outline-lesson="${L(1)}"]`).getByText("Đã học").isVisible() && await p.locator(`[data-outline-lesson="${L(2)}"]`).getByText("Học tiếp").isVisible() && await p.locator(`[data-outline-lesson="${L(4)}"]`).getByText("Chưa học").isVisible());
+    // Vòng test 2 (mâu thuẫn): lớp có bài hẹn hôm nay nhưng chưa có khung giờ / buổi học ⇒ KHÔNG có khối "Buổi học sắp tới" nói "chưa có buổi học nào trong 90 ngày tới".
+    await eventually(`${w}: trang lớp có bài hẹn hôm nay ⇒ không có [data-course-sessions] / 'chưa có buổi học nào trong 90 ngày tới'`, async () =>
+      (await p.locator("[data-course-sessions]").count()) === 0 && (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0, 30000);
+    await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+    check(`${w}: sau khi lịch tải xong vẫn không có 'chưa có buổi học nào trong 90 ngày tới'; dòng bài vẫn ghi 'Học Hôm nay · 19:30'`,
+      (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0 && (await p.locator("[data-course-sessions]").count()) === 0 && /Học Hôm nay · 19:30/.test(await p.locator(`[data-outline-lesson="${L(3)}"]`).innerText()));
     await p.locator("[data-outline-close-all]").click();
     check("'Thu gọn tất cả' → cả 2 chương thu", (await chap(0).getAttribute("aria-expanded")) === "false" && (await chap(1).getAttribute("aria-expanded")) === "false");
     await chap(1).click();
@@ -221,6 +228,14 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const up = (await hn.locator("[data-hom-nay-sap-toi]").innerText()).replace(/\s+/g, " ");
     check("'Sắp tới' có 'Ngày mai · 00:30 · Toán 9 (LOI-03) · Bài 5: Nghiệm thu gọn' và bài +3 ngày", /Ngày mai · 00:30 · Toán 9 \(LOI-03\) · Bài 5: Nghiệm thu gọn/.test(up) && /Bài 6: Ôn tập chương/.test(up), up);
     check("không có 'lượt xem', đáp án, điểm, đếm ngược trong phiếu", !/lượt xem|đáp án|lời giải|Điểm:|còn \d+ phút/i.test(await hn.innerText()));
+    // Vòng test 2 (mâu thuẫn): phiếu có bài hôm nay ⇒ cột phải KHÔNG vẽ "3 ngày tới chưa có buổi học" (em chưa có khung giờ / buổi học nào); khối đề thi lên đầu cột phải.
+    await eventually(`${w}: phiếu có bài ⇒ không có '3 ngày tới chưa có buổi học' (không aside 'Buổi học tiếp theo')`, async () =>
+      (await p.getByText("3 ngày tới chưa có buổi học").count()) === 0 && (await p.getByRole("complementary", { name: "Buổi học tiếp theo" }).count()) === 0, 30000);
+    {
+      const todoH = await p.locator("#vc-todo").boundingBox(), giaoH = await p.locator("#vc-giao").boundingBox();
+      if (w === 1600) check("1600: lưới không vỡ — 'Đề thi được giao' ở cột phải, ngang hàng 'Cần làm'", !!todoH && !!giaoH && giaoH.x > todoH.x + todoH.width && Math.abs(giaoH.y - todoH.y) < 40, { todoH, giaoH });
+      else check("390: một cột — 'Đề thi được giao' dưới 'Cần làm', cùng mép trái", !!todoH && !!giaoH && giaoH.y > todoH.y && Math.abs(giaoH.x - todoH.x) < 4, { todoH, giaoH });
+    }
     const hnBox = await hn.boundingBox(), h1Box = await p.getByRole("heading", { level: 1, name: "Việc của tôi" }).boundingBox();
     check("phiếu nằm ngay dưới tiêu đề trang, rộng hết khung nội dung", !!hnBox && !!h1Box && hnBox.y > h1Box.y && hnBox.y - (h1Box.y + h1Box.height) < 140, { hnBox, h1Box });
     if (w === 390) {

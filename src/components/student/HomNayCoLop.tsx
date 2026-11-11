@@ -5,7 +5,7 @@
 //   Không bài hôm nay nhưng có sắp tới: một dòng "Hôm nay không có bài nào được hẹn." + Sắp tới. Cả hai rỗng: KHÔNG vẽ gì. Đang tải: không vẽ gì (tránh nháy).
 //   Lỗi: ErrorStrip "Không tải được bài hôm nay." + Thử lại (không im lặng). Riêng 403 (gia sư / quản trị xem thử) ⇒ không vẽ gì.
 // Không hiện thứ API không trả: không đáp án, điểm, lượt xem, đếm ngược, ghi chú; không push, không hẹn giờ. Liên kết ngoài mở tab mới, rel="noopener noreferrer".
-// Móc kiểm thử: [data-hom-nay], [data-hom-nay-bai=<lessonId>], [data-hom-nay-sap-toi], [data-hom-nay-qua], [data-hom-nay-them].
+// Prop tuỳ chọn onHasItems(has) — xem dưới. Móc kiểm thử: [data-hom-nay], [data-hom-nay-bai=<lessonId>], [data-hom-nay-sap-toi], [data-hom-nay-qua], [data-hom-nay-them].
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -49,7 +49,9 @@ function TodayRow({ it }: { it: HomNayItem }) {
 
 type State = { s: "dang-tai" } | { s: "loi" } | { s: "khong-phai-hoc-sinh" } | { s: "ok"; data: HomNayResp };
 
-export default function HomNayCoLop() {
+/** onHasItems (tuỳ chọn): báo cho trang cha khi tải xong — true nếu hôm nay hoặc sắp tới có bài; false khi rỗng / lỗi / 403.
+ *  ViecCuaToi dùng để không vẽ "3 ngày tới chưa có buổi học" cạnh phiếu đang có bài (hai khối không nói ngược nhau). */
+export default function HomNayCoLop({ onHasItems }: { onHasItems?: (has: boolean) => void } = {}) {
   const [st, setSt] = useState<State>({ s: "dang-tai" });
   const [tick, setTick] = useState(0);
   const [all, setAll] = useState(false);
@@ -68,6 +70,9 @@ export default function HomNayCoLop() {
     return () => { live = false; };
   }, [tick]);
   const retry = useCallback(() => { setSt({ s: "dang-tai" }); setTick(t => t + 1); }, []);
+  // Báo trang cha sau mỗi lần tải xong (kể cả sau Thử lại). Đang tải: không báo (trang cha giữ giá trị cũ, mặc định false ⇒ như trước LOI-03).
+  const has = st.s === "ok" ? st.data.today.length > 0 || st.data.upcoming.length > 0 : st.s === "dang-tai" ? null : false;
+  useEffect(() => { if (has !== null) onHasItems?.(has); }, [has, onHasItems]);
 
   if (st.s === "dang-tai" || st.s === "khong-phai-hoc-sinh") return null;
   if (st.s === "loi") return <div className="mb-6" data-hom-nay-loi><ErrorStrip message="Không tải được bài hôm nay." onRetry={retry} /></div>;
