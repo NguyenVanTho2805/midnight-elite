@@ -170,6 +170,55 @@ async function mkLesson(chapterId: string, o: { title: string; order: number; sc
   const progAfter = JSON.stringify(await prisma.lessonProgress.findMany({ where: { userId: A.id }, orderBy: { lessonId: "asc" }, select: { lessonId: true, completed: true, watchedSeconds: true } }));
   check("LessonProgress của A không đổi sau các lượt gọi", progBefore === progAfter);
 
+  // ── stu-test (vòng 1) bổ sung theo mô hình kẻ tấn công. Mỗi ca ĐỎ nếu máy chủ: tin tham số của trình duyệt, coi "xin vào lớp" là ghi danh,
+  //    tin vai trong token thay vì DB, nhận token của tài khoản đã xoá / cookie giả, hoặc nhúng lời giải / bài nháp vào HTML trang học sinh.
+  section("stu-test: kẻ tấn công — tham số giả, xin vào lớp chưa duyệt, vai trong token, token chết, HTML trang");
+  const baseHn = strip(h1.json);
+  for (const qs of [`?userId=${B.id}`, `?userId=${B.id}&now=2030-01-01T00:00:00Z&days=365`, `?courseId=${Y.id}&from=2000-01-01&until=2100-01-01&status=draft`]) {
+    const r = await call("GET", `/api/student/hom-nay${qs}`, A, `A (tham số ${qs.slice(0, 20)}…)`);
+    check(`hom-nay ${qs}: bỏ qua tham số — thân như gọi trơn của A, không có bài lớp Y / nháp / quá 7 ngày`, r.status === 200 && strip(r.json) === baseHn && ![YK, XNHAP, XFAR].some(id => r.text.includes(id)), r.json && { today: r.json.today?.map((x: { lessonTitle: string }) => x.lessonTitle), todayKey: r.json.todayKey });
+    const l = await call("GET", `/api/student/lop${qs}`, A, `A (tham số ${qs.slice(0, 20)}…)`);
+    check(`lop ${qs}: bỏ qua tham số — thân y hệt gọi trơn của A`, l.status === 200 && l.text === la.text);
+  }
+  // A xin vào lớp Y (pending) + lớp W bị từ chối: chưa phải ghi danh ⇒ Y, W không lọt.
+  const W = await mkCourse(T.id, { name: `Lop W tu choi ${stamp}` });
+  const WK = await mkLesson(await mkTree(W.id), { title: `LOP-TU-CHOI-${stamp}`, order: 0, scheduledAt: at(0, 17, 0) });
+  await prisma.classJoinRequest.create({ data: { courseId: Y.id, userId: A.id, status: "pending" } });
+  await prisma.classJoinRequest.create({ data: { courseId: W.id, userId: A.id, status: "rejected" } });
+  const ja = await call("GET", "/api/student/hom-nay", A), jl = await call("GET", "/api/student/lop", A);
+  check("A xin vào Y (pending) / bị từ chối W ⇒ hom-nay không có bài Y, W; thân không đổi", strip(ja.json) === baseHn && ![YK, WK, `LOP-KHAC-${stamp}`, `LOP-TU-CHOI-${stamp}`].some(n => ja.text.includes(n)));
+  check("A xin vào Y / bị từ chối W ⇒ lop vẫn chỉ X, Z", jl.text === la.text && !jl.text.includes(Y.id) && !jl.text.includes(W.id));
+  // Vai đọc lại từ DB: token vẫn ghi "student" nhưng DB đã đổi lên gia sư ⇒ 403 (Enrollment cũ giữ nguyên không được mở cửa).
+  const E = await mkUser({ name: `HocSinhE-${stamp}` });
+  people.push(E);
+  await prisma.enrollment.create({ data: { userId: E.id, courseId: X.id, status: "active" } });
+  const eOk = await call("GET", "/api/student/hom-nay", E, "E (học sinh)");
+  check("E (học sinh lớp X) trước khi đổi vai: 200, thấy bài 19:30", eOk.status === 200 && eOk.text.includes(X1930));
+  await prisma.user.update({ where: { id: E.id }, data: { role: "admin", adminRole: "teacher", tutorVerified: true } });
+  for (const p of EP) {
+    const r = await call("GET", p, E, "E (token student, DB gia sư)");
+    check(`${p}: token ghi student nhưng DB đã là gia sư ⇒ 403, không dữ liệu lớp`, r.status === 403 && !r.text.includes(X1930) && !r.text.includes(X.id), [r.status, r.text.slice(0, 120)]);
+  }
+  // Token của tài khoản đã xoá + cookie giả.
+  const F = await mkUser({ name: `HocSinhF-${stamp}` });
+  people.push(F);
+  await prisma.enrollment.create({ data: { userId: F.id, courseId: X.id, status: "active" } });
+  await prisma.user.delete({ where: { id: F.id } });
+  for (const p of EP) {
+    const r = await call("GET", p, F, "F (đã xoá)");
+    check(`${p}: token của tài khoản đã xoá ⇒ 401/403, không dữ liệu`, (r.status === 401 || r.status === 403) && !r.text.includes(X1930), [r.status, r.text.slice(0, 120)]);
+    const g = await api("GET", p, { headers: { cookie: "midnight_session=eyJhbGciOiJub25lIn0.eyJ1c2VySWQiOiJ4Iiwicm9sZSI6InN0dWRlbnQifQ." } });
+    bodies.push({ who: "cookie giả", path: p, text: g.text });
+    check(`${p}: cookie giả (alg none) ⇒ 401`, g.status === 401, [g.status, g.text.slice(0, 120)]);
+  }
+  // HTML do máy chủ trả cho trang học sinh (A đang làm bài): không nhúng lời giải / cờ đáp án / ghi chú quản trị / bài nháp.
+  const htmlNeedles = [`LOIGIAI-${stamp}`, `GHICHU-${stamp}`, `NHAP-BI-MAT-${stamp}`, `LOP-AN-${stamp}`, `LOP-KHAC-${stamp}`];
+  for (const path of ["/student/viec-cua-toi", "/student/hoc-tap", `/student/hoc-tap?course=${X.id}`, `/student/bai-giang/${X1930}?tab=bai-tap`, "/lop-cua-toi"]) {
+    const r = await api("GET", path, { as: A });
+    const hit = htmlNeedles.filter(n => r.text.includes(n));
+    check(`HTML ${path} (A): ${r.status} — không lời giải / ghi chú / bài nháp, ẩn, lớp khác; không isCorrect`, r.status < 500 && hit.length === 0 && !/isCorrect|"explanation"\s*:/.test(r.text), [r.status, hit, /isCorrect|"explanation"\s*:/.exec(r.text)?.[0]]);
+  }
+
   section("CA PHÁ: JSON không chứa đáp án / lời giải / dữ liệu thừa / mã hex / tên người");
   const secretNeedles = [`CAUHOI-${stamp}`, `LOIGIAI-${stamp}`, `DAPANDUNG-${stamp}`, `DAPANSAI-${stamp}`, `GHICHU-${stamp}`, "dQw4w9WgXcQ"];
   for (const b of bodies) {
