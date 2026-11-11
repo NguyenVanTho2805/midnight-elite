@@ -42,6 +42,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | CHỦ-01 | chủ | Đổi feeMode lớp cũ sang per_session; hai hệ phí một phiếu | | | dung | TIỀN = có — chờ Thọ |
 | CHỦ-02 | chủ | Coin ẩn hẳn hay giữ; bật cổng ≥17 + hỏi ngày sinh | | | dung | chờ Thọ |
 | CHỦ-03 | chủ | Lớp 2 ca/ngày có cần không | | | dung | chờ Thọ |
+| LOI-03 | STU | Học sinh dùng được ngay: thư viện lớp thẻ ngang + trang lớp Nội dung + ô nộp tệp to + phiếu "Hôm nay có lớp" | claude/loi-lop-hoc-sinh | (chưa mở) | cho-gop-pr | L · 11/11/2026 · rẽ từ c5f6fb7d · 8 commit bd6fb07f…ead3d85f · TRẺ EM = có (bài nộp, không đổi quy tắc) · TIỀN không đổi · schema chỉ thêm `Lesson.scheduledAt` · t-loi03-lib 64/0, t-loi03-api 211/0, ui-loi03 117/0, tsc 0 lỗi · gộp SAU LOI-01 (LopCuaToi.tsx) · không có dòng backlog CSV · chờ chủ Q2, Q3 + biến Cloudinary · đặc tả `dac-ta/LOI-03.md` |
 
 **Đợt S đầu tiên (01/11/2026):** test đã chạy thật trên bản sao test — adm: 9/12 bài sạch, 2 đỏ có sẵn + 1 nợ P3 `parseAuditFilter` nhận 31/02; tut: 8/8 sạch; stu: 5/5 sạch. Chưa chạy các bài `ui-*` (cần trình duyệt). Nợ mới: ADM-002 (validator bài viết, PUT học sinh), restore giữ `banned` cũ, phân trang đếm bản ẩn, nút 'Vào lớp này' khi đang nộp đơn gia sư, đổi 'bạn'→'em' ở màn review.
 
