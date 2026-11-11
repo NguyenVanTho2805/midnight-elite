@@ -3,6 +3,8 @@
 // máy chủ chạy cờ lịch TẮT (mặc định) ⇒ số đỏ không hiện (0), "Cần cô xử lý" rỗng, không có dòng nhắc "chưa có lịch học", em chờ phụ huynh nằm ở khối "Chờ phụ huynh".
 // Đối chứng dương (để bài không xanh vì số đỏ KHÔNG BAO GIỜ hiện): thêm 1 yêu cầu xin vào lớp ⇒ số đỏ "1" ở đúng mục Hộp việc = "1 việc" = 1 dòng.
 // H3 (1600): duyệt yêu cầu bằng fetch (không tải lại trang) rồi cửa sổ lấy lại focus ⇒ số đỏ về 0 mà không cần điều hướng (HopViec gọi router.refresh()).
+// router.refresh() bị giới hạn ≥ 30 giây giữa hai lần (REFRESH_MIN_MS, tính từ lúc trang gắn): focus SỚM chỉ tải lại danh sách (số đỏ chưa đổi);
+// focus sau mốc 30 giây kể từ lúc tải trang ⇒ số đỏ về 0.
 // Chạy: TZ=Asia/Ho_Chi_Minh; source tools/local-e2e/env.sh && SHOTS=<thư mục ảnh> npx tsx tools/local-e2e/ui-loi-02-hop-viec.ts   (máy chủ thử ở BASE, cờ lịch tắt; bài gọi wipe()).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
@@ -79,6 +81,7 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
     // Đối chứng dương: 1 yêu cầu xin vào lớp ⇒ đúng 1 việc.
     const jr = await prisma.classJoinRequest.create({ data: { userId: SC.id, courseId: cSu.id, status: "pending" } });
     await openInbox(pg);
+    const loadedAt = Date.now(); // trang đã gắn TRƯỚC mốc này (Hộp việc hiện sau khi gắn + tải) ⇒ chờ tới loadedAt + 30,5 s là chắc qua REFRESH_MIN_MS
     const r1 = await read(pg);
     console.log(`    · ${tag} +1 xin vào lớp: ${JSON.stringify({ badges: r1.badges, aside: r1.aside, rows: r1.rows, rowSum: r1.rowSum })}`);
     check(`${tag}: +1 yêu cầu xin vào lớp → số đỏ "1" ở đúng mục Hộp việc (/lop-cua-toi), không mục nào khác có số`, r1.badges.length === 1 && r1.badges[0].href === "/lop-cua-toi" && r1.badges[0].text === "1", r1.badges);
@@ -95,10 +98,21 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
       }, [cSu.id, jr.id]);
       check("duyệt (POST …/duyet) → chuyển hướng 303, em thành active", st === 303 && (await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: SC.id, courseId: cSu.id } } }))?.status === "active", st);
       const urlBefore = pg.url();
+      // Focus SỚM (< 30 s từ lúc tải): danh sách tải lại (0 dòng) nhưng KHÔNG router.refresh() ⇒ số đỏ của layout giữ "1" — giới hạn đang chạy.
+      let rEarly: Read | null = null;
+      if (Date.now() - loadedAt < 25_000) {
+        await pg.evaluate(() => window.dispatchEvent(new Event("focus")));
+        for (let i = 0; i < 30; i++) { await pg.waitForTimeout(300); rEarly = await read(pg); if (rEarly.rows === 0) break; }
+        await pg.waitForTimeout(1500); // đủ để một router.refresh() (nếu có) kịp vẽ lại layout
+        rEarly = await read(pg);
+        check("focus sớm (< 30 s): danh sách tải lại (0 dòng) nhưng chưa router.refresh() — số đỏ layout chưa đổi (giới hạn 30 s)", rEarly.rows === 0 && badgeNum(rEarly) === 1, rEarly);
+      } else console.log("    · bỏ ca focus sớm: đã quá 25 s từ lúc tải trang");
+      const wait = loadedAt + 30_500 - Date.now();
+      if (wait > 0) await pg.waitForTimeout(wait);
       await pg.evaluate(() => window.dispatchEvent(new Event("focus")));
       let r2: Read | null = null;
       for (let i = 0; i < 50; i++) { await pg.waitForTimeout(300); r2 = await read(pg); if (r2.badges.length === 0 && r2.rows === 0) break; }
-      check("sau focus: số đỏ biến mất (0) và 'Cần cô xử lý' rỗng — cùng trang, không điều hướng", !!r2 && r2.badges.length === 0 && r2.rows === 0 && r2.empty && pg.url() === urlBefore, r2);
+      check("focus sau mốc 30 s: số đỏ biến mất (0) và 'Cần cô xử lý' rỗng — cùng trang, không điều hướng", !!r2 && r2.badges.length === 0 && r2.rows === 0 && r2.empty && pg.url() === urlBefore, r2);
     } else {
       await prisma.classJoinRequest.delete({ where: { id: jr.id } });
     }

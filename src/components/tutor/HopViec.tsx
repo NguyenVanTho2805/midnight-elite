@@ -5,9 +5,10 @@
 // Dữ liệu: /api/tutor/hop-viec ({ items, total, overview }); tải lại khi cửa sổ lấy lại focus.
 // LOI-02 (mục 2.F): "Cần cô xử lý · N việc" = `total` của API (một nguồn sự thật với số đỏ ở thanh bên, todoBadgeTotal), KHÔNG đếm bằng số đầu tiêu đề.
 // "Chờ phụ huynh" vẫn hiện nhưng không tính vào số. Lấy lại focus ⇒ tải lại danh sách VÀ router.refresh() để layout máy chủ tính lại số đỏ (số đỏ không cũ sau khi xử lý việc).
+// router.refresh() vẽ lại cả layout máy chủ (nặng) ⇒ tối đa một lần mỗi REFRESH_MIN_MS (30 giây, tính từ lúc trang gắn hoặc lần refresh trước); danh sách vẫn tải lại mỗi lần focus.
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { InboxItem } from "@/lib/tutorInbox";
 import type { HopViecOverview } from "@/lib/tutorOverview";
@@ -40,12 +41,16 @@ function Skeleton() {
   );
 }
 
+/** Khoảng tối thiểu giữa hai lần router.refresh() do lấy lại focus. */
+export const REFRESH_MIN_MS = 30_000;
+
 export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [overview, setOverview] = useState<HopViecOverview | null>(null);
   const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState(false);
   const router = useRouter();
+  const lastRefresh = useRef(0);
 
   const load = useCallback(() => {
     fetch("/api/tutor/hop-viec", { credentials: "same-origin", cache: "no-store" })
@@ -59,7 +64,12 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
 
   useEffect(() => {
     load();
-    const onFocus = () => { load(); router.refresh(); };
+    lastRefresh.current = Date.now(); // layout vừa vẽ ở máy chủ cùng lượt tải trang ⇒ số đỏ đang mới
+    const onFocus = () => {
+      load();
+      const now = Date.now();
+      if (now - lastRefresh.current >= REFRESH_MIN_MS) { lastRefresh.current = now; router.refresh(); }
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [load, router]);
