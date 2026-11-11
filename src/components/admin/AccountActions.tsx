@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { KinButton } from "@/components/kin";
 import { useAuth, hasPermission, PERMISSIONS } from "@/contexts/AuthContext";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 /** Quyền xoá tài khoản (chỉ admin_super): ẩn khối nếu không có. */
 export function useCanDeleteAccounts(): boolean {
@@ -76,10 +77,10 @@ export function DeleteAccountBlock({ kind, userId, onDeleted }: {
           <label className="block text-xs font-semibold text-[var(--kin-tt-chu-loi)]" htmlFor={`xoa-${userId}`}>Gõ XOA để xác nhận</label>
           <input id={`xoa-${userId}`} data-xoa-input value={word} onChange={e => setWord(e.target.value)} autoComplete="off" className={FIELD} />
           <label className="block text-xs font-semibold text-[var(--kin-tt-chu-loi)]" htmlFor={`ly-do-${userId}`}>Lý do (không bắt buộc)</label>
-          <select id={`ly-do-${userId}`} data-xoa-ly-do value={reason} onChange={e => setReason(e.target.value)} className={FIELD}>
+          <KinSelect id={`ly-do-${userId}`} data-xoa-ly-do value={reason} onChange={v => setReason(v)}>
             <option value="">Không chọn</option>
             {REASONS.map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
-          </select>
+          </KinSelect>
           <div className="flex gap-2">
             <KinButton variant="secondary" className="flex-1" disabled={busy} onClick={() => { setStep(1); setWord(""); }}>Huỷ</KinButton>
             <KinButton variant="danger-solid" className="flex-1" disabled={!matched} loading={busy} loadingLabel="Đang xoá…" onClick={run}>Xoá vĩnh viễn</KinButton>

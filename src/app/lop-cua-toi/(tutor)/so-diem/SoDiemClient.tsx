@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton, KinEmptyState, KinStat, KinStatRow } from "@/components/kin";
-import { Badge, CARD_STYLE, FIELD_STYLE, callApi } from "@/components/tutor/shared";
+import { Badge, CARD_STYLE, callApi } from "@/components/tutor/shared";
 import { fmtScore } from "@/lib/monthlyReport";
 import { summariseClasses, type ClassSummary, type GradeRow } from "@/lib/gradebook";
 import { vnMonthKey } from "@/lib/revenue";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Data { yearMonth: string; rows: GradeRow[]; classes: ClassSummary[]; truncated: boolean }
 const monthLabel = (ym: string) => `Tháng ${Number(ym.slice(5, 7))}/${ym.slice(0, 4)}`;
@@ -44,10 +45,10 @@ export default function SoDiemClient() {
         <span className="font-bold min-w-28 text-center" style={{ color: "var(--kin-chu-chinh)" }}>{monthLabel(ym)}</span>
         <KinButton variant="secondary" disabled={ym >= now} onClick={() => setYm(shift(ym, 1))} aria-label="Tháng sau">→</KinButton>
         <label className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Lớp
-          <select value={course} onChange={e => setCourse(e.target.value)} className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+          <KinSelect value={course} onChange={v => setCourse(v)} className="block mt-1">
             <option value="">Tất cả lớp</option>
             {courseOptions.map(c => <option key={c.courseId} value={c.courseId}>{c.courseName}</option>)}
-          </select>
+          </KinSelect>
         </label>
       </div>
 

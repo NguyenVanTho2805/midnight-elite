@@ -25,6 +25,7 @@ import { NopTepBox, NopTepStudentFiles, type NopTepBoxHandle } from "@/component
 import { dayAt } from "@/lib/baiTap";
 import { deThiSubHref, taoDeHref } from "@/components/tutor/de-thi/deThiClient";
 import { contentHref } from "@/lib/tutorRoutes";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Tab = "all" | BaiTapGroup;
 interface Data { items: BaiTapItem[]; courses: { id: string; name: string }[] }
@@ -261,10 +262,10 @@ export default function BaiTap() {
           <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
             <div className="min-w-0 sm:flex-1 sm:max-w-sm">
               <label htmlFor="bt-giao-lop" className={LABEL}>Lớp</label>
-              <select id="bt-giao-lop" autoFocus className={FIELD} value={pickId} onChange={e => setPickId(e.target.value)}>
+              <KinSelect id="bt-giao-lop" autoFocus value={pickId} onChange={v => setPickId(v)}>
                 <option value="">Chọn lớp</option>
                 {data?.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </KinSelect>
             </div>
             {pickId
               ? <Link href={tuNopHref(pickId)} className={kinButtonClass("primary")}>Soạn bài cho lớp này</Link>
@@ -289,10 +290,10 @@ export default function BaiTap() {
           <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-x-8 gap-y-8 items-start">
             <div className="min-w-0">
               <label htmlFor="bt-lop" className={LABEL}>Lọc lớp</label>
-              <select id="bt-lop" className={FIELD} value={courseId} onChange={e => { setCourseId(e.target.value); setSelKey(null); setPickOpen(false); }}>
+              <KinSelect id="bt-lop" value={courseId} onChange={v => { setCourseId(v); setSelKey(null); setPickOpen(false); }}>
                 <option value="">Tất cả lớp</option>
                 {data.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </KinSelect>
               {shown.length === 0 ? (
                 <KinEmptyState title="Không có bài nào ở mục này"
                   action={<button type="button" onClick={() => { setTab("all"); setCourseId(""); }} className={kinButtonClass("secondary")}>Xem tất cả</button>}>

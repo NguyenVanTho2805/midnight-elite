@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { KIN_FIELD, KinButton } from "@/components/kin";
 import { buildFacets, filterRows, type CatalogFacets, type CatalogRow } from "@/lib/courseCatalogAdmin";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export { buildFacets };
 export type { CatalogRow, CatalogFacets };
@@ -63,7 +64,6 @@ export function CourseFilters({ value, onChange, facets, showTutor, disabled, on
   const [open, setOpen] = useState(false);
   const n = activeCount(value);
   const set = <K extends keyof CatalogFilter>(k: K, v: CatalogFilter[K]) => onChange({ ...value, [k]: v });
-  const sel = `${KIN_FIELD} bg-[var(--kin-nen-trang)]`;
   const chips: { key: keyof CatalogFilter; text: string }[] = [];
   if (value.q.trim()) chips.push({ key: "q", text: `Tìm: “${value.q.trim()}”` });
   if (value.kythi) chips.push({ key: "kythi", text: `Kỳ thi: ${value.kythi}` });
@@ -96,33 +96,33 @@ export function CourseFilters({ value, onChange, facets, showTutor, disabled, on
           </div>
           <div className={`${open ? "grid" : "hidden"} md:grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3`}>
             <label className="min-w-0"><span className="sr-only">Kỳ thi</span>
-              <select disabled={disabled} className={sel} value={value.kythi} onChange={e => set("kythi", e.target.value)}>
+              <KinSelect disabled={disabled} value={value.kythi} onChange={v => set("kythi", v)}>
                 <option value="">Kỳ thi: tất cả</option>
                 {facets.categories.map(c => <option key={c.name} value={c.name}>{c.name} ({c.count})</option>)}
-              </select></label>
+              </KinSelect></label>
             <label className="min-w-0"><span className="sr-only">Trạng thái</span>
-              <select disabled={disabled} className={sel} value={value.tt} onChange={e => set("tt", e.target.value as CatalogFilter["tt"])}>
+              <KinSelect disabled={disabled} value={value.tt} onChange={v => set("tt", v as CatalogFilter["tt"])}>
                 <option value="">Trạng thái: tất cả</option>
                 <option value="hien">Đang hiển thị ({facets.shown})</option>
                 <option value="an">Đang ẩn ({facets.hidden})</option>
-              </select></label>
+              </KinSelect></label>
             {showTutor && (
               <label className="min-w-0"><span className="sr-only">Gia sư</span>
-                <select disabled={disabled} className={sel} value={value.giasu} onChange={e => set("giasu", e.target.value)}>
+                <KinSelect disabled={disabled} value={value.giasu} onChange={v => set("giasu", v)}>
                   <option value="">Gia sư: tất cả</option>
                   {facets.tutors.map(t => <option key={t.id ?? TUTOR_CENTER} value={t.id ?? TUTOR_CENTER}>{t.id ? t.name : "Trung tâm"} ({t.count})</option>)}
-                </select></label>
+                </KinSelect></label>
             )}
             <label className="min-w-0"><span className="sr-only">Giá</span>
-              <select disabled={disabled} className={sel} value={value.gia} onChange={e => set("gia", e.target.value as CatalogFilter["gia"])}>
+              <KinSelect disabled={disabled} value={value.gia} onChange={v => set("gia", v as CatalogFilter["gia"])}>
                 <option value="">Giá: tất cả</option>
                 <option value="mien-phi">Miễn phí (giá 0)</option>
                 <option value="co-phi">Có phí</option>
-              </select></label>
+              </KinSelect></label>
             <label className="min-w-0"><span className="sr-only">Sắp xếp</span>
-              <select disabled={disabled} className={sel} value={value.sx} onChange={e => set("sx", e.target.value as CatalogFilter["sx"])}>
+              <KinSelect disabled={disabled} value={value.sx} onChange={v => set("sx", v as CatalogFilter["sx"])}>
                 {Object.entries(SORT_LABEL).map(([k, v]) => <option key={k} value={k}>Sắp xếp: {v}</option>)}
-              </select></label>
+              </KinSelect></label>
           </div>
         </div>
       )}

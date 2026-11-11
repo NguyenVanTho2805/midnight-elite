@@ -7,6 +7,7 @@ import { KinButton, KinCallout, KinSectionHead, KinSkeleton, KinStateCard, KinSt
 import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { callApi } from "@/components/tutor/shared";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Row { channel: string; group: string; groupLabel: string; opens: number; fulls: number; fullRate: number | null }
 interface Payload { days: number; rows: Row[]; totals: { opens: number; fulls: number }; reportsOpen: number; lockedProfiles: number }
@@ -52,10 +53,9 @@ function PheuContent() {
           </p>
         </div>
         <label className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Khoảng thời gian
-          <select value={days} onChange={e => setDays(Number(e.target.value))}
-            className="block mt-1 px-3 min-h-[44px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]">
+          <KinSelect value={String(days)} onChange={v => setDays(Number(v))} className="block mt-1">
             {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
-          </select>
+          </KinSelect>
         </label>
       </header>
 

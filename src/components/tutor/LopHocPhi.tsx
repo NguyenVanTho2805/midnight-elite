@@ -13,6 +13,7 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi, useNotify } from "@/components/tutor/shared";
 import { FEE_MODE_LABEL, FEE_RATE_FROM_START, FEE_RATE_UNIT, isNewFeeMode, pickClassRate, pickStudentRate, type FeeMode } from "@/lib/tuitionFee";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const vnd = (n: number) => `${n.toLocaleString("vi-VN")}đ`;
 const dmy = (k: string) => (k === FEE_RATE_FROM_START ? "khi tạo lớp" : `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`);
@@ -229,10 +230,10 @@ function StudentRateForm({ courseId, ov, feeMode, onApplied }: { courseId: strin
       <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Đặt đơn giá riêng cho một em</p>
       <div className="pt-3 grid sm:grid-cols-3 gap-5">
         <label className={KIN_LABEL}>Học sinh
-          <select value={studentId} onChange={e => { setStudentId(e.target.value); dirty(); }} className={`${KIN_FIELD} mt-2`}>
+          <KinSelect value={studentId} onChange={v => { setStudentId(v); dirty(); }} className="mt-2">
             <option value="">Chọn em…</option>
             {ov.students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          </KinSelect>
         </label>
         <label className={KIN_LABEL}>Đơn giá ({isNewFeeMode(feeMode) ? FEE_RATE_UNIT[feeMode] : ""})
           <input inputMode="numeric" value={rate} onChange={e => { setRate(e.target.value.replace(/[^\d]/g, "")); dirty(); }} className={`${KIN_FIELD} mt-2`} />

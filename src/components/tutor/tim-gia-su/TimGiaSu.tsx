@@ -15,8 +15,8 @@ import { LuoiCho, LuoiGiaSu } from "./LuoiGiaSu";
 import { taiDanhSach } from "./goiApi";
 import { BO_LOC_RONG, SORT_OPTIONS, demLoc, docBoLoc, ghiBoLoc, moTaLoc, type BoLocState, type SortValue } from "./locUrl";
 import type { TutorFacets, TutorListItem } from "./kieu";
+import { KinSelect } from "@/components/kin/KinSelect";
 
-const SELECT = "min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] px-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
 
 export function TimGiaSu() {
   const router = useRouter();
@@ -73,9 +73,9 @@ export function TimGiaSu() {
   const sortSelect = (
     <label className="flex items-center gap-2 text-[length:var(--kin-co-small)] text-[var(--kin-chu-phu)]">
       <span className="shrink-0">Sắp xếp</span>
-      <select aria-label="Sắp xếp" className={SELECT} value={filters.sort} onChange={e => go({ ...filters, sort: e.target.value as SortValue })}>
+      <KinSelect className="w-56 max-w-full" aria-label="Sắp xếp" value={filters.sort} onChange={v => go({ ...filters, sort: v as SortValue })}>
         {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      </KinSelect>
     </label>
   );
 

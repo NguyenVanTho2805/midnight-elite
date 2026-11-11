@@ -5,6 +5,7 @@
 import { useId } from "react";
 import { demLoc, soVND, type BoLocState } from "./locUrl";
 import type { TutorFacets } from "./kieu";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const SELECT = "min-h-[var(--kin-cham-toi-thieu)] w-full rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] px-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]";
 const LABEL = "mb-1.5 block text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-chinh)]";
@@ -77,18 +78,18 @@ export function BoLoc({ value, onChange, facets, onClear, idPrefix }: BoLocProps
       </div>
       <div>
         <label htmlFor={id("tinh")} className={LABEL}>Tỉnh / thành</label>
-        <select id={id("tinh")} className={SELECT} value={value.city} onChange={e => set({ city: e.target.value, district: "" })}>
+        <KinSelect id={id("tinh")} value={value.city} onChange={v => set({ city: v, district: "" })}>
           <option value="">Tất cả tỉnh / thành</option>
           {cityOpts.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        </KinSelect>
       </div>
       {value.city && (
         <div>
           <label htmlFor={id("quan")} className={LABEL}>Quận / huyện</label>
-          <select id={id("quan")} className={SELECT} value={value.district} onChange={e => set({ district: e.target.value })}>
+          <KinSelect id={id("quan")} value={value.district} onChange={v => set({ district: v })}>
             <option value="">Tất cả quận / huyện</option>
             {distOpts.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
+          </KinSelect>
         </div>
       )}
       <fieldset className="m-0 border-0 p-0">

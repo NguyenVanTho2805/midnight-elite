@@ -10,6 +10,7 @@ import { ImagePicker } from "./ImagePicker";
 import { ClipIcon } from "./Icons";
 import { MAX_POST } from "./format";
 import type { ScopeOption } from "./useScopeOptions";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const TOPICS = [
   { key: "kinh-nghiem", label: "Chia sẻ" },
@@ -140,10 +141,10 @@ export function Composer({ userName, scopes, onPosted, lockCourseId }: { userNam
         ) : scopes.length > 0 && (
           <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
             <span className="whitespace-nowrap">Đăng vào</span>
-            <select value={courseId} onChange={e => setCourseId(e.target.value)} className={`${field} min-h-11 py-0`}>
+            <KinSelect value={courseId} onChange={v => setCourseId(v)}>
               <option value="">Cộng đồng chung</option>
               {scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            </KinSelect>
           </label>
         )}
         {error && <p role="alert" className="text-[length:var(--kin-co-small)] text-[var(--kin-tt-chu-loi)]">{error}</p>}

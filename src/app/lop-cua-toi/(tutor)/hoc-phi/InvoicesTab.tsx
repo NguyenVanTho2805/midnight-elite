@@ -17,6 +17,7 @@ import { PaymentsDialog } from "./PaymentTools";
 import { AttachDialog, DiscountDialog } from "./LooseAndDiscount";
 import { PAYMENT_METHOD_LABEL, type PaymentMethod } from "@/lib/tuitionPayment";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const vnHm = (iso: string) => hmOf(vnMinutesOfDay(new Date(iso)));
 const vnDm = (iso: string) => { const k = vnDateKeyOf(new Date(iso)); return `${k.slice(8, 10)}/${k.slice(5, 7)}`; };
@@ -151,10 +152,9 @@ export default function InvoicesTab({ onGoPayout }: { onGoPayout: () => void }) 
     <div className="space-y-6">
       <div className="flex items-end gap-3 flex-wrap">
         <label className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-mo)" }}>Tháng
-          <select value={yearMonth} onChange={e => setYearMonth(e.target.value)}
-            className="block mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+          <KinSelect value={yearMonth} onChange={v => setYearMonth(v)} className="block mt-1">
             {months.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
-          </select>
+          </KinSelect>
         </label>
         <KinButton onClick={issue} loading={busy === "issue"}>Lập phiếu cả lớp</KinButton>
         <KinButton variant="ghost" onClick={() => setDialog({ kind: "discount" })}>Giảm giá %</KinButton>

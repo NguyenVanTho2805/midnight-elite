@@ -19,6 +19,7 @@ import { formatMegabytes } from "@/lib/mediaStorage";
 import { COPYRIGHT_PLEDGE_LABEL, COPYRIGHT_NOTICE } from "@/lib/classRecordings";
 import type { AddResult, GtTarget } from "./useGiaoTrinh";
 import { ChipTrangThai } from "./ChipTrangThai";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 /** Mục (kiểu) mà link sẽ thành; khớp nhãn kiểu trên hàng. */
 const SLOT_NAME: Record<MediaSlot, string> = { video: "Video", live: "Buổi live", azota: "Bài tập", document: "Tài liệu" };
@@ -181,12 +182,12 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
       {lessons.length > 0 && (
         <div className="mt-4">
           <label htmlFor="gt-gan-vao" className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Thêm thành</label>
-          <select id="gt-gan-vao" data-gt-gan-vao className={`${KIN_FIELD} mt-1`} value={attach} onChange={e => setAttachTo(e.target.value)}>
+          <KinSelect id="gt-gan-vao" data-gt-gan-vao className="mt-1" value={attach} onChange={v => setAttachTo(v)}>
             <option value="">Mục mới (mặc định)</option>
             <optgroup label="Gắn vào mục có sẵn">
               {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
             </optgroup>
-          </select>
+          </KinSelect>
         </div>
       )}
 

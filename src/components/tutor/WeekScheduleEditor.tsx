@@ -19,6 +19,7 @@ import {
   applyOp, createRange, describeBlock, diffBlocks, findConflicts, formatDuration, invertOp, layoutDayLanes, moveBlock, nudge, resizeRange, snapMin, weeklyMinutes,
   type Conflict, type OpResult, type ScheduleBlock, type ScheduleOp,
 } from "@/lib/scheduleDrag";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export type { ScheduleBlock, ScheduleOp, OpResult, Conflict } from "@/lib/scheduleDrag";
 
@@ -681,17 +682,17 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, 
         onKeyDown={e => { if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") void save(e); }}>
         <p aria-hidden className="h-1 rounded" style={{ background: accent }} />
         <label className={lab}>Thứ
-          <select value={day} disabled={readOnly} onChange={e => setDay(Number(e.target.value))} className={`${field} mt-1`}>
+          <KinSelect value={String(day)} disabled={readOnly} onChange={v => setDay(Number(v))} className="mt-1">
             {WEEK_ORDER.map(d => <option key={d} value={d}>{dayName(d)}</option>)}
-          </select>
+          </KinSelect>
         </label>
         <div className="grid grid-cols-2 gap-3">
           {([["s", "Bắt đầu", start, setStart], ["e", "Kết thúc", end, setEnd]] as const).map(([k, title, val, setVal]) => (
             <div key={k}>
               <label className={lab} htmlFor={`sched-${k}`}>{title}</label>
-              <select id={`sched-${k}`} value={val} disabled={readOnly} onChange={e => setVal(Number(e.target.value))} className={`${field} mt-1`}>
+              <KinSelect id={`sched-${k}`} value={String(val)} disabled={readOnly} onChange={v => setVal(Number(v))} className="mt-1">
                 {HM_OPTIONS.filter(m => (k === "s" ? m < DAY_END_MIN : m > 0)).map(m => <option key={m} value={m}>{hm(m)}</option>)}
-              </select>
+              </KinSelect>
               {!readOnly && (
                 <div className="mt-1 flex gap-1">
                   <button type="button" className={step} aria-label={`${title} lùi 15 phút`} onClick={() => move(k, -SNAP_MIN)}>−15</button>
@@ -712,9 +713,9 @@ function BlockPanel({ block, others, ghosts, remote, readOnly, accent, onClose, 
           <span className="block text-right text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)] tabular-nums">{note.length}/{NOTE_MAX}</span>
         </label>
         <label className={lab}>Hình thức
-          <select value={mode} disabled={readOnly} onChange={e => setMode(e.target.value as "" | "online" | "offline")} className={`${field} mt-1`}>
+          <KinSelect value={mode} disabled={readOnly} onChange={v => setMode(v as "" | "online" | "offline")} className="mt-1">
             <option value="">Chưa chọn</option><option value="online">Trực tuyến</option><option value="offline">Trực tiếp</option>
-          </select>
+          </KinSelect>
         </label>
         {mode === "offline" && (
           <label className={lab}>Địa chỉ

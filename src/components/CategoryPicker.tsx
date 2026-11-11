@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api, type QuestionCategoryFull } from "@/lib/api";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // Chọn 1 đầu mục trong cây phân cấp KHÔNG giới hạn số tầng (vd Môn → Chương →
 // Bài → Dạng bài) — thay cho SubjectField (môn, phẳng) + ô "Chủ đề" tự do cũ.
@@ -83,12 +84,11 @@ export function CategoryPicker({ value, categories, onCategoriesChange, onChange
         }
         return (
           <div key={i} className="flex gap-2">
-            <select className={className} value={row.selected}
-              onChange={e => e.target.value === "__add__" ? setAddingAt(row.parentId) : onChange(e.target.value)}>
+            <KinSelect value={row.selected} onChange={v => v === "__add__" ? setAddingAt(row.parentId) : onChange(v)}>
               <option value="">{i === 0 ? "Chọn đầu mục..." : "-- Không chọn thêm --"}</option>
               {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               <option value="__add__">+ Thêm đầu mục {i === 0 ? "gốc" : "con"} mới…</option>
-            </select>
+            </KinSelect>
           </div>
         );
       })}

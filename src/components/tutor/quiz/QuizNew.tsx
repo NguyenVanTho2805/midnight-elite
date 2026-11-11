@@ -7,6 +7,7 @@ import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/P
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
 import { qfetch, quizHref, DE_THI_ROOT, IMPORT_HREF } from "./quizClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export default function QuizNew() {
   const router = useRouter();
@@ -43,10 +44,10 @@ export default function QuizNew() {
         </div>
         <div>
           <label htmlFor="qn-course" className={`${KIN_LABEL} mb-2`}>Lớp (chọn sau cũng được)</label>
-          <select id="qn-course" className={KIN_FIELD} value={courseId} disabled={courses === null} onChange={e => setCourseId(e.target.value)}>
+          <KinSelect id="qn-course" value={courseId} disabled={courses === null} onChange={v => setCourseId(v)}>
             <option value="">{courses === null ? "Đang tải lớp…" : "Chưa chọn lớp"}</option>
             {(courses ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </KinSelect>
           {coursesErr && <p role="alert" className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">Không tải được danh sách lớp. Cô vẫn tạo quiz được và chọn lớp ở bước phát hành.</p>}
         </div>
         <KinCallout>Quiz mới là bản nháp: học sinh chưa thấy cho tới khi cô phát hành.</KinCallout>

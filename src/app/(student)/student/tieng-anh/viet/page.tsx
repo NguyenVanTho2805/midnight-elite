@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { api, Card, ErrorLine, INK, PageHead, Pill, Skeleton } from "@/components/english/ui";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { countWords } from "@/lib/english/text";
 import { nowMs } from "@/components/english/clock";
 
@@ -116,11 +117,10 @@ export default function WritingLab() {
         <Card>
           <form className="space-y-3" onSubmit={e => { e.preventDefault(); void submit(); }}>
             <div className="flex gap-2 flex-wrap items-end">
-              <label className="text-sm" style={{ color: INK.chinh }}>Loại bài
-                <select value={task} onChange={e => setTask(e.target.value as keyof typeof TASKS)} className="ml-2 min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }}>
-                  {Object.entries(TASKS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-              </label>
+              <div className="text-sm flex items-center gap-2 min-w-0" style={{ color: INK.chinh }}><span id="viet-loai">Loại bài</span>
+                <KinSelect className="w-64 max-w-full" aria-labelledby="viet-loai" value={task} onChange={v => setTask(v as keyof typeof TASKS)}
+                  options={Object.entries(TASKS).map(([k, v]) => ({ value: k, label: v.label }))} />
+              </div>
               {revOf && <Pill tone="nhan">Đang viết lại</Pill>}
             </div>
             <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={3} placeholder="Dán đề bài (vd: Some people think that… To what extent do you agree or disagree?)" aria-label="Đề bài"

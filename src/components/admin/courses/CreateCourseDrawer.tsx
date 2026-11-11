@@ -11,6 +11,7 @@ import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
 import { useAuth } from "@/contexts/AuthContext";
 import { vnDateKeyOf } from "@/lib/classSessions";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 
 // ─── CREATE COURSE DRAWER ─────────────────────────────────────────────────────
@@ -305,9 +306,9 @@ export function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => set("category", e.target.value)}>
+                <KinSelect value={form.category} onChange={v => set("category", v)}>
                   {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </KinSelect>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Gia sư</label>
