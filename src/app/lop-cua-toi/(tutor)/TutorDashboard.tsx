@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { loadTutorDashboard } from "@/lib/tutorDashboard";
 import { buildTodoItems } from "@/lib/tutorTodo";
+import { INBOX_ACTION_KINDS, todoBadgeTotal } from "@/lib/tutorInbox";
 import { loadTutorSchedule, type ScheduleOccurrence } from "@/lib/reminderServer";
 import { addDaysKey, dayOfWeekOfKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { classAccent, greetingForHour } from "@/lib/classColor";
@@ -58,9 +59,10 @@ export default async function TutorDashboard({ tutorId, name }: { tutorId: strin
   const now = new Date();
   const todayKey = vnDateKeyOf(now);
   const [d, sched] = await Promise.all([loadTutorDashboard(tutorId), loadTutorSchedule(tutorId, todayKey, addDaysKey(todayKey, 6), now)]);
-  // LOI-02 F: "Việc cần làm" đếm cùng nguồn với số đỏ Hộp việc (todoBadgeTotal) — bỏ "consent" (việc chờ PHỤ HUYNH, không phải việc của cô).
-  const todo = buildTodoItems(d.todo).filter(t => t.key !== "consent");
-  const todoTotal = todo.reduce((n, t) => n + t.count, 0);
+  // LOI-02 F: "Việc cần làm" = cùng nguồn với số đỏ Hộp việc. Khoá của buildTodoItems trùng tên InboxKind (14 loại) ⇒ lọc bằng INBOX_ACTION_KINDS
+  // (bỏ loại `waiting` — chờ PHỤ HUYNH), tổng = todoBadgeTotal(d.todo). Cờ lịch tắt ⇒ noSchedule = 0 ngay từ bộ đếm (tutorDashboard).
+  const todo = buildTodoItems(d.todo).filter(t => (INBOX_ACTION_KINDS as string[]).includes(t.key));
+  const todoTotal = todoBadgeTotal(d.todo);
   const anyUrgent = todo.some(t => t.urgent);
   const nowMs = now.getTime();
 
