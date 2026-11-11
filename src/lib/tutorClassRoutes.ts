@@ -3,7 +3,7 @@
 //
 // Hai việc:
 //  1. legacyClassTarget — /lop-cua-toi/[courseId]?tab=… (LopChiTiet cũ, nay chỉ còn cho đồng giảng / quản trị / học sinh) → đích mới của CHỦ LỚP gia sư.
-//     classPageDecision — /lop-cua-toi/quan-lop/[id]?tab=… → chuyển hướng sang trang con, hay hiện thân tab Cài đặt / Bài tập.
+//     classPageDecision — /lop-cua-toi/quan-lop/[id]?tab=… → chuyển hướng sang trang con, hay hiện thân tab Bài học / Cài đặt (LOI-02).
 //     Chuyển hướng theo phiên là 307 + no-store (Next redirect() trong trang động); hàm ở đây chỉ trả ĐÍCH. Query chỉ giữ danh sách trắng, đã mã hoá: không mở
 //     chuyển hướng ra ngoài, không rò tham số lạ. courseId luôn qua encodeURIComponent.
 //  2. coverImageOf — Course.bg (chuỗi CSS của nền: màu, gradient hoặc url("…")) → CHỈ ảnh https hợp lệ cho thẻ lớp; mọi thứ khác null. Máy chủ lọc, trình duyệt
@@ -58,7 +58,8 @@ const keep = (q: ClassQuery, keys: readonly KeepKey[]): [string, string | undefi
 
 /**
  * Đích mới cho CHỦ LỚP gia sư mở /lop-cua-toi/[courseId] (bảng 3.1). Không phụ thuộc người xem: nơi gọi tự kiểm "chủ lớp + gia sư" trước.
- *  - (không ?tab=) / ?tab= lạ: moi=1 → …/hoc-vien?muc=ma-moi&moi=1 (lớp mới chưa có học sinh); lich=loi → …/lich-hoc?lich=loi; duyet → …/hoc-vien?muc=xin-vao; còn lại …/giao-trinh.
+ *  - (không ?tab=) / ?tab= lạ: moi=1 → …/hoc-vien?muc=ma-moi&moi=1 (lớp mới chưa có học sinh); lich=loi → …/lich-hoc?lich=loi; duyet → …/hoc-vien?muc=xin-vao;
+ *    còn lại → gốc lớp (tab "Bài học", LOI-02; trước đây …/giao-trinh).
  *  - diem-danh → …/diem-danh · hoc-sinh → …/hoc-vien (muc=xin-vao nếu có duyet hoặc n) · ma-moi → …/hoc-vien?muc=ma-moi
  *  - giao-vien → …?tab=cai-dat&muc=dong-giang · hoc-phi → muc=hoc-phi · cong-dong → muc=cong-dong.
  */
@@ -79,23 +80,23 @@ export function legacyClassTarget(courseId: string, query: ClassQuery = {}): str
   if (pick(query, "moi") === "1") return `${Q}/hoc-vien${qs([["muc", "ma-moi"], ["moi", "1"], ...keep(query, ["them", "ma", "lich"])])}`;
   if (pick(query, "lich") === "loi") return `${Q}/lich-hoc?lich=loi`;
   if (pick(query, "duyet") !== undefined) return `${Q}/hoc-vien${qs([["muc", "xin-vao"], ...keep(query, ["duyet", "n"])])}`;
-  return `${Q}/giao-trinh`;
+  return Q; // LOI-02: gốc lớp = tab "Bài học" (…/giao-trinh nay chỉ 307 về đây)
 }
 
 /** Quyết định của trang /lop-cua-toi/quan-lop/[id] (bảng 3.1, nửa dưới). `tab` = thân tab hiện ngay tại trang này (không chuyển hướng). */
 export type ClassPageDecision =
   | { kind: "redirect"; to: string }
-  | { kind: "tab"; tab: "cai-dat" | "chuong-bai"; muc: MucCaiDat };
+  | { kind: "tab"; tab: "bai-hoc" | "cai-dat"; muc: MucCaiDat };
 
 /**
- *  (không tab) / lạ / giao-trinh → …/giao-trinh · diem-danh → …/diem-danh · lich-hoc → …/lich-hoc · hoc-vien → …/hoc-vien (giữ muc hợp lệ)
- *  cai-dat → thân Cài đặt (muc mặc định thong-tin) · chuong-bai → thân Bài tập. Chuyển hướng giữ danh sách trắng query.
+ *  LOI-02: (không tab) / chuong-bai / giao-trinh / lạ → thân "Bài học" ngay tại gốc (KHÔNG chuyển hướng: gốc có loading.tsx nên không 307 được, và nhiều
+ *  liên kết cũ trỏ ?tab=chuong-bai) · cai-dat → thân Cài đặt (muc mặc định thong-tin) · diem-danh → …/diem-danh · lich-hoc → …/lich-hoc ·
+ *  hoc-vien → …/hoc-vien (giữ muc hợp lệ). Chuyển hướng giữ danh sách trắng query. `muc` của thân Bài học không dùng (luôn mặc định).
  */
 export function classPageDecision(courseId: string, query: ClassQuery = {}): ClassPageDecision {
   const Q = classBase(courseId);
   const tab = pick(query, "tab");
   if (tab === "cai-dat") return { kind: "tab", tab: "cai-dat", muc: mucCaiDatOf(pick(query, "muc")) };
-  if (tab === "chuong-bai") return { kind: "tab", tab: "chuong-bai", muc: DEFAULT_MUC_CAI_DAT };
   const rest = keep(query, KEEP_QUERY_KEYS);
   switch (tab) {
     case "diem-danh": return { kind: "redirect", to: `${Q}/diem-danh${qs(rest)}` };
@@ -105,7 +106,7 @@ export function classPageDecision(courseId: string, query: ClassQuery = {}): Cla
       const muc = (MUC_HOC_SINH as readonly string[]).includes(m ?? "") && m !== DEFAULT_MUC_HOC_SINH ? m : undefined;
       return { kind: "redirect", to: `${Q}/hoc-vien${qs([["muc", muc], ...rest])}` };
     }
-    default: return { kind: "redirect", to: `${Q}/giao-trinh${qs(rest)}` }; // không tab, "giao-trinh", hoặc lạ
+    default: return { kind: "tab", tab: "bai-hoc", muc: DEFAULT_MUC_CAI_DAT }; // không tab, "chuong-bai", "giao-trinh", hoặc lạ
   }
 }
 
