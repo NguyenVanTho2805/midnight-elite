@@ -2,7 +2,7 @@
 // Ca phá cố ý (LOI-02 F): cho inboxTotal cộng lại INBOX_KINDS (gồm consent) → ca "inboxTotal bỏ consent" + "số đỏ = Σ dòng không waiting" đỏ;
 //   bỏ một khoá trong todoCountsToRaw → ca "đủ 14 khoá, không khoá nào rơi" đỏ; todoBadgeTotal cộng Object.values (kiểu cũ) → ca "bỏ pendingConsent" đỏ.
 import { buildInboxItems, inboxTotal, inboxWhen, inboxDateTime, inboxVnd, INBOX_DETAIL_LIMIT, INBOX_KINDS, INBOX_ACTION_KINDS, todoCountsToRaw, todoBadgeTotal, type InboxRaw, type InboxSource } from "@/lib/tutorInbox";
-import type { TodoCounts } from "@/lib/tutorTodo";
+import { buildTodoItems, type TodoCounts } from "@/lib/tutorTodo";
 import { buildHopViecOverview } from "@/lib/tutorOverview";
 import { check, section, done } from "./h";
 
@@ -126,6 +126,21 @@ check("INBOX_ACTION_KINDS = đúng các loại buildInboxItems đánh dấu KHÔ
   const all = primes.reduce((a, b) => a + b, 0);
   check("todoBadgeTotal = Σ mọi bộ đếm TRỪ pendingConsent", todoBadgeTotal(c) === all - c.pendingConsent, [todoBadgeTotal(c), all, c.pendingConsent]);
   check("todoBadgeTotal = inboxTotal của dòng dựng từ cùng bộ đếm (một nguồn)", todoBadgeTotal(c) === inboxTotal(raw(Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { count: v, rows: [], at: null }])) as Partial<InboxRaw>)));
+}
+{
+  // LOI-02 vòng 2 P3-B: ô "Việc cần làm" của Tổng quan = buildTodoItems(c) lọc bằng INBOX_ACTION_KINDS (đúng phép lọc ở
+  // src/app/lop-cua-toi/(tutor)/TutorDashboard.tsx:64-65) ⇒ không có "consent" và Σ count = todoBadgeTotal(c) = số đỏ Hộp việc.
+  const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+  const c = Object.fromEntries((Object.keys(zeroC) as (keyof TodoCounts)[]).map((k, i) => [k, primes[i]])) as unknown as TodoCounts;
+  const allItems = buildTodoItems(c);
+  const dash = allItems.filter(t => (INBOX_ACTION_KINDS as string[]).includes(t.key));
+  const sum = (xs: { count: number }[]) => xs.reduce((n, t) => n + t.count, 0);
+  check("P3-B: mọi khoá của buildTodoItems trùng tên một InboxKind (không khoá nào bị lọc nhầm vì sai tên)", allItems.length === 14 && allItems.every(t => (INBOX_KINDS as string[]).includes(t.key)), allItems.map(t => t.key));
+  check("P3-B: pendingConsent > 0 (và mọi khoá khác > 0) — sau lọc KHÔNG có khoá 'consent', còn đúng 13 dòng", c.pendingConsent > 0 && dash.length === 13 && !dash.some(t => t.key === "consent"), dash.map(t => t.key));
+  check("P3-B: Σ count của 'Việc cần làm' (đã lọc) = todoBadgeTotal(c) (= số đỏ Hộp việc)", sum(dash) === todoBadgeTotal(c), [sum(dash), todoBadgeTotal(c)]);
+  check("P3-B (phá): KHÔNG lọc thì Σ count ≠ todoBadgeTotal (lệch đúng pendingConsent)", sum(allItems) !== todoBadgeTotal(c) && sum(allItems) - todoBadgeTotal(c) === c.pendingConsent, [sum(allItems), todoBadgeTotal(c), c.pendingConsent]);
+  const only = { ...zeroC, pendingConsent: 1 };
+  check("P3-B: tình huống của chủ (chỉ pendingConsent = 1) → 'Việc cần làm' rỗng, Σ 0 = số đỏ 0", buildTodoItems(only).filter(t => (INBOX_ACTION_KINDS as string[]).includes(t.key)).length === 0 && todoBadgeTotal(only) === 0);
 }
 check("LOI-02 F, tình huống của chủ (cờ lịch tắt): chỉ pendingConsent = 1 → số đỏ 0", todoBadgeTotal({ ...zeroC, pendingConsent: 1 }) === 0);
 check("LOI-02 F (giả thuyết H1+H2, cờ bật): noSchedule 1 + pendingConsent 1 → số đỏ 1 (trước sửa: 2)", todoBadgeTotal({ ...zeroC, pendingConsent: 1, noSchedule: 1 }) === 1);

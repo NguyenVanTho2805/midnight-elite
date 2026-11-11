@@ -2,9 +2,12 @@
 // Tình huống của chủ: gia sư có 1 lớp "Lịch Sử - Tổng Ôn" đang nhận học viên, 1 em active chưa liên kết phụ huynh, 1 em pending_consent, KHÔNG khung giờ hằng tuần,
 // máy chủ chạy cờ lịch TẮT (mặc định) ⇒ số đỏ không hiện (0), "Cần cô xử lý" rỗng, không có dòng nhắc "chưa có lịch học", em chờ phụ huynh nằm ở khối "Chờ phụ huynh".
 // Đối chứng dương (để bài không xanh vì số đỏ KHÔNG BAO GIỜ hiện): thêm 1 yêu cầu xin vào lớp ⇒ số đỏ "1" ở đúng mục Hộp việc = "1 việc" = 1 dòng.
-// H3 (1600): duyệt yêu cầu bằng fetch (không tải lại trang) rồi cửa sổ lấy lại focus ⇒ số đỏ về 0 mà không cần điều hướng (HopViec gọi router.refresh()).
-// router.refresh() bị giới hạn ≥ 30 giây giữa hai lần (REFRESH_MIN_MS, tính từ lúc trang gắn): focus SỚM chỉ tải lại danh sách (số đỏ chưa đổi);
-// focus sau mốc 30 giây kể từ lúc tải trang ⇒ số đỏ về 0.
+// H3 (1600) theo 927766d4: HopViec mỗi lần focus tải lại danh sách và CHỈ router.refresh() khi `total` mới KHÁC `total` lần trước (không còn giới hạn thời gian).
+//   H3a (phá ngược): focus khi KHÔNG có gì đổi ⇒ danh sách vẫn tải lại (≥ 1 GET /api/tutor/hop-viec) nhưng 0 request RSC refresh trong 2,5 s.
+//   H3b: duyệt yêu cầu bằng fetch (không tải lại trang) rồi focus ⇒ danh sách 0 dòng VÀ số đỏ về 0 NGAY (≤ 15 s, chưa tới mốc 30 s của bản cũ), cùng URL,
+//        và đã thấy đúng 1+ request RSC refresh (đối chứng dương cho cách đếm của H3a).
+// Cách đếm request RSC refresh: page.on("request") — request có header `rsc: 1` HOẶC query `_rsc=`, BỎ request có header `next-router-prefetch` (Next tự prefetch
+// liên kết trên màn hình), và chỉ giữ request có pathname = đường hiện tại (/lop-cua-toi). router.refresh() tải lại chính đường hiện tại ⇒ lọt bộ lọc.
 // Chạy: TZ=Asia/Ho_Chi_Minh; source tools/local-e2e/env.sh && SHOTS=<thư mục ảnh> npx tsx tools/local-e2e/ui-loi-02-hop-viec.ts   (máy chủ thử ở BASE, cờ lịch tắt; bài gọi wipe()).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
@@ -81,7 +84,6 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
     // Đối chứng dương: 1 yêu cầu xin vào lớp ⇒ đúng 1 việc.
     const jr = await prisma.classJoinRequest.create({ data: { userId: SC.id, courseId: cSu.id, status: "pending" } });
     await openInbox(pg);
-    const loadedAt = Date.now(); // trang đã gắn TRƯỚC mốc này (Hộp việc hiện sau khi gắn + tải) ⇒ chờ tới loadedAt + 30,5 s là chắc qua REFRESH_MIN_MS
     const r1 = await read(pg);
     console.log(`    · ${tag} +1 xin vào lớp: ${JSON.stringify({ badges: r1.badges, aside: r1.aside, rows: r1.rows, rowSum: r1.rowSum })}`);
     check(`${tag}: +1 yêu cầu xin vào lớp → số đỏ "1" ở đúng mục Hộp việc (/lop-cua-toi), không mục nào khác có số`, r1.badges.length === 1 && r1.badges[0].href === "/lop-cua-toi" && r1.badges[0].text === "1", r1.badges);
@@ -90,29 +92,52 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
     await pg.screenshot({ path: `${SHOTS}/loi-02-hop-viec-1-${tag}.png`, fullPage: true });
 
     if (W === 1600) {
-      // H3: xử lý việc bằng fetch (không điều hướng) → cửa sổ lấy lại focus → số đỏ phải về 0 không cần tải lại.
-      section("H3 · 1600: duyệt bằng fetch rồi lấy lại focus → số đỏ về 0 không tải lại trang");
+      const curPath = new URL(pg.url()).pathname;
+      type Req = { t: number; url: string; kind: "rsc" | "prefetch" | "api" };
+      const reqs: Req[] = [];
+      pg.on("request", (r: any) => {
+        const u = new URL(r.url()); const h = r.headers();
+        if (u.pathname === "/api/tutor/hop-viec") { reqs.push({ t: Date.now(), url: r.url(), kind: "api" }); return; }
+        const isRsc = h["rsc"] === "1" || u.searchParams.has("_rsc");
+        if (!isRsc || u.origin !== new URL(BASE).origin || u.pathname !== curPath) return;
+        reqs.push({ t: Date.now(), url: r.url(), kind: h["next-router-prefetch"] ? "prefetch" : "rsc" });
+      });
+      const since = (t0: number, k: Req["kind"]) => reqs.filter(r => r.t >= t0 && r.kind === k);
+
+      section("H3a · 1600 (phá ngược): focus khi KHÔNG có gì đổi → tải lại danh sách nhưng KHÔNG router.refresh()");
+      await pg.waitForTimeout(1500); // để mọi request lúc tải trang lắng xuống
+      const tA = Date.now();
+      await pg.evaluate(() => window.dispatchEvent(new Event("focus")));
+      await pg.waitForTimeout(2500);
+      const rA = await read(pg);
+      const apiA = since(tA, "api").length, rscA = since(tA, "rsc"), preA = since(tA, "prefetch").length;
+      console.log(`    · H3a: GET /api/tutor/hop-viec=${apiA}, RSC refresh (đường ${curPath}, không prefetch)=${rscA.length}, prefetch bị lọc=${preA}`);
+      check("H3a: focus có tác dụng — danh sách được tải lại (≥ 1 GET /api/tutor/hop-viec), để ca không xanh suông", apiA >= 1, apiA);
+      check("H3a: total không đổi (1 → 1) ⇒ 0 request RSC refresh trong 2,5 s sau focus", rscA.length === 0, rscA.map(r => r.url));
+      check("H3a: số đỏ vẫn 1, vẫn 1 dòng", badgeNum(rA) === 1 && rA.rows === 1, rA);
+
+      section("H3b · 1600: duyệt bằng fetch rồi lấy lại focus → danh sách 0 dòng và số đỏ về 0 NGAY, cùng URL");
       const st = await pg.evaluate(async ([c, j]: string[]) => {
         const r = await fetch(`/api/tutor/lop/${encodeURIComponent(c)}/yeu-cau/${encodeURIComponent(j)}/duyet`, { method: "POST", body: new FormData(), redirect: "manual", credentials: "same-origin" });
         return r.type === "opaqueredirect" ? 303 : r.status;
       }, [cSu.id, jr.id]);
       check("duyệt (POST …/duyet) → chuyển hướng 303, em thành active", st === 303 && (await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: SC.id, courseId: cSu.id } } }))?.status === "active", st);
       const urlBefore = pg.url();
-      // Focus SỚM (< 30 s từ lúc tải): danh sách tải lại (0 dòng) nhưng KHÔNG router.refresh() ⇒ số đỏ của layout giữ "1" — giới hạn đang chạy.
-      let rEarly: Read | null = null;
-      if (Date.now() - loadedAt < 25_000) {
-        await pg.evaluate(() => window.dispatchEvent(new Event("focus")));
-        for (let i = 0; i < 30; i++) { await pg.waitForTimeout(300); rEarly = await read(pg); if (rEarly.rows === 0) break; }
-        await pg.waitForTimeout(1500); // đủ để một router.refresh() (nếu có) kịp vẽ lại layout
-        rEarly = await read(pg);
-        check("focus sớm (< 30 s): danh sách tải lại (0 dòng) nhưng chưa router.refresh() — số đỏ layout chưa đổi (giới hạn 30 s)", rEarly.rows === 0 && badgeNum(rEarly) === 1, rEarly);
-      } else console.log("    · bỏ ca focus sớm: đã quá 25 s từ lúc tải trang");
-      const wait = loadedAt + 30_500 - Date.now();
-      if (wait > 0) await pg.waitForTimeout(wait);
+      const tB = Date.now();
       await pg.evaluate(() => window.dispatchEvent(new Event("focus")));
-      let r2: Read | null = null;
-      for (let i = 0; i < 50; i++) { await pg.waitForTimeout(300); r2 = await read(pg); if (r2.badges.length === 0 && r2.rows === 0) break; }
-      check("focus sau mốc 30 s: số đỏ biến mất (0) và 'Cần cô xử lý' rỗng — cùng trang, không điều hướng", !!r2 && r2.badges.length === 0 && r2.rows === 0 && r2.empty && pg.url() === urlBefore, r2);
+      let r2: Read | null = null, msRows = -1, msBadge = -1;
+      for (let i = 0; i < 50; i++) {
+        await pg.waitForTimeout(300); r2 = await read(pg);
+        if (msRows < 0 && r2.rows === 0) msRows = Date.now() - tB;
+        if (msBadge < 0 && r2.badges.length === 0) msBadge = Date.now() - tB;
+        if (msRows >= 0 && msBadge >= 0) break;
+      }
+      const rscB = since(tB, "rsc");
+      console.log(`    · H3b: 0 dòng sau ${msRows} ms, số đỏ mất sau ${msBadge} ms, RSC refresh=${rscB.length}`);
+      check("H3b: danh sách 0 dòng và 'Cần cô xử lý' rỗng", !!r2 && r2.rows === 0 && r2.empty, r2);
+      check("H3b: số đỏ về 0 ngay (≤ 15 s sau focus — không phải chờ mốc 30 s)", msBadge >= 0 && msBadge <= 15_000, { msBadge, badges: r2?.badges });
+      check("H3b: cùng URL, không điều hướng", pg.url() === urlBefore, [urlBefore, pg.url()]);
+      check("H3b (đối chứng cách đếm của H3a): total đổi 1 → 0 ⇒ thấy ≥ 1 request RSC refresh ở đường hiện tại", rscB.length >= 1, rscB.map(r => r.url));
     } else {
       await prisma.classJoinRequest.delete({ where: { id: jr.id } });
     }

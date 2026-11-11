@@ -1,7 +1,7 @@
 // Trang "Học sinh" của gia sư (Figma 299:113083): /lop-cua-toi/hoc-sinh. Quyền theo chủ lớp, không lộ học sinh người khác,
 // tab Đang học / Đã nghỉ, tìm + lọc lớp, trạng thái tải/lỗi/rỗng, 390px, mục thanh bên.
 import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinPick } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -43,9 +43,9 @@ import { prisma } from "@/lib/prisma";
   check("'Mở lớp' dẫn tới trang lớp của chính cô", await rows.filter({ hasText: "Trần Gia Bảo" }).getByRole("link", { name: /Mở lớp/ }).getAttribute("href") === `/lop-cua-toi/${c1.id}`);
   check("'Thêm học sinh' → wizard /lop-cua-toi/hoc-sinh/them (23/10: tạo hồ sơ có hộp đồng ý; lối mã mời vẫn ở trang Lớp), 'Nhập danh sách' → /lop-cua-toi/hoc-sinh/nhap", await pg.getByRole("link", { name: "Thêm học sinh" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/them" && await pg.getByRole("link", { name: "Nhập danh sách" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/nhap");
   await shot(pg, "tutor-students");
-  await pg.getByRole("combobox", { name: "Lớp" }).selectOption(c2.id);
+  await kinPick(pg.getByRole("combobox", { name: "Lớp" }), "Văn 8"); // LOI-02: KinSelect (mở rồi chọn), không còn <select>
   check("lọc lớp Văn 8: còn đúng 1 dòng (Hà)", await rows.count() === 1 && await rows.first().getByText("Đỗ Hà").isVisible());
-  await pg.getByRole("combobox", { name: "Lớp" }).selectOption("");
+  await kinPick(pg.getByRole("combobox", { name: "Lớp" }), "Tất cả lớp");
   await pg.getByLabel("Tìm học sinh").fill("gia bảo");
   check("tìm 'gia bảo': 1 dòng", await rows.count() === 1);
   await pg.getByLabel("Tìm học sinh").fill("không có ai tên này");

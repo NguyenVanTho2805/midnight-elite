@@ -52,6 +52,8 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const ADM = await mkUser({ name: "Quản trị", role: "admin", adminRole: "admin_super" });
   const PEND = await mkUser({ name: "Ứng Viên Chờ Duyệt" }); await prisma.user.update({ where: { id: PEND.id }, data: { tutorAppliedAt: new Date() } });
   const STU = await mkUser({ name: "Học Sinh Ngoài Lớp" });
+  // Gia sư bị TỪ CHỐI: tutorApplicationStatus = "rejected" (có tutorAppliedAt + tutorRejectedAt, chưa tutorVerified) ⇒ tutorGateTarget coi như học sinh → /lop-cua-toi.
+  const REJ = await mkUser({ name: "Ứng Viên Bị Từ Chối" }); await prisma.user.update({ where: { id: REJ.id }, data: { tutorAppliedAt: new Date(Date.now() - 86_400_000), tutorRejectedAt: new Date() } });
   const ENR = await mkUser({ name: "Học Sinh Bí Mật Trong Lớp A" });
 
   const CA = await mkCourse(A.id, { name: "Lớp Toán Bí Mật Của Cô A" });
@@ -261,7 +263,7 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   check("id có %2F..%2F không thoát khỏi nhóm lớp (không vào trang quản trị)", idPhaAdmin.status < 500 && hasGate(idPhaAdmin.text, "not-found"), idPhaAdmin.status);
 
   // ── 5. Gia sư chờ duyệt, khách, học sinh, quản trị ───────────────────────────────────────────────
-  section("5. Gia sư chờ duyệt / khách / học sinh / quản trị mở quan-lop/**");
+  section("5. Gia sư chờ duyệt / bị từ chối / khách / học sinh / quản trị mở quan-lop/**");
   for (const p of ["", "/giao-trinh", "/hoc-vien", "/diem-danh", "/lich-hoc", "?tab=cai-dat", "?tab=chuong-bai"]) {
     const rp = await api("GET", `${QL}/${idA}${p}`, { as: PEND });
     check(`chờ duyệt → …/<A>${p || "/"}: chuyển /lop-cua-toi/cho-duyet, không lộ lớp`, go(rp).to === "/lop-cua-toi/cho-duyet" && !rp.text.includes("Lớp Toán Bí Mật"), [rp.status, go(rp).to]);
@@ -271,6 +273,15 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
     check(`học sinh → …/<A>${p || "/"}: chuyển /lop-cua-toi, không lộ lớp`, go(rs).to === "/lop-cua-toi" && !rs.text.includes("Lớp Toán Bí Mật"), [rs.status, go(rs).to]);
     const ra = await api("GET", `${QL}/${idA}${p}`, { as: ADM });
     check(`quản trị cấp 1 → …/<A>${p || "/"}: về /admin (vỏ gia sư không phải của họ), không lộ lớp`, go(ra).to === "/admin" && !ra.text.includes("Lớp Toán Bí Mật"), [ra.status, go(ra).to]);
+    const rr = await api("GET", `${QL}/${idA}${p}`, { as: REJ });
+    check(`gia sư bị từ chối → …/<A>${p || "/"}: về /lop-cua-toi (như học sinh, không phải trang chờ duyệt), không lộ lớp`, go(rr).to === "/lop-cua-toi" && !rr.text.includes("Lớp Toán Bí Mật"), [rr.status, go(rr).to]);
+    if (p === "/giao-trinh") {
+      // LOI-02 vòng 2 P3-C: route.ts của giao-trinh tự dựng 307 + no-store cho cả nhánh cổng (2195c0c7) — đo CHẶT "no-store" (không nhận no-cache của next dev).
+      for (const [who, r] of [["khách", rg], ["học sinh", rs], ["quản trị", ra], ["gia sư chờ duyệt", rp], ["gia sư bị từ chối", rr]] as [string, Res][]) {
+        const cc = r.headers.get("cache-control") ?? "";
+        check(`/giao-trinh · ${who}: 307 thật (Location) + Cache-Control chứa no-store`, r.status === 307 && go(r).kind === "http" && /no-store/.test(cc), [r.status, go(r).kind, cc]);
+      }
+    }
   }
 
   // ── 6. Đồng giảng / bộ môn ───────────────────────────────────────────────────────────────────────
