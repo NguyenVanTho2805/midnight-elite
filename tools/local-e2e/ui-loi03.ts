@@ -15,6 +15,7 @@
 import { BASE, mkTutor, mkSuper, mkUser, mkCourse, wipe, check, section, done, api, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 import { addDaysKey, instantOf, vnDateKeyOf } from "@/lib/classSessions";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 
@@ -109,7 +110,8 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await eventually("lọc 'Đang học' → chỉ còn Toán", async () => (await cards.count()) === 1 && (await cx.count()) === 1, 8000);
     await fl("tat-ca").click();
     await eventually("'Tất cả' → lại đủ 2 thẻ", async () => (await cards.count()) === 2, 8000);
-    check("dưới danh sách: 'Tham gia lớp khác' (Nhập mã lớp) + 'Tự học'", await p.getByRole("heading", { name: "Tham gia lớp khác" }).isVisible() && await p.getByRole("heading", { name: "Tự học" }).isVisible() && (await p.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1);
+    // LOI-01: khối "Tự học" chỉ hiện khi cờ TIENG_ANH mở; mặc định ẩn.
+    check(`dưới danh sách: 'Tham gia lớp khác' (Nhập mã lớp) + 'Tự học' ${featureOn("TIENG_ANH") ? "hiện" : "ẩn (cờ TIENG_ANH tắt)"}`, await p.getByRole("heading", { name: "Tham gia lớp khác" }).isVisible() && (await p.getByRole("heading", { name: "Tự học" }).isVisible()) === featureOn("TIENG_ANH") && (await p.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1);
     if (w === 390) {
       check("390: không cuộn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);
       const s = await small(p, "main a, main button");
