@@ -15,6 +15,7 @@ import { launch, closeAll } from "./ui";
 import { wipe, check, section, done, cookieFor, BASE } from "./h";
 import { seedStudentWorld, OTHER_S, TOKENS } from "./student-world";
 import { prisma } from "@/lib/prisma";
+import { blockedRouteFeature, featureOn } from "@/lib/features";
 import type { BrowserContext, Page } from "playwright";
 
 const ROLE = (process.env.ROLE ?? "student") as "student" | "guest";
@@ -139,7 +140,12 @@ const TUTOR_MONEY = /^\/lop-cua-toi\/(hoc-phi|doanh-thu)$/;                     
 const TUTOR_CONTENT = /^\/lop-cua-toi\/(de-thi|quan-lop|lop)(\/|$)/;
 const notes = new Map<string, string>();   // đổi đích CÓ CHỦ ĐÍCH đã xem xét (in ra cuối phần A để người đọc soát lại, không nuốt im lặng)
 // Trả về lý do nếu việc đổi đích reqPath → finPath là CÓ CHỦ ĐÍCH, ngược lại null.
+// LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai (khách "/", học sinh "Việc của tôi"); bài cộng đồng CHUNG /cong-dong/<id>
+// khi bảng tin ẩn cũng vậy (trang tự kiểm courseId). Cờ đọc ở tiến trình bài: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
+const LOI_HOME = ROLE === "guest" ? "/" : "/student/viec-cua-toi";
+const loiHidden = (reqPath: string) => !!blockedRouteFeature(reqPath, ROLE) || (!featureOn("CONG_DONG") && /^\/(student\/)?cong-dong\/[^/]+$/.test(reqPath) && !/^\/cong-dong\/(hoi-dap|ho-so)$/.test(reqPath));
 function expected(reqPath: string, finPath: string, redir = ""): string | null {
+  if (loiHidden(reqPath) && finPath === LOI_HOME) return "LOI-01: phần đang ẩn (src/lib/features.ts) → về trang đầu theo vai";
   if (ROLE === "guest") return null;
   if (TUTOR_CONTENT.test(reqPath) && finPath === "/lop-cua-toi") return "bí danh nội dung của GIA SƯ (de-thi / quan-lop / lop): học sinh được đưa về danh sách lớp của mình";
   if (reqPath === "/dang-nhap" && TUTOR_CONTENT.test(redir) && finPath === "/lop-cua-toi") return "liên kết của GIA SƯ trỏ /dang-nhap?redirect=<bí danh de-thi / quan-lop / lop> (vd 'Quản khoá' ở /ban-do): học sinh được đưa về danh sách lớp của mình";
@@ -555,6 +561,10 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
         { path: "/student/nhap-ma-lop?code=SAIMA999", what: "mã mời sai" },
       ] : []),
     ];
+    // LOI-01: địa chỉ thuộc phần đang ẩn không còn trang để báo "không tìm thấy" — proxy / trang 307 về trang đầu theo vai (kiểm ở phần A qua expected()). Bỏ khỏi đợt dò này.
+    const skipped = probes.filter(pr => loiHidden(new URL(MAIN + pr.path).pathname));
+    if (skipped.length) console.log(`  ℹ LOI-01: bỏ ${skipped.length} địa chỉ của phần đang ẩn (đã 307 về trang đầu): ${skipped.map(x => x.path).join(", ")}`);
+    for (const x of skipped) probes.splice(probes.indexOf(x), 1);
     const bad: string[] = [];
     // Cảnh báo "Encountered a script tag while rendering React component" chỉ có ở next dev, khi trang trong nhóm (parent) trả 404 thật (notFound() trong máy chủ):
     // dựng lại riêng ở /phieu/<mã sai> và /so-cua-con/<mã sai>, KHÔNG ở 404 gốc. Là cảnh báo kiểm tra của React bản phát triển (bản production không có), giao diện 404 vẫn
