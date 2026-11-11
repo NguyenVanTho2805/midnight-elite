@@ -12,7 +12,8 @@ import { featureOn } from "@/lib/features";
 const LICH = featureOn("LICH");
 const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(featureOn("CONG_DONG") ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
 const MORE_HIDDEN = ["Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"].filter(l => !MORE_EXPECT.includes(l));
-const MOBILE_CELLS = LICH ? 4 : 3;
+// LOI-04 (11/11/2026): module "Nhắc học" luôn hiện (không theo cờ) ⇒ điện thoại: Việc của tôi · Nhắc học · Lớp của tôi · Khác = 4 ô khi LICH tắt, 5 ô khi bật.
+const MOBILE_CELLS = LICH ? 5 : 4;
 
 const H = 3_600_000, D = 24 * H;
 
@@ -55,12 +56,14 @@ const H = 3_600_000, D = 24 * H;
 
   section("Thanh module");
   check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").first().isVisible());
-  for (const m of ["Việc của tôi", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  for (const m of ["Việc của tôi", "Nhắc học", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  check("LOI-04: module 'Nhắc học' → /student/nhac-hoc, đứng ngay sau 'Việc của tôi'", (await mod("Nhắc học").getAttribute("href")) === "/student/nhac-hoc"
+    && (await rail().evaluate(`(() => { const t = [...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent).map(e => e.getAttribute("href")); const i = t.indexOf("/student/viec-cua-toi"); return i >= 0 && t[i + 1] === "/student/nhac-hoc"; })()`)) === true);
   if (!LICH) check("LOI-01: Lịch đang ẩn → không có module 'Lịch học' trên thanh", await mod("Lịch học").count() === 0 && await rail().locator(":scope a[href='/student/lich-hoc']").count() === 0);
   check("BU-HS-TRANG-CHU: module 'Trang chủ' là liên kết tới '/', đứng ĐẦU thanh, KHÔNG có aria-current (vỏ không bao giờ hiện ở '/')",
     await mod("Trang chủ").count() === 1 && (await mod("Trang chủ").getAttribute("href")) === "/" && (await mod("Trang chủ").getAttribute("aria-current")) === null
     && (await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent && e.getAttribute("data-rail-home") === null)[0].textContent.trim().startsWith("Trang chủ")`)) === true);
-  check("B1: chỉ còn 3 module + 'Khác' (module 'Bài tập' đã bỏ khỏi thanh)", await mod("Bài tập").count() === 0 && await rail().locator(":scope a[href='/student/bai-tap']").count() === 0);
+  check("B1: module 'Bài tập' đã bỏ khỏi thanh (LOI-04 thêm 'Nhắc học', không đưa lại mục cũ)", await mod("Bài tập").count() === 0 && await rail().locator(":scope a[href='/student/bai-tap']").count() === 0);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   check("module đang ở có aria-current=page (đúng một nút)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
   const clipped = await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a span.truncate, nav[aria-label="${railName}"] button span.truncate')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth).map(e => e.textContent)`) as string[];
