@@ -3,7 +3,7 @@
 import { BASE, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng chờ nạp Coin theo LOGIC Coin (hằng COIN_LOGIC_ON), không theo cờ hiển thị
 
 (async () => {
   await wipe();
@@ -83,9 +83,9 @@ import { COIN_VISIBLE } from "@/lib/features";
   const hn = pg.getByTestId("hom-nay");
   await hn.locator("[data-todo]").first().waitFor({ timeout: 90000 });
   const keys = await hn.locator("[data-todo]").evaluateAll(els => els.map(e => e.getAttribute("data-todo")).sort().join());
-  check("danh sách có đúng MỘT dòng tổng 'hang-cho' (gia sư xin duyệt" + (COIN_VISIBLE ? " + nạp Coin" : "") + " gộp lại)", keys === "hang-cho", keys); // 05/11/2026: Coin ẩn → không có việc nạp Coin; điều hướng B1: gộp thành một dòng
+  check("danh sách có đúng MỘT dòng tổng 'hang-cho' (gia sư xin duyệt" + (COIN_LOGIC_ON ? " + nạp Coin" : "") + " gộp lại)", keys === "hang-cho", keys); // 05/11/2026: Coin ẩn → không có việc nạp Coin; điều hướng B1: gộp thành một dòng
   check("dòng tổng là liên kết tới Hàng chờ (/admin/kiem-duyet)", await hn.locator('[data-todo="hang-cho"] a').getAttribute("href") === "/admin/kiem-duyet");
-  check("dòng tổng có chữ giải thích số theo loại (không chỉ số)", /hồ sơ gia sư chờ duyệt/.test(await hn.innerText()) && (!COIN_VISIBLE || /yêu cầu nạp Coin/.test(await hn.innerText())));
+  check("dòng tổng có chữ giải thích số theo loại (không chỉ số)", /hồ sơ gia sư chờ duyệt/.test(await hn.innerText()) && (!COIN_LOGIC_ON || /yêu cầu nạp Coin/.test(await hn.innerText())));
   check("khối 'Nhắc nhở theo lớp' đã rời khỏi Hôm nay (BU-08 Q7)", (await pg.getByRole("button", { name: "Nhắc nhở theo lớp" }).count()) === 0 && (await pg.getByTestId("nhac-chon-lop").count()) === 0);
 
   section("Nhắc cả lớp (QT-07) — nay ở trang Học viên của lớp");

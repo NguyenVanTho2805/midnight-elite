@@ -1,7 +1,7 @@
 // QT-01/02/03/04/07 (API + DB thật): Triển khai và hạn mức (chỉ đọc, không lộ giá trị biến), lần gọi cron, nhật ký đọc được và KHÔNG lộ tên trẻ,
 // "hôm nay cần làm gì" theo quyền, nhắc hàng loạt CHỈ theo lớp, thẻ hạn mức + khối Kết nối ở Cài đặt gia sư.
 import { prisma } from "@/lib/prisma";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng chờ nạp Coin theo LOGIC Coin (hằng COIN_LOGIC_ON), không theo cờ hiển thị
 import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, section, done, BASE } from "./h";
 
 (async () => {
@@ -85,7 +85,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   await prisma.supportRequest.create({ data: { userId: T.id, kind: "setup", subject: "Cần giúp", message: "nội dung", status: "open", planAtSend: "free" } as never });
   const hn = await api("GET", "/api/admin/hom-nay", { as: SA });
   // 05/11/2026 (CHỦ-02): Coin ẩn → nạp Coin không vào Hôm nay (đổi có chủ đích).
-  check("cấp 1 thấy: gia sư chờ duyệt 1, hỗ trợ 1 (total 2); nạp Coin chỉ khi cờ Coin bật", hn.json.items.map((i: any) => `${i.key}:${i.count}`).sort().join() === (COIN_VISIBLE ? "gia-su:1,ho-tro:1,nap-coin:1" : "gia-su:1,ho-tro:1") && hn.json.total === (COIN_VISIBLE ? 3 : 2), hn.json);
+  check("cấp 1 thấy: gia sư chờ duyệt 1, hỗ trợ 1 (total 2); nạp Coin chỉ khi cờ Coin bật", hn.json.items.map((i: any) => `${i.key}:${i.count}`).sort().join() === (COIN_LOGIC_ON ? "gia-su:1,ho-tro:1,nap-coin:1" : "gia-su:1,ho-tro:1") && hn.json.total === (COIN_LOGIC_ON ? 3 : 2), hn.json);
   const hc = await api("GET", "/api/admin/hom-nay", { as: CA });
   check("quản trị nội dung: thấy gia sư + hỗ trợ (MANAGE_TUTORS) nhưng KHÔNG thấy nạp Coin (MANAGE_REVENUE)", hc.json.items.map((i: any) => i.key).sort().join() === "gia-su,ho-tro", hc.json);
   const ht = await api("GET", "/api/admin/hom-nay", { as: T });
