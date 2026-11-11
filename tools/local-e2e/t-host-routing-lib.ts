@@ -3,6 +3,7 @@
 // 01/11/2026 (HOME-01): ĐỔI CÓ CHỦ ĐÍCH — '/' ở tên miền chính nay mở được cho mọi vai (không còn 307 sang dashboard); /dang-ky và /dang-nhap giữ nguyên.
 // 31/10/2026 (BU-00 bước 3): gia sư mở /admin/* → 307 sang bí danh /lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* (src/lib/tutorRoutes.ts); không có bí danh → /lop-cua-toi.
 import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, isAdminHost, isPwaFile, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
+import { featureOn } from "@/lib/features";
 import { check, section, done } from "./h";
 
 const MAIN = "midnightelite-edu.com", ADM = ADMIN_HOST;
@@ -53,7 +54,10 @@ for (const [name, s, home] of [["học viên", student, "/student/viec-cua-toi"]
     check(`${name} mở /dang-nhap?redirect=${evil} → bỏ qua địa chỉ ngoài, về dashboard`, eq(d(MAIN, "/dang-nhap", s, `?redirect=${encodeURIComponent(evil)}`), { kind: "redirect", status: 307, pathname: home }));
 }
 check("khách mở /dang-nhap, /dang-ky → xem bình thường", eq(d(MAIN, "/dang-nhap", null), { kind: "next" }) && eq(d(MAIN, "/dang-ky", null), { kind: "next" }));
-check("trang khách khác (/thu-vien, /khoa-hoc…) KHÔNG bị chặn bởi proxy — học viên/gia sư thấy chúng trong vỏ dashboard (GuestChrome)", ["/thu-vien", "/khoa-hoc", "/giang-vien", "/diem-chuan", "/tin-tuc"].every(p => eq(d(MAIN, p, student), { kind: "next" }) && eq(d(MAIN, p, tutor), { kind: "next" })));
+// LOI-01 (11/11/2026): ĐỔI CÓ CHỦ ĐÍCH — /giang-vien, /diem-chuan, /tin-tuc thuộc phần đang ẨN (src/lib/features.ts) thì 307 về trang đầu theo vai; chỉ còn kỳ vọng
+// "next" khi cờ của phần đó đang bật. /thu-vien vẫn next với học viên / gia sư (thư viện lớp mình, Thư viện của tôi). Chốt chặn chi tiết: t-features-lib.ts.
+const openGuestPages = ["/thu-vien", "/khoa-hoc", ...(featureOn("TIM_GIA_SU") ? ["/giang-vien"] : []), ...(featureOn("DIEM_CHUAN") ? ["/diem-chuan"] : []), ...(featureOn("TIN_TUC") ? ["/tin-tuc"] : [])];
+check(`trang khách khác (${openGuestPages.join(", ")}) KHÔNG bị chặn bởi proxy — học viên/gia sư thấy chúng trong vỏ dashboard (GuestChrome)`, openGuestPages.every(p => eq(d(MAIN, p, student), { kind: "next" }) && eq(d(MAIN, p, tutor), { kind: "next" })));
 check("/quen-mat-khau, /dat-lai-mat-khau, /xac-thuc-email vẫn mở được khi đã đăng nhập (liên kết trong thư)", ["/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email"].every(p => eq(d(MAIN, p, student), { kind: "next" })));
 check("API và đường khác → không đụng", eq(d(MAIN, "/api/auth/me", tutor), { kind: "next" }) && eq(d(MAIN, "/student/lich-hoc", student), { kind: "next" }) && eq(d(MAIN, "/lop-cua-toi", tutor), { kind: "next" }));
 
@@ -85,7 +89,8 @@ check("ca hồi quy: mọi vai × '/' × tên miền chính, kể cả session =
 check("tên miền admin '/' không đổi: quản trị rewrite /admin; học viên 307 về tên miền chính; gia sư redirect",
   eq(d(ADM, "/", sup), { kind: "rewrite", pathname: "/admin" }) && eq(d(ADM, "/", content), { kind: "rewrite", pathname: "/admin" })
   && eq(d(ADM, "/", student), { kind: "redirect", status: 307, host: "main", pathname: "/student/viec-cua-toi", search: "" }) && d(ADM, "/", tutor).kind === "redirect");
-check("tên miền chính: trang khách, API, học viên, gia sư KHÔNG tốn giải mã", ["/thu-vien", "/khoa-hoc", "/api/auth/me", "/student/x", "/lop-cua-toi", "/quen-mat-khau"].every(p => !needsSession(MAIN, p)));
+// LOI-01: /thu-vien (khi Thư viện chung ẩn) cần giải mã để biết khách / quản trị (bị chặn) hay học viên / gia sư (cho qua) — rút khỏi danh sách này khi cờ tắt.
+check("tên miền chính: trang khách, API, học viên, gia sư KHÔNG tốn giải mã", [...(featureOn("THU_VIEN") ? ["/thu-vien"] : []), "/khoa-hoc", "/api/auth/me", "/student/x", "/lop-cua-toi", "/quen-mat-khau"].every(p => !needsSession(MAIN, p)));
 check("tên miền admin: mọi trang cần phiên (để nhận ra gia sư), trừ API / _next / đăng nhập", needsSession(ADM, "/") && needsSession(ADM, "/admin/x") && needsSession(ADM, "/khoa-hoc") && !needsSession(ADM, "/api/x") && !needsSession(ADM, "/_next/x") && !needsSession(ADM, "/dang-nhap") && !needsSession(ADM, "/plyr.svg"));
 
 section("PWA (ĐX-02): /sw.js, /manifest.webmanifest và biểu tượng đi qua nguyên trạng ở cả hai tên miền");
