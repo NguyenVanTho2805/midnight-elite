@@ -12,6 +12,7 @@
 // - `name` ⇒ input ẩn mang giá trị cho biểu mẫu POST + 303; `disabled` ⇒ input ẩn cũng tắt (như <select disabled> không gửi giá trị).
 // - `required` ⇒ aria-required + ô kiểm hợp lệ ẩn trong form: gửi khi chưa chọn thì trình duyệt chặn, ô hiện CHỮ "Hãy chọn một mục trong danh sách." và tiêu điểm về nút.
 // - `onBlur` chỉ chạy khi tiêu điểm rời HẲN ô chọn (không chạy khi chuyển từ nút sang ô tìm); `aria-describedby` / `aria-invalid` / `data-*` / `title` / `autoFocus` gắn lên nút.
+// - `data-value` trên nút (giá trị đang chọn) và trên từng mục — để bài thử chọn / đọc theo giá trị như selectOption() / inputValue() (tools/local-e2e/ui.ts: kinPick, kinSelectValue).
 // - Danh sách mở dùng position: fixed theo toạ độ nút ⇒ không bị khung cuộn (panel bên, hộp thoại, bảng overflow) cắt; thiếu chỗ phía dưới thì mở lên trên;
 //   cuộn / đổi cỡ khung nhìn thì bám theo nút. Tổ tiên có transform (ngăn kéo trượt) được bù toạ độ.
 // - Bọc trong <label> vẫn chạy: bấm mục không bị nhãn biến thành cú bấm lại vào nút; sau khi chạy JS tên đọc = chữ của nhãn (trừ phần ô) + giá trị.
@@ -283,7 +284,7 @@ export function KinSelect({
   const optionLi = ({ o, i }: { o: KinSelectOption; i: number }) => {
     const on = o.value === value;
     return (
-      <li key={`${o.value}-${i}`} id={optId(i)} role="option" aria-selected={on} aria-disabled={o.disabled || undefined}
+      <li key={`${o.value}-${i}`} id={optId(i)} role="option" aria-selected={on} aria-disabled={o.disabled || undefined} data-value={o.value}
         onMouseEnter={() => { if (!o.disabled) setActive(i); }}
         onMouseDown={e => e.preventDefault() /* giữ tiêu điểm ở nút / ô tìm */}
         onClick={e => { e.preventDefault() /* nằm trong <label>: không để nhãn bấm lại vào nút */; choose(i); }}
@@ -303,7 +304,7 @@ export function KinSelect({
       <button ref={btn} type="button" id={baseId} role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={listId}
         aria-activedescendant={searchable ? undefined : activeId} aria-labelledby={nameId ? `${nameId} ${valueId}` : undefined}
         aria-required={required || undefined} aria-invalid={invalid || undefined} aria-describedby={describedBy}
-        disabled={disabled} autoFocus={autoFocus} title={title} data-kin-select-nut {...dataAttrs}
+        disabled={disabled} autoFocus={autoFocus} title={title} data-kin-select-nut data-value={value} {...dataAttrs}
         onClick={() => (open ? close(false) : openList())} onKeyDown={e => onKey(e, false)}
         className={`flex w-full min-h-[var(--kin-cham-toi-thieu)] items-center justify-between gap-2 rounded-[var(--kin-bo-md)] border bg-[var(--kin-nen-trang)] px-3 text-left text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--kin-nhan-link)] disabled:cursor-not-allowed disabled:opacity-45 ${
           invalid ? "border-[var(--kin-tt-chu-loi)]" : "border-[var(--kin-vien-o-nhap)]"}`}>

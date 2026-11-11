@@ -2,7 +2,7 @@
 // Không gọi hàm nội bộ: page.mouse.down/move/up; chạm bằng touchscreen.tap và CDP Input.dispatchTouchEvent (chạm-giữ-kéo). DB đọc bằng Prisma.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-schedule-drag.ts
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually, cookieFor } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect, kinSelectValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 type Geo = { top: number; rs: number; pph: number; cols: Record<number, { x: number; w: number }> };
@@ -80,7 +80,7 @@ const rowsOf = (courseId: string) => prisma.classSchedule.findMany({ where: { co
   await shot(p, "schedule-drag-1-dragging");
   await p.mouse.up();
   await p.locator("[data-block-panel]").waitFor({ timeout: 10000 });
-  check("thả → panel 'Thêm khung giờ' mở với 19:00–20:30, thứ Ba; CHƯA gọi API (DB không có khung)", (await p.locator("#sched-s").inputValue()) === "1140" && (await p.locator("#sched-e").inputValue()) === "1230" && (await rowsOf(A.id)).length === 0 && writes.length === 0);
+  check("thả → panel 'Thêm khung giờ' mở với 19:00–20:30, thứ Ba; CHƯA gọi API (DB không có khung)", (await kinSelectValue(p.locator("#sched-s"))) === "1140" && (await kinSelectValue(p.locator("#sched-e"))) === "1230" && (await rowsOf(A.id)).length === 0 && writes.length === 0);
   check("panel ghi rõ 'lặp mọi tuần'", (await p.locator("[data-repeat-note]").innerText()).includes("mọi tuần"));
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await eventually("DB có khung Thứ Ba 19:00–20:30 của lớp Toán 9", async () => { const r = await rowsOf(A.id); return r.length === 1 && r[0].dayOfWeek === 2 && r[0].startTime === "19:00" && r[0].endTime === "20:30"; });
@@ -258,7 +258,7 @@ const rowsOf = (courseId: string) => prisma.classSchedule.findMany({ where: { co
   await p.getByRole("link", { name: "Sửa khung giờ" }).click();
   await p.waitForURL(/\/lop-cua-toi\/lich\/khung/, { timeout: 60000 });
   await p.locator("[data-course-picker]").waitFor({ timeout: 60000 });
-  await p.locator("[data-course-picker]").selectOption(B.id);
+  await kinSelect(p.locator("[data-course-picker]"), B.id);
   await p.waitForURL(new RegExp(`lop=${B.id}`), { timeout: 30000 });
   await p.waitForSelector("[data-week-editor][data-schedule-state=ready]", { timeout: 60000 });
   check("chọn Lý 8 → URL nhớ ?lop=, lưới hiện 2 khung của Lý 8", (await onlyBlock().count()) === 2 && (await p.locator("[data-rule-list] li").count()) === 2);
@@ -291,10 +291,10 @@ const rowsOf = (courseId: string) => prisma.classSchedule.findMany({ where: { co
   let mg = await geo(m);
   await m.touchscreen.tap(mg.cols[3].x + mg.cols[3].w / 2, Y(mg, 9 * 60) + 1);
   await m.locator("[data-block-panel]").waitFor({ timeout: 10000 });
-  check("bấm ô trống → panel dạng ngăn dưới, điền sẵn Thứ Tư + giờ vừa bấm", (await m.locator("select").first().inputValue()) === "3" && (await m.locator("#sched-s").inputValue()) === "540");
-  await m.locator("#sched-e").selectOption("660");
+  check("bấm ô trống → panel dạng ngăn dưới, điền sẵn Thứ Tư + giờ vừa bấm", (await kinSelectValue(m.locator('[data-block-panel] [role="combobox"]').first())) === "3" && (await kinSelectValue(m.locator("#sched-s"))) === "540");
+  await kinSelect(m.locator("#sched-e"), "660");
   await m.getByRole("button", { name: "Bắt đầu thêm 15 phút" }).tap();
-  check("nút +15 đổi giờ bắt đầu → 09:15", (await m.locator("#sched-s").inputValue()) === "555");
+  check("nút +15 đổi giờ bắt đầu → 09:15", (await kinSelectValue(m.locator("#sched-s"))) === "555");
   const small = await m.locator("[data-block-panel] button, [data-block-panel] select").evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return r.height < 43.5 ? `${e.textContent?.trim().slice(0, 20)}:${Math.round(r.height)}` : null; }).filter(Boolean));
   check("mọi nút/ô chọn trong panel ≥ 44px", small.length === 0, small);
   await m.getByRole("button", { name: "Lưu khung giờ" }).tap();

@@ -306,7 +306,7 @@ export function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1.5">Danh mục</label>
-                <KinSelect value={form.category} onChange={v => set("category", v)}>
+                <KinSelect aria-label="Danh mục" value={form.category} onChange={v => set("category", v)}>
                   {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </KinSelect>
               </div>

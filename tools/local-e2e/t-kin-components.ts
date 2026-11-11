@@ -79,7 +79,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("KinSelect: bấm ngoài đóng; `name` ⇒ input hidden; tắt ⇒ mờ 45%", /addEventListener\("mousedown"/.test(ks) && /type="hidden" name=\{name\}/.test(ks) && /disabled:opacity-45/.test(ks));
   check("KinSelect: không mã hex, không rgba viết tay", !/#[0-9a-fA-F]{3,8}\b/.test(ks.replace(/#\$\{|`#/g, "")) && !/rgba?\(/.test(ks));
   check("KinSelect: tên nút = nhãn + giá trị đang chọn (aria-labelledby gồm id nhãn và id span giá trị; chỉ aria-label ⇒ span ẩn mang nhãn)",
-    /id=\{valueId\}/.test(ks) && /aria-labelledby=\{nameId \? `\$\{nameId\} \$\{valueId\}` : undefined\}/.test(ks) && /<span id=\{labelId\} hidden>\{ariaLabel\}<\/span>/.test(ks)
+    /id=\{valueId\}/.test(ks) && /aria-labelledby=\{nameId \? `\$\{nameId\} \$\{valueId\}` : undefined\}/.test(ks) && /<span id=\{labelId\} hidden>\{labelText\}<\/span>/.test(ks) && /const labelText = ariaLabel \?\? wrapLabel/.test(ks)
     && !/aria-label=\{aria\["aria-label"\]\}/.test(ks));
   check("TabCaiDat.tsx: hai KinSelect nối nhãn bằng aria-labelledby (để đọc cả giá trị)", /aria-labelledby="class-category-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")) && /aria-labelledby="class-status-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")));
   check("KinSelect không xuất qua kin/index.ts (import thẳng tệp — tệp chung không đổi)", !/KinSelect/.test(idx));
@@ -88,6 +88,64 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
     check(`${f.split("/").pop()}: dùng KinSelect, không còn <select> gốc`, /<KinSelect\b/.test(t) && !/<select\b/.test(t));
   }
   check("HocSinh.tsx: KinSelect không bọc trong <label> (nối bằng aria-labelledby)", !/<label[^>]*>\s*<span[^>]*>[^<]*<\/span>\s*<KinSelect/.test(read("src/components/tutor/HocSinh.tsx")) && /aria-labelledby="hs-loc-lop"/.test(read("src/components/tutor/HocSinh.tsx")));
+
+  // LOI-06 (11/11/2026): KinSelect thay <select> gốc ở MỌI vai. Ngoại lệ có lý do (ghi trong docs/kin/tien-do-dang-do.md mục LOI-06):
+  //  - src/app/(admin)/admin/khoa-hoc/[id]/page.tsx, src/app/(admin)/admin/thi-thu/** — phòng Quản trị giữ (phiếu LOI-06 cấm sửa);
+  //  - src/components/tutor/tim-gia-su/{BoLoc,TimGiaSu}.tsx — trang /giang-vien, phòng LOI-05 đang làm song song (phiếu LOI-06 cấm sửa).
+  section("KinSelect (LOI-06) · không còn <select> gốc ngoài chỗ được miễn");
+  const EXEMPT = [/^src\/app\/\(admin\)\/admin\/khoa-hoc\/\[id\]\/page\.tsx$/, /^src\/app\/\(admin\)\/admin\/thi-thu\//, /^src\/components\/tutor\/tim-gia-su\/(BoLoc|TimGiaSu)\.tsx$/];
+  const stripComments = (t: string) => t.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/([^:"'`])\/\/[^\n"'`]*$/gm, "$1");
+  const hasNativeSelect = (t: string) => /<select[\s>]/.test(stripComments(t));
+  check("bộ quét: PHÁ — chuỗi có <select> thật bị bắt; chỉ có trong chú thích thì không", hasNativeSelect('<div><select value={a}>') && hasNativeSelect("x\n  <select\n id=\"a\">") && !hasNativeSelect("// thay <select> gốc\n{/* <select> cũ */}") && !hasNativeSelect("<KinSelect value={a}>"));
+  const leftover = tsx.filter(p => hasNativeSelect(read(p)) && !EXEMPT.some(r => r.test(p)));
+  check("không còn <select> gốc trong src ngoài 3 nhóm được miễn", leftover.length === 0, leftover);
+  const exemptLeft = tsx.filter(p => EXEMPT.some(r => r.test(p))).map(p => `${p}: ${(stripComments(read(p)).match(/<select[\s>]/g) ?? []).length}`).filter(x => !x.endsWith(": 0"));
+  console.log("   (còn <select> ở chỗ được miễn) " + exemptLeft.join(" · "));
+  const users = tsx.filter(p => /<KinSelect\b/.test(read(p)));
+  check("≥ 60 tệp dùng KinSelect (LOI-02 4 tệp + LOI-06)", users.length >= 60, users.length);
+  check("mọi tệp dùng KinSelect đều import thẳng tệp (không qua kin/index.ts)", users.every(p => p === "src/components/kin/KinSelect.tsx" || /from "@\/components\/kin\/KinSelect"/.test(read(p))), users.filter(p => !/from "@\/components\/kin\/KinSelect"/.test(read(p))));
+  // Màn học phí (cờ TIỀN = không): chỉ đổi giao diện — lựa chọn vẫn mang đúng giá trị cũ, onChange đẩy nguyên chuỗi ra (không Number(), không đổi định dạng).
+  const inv = read("src/app/lop-cua-toi/(tutor)/hoc-phi/InvoicesTab.tsx"), pay = read("src/app/lop-cua-toi/(tutor)/hoc-phi/PayoutTab.tsx"), stu = read("src/app/(student)/student/hoc-phi/page.tsx");
+  check("học phí: tháng (gia sư) = <option value={m}> + onChange={v => setYearMonth(v)}; ngân hàng = value={b.bin} + OTHER; tháng (học sinh) = value: m",
+    /<option key=\{m\} value=\{m\}>\{monthLabel\(m\)\}<\/option>/.test(inv) && /onChange=\{v => setYearMonth\(v\)\}/.test(inv)
+    && /<option key=\{b\.bin\} value=\{b\.bin\}>\{b\.name\}<\/option>/.test(pay) && /<option value=\{OTHER\}>/.test(pay) && /onChange=\{v => setBank\(v\)\}/.test(pay)
+    && /options=\{months\.map\(m => \(\{ value: m, label: monthLabel\(m\) \}\)\)\}/.test(stu) && /onChange=\{setYearMonth\}/.test(stu));
+
+  section("KinSelect (LOI-06) · tính năng mới (dựng HTML ở máy chủ + hàm thuần)");
+  const React = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const KS = await import("@/components/kin/KinSelect");
+  const h = React.createElement;
+  const opts = KS.kinOptionsFromChildren([
+    h("option", { key: 1, value: "" }, "Chưa chọn"),
+    h(React.Fragment, { key: 2 }, h("option", { value: 7 }, 7, " ngày"), h("option", { value: "x", disabled: true }, "Tắt")),
+    h("optgroup", { key: 3, label: "Gắn vào mục có sẵn" }, h("option", { value: "l1" }, "Bài A", " · ", "Nháp"), h("option", { value: "l2" }, "Bài B")),
+    h("optgroup", { key: 4, label: "Nhóm tắt", disabled: true }, h("option", { value: "z" }, "Z")),
+    "rác", null, false,
+  ]);
+  check("children: <option> trong mảng / Fragment / <optgroup> đọc đủ 7 mục, đúng thứ tự", opts.map(o => o.value).join() === ",7,x,l1,l2,z", opts);
+  check("children: giá trị số → chuỗi ('7'), nhãn ghép nhiều mảnh chữ ('7 ngày', 'Bài A · Nháp')", opts[1].value === "7" && opts[1].label === "7 ngày" && opts[3].label === "Bài A · Nháp");
+  check("children: <optgroup label> → group; <option disabled> và <optgroup disabled> → disabled", opts[3].group === "Gắn vào mục có sẵn" && opts[4].group === "Gắn vào mục có sẵn" && opts[0].group === undefined && opts[2].disabled === true && opts[5].disabled === true && !opts[1].disabled);
+  check("children: <option> không có value → giá trị = chữ (như trình duyệt)", KS.kinOptionsFromChildren(h("option", null, "6.5"))[0].value === "6.5");
+  const html = (p: Record<string, unknown>, ...kids: unknown[]) => renderToStaticMarkup(h(KS.KinSelect, p as never, ...(kids as never[])));
+  const ab = [h("option", { key: "a", value: "a" }, "Táo"), h("option", { key: "b", value: "b" }, "Bưởi")];
+  const m1 = html({ name: "sessionId", defaultValue: "b" }, ...ab);
+  check("name + defaultValue: input ẩn name=sessionId value=b (gửi form POST + 303), nút hiện 'Bưởi', data-value=b", /<input type="hidden" name="sessionId" value="b"\/>/.test(m1) && />Bưởi<\/span>/.test(m1) && /data-value="b"/.test(m1));
+  const m2 = html({ name: "x" }, ...ab);
+  check("không value, không defaultValue: như <select> — lấy mục đầu còn chọn được ('a')", /name="x" value="a"/.test(m2));
+  const m3 = html({ name: "x", value: "a", disabled: true }, ...ab);
+  check("PHÁ: disabled ⇒ input ẩn cũng disabled (như <select disabled> không gửi giá trị) + nút disabled", /<input type="hidden"(?=[^>]*\bdisabled="")(?=[^>]*name="x")[^>]*value="a"/.test(m3) && /<button[^>]*disabled=""/.test(m3) && !/<input type="hidden"[^>]*disabled=""/.test(html({ name: "x", value: "a" }, ...ab)));
+  const m4 = html({ name: "x", value: "", required: true, options: [{ value: "", label: "Chọn…" }, { value: "a", label: "Táo" }] });
+  check("required: aria-required trên nút + ô kiểm hợp lệ required (không name, không nhận tiêu điểm) mang giá trị rỗng ⇒ trình duyệt chặn gửi",
+    /<button[^>]*aria-required="true"/.test(m4) && /<input tabindex="-1"(?=[^>]*aria-hidden="true")(?=[^>]*required="")[^>]*value=""/.test(m4) && !/<input tabindex="-1"[^>]*name=/.test(m4));
+  check("PHÁ: không required ⇒ không có ô kiểm hợp lệ, không aria-required", !/aria-required/.test(m1) && !/required=""/.test(m1));
+  const m5 = html({ id: "dk-city", value: "a", "aria-invalid": true, "aria-describedby": "dk-city-err", "data-testid": "o", title: "Gợi ý" }, ...ab);
+  check("aria-invalid / aria-describedby / data-* / title gắn lên nút; viền lỗi bằng token --kin-tt-chu-loi",
+    /<button[^>]*id="dk-city"[^>]*aria-invalid="true"[^>]*aria-describedby="dk-city-err"/.test(m5) && /<button[^>]*data-testid="o"/.test(m5) && /<button[^>]*title="Gợi ý"/.test(m5) && /border-\[var\(--kin-tt-chu-loi\)\]/.test(m5));
+  check("ks: danh sách mở là position fixed (không bị khung cuộn / panel cắt), có lật lên khi thiếu chỗ, bù tổ tiên transform, bám khi cuộn",
+    /className="fixed z-\[60\]/.test(ks) && /const up = below < /.test(ks) && /function fixedContainer/.test(ks) && /addEventListener\("scroll", onMove, true\)/.test(ks));
+  check("ks: bọc trong <label> — bấm mục preventDefault (nhãn không bấm lại vào nút); onBlur chỉ khi tiêu điểm rời hẳn ô", /e\.preventDefault\(\) \/\* nằm trong <label>: không để nhãn bấm lại vào nút \*\//.test(ks) && /if \(!wrap\.current\?\.contains\(e\.relatedTarget/.test(ks));
+  check("ks: nhóm (optgroup) dựng role=\"group\" có nhãn trong listbox", /role="group" aria-labelledby=\{`\$\{baseId\}-g-\$\{bi\}`\}/.test(ks));
 
   section("Token bóng / lớp phủ");
   const site = read("src/app/kin-site.css");

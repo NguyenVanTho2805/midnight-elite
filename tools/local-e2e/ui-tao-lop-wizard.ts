@@ -1,7 +1,7 @@
 // Wizard tạo lớp 3 bước (LO-03) + Thêm học sinh trong chi tiết lớp (LO-09) + tổng hợp link báo cáo cả lớp (LO-13), trình duyệt thật.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-tao-lop-wizard.ts
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -43,16 +43,16 @@ import { prisma } from "@/lib/prisma";
   check("lối thoát duy nhất là liên kết chữ 'Lớp này học buổi lẻ, không lặp hằng tuần'", await p.locator("[data-one-off]").isVisible() && (await p.locator("[data-one-off]").innerText()).includes("Lớp này học buổi lẻ"));
   check("bước 2 hiện nhãn 'Bắt buộc' và câu rỗng 'Lớp chưa có lịch học'", await p.locator("[data-wizard-schedule]").getByText("Bắt buộc").isVisible() && await p.locator("[data-empty-hint]").isVisible());
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await p.getByLabel("Buổi đầu từ ngày").fill("2026-10-26");
-  await p.getByLabel("Xem trước số tuần").selectOption("4");
+  await kinSelect(p.getByLabel("Xem trước số tuần"), "4");
   check("thứ Ba × 4 tuần từ 26/10 → có câu giải thích 4 buổi ra từ lịch tuần; tóm tắt 'Thứ Ba 19:00–20:30'", await p.getByText(/có 4 buổi\. Buổi học sinh ra từ lịch tuần/).isVisible() && (await p.locator("[data-wizard-slot]").first().innerText()).includes("Thứ Ba 19:00–20:30"));
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   check("thêm khung thứ hai (cùng giờ, cùng ngày) → có 2 khung trong tóm tắt", await p.locator("[data-wizard-slot]").count() === 2);

@@ -1,5 +1,5 @@
 import { api, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, ADMIN } from "./ui";
+import { launch, ctxFor, shot, ADMIN, kinSelect, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -33,25 +33,25 @@ import { prisma } from "@/lib/prisma";
   check("mặc định: thấy cả 4 bài (chung + hai lớp)", (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 4);
   check("mỗi bài có nhãn: bài chung 'Cộng đồng chung', bài lớp 'Lớp: <tên>'", /Cộng đồng chung/.test(await card("BAI_CHUNG").innerText()) && /Lớp: Toán 9/.test(await card("BAI_TOAN:").innerText()) && /Lớp: Lý 9/.test(await card("BAI_LY").innerText()));
   const sel = page.getByLabel("Lọc theo lớp");
-  const optTexts = await sel.locator("option").allInnerTexts();
+  const optTexts = await kinSelectOptions(sel);
   check("bộ lọc có: Tất cả / Chỉ cộng đồng chung / từng lớp (kể cả lớp chưa có bài)", optTexts.includes("Tất cả (chung + mọi lớp)") && optTexts.includes("Chỉ cộng đồng chung") && optTexts.includes("Toán 9") && optTexts.includes("Lý 9"), optTexts);
 
   section("Lọc theo lớp (ở máy chủ)");
-  await sel.selectOption({ label: "Toán 9" });
+  await kinSelect(sel, { label: "Toán 9" });
   await eventually("chỉ còn 2 bài của lớp Toán 9", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 2 && (await page.getByText("BAI_TOAN:").count()) === 1 && (await page.getByText("BAI_TOAN_2:").count()) === 1);
   check("không lẫn bài chung và bài lớp Lý", (await page.getByText("BAI_CHUNG").count()) === 0 && (await page.getByText("BAI_LY").count()) === 0);
   check("bài ghim của lớp vẫn nằm mục 'Bài ghim'", await page.getByRole("heading", { name: /Bài ghim \(1\)/ }).isVisible());
-  await sel.selectOption("null");
+  await kinSelect(sel, "null");
   await eventually("'Chỉ cộng đồng chung' → đúng 1 bài chung", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 1 && (await page.getByText("BAI_CHUNG").count()) === 1);
-  await sel.selectOption({ label: "Lý 9" });
+  await kinSelect(sel, { label: "Lý 9" });
   await eventually("lớp Lý 9 → 1 bài", async () => (await page.getByText("BAI_LY").count()) === 1 && (await page.getByText(/BAI_(CHUNG|TOAN)/).count()) === 0);
-  await sel.selectOption("all");
+  await kinSelect(sel, "all");
   await eventually("quay về Tất cả → đủ 4 bài", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 4);
-  await sel.selectOption({ label: "Toán 9" });
+  await kinSelect(sel, { label: "Toán 9" });
   await page.getByPlaceholder(/Tìm nội dung/).fill("bậc hai");
   await eventually("lọc lớp kết hợp tìm chữ + chuyên mục", async () => (await page.getByText(/BAI_(CHUNG|TOAN|TOAN_2|LY):/).count()) === 1 && (await page.getByText("BAI_TOAN:").count()) === 1);
   await page.getByPlaceholder(/Tìm nội dung/).fill("");
-  await sel.selectOption("all");
+  await kinSelect(sel, "all");
   await shot(page, "admin-community-scope");
 
   // BU-08: trang /admin/cong-dong/bao-cao (nhãn lớp + BỘ LỌC theo lớp) được thay bằng hàng chờ một cửa; báo cáo BÀI VIẾT là loại ?loai=bai-viet (đường cũ → 308 ?loai=tra-loi).

@@ -611,7 +611,7 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Kích hoạt khoá học ngay</label>
-            <KinSelect value={form.courseId} onChange={v => setForm(f => ({ ...f, courseId: v }))}>
+            <KinSelect aria-label="Kích hoạt khoá học ngay" value={form.courseId} onChange={v => setForm(f => ({ ...f, courseId: v }))}>
               <option value="">— Không kích hoạt —</option>
               {dbCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </KinSelect>

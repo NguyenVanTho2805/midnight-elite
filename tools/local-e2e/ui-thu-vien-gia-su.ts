@@ -4,7 +4,7 @@
 // (gắn / xoá có hộp xác nhận KiN), nhóm "Đề gốc" chỉ xem, học sinh vẫn thấy thư viện học sinh (D2) và thấy tài liệu tải lên KiN (D4), 390px không tràn ngang, nút >= 44px.
 // Cần Postgres + Next dev (xem README).
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect, kinSelectValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 async function report(page: Page) {
@@ -68,9 +68,9 @@ const seen: Page[] = [];
   await pg.getByLabel("Tìm tài liệu").fill("công thức");
   check("tìm 'công thức' → 1 tài liệu", await rows(pg).count() === 1);
   await pg.getByLabel("Tìm tài liệu").fill("");
-  await pg.getByLabel("Loại").selectOption({ label: "PDF" });
+  await kinSelect(pg.getByLabel("Loại"), { label: "PDF" });
   check("lọc PDF → chỉ PDF (Đề cương, Phiếu KiN)", await rows(pg).count() === 2);
-  await pg.getByLabel("Loại").selectOption({ label: "Tất cả loại" });
+  await kinSelect(pg.getByLabel("Loại"), { label: "Tất cả loại" });
   await pg.getByRole("button", { name: /^Văn 8/ }).click();
   check("nhóm theo lớp Văn 8 → 1 tài liệu", await rows(pg).count() === 1);
   await pg.getByRole("button", { name: /^Tất cả/ }).click();
@@ -79,8 +79,8 @@ const seen: Page[] = [];
   await pg.route("**/api/tutor/lop/*/giao-trinh/muc", r => (r.request().method() === "POST" ? r.fulfill({ status: 500, json: { error: "Thêm mục thất bại, hãy thử lại." } }) : r.continue()));
   const cf = rows(pg).filter({ hasText: "Bảng công thức" });
   await cf.getByRole("button", { name: "Dùng ở lớp khác" }).click();
-  await cf.getByLabel("Lớp").selectOption({ label: "Văn 8" });
-  check("đích mặc định là 'Mục mới (Nháp)' và có dòng nói mục mới chỉ bạn thấy", (await cf.getByLabel("Mục", { exact: true }).inputValue()) === "new" && await cf.getByText(/Mục mới ở dạng Nháp, chỉ bạn thấy/).isVisible() && await cf.getByLabel("Mục", { exact: true }).locator("option", { hasText: "Mục mới (Nháp)" }).count() === 1);
+  await kinSelect(cf.getByLabel("Lớp"), { label: "Văn 8" });
+  check("đích mặc định là 'Mục mới (Nháp)' và có dòng nói mục mới chỉ bạn thấy", (await kinSelectValue(cf.getByLabel("Mục", { exact: true }))) === "new" && await cf.getByText(/Mục mới ở dạng Nháp, chỉ bạn thấy/).isVisible() && await cf.getByLabel("Mục", { exact: true }).locator("option", { hasText: "Mục mới (Nháp)" }).count() === 1);
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
   await cf.getByRole("alert").getByText("Thêm mục thất bại").waitFor({ timeout: 15000 }).catch(() => undefined);
   check("lỗi máy chủ → báo tại chỗ (role=alert), không mất khung chọn", await cf.getByRole("alert").getByText("Thêm mục thất bại").isVisible());
@@ -109,8 +109,8 @@ const seen: Page[] = [];
   await pg.getByRole("button", { name: /^Chưa gắn vào bài/ }).click();
   const lo = pg.locator("[data-tv-chua-gan] li", { hasText: "phieu-chua-gan.pdf" });
   await lo.getByRole("button", { name: "Gắn vào bài" }).click();
-  await lo.getByLabel("Lớp").selectOption({ label: "Toán 9" });
-  await lo.getByLabel("Mục", { exact: true }).selectOption({ label: "Bài A · Đã đăng" });
+  await kinSelect(lo.getByLabel("Lớp"), { label: "Toán 9" });
+  await kinSelect(lo.getByLabel("Mục", { exact: true }), { label: "Bài A · Đã đăng" });
   await lo.getByRole("button", { name: "Thêm vào lớp này" }).click();
   await pg.locator("[data-tv-thong-bao]").getByText(/Đã thêm .*phieu-chua-gan.* vào mục có sẵn/).waitFor({ timeout: 60000 });
   await eventually("DB: tài liệu chưa gắn đã nằm trong mục có sẵn của Toán 9 (trạng thái mục không đổi)", async () => ((await prisma.lesson.findUnique({ where: { id: "tv-la" } }))?.documents ?? "").includes(`/api/media/${loose.id}/file`));

@@ -2,7 +2,7 @@
 // trang so sánh phiên bản, nhập đề từ tệp (AI được GIẢ ở tầng mạng: Playwright trả JSON mẫu cho /api/exams/ai-extract-questions, không gọi Gemini thật).
 // 1280px và 390px; không tràn ngang; nút ≥ 44px; không lỗi JS. Dữ liệu dựng riêng (wipe ở đầu bài).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,7 +41,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   await pg.getByRole("heading", { name: "Tạo quiz", level: 1 }).waitFor({ timeout: 90000 });
   check("nút tạo khoá khi chưa có tên", await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).isDisabled());
   await pg.getByLabel("Tên quiz *").fill("Quiz thử UI · Phương trình bậc hai");
-  await pg.getByLabel("Lớp (chọn sau cũng được)").selectOption({ label: "Toán 9 (soạn quiz)" });
+  await kinSelect(pg.getByLabel("Lớp (chọn sau cũng được)"), { label: "Toán 9 (soạn quiz)" });
   await pg.getByRole("button", { name: "Tạo và soạn câu hỏi" }).click();
   await pg.waitForURL(/\/lop-cua-toi\/de-thi\/quiz-/, { timeout: 60000 });
   const qid = pg.url().split("/de-thi/")[1].split(/[?#]/)[0];
@@ -99,12 +99,12 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   const table = (await pg.getByRole("table", { name: "Đáp án đúng và điểm của từng câu" }).innerText()).replace(/\s+/g, " ");
   check("bảng đáp án: câu 1 nhiều đáp án 'A, B', câu 2 tự luận 'Chấm thủ công · 3 tiêu chí'; tổng 12 điểm", /A, B/.test(table) && /Chấm thủ công · 3 tiêu chí/.test(table) && /2 câu · 12 điểm/.test((await pg.locator("body").innerText()).replace(/\s+/g, " ")), table);
   check("đã chọn lớp từ bước tạo: 'Đủ điều kiện phát hành'", await pg.getByText("Đủ điều kiện phát hành.").isVisible());
-  await pg.getByLabel("Lớp", { exact: true }).selectOption({ value: "" });
+  await kinSelect(pg.getByLabel("Lớp", { exact: true }), { value: "" });
   await pg.getByRole("button", { name: "Lưu cài đặt" }).click();
   await eventually("đã gỡ lớp trong DB", async () => (await prisma.exam.findUnique({ where: { id: qid } }))?.courseId === null);
   await pg.getByText("Đã lưu cài đặt").waitFor({ timeout: 30000 });
   check("gỡ lớp: nút Phát hành khoá và nêu lý do bằng chữ", await pg.getByRole("button", { name: "Phát hành quiz" }).isDisabled() && await pg.getByText(/Chọn lớp sẽ làm quiz này/).isVisible());
-  await pg.getByLabel("Lớp", { exact: true }).selectOption({ label: "Toán 9 (soạn quiz)" });
+  await kinSelect(pg.getByLabel("Lớp", { exact: true }), { label: "Toán 9 (soạn quiz)" });
   await pg.getByLabel("Ngày mở").fill("2026-11-05");
   await pg.getByLabel("Thời lượng (phút)").fill("20");
   await pg.getByRole("button", { name: "Lưu cài đặt" }).click();

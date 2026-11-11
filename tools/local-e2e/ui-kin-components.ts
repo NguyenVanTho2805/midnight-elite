@@ -1,7 +1,7 @@
 // Bộ component KiN (Figma Nút 6:50 · Thẻ trạng thái 8:139 · Tab 106:30 · Toast 106:23 · Hộp xác nhận 106:51) trên trang mẫu /kin-mau.
 // Đo bằng style tính ra: kích thước, màu theo token, trạng thái rê chuột / focus / tắt, bàn phím, tương phản, điện thoại 390px.
 import { BASE, check, section, done, eventually } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect, kinSelectValue, kinSelectOptions, ADMIN } from "./ui";
 
 type Rgb = [number, number, number];
 const parse = (c: string): Rgb => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) throw new Error("không đọc được màu: " + c); const [r, g, b] = m[1].split(",").map(x => parseFloat(x)); return [r, g, b]; };
@@ -264,6 +264,129 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
       check(`${W}: bấm ngoài → đóng`, (await sel.getAttribute("aria-expanded")) === "false");
       check(`${W}: không tràn ngang`, await ps.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await cs.close();
+    }
+  }
+
+  // ───────── KinSelect LOI-06 — nhãn <label htmlFor> / nhãn bọc ô, danh sách không bị panel cắt, ngăn kéo có transform, 390, màn học phí gửi y giá trị cũ.
+  section("KinSelect (LOI-06) · trên trang thật, 1600 + 390");
+  {
+    const { mkTutor, mkUser, mkCourse, mkSuper } = await import("./h");
+    const { prisma } = await import("@/lib/prisma");
+    const T = await mkTutor("Cô Ô Chọn"), SU = await mkSuper("Quản trị Ô Chọn"), S = await mkUser({ name: "Em Ô Chọn" });
+    const C = await mkCourse(T.id, { name: "Toán 9 Ô Chọn" });
+    await prisma.enrollment.create({ data: { userId: S.id, courseId: C.id, status: "active" } });
+    /** Danh sách đang mở: hộp nằm trong khung nhìn, và điểm giữa mục đầu / mục cuối đang thấy bấm trúng CHÍNH mục đó (không bị panel / khung cuộn cắt hay đè). */
+    const listOk = (pg: import("playwright").Page) => pg.locator("[data-kin-select-mo]").evaluate(box => {
+      const r = box.getBoundingClientRect(), ul = box.querySelector('[role="listbox"]')!, u = ul.getBoundingClientRect();
+      const opts = [...box.querySelectorAll<HTMLElement>('[role="option"]')].filter(o => { const q = o.getBoundingClientRect(); return q.bottom > u.top + 2 && q.top < u.bottom - 2; });
+      const hit = (o: HTMLElement) => { const q = o.getBoundingClientRect(); const x = q.left + q.width / 2, y = Math.max(q.top, u.top) / 2 + Math.min(q.bottom, u.bottom) / 2; return o.contains(document.elementFromPoint(x, y)); };
+      return { inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, hitFirst: !!opts[0] && hit(opts[0]), hitLast: !!opts.at(-1) && hit(opts.at(-1)!), n: opts.length, r: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] };
+    });
+    const noHScroll = (pg: import("playwright").Page) => pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
+    for (const [W, H] of [[1600, 900], [390, 844]] as const) {
+      // 1. Khách — <label htmlFor="dc-m"> riêng: tên đọc = nhãn + giá trị; chọn được bằng bàn phím.
+      const cg = await ctxFor(null, { width: W, height: H }), pgG = await cg.newPage();
+      pgG.on("pageerror", e => errors.push(String(e)));
+      await pgG.goto(`${BASE}/diem-chuan`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const dm = pgG.locator("#dc-m");
+      await dm.waitFor({ timeout: 120000 });
+      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Phương thức xét Tất cả')`, async () => (await pgG.getByRole("combobox", { name: "Phương thức xét Tất cả", exact: true }).count()) === 1);
+      check(`${W}: getByLabel('Phương thức xét', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Phương thức xét", { exact: true }).getAttribute("role")) === "combobox");
+      await cg.close();
+
+      // 2. Quản trị — nhãn BỌC ô ("Khoảng thời gian"): tên đọc gọn, bấm mục không bị nhãn mở lại, giá trị đổi, máy chủ nhận ?days=7.
+      const ca = await ctxFor(SU, { width: W, height: H }), pa = await ca.newPage();
+      pa.on("pageerror", e => errors.push(String(e)));
+      const asked: string[] = [];
+      pa.on("request", r => { if (/\/api\/admin\/.*days=/.test(r.url())) asked.push(r.url()); });
+      await pa.goto(`${ADMIN}/admin/so-do`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const kt = pa.getByRole("combobox", { name: /^Khoảng thời gian/ });
+      await kt.waitFor({ timeout: 120000 });
+      await eventually(`${W}: nhãn bọc ô ⇒ tên đọc = chữ nhãn + giá trị, KHÔNG lẫn chữ của danh sách`, async () => (await pa.getByRole("combobox", { name: "Khoảng thời gian 30 ngày gần nhất", exact: true }).count()) === 1);
+      await kt.click();
+      await pa.getByRole("option", { name: "7 ngày gần nhất", exact: true }).click();
+      await pa.waitForTimeout(400);
+      check(`${W}: PHÁ — bấm mục trong ô bọc <label>: danh sách ĐÓNG và không bị nhãn mở lại; nút mang '7'`, (await kt.getAttribute("aria-expanded")) === "false" && (await kinSelectValue(kt)) === "7" && (await pa.locator("[data-kin-select-mo]").count()) === 0);
+      await eventually(`${W}: máy chủ được hỏi với days=7 (giá trị số y như <select> cũ)`, async () => asked.some(u => /days=7\b/.test(u)), 20000);
+
+      // 3. Ngăn kéo "Tạo khoá học" (fixed + transform + overflow-y-auto): danh sách bám đúng dưới nút, không lệch theo transform, không bị cắt.
+      await pa.goto(`${ADMIN}/admin/khoa-hoc`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      await pa.getByRole("button", { name: /^Tạo khoá học/ }).filter({ visible: true }).first().click({ timeout: 120000 });
+      const dmc = pa.getByRole("combobox", { name: /^Danh mục/ }).filter({ visible: true }).first();
+      await dmc.waitFor({ timeout: 30000 });
+      await pa.waitForTimeout(600); // ngăn kéo trượt xong
+      await dmc.click();
+      await pa.locator("[data-kin-select-mo]").waitFor({ timeout: 10000 });
+      const g = await pa.evaluate(() => { const b = document.querySelector('[data-kin-select-nut][aria-expanded="true"]')!.getBoundingClientRect(), m = document.querySelector("[data-kin-select-mo]")!.getBoundingClientRect(); return { dx: Math.abs(m.left - Math.max(16, Math.min(b.left, innerWidth - 16 - m.width))), dy: Math.min(Math.abs(m.top - (b.bottom + 4)), Math.abs(m.bottom - (b.top - 4))) }; });
+      check(`${W}: PHÁ — ngăn kéo có transform: danh sách bám mép nút (lệch ≤ 2px), không trôi theo khối chứa`, g.dx <= 2 && g.dy <= 2, g);
+      const lo = await listOk(pa);
+      check(`${W}: ngăn kéo: danh sách nằm trong khung nhìn, mục đầu + cuối đang thấy bấm trúng (không bị cắt/đè)`, lo.inView && lo.hitFirst && lo.hitLast, lo);
+      check(`${W}: ngăn kéo: không cuộn ngang khi danh sách mở`, await noHScroll(pa));
+      await pa.keyboard.press("Escape");
+      await ca.close();
+
+      // 4. Panel bên (Modal "Thêm khung giờ") — ô "Kết thúc" nhiều lựa chọn: không bị panel cắt; ở 390 (ngăn dưới) lật lên khi thiếu chỗ.
+      const ct = await ctxFor(T, { width: W, height: H }), pt = await ct.newPage();
+      pt.on("pageerror", e => errors.push(String(e)));
+      await pt.goto(`${BASE}/lop-cua-toi/lich/khung?lop=${C.id}`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      await pt.locator("[data-add-block]").click({ timeout: 120000 });
+      const se = pt.locator("#sched-e");
+      await se.waitFor({ timeout: 30000 });
+      await se.click();
+      await pt.locator("[data-kin-select-mo]").waitFor({ timeout: 10000 });
+      const lp = await listOk(pt);
+      check(`${W}: panel bên: danh sách 'Kết thúc' trong khung nhìn, mục đầu + cuối bấm trúng (không bị panel cắt)`, lp.inView && lp.hitFirst && lp.hitLast && lp.n >= 3, lp);
+      check(`${W}: panel bên: không cuộn ngang khi mở`, await noHScroll(pt));
+      await pt.keyboard.press("Escape");
+      await kinSelect(se, "1230");
+      check(`${W}: panel bên: chọn 20:30 → nút mang 1230`, (await kinSelectValue(se)) === "1230");
+      await ct.close();
+    }
+
+    // 5. Học phí (cờ TIỀN = không): chỉ đổi giao diện — giá trị GỬI ĐI y hệt <select> cũ.
+    section("KinSelect (LOI-06) · màn học phí gửi đúng giá trị cũ");
+    {
+      const cs = await ctxFor(S, { width: 390, height: 844 }), ps = await cs.newPage();
+      const got: string[] = [];
+      ps.on("request", r => { const m = r.url().match(/\/api\/users\/me\/invoices\?yearMonth=([^&]*)/); if (m) got.push(m[1]); });
+      await ps.goto(`${BASE}/student/hoc-phi`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const th = ps.getByRole("combobox", { name: /^Tháng/ });
+      await th.waitFor({ timeout: 120000 });
+      await th.click();
+      const lbT = ps.locator(`[id="${await th.getAttribute("aria-controls")}"]`);
+      await lbT.waitFor({ timeout: 10000 });
+      const vals = await lbT.getByRole("option").evaluateAll(es => es.map(e => e.getAttribute("data-value") ?? ""));
+      await ps.keyboard.press("Escape");
+      await lbT.waitFor({ state: "detached", timeout: 10000 });
+      const exp = Array.from({ length: 12 }, (_, i) => { const d = new Date(); const x = new Date(d.getFullYear(), d.getMonth() - i, 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}`; });
+      check("học sinh: 12 lựa chọn tháng mang đúng giá trị 'YYYY-MM' như <select> cũ (tháng này trước)", vals.join() === exp.join(), vals);
+      const v = await kinSelect(th, { index: 1 });
+      await eventually("học sinh: chọn tháng trước → gọi /api/users/me/invoices?yearMonth=<đúng giá trị đó>", async () => got.at(-1) === v && v === exp[1], 20000);
+      await cs.close();
+
+      const ct = await ctxFor(T, { width: 1600, height: 900 }), pt = await ct.newPage();
+      const gets: string[] = []; let posted: unknown = null, put: unknown = null;
+      pt.on("request", r => { const m = r.url().match(/\/api\/tutor\/invoices\?yearMonth=([^&]*)/); if (m && r.method() === "GET") gets.push(m[1]); });
+      await pt.route("**/api/tutor/invoices", async r => { if (r.request().method() === "POST") { posted = r.request().postDataJSON(); await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ created: [], skipped: [] }) }); } else await r.continue(); });
+      await pt.route("**/api/tutor/payout-account", async r => { if (r.request().method() === "PUT") { put = r.request().postDataJSON(); await r.fulfill({ status: 200, contentType: "application/json", body: "{}" }); } else await r.continue(); });
+      await pt.goto(`${BASE}/lop-cua-toi/hoc-phi`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const tm = pt.getByRole("combobox", { name: /^Tháng/ });
+      await tm.waitFor({ timeout: 120000 });
+      const ym = await kinSelect(tm, { index: 1 });
+      await eventually("gia sư: chọn tháng → GET /api/tutor/invoices?yearMonth=<đúng giá trị>", async () => gets.at(-1) === ym && /^\d{4}-\d{2}$/.test(ym), 20000);
+      await pt.getByRole("button", { name: "Lập phiếu cả lớp" }).click();
+      await eventually("gia sư: 'Lập phiếu cả lớp' gửi { yearMonth } y giá trị đang chọn (đã chặn, không ghi DB)", async () => JSON.stringify(posted) === JSON.stringify({ yearMonth: ym }), 20000);
+      await pt.goto(`${BASE}/lop-cua-toi/hoc-phi?tab=nhan-tien`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const nh = pt.getByRole("combobox", { name: /^Ngân hàng/ });
+      await nh.waitFor({ timeout: 120000 });
+      const banks = await kinSelectOptions(nh);
+      check("gia sư: ô Ngân hàng liệt kê danh sách ngân hàng + 'Ngân hàng khác (nhập mã BIN)' ở cuối", banks.length >= 3 && banks.at(-1) === "Ngân hàng khác (nhập mã BIN)", banks.slice(-2));
+      const bin = await kinSelect(nh, { index: 2 });
+      await pt.getByLabel("Số tài khoản").fill("0123456789");
+      await pt.getByLabel(/Tên chủ tài khoản/).fill("NGUYEN VAN A");
+      await pt.getByRole("button", { name: "Lưu tài khoản" }).click();
+      await eventually("gia sư: 'Lưu tài khoản' gửi bankBin = mã BIN của mục đã chọn (chuỗi 6 số), đã chặn", async () => !!put && (put as { bankBin?: string }).bankBin === bin && /^\d{6}$/.test(bin), 20000);
+      await ct.close();
     }
   }
 

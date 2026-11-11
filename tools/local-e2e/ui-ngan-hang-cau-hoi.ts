@@ -4,7 +4,7 @@
 // (Playwright trả JSON đúng hợp đồng BU-03 mục P1.3/P1.4), vì parser Word đã có bài t-azota-docx-lib/t-bank-word-import riêng; ở đây kiểm giao diện: cờ đỏ chặn lưu,
 // sửa câu, đặt mức, gom theo mức khi lưu, và KHÔNG gọi API AI. Chỉ VIẾT — kin-kiem-thu chạy.
 import { BASE, mkTutor, mkUser, wipe, check, section, done, eventually } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, kinSelectValue, kinValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -160,7 +160,7 @@ const FAKE_PARSE = {
   check("mỗi câu hiện loại câu, đáp án và NGUỒN đáp án (gạch chân / bảng đáp án / lời giải / không có)",
     /Trắc nghiệm|Một đáp án/i.test(await rowAt(0).innerText()) && /nguồn: gạch chân trong đề/.test(await rowAt(0).innerText()) && /nguồn: bảng đáp án cuối đề/.test(await rowAt(2).innerText()) && /nguồn: lời giải/.test(await rowAt(4).innerText()) && /nguồn: không có/.test(await rowAt(1).innerText()));
   check("cờ đỏ bằng CHỮ: 'mâu thuẫn' (câu 2) và 'công thức chưa đọc được' (câu 3)", await rowAt(1).getByText(/mâu thuẫn, KiN không tự chọn/).isVisible() && await rowAt(3).getByText("Còn công thức chưa đọc được").isVisible());
-  check("nút đích lấy từ ?nut= (Chương 1) và nhãn tầng hiện trong ô chọn", (await wp.getByLabel("Nút đích trong ngân hàng *").inputValue()) === ch1.id && /Chương 1 Hàm số · Chương/.test(await wp.getByLabel("Nút đích trong ngân hàng *").locator("option:checked").innerText()));
+  check("nút đích lấy từ ?nut= (Chương 1) và nhãn tầng hiện trong ô chọn", (await kinSelectValue(wp.getByLabel("Nút đích trong ngân hàng *"))) === ch1.id && /Chương 1 Hàm số · Chương/.test(await kinValue(wp.getByLabel("Nút đích trong ngân hàng *"))));
   // Ngân hàng cần mức cho mọi câu (luu-nhieu không đoán mức): đặt NB cho tất cả trước để các phép đếm "câu cần xử lý" bên dưới chỉ còn đếm cờ đỏ.
   await wp.getByRole("group", { name: "Đặt mức cho tất cả câu đang tích" }).getByRole("button", { name: "NB", exact: true }).click();
   const saveBtn = wp.getByRole("button", { name: /^Lưu \d+ câu vào ngân hàng/ });
@@ -183,11 +183,11 @@ const FAKE_PARSE = {
 
   // Mức: đặt cho tất cả rồi từng câu
   await wp.getByRole("group", { name: "Đặt mức cho tất cả câu đang tích" }).getByRole("button", { name: "NB", exact: true }).click();
-  check("'đặt mức cho tất cả' = NB: mọi câu có mức NB, chú thích 'Mọi câu đang tích đều có mức'", (await rowAt(0).getByLabel("Mức của câu 1").inputValue()) === "NB" && (await rowAt(4).getByLabel("Mức của câu 1").inputValue()) === "NB" && await wp.getByText("Mọi câu đang tích đều có mức.").isVisible());
-  await rowAt(2).getByLabel("Mức của câu 1").selectOption("VD");
-  await rowAt(4).getByLabel("Mức của câu 1").selectOption("");
+  check("'đặt mức cho tất cả' = NB: mọi câu có mức NB, chú thích 'Mọi câu đang tích đều có mức'", (await kinSelectValue(rowAt(0).getByLabel("Mức của câu 1"))) === "NB" && (await kinSelectValue(rowAt(4).getByLabel("Mức của câu 1"))) === "NB" && await wp.getByText("Mọi câu đang tích đều có mức.").isVisible());
+  await kinSelect(rowAt(2).getByLabel("Mức của câu 1"), "VD");
+  await kinSelect(rowAt(4).getByLabel("Mức của câu 1"), "");
   check("đặt riêng từng câu: câu Đ/S = VD, câu trả lời ngắn = chưa đặt → ngân hàng cần mức nên nút Lưu khoá và nói rõ lý do", /1 câu đang tích chưa có mức\. Ngân hàng cần mức/.test(await wp.locator("body").innerText()) && await saveBtn.isDisabled() && /Chọn mức NB \/ TH \/ VD \/ VDC cho câu này/.test(await rowAt(4).innerText()));
-  await rowAt(4).getByLabel("Mức của câu 1").selectOption("TH");
+  await kinSelect(rowAt(4).getByLabel("Mức của câu 1"), "TH");
   check("đặt mức cho câu còn lại → nút Lưu bật lại", await saveBtn.isEnabled());
   await shot(wp, "nhap-word-xem-lai-1600");
   check("1600px xem lại: không tràn ngang; nút ≥44px", await noOverflow(wp) && (await smallTargets(wp)).length === 0, await smallTargets(wp));

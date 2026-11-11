@@ -10,7 +10,7 @@
 // lỗi 409 hiện tại hàng, Nhân bản = bản Nháp, Xoá có hộp KiN, "Xem như học sinh" mục Nháp có băng cam + KHÔNG có yêu cầu /api/progress, gia sư chờ duyệt → /lop-cua-toi/cho-duyet,
 // gia sư lớp khác chỉ thấy "Bạn không có quyền với lớp này.", 390px không tràn ngang và nút >= 44px. Cần Postgres + Next dev (xem README).
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 // Cỡ nút: mọi button / link-dạng-nút đang hiện phải cao >= 44px (ô tick/radio không tính: nhãn bao ngoài là vùng bấm). Chuỗi mã, không phải hàm (tsx chèn __name()).
@@ -233,7 +233,7 @@ const seen: Page[] = [];
   await emp.locator("[data-gt-nhom]").waitFor({ timeout: 30000 });
   check("nhóm 'Hàm số' hiện (còn 0 mục); các mục cũ nằm ở 'Chưa nhóm'", /Hàm số/.test(await emp.locator("[data-gt-nhom]").innerText()) && await emp.locator('[data-gt-khoi="chua-nhom"] [data-gt-muc]').count() === nB);
   await row(emp, b1.id).getByRole("button", { name: /^Thêm thao tác/ }).click();
-  await row(emp, b1.id).getByLabel("Chuyển nhóm").selectOption({ label: "Hàm số" });
+  await kinSelect(row(emp, b1.id).getByLabel("Chuyển nhóm"), { label: "Hàm số" });
   await eventually("chuyển nhóm: mục nằm trong nhóm Hàm số", async () => (await emp.locator("[data-gt-nhom] [data-gt-muc]").count()) === 1);
   await emp.getByRole("button", { name: "Bỏ nhóm Hàm số" }).click();
   await emp.getByRole("dialog").getByRole("button", { name: "Bỏ nhóm" }).click();

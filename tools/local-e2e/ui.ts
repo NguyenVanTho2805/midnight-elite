@@ -64,5 +64,48 @@ export async function kinPick(combo: import("playwright").Locator, optionLabel: 
 }
 /** Nhãn đang hiện trên nút KinSelect (thay cho inputValue() của <select>). */
 export async function kinValue(combo: import("playwright").Locator) { return (await combo.innerText()).trim(); }
+/**
+ * LOI-06 — chọn trong KinSelect như selectOption(): `choice` là chuỗi (khớp GIÁ TRỊ trước, không có thì khớp NHÃN — y như selectOption("x")),
+ * hoặc { value } / { label } / { index }. `target`: nút combobox, hoặc khối chứa đúng một KinSelect (tìm [role=combobox] bên trong).
+ * Mở → bấm mục → đợi danh sách đóng và nút mang giá trị vừa chọn (data-value). Trả về giá trị đã chọn.
+ */
+export async function kinSelect(target: import("playwright").Locator, choice: string | { value?: string; label?: string; index?: number }, o: { timeout?: number } = {}) {
+  const timeout = o.timeout ?? 30000;
+  const combo = (await target.getAttribute("role", { timeout })) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  await combo.click({ timeout });
+  const listId = await combo.getAttribute("aria-controls");
+  const list = combo.page().locator(`[id="${listId}"]`);
+  await list.waitFor({ timeout });
+  const c = typeof choice === "string" ? choice : null;
+  let opt = typeof choice === "object" && choice.index !== undefined ? list.getByRole("option").nth(choice.index)
+    : list.locator(`[role="option"][data-value="${(c ?? (choice as { value?: string }).value ?? "").replace(/"/g, '\\"')}"]`);
+  if (typeof choice === "object" && choice.label !== undefined) opt = list.getByRole("option", { name: choice.label, exact: true });
+  else if (c !== null && (await opt.count()) === 0) opt = list.getByRole("option", { name: c, exact: true });
+  const v = await opt.first().getAttribute("data-value", { timeout });
+  await opt.first().click({ timeout });
+  await list.waitFor({ state: "detached", timeout });
+  for (let i = 0; i < 50 && (await combo.getAttribute("data-value")) !== v; i++) await combo.page().waitForTimeout(100);
+  return v ?? "";
+}
+/** Giá trị đang chọn của KinSelect (thay cho inputValue() của <select>) — đọc data-value của nút. */
+export async function kinSelectValue(target: import("playwright").Locator, o: { timeout?: number } = {}) {
+  const combo = (await target.getAttribute("role", { timeout: o.timeout ?? 30000 })) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  return (await combo.getAttribute("data-value")) ?? "";
+}
+/** Chữ các mục của KinSelect (thay cho locator("option").allInnerTexts()): mở, đọc, Esc đóng. */
+export async function kinSelectOptions(target: import("playwright").Locator) {
+  const combo = (await target.getAttribute("role")) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  await combo.click();
+  const list = combo.page().locator(`[id="${await combo.getAttribute("aria-controls")}"]`);
+  await list.waitFor({ timeout: 30000 });
+  const texts = (await list.getByRole("option").allInnerTexts()).map(t => t.replace(/^✓\s*/, "").trim());
+  await combo.page().keyboard.press("Escape");
+  await list.waitFor({ state: "detached", timeout: 30000 });
+  return texts;
+}
+/** Tên theo phiếu LOI-06: chọn KinSelect theo nhãn của ô (tên đọc được chứa `label`) và chữ của mục. */
+export async function pickKinSelect(page: Page, label: string | RegExp, optionText: string) {
+  return kinSelect(page.getByRole("combobox", { name: label }).first(), { label: optionText });
+}
 export async function closeAll() { await browser?.close(); }
 export type { Page };

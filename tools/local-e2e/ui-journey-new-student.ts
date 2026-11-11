@@ -10,7 +10,7 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 const SINK = process.env.EMAIL_SINK_DIR;
@@ -49,7 +49,7 @@ const pathOf = (url: string) => { const u = new URL(url); return u.pathname + u.
   await p.getByPlaceholder("Nguyễn Văn A").fill("Học Sinh Mới");
   await p.locator('input[type="tel"]').nth(0).fill("0912345678");
   await p.locator('input[type="tel"]').nth(1).fill("0987654321");
-  await p.locator("form select").first().selectOption({ index: 1 });
+  await kinSelect(p.locator('form [role="combobox"]').first(), { index: 1 });
   await p.getByPlaceholder("THPT Chu Văn An").fill("THCS Thử Nghiệm");
   await p.getByRole("button", { name: /Tiếp theo/ }).click();
   await p.getByPlaceholder("ten@gmail.com").waitFor({ timeout: 20000 });

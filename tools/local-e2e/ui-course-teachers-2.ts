@@ -5,7 +5,7 @@
 //       chủ lớp vẫn sửa được; buổi chưa chốt mình dạy → có nút đề nghị; buổi người khác dạy → không có; 409 SESSION_CLOSED_OWNER_ONLY lọt qua → báo bằng chữ.
 // Bẻ X thì ca Y đỏ: bỏ `disabled={locked}` ở nút trạng thái (DiemDanh RosterRowView) → H2 "nút điểm danh tắt"; bỏ `disabled={khoa}` ở fieldset nhóm (GiaoTrinh) → H1 "nhóm khác bị khoá".
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, kinSelectOptions, kinValue } from "./ui";
 import type { Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf, addDaysKey } from "@/lib/classSessions";
@@ -77,14 +77,14 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     section(`H1. Giáo trình "Giao cho…" (${tag})`);
     const po = await (await ctxFor(O, { width: w, height: h })).newPage(); watch(po); await shim(po, O.id);
     await po.goto(`${BASE}${GT}`, GOTO);
-    const selA = po.locator(`[data-gt-giao-cho="${chA.id}"] select`), selB = po.locator(`[data-gt-giao-cho="${chB.id}"] select`);
+    const selA = po.locator(`[data-gt-giao-cho="${chA.id}"] [role="combobox"]`), selB = po.locator(`[data-gt-giao-cho="${chB.id}"] [role="combobox"]`); // LOI-06: KinSelect
     await selA.waitFor({ timeout: 90000 });
-    check(`${tag} chủ lớp: mỗi nhóm có ô "Giao cho giáo viên", nhóm A đang chọn Thầy Bộ Môn`, await selB.isVisible() && (await selA.locator("option:checked").innerText()).includes("Thầy Bộ Môn"));
-    check(`${tag} chủ lớp: ô chọn chỉ liệt kê bộ môn + "Chủ lớp / không giao" (không đồng giảng)`, (await selB.locator("option").allInnerTexts()).join("|") === "Chủ lớp / không giao|Thầy Bộ Môn");
-    await selB.selectOption({ label: "Thầy Bộ Môn" });
+    check(`${tag} chủ lớp: mỗi nhóm có ô "Giao cho giáo viên", nhóm A đang chọn Thầy Bộ Môn`, await selB.isVisible() && (await kinValue(selA)).includes("Thầy Bộ Môn"));
+    check(`${tag} chủ lớp: ô chọn chỉ liệt kê bộ môn + "Chủ lớp / không giao" (không đồng giảng)`, (await kinSelectOptions(selB)).join("|") === "Chủ lớp / không giao|Thầy Bộ Môn");
+    await kinSelect(selB, { label: "Thầy Bộ Môn" });
     await po.waitForFunction(() => !document.querySelector("select[disabled]"), null, { timeout: 30000 });
     check(`${tag} chọn bộ môn → DB chapter.teacherId = bộ môn`, (await prisma.chapter.findUnique({ where: { id: chB.id } }))?.teacherId === S.id);
-    await selB.selectOption({ label: "Chủ lớp / không giao" });
+    await kinSelect(selB, { label: "Chủ lớp / không giao" });
     await po.waitForFunction(() => !document.querySelector("select[disabled]"), null, { timeout: 30000 });
     check(`${tag} chọn "Chủ lớp / không giao" → teacherId null`, (await prisma.chapter.findUnique({ where: { id: chB.id } }))?.teacherId === null);
     check(`${tag} chủ lớp: ô chọn ≥ 44px`, (await small(po, `[data-gt-giao-cho]`)).length === 0, await small(po, `[data-gt-giao-cho]`));
@@ -104,7 +104,7 @@ const GOTO = { waitUntil: "domcontentloaded" as const, timeout: 120000 };
     check(`${tag} bộ môn: nhóm của chủ lớp ghi rõ "Giao cho chủ lớp", nhóm của mình "Giao cho bạn"`, (await blockB.innerText()).includes("Giao cho chủ lớp") && (await blockA.locator("[data-gt-giao-cho]").innerText()).trim() === "Giao cho bạn");
     check(`${tag} bộ môn: nhóm khác bị khoá (mọi nút tắt)`, await blockB.evaluate(el => (el as HTMLFieldSetElement).disabled && [...el.querySelectorAll("button")].every(b => (b as HTMLButtonElement).matches(":disabled"))));
     check(`${tag} bộ môn: nhóm của mình KHÔNG khoá, có nút Đổi tên bật`, await blockA.getAttribute("data-gt-nhom-khoa") === null && await blockA.getByRole("button", { name: /Đổi tên nhóm/ }).isEnabled());
-    check(`${tag} bộ môn: không có ô chọn giao việc`, await ps.locator("[data-gt-giao-cho] select").count() === 0);
+    check(`${tag} bộ môn: không có ô chọn giao việc`, await ps.locator("[data-gt-giao-cho] select, [data-gt-giao-cho] [role=\"combobox\"]").count() === 0);
     check(`${tag} bộ môn: không tràn ngang`, await noOverflow(ps));
     if (w === 1280) await shot(ps, "dong-giang-giao-cho-bo-mon-1280"); else await shot(ps, "dong-giang-giao-cho-bo-mon-390");
 

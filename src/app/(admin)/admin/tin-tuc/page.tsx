@@ -338,7 +338,7 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 Danh mục <span className="text-red-500">*</span>
               </label>
-              <KinSelect value={form.category} onChange={v => set("category", v)}>
+              <KinSelect aria-label="Danh mục" value={form.category} onChange={v => set("category", v)}>
                 {CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
@@ -590,14 +590,14 @@ function PageInner() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
-            <KinSelect value={catFilter} onChange={v => setCat(v)}>
+            <KinSelect aria-label="Lọc theo danh mục" value={catFilter} onChange={v => setCat(v)}>
               <option value="">Tất cả danh mục</option>
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </KinSelect>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
-            <KinSelect value={statusFilter} onChange={v => setStatus(v)}>
+            <KinSelect aria-label="Lọc theo trạng thái" value={statusFilter} onChange={v => setStatus(v)}>
               <option value="">Tất cả</option>
               <option value="published">Đã xuất bản</option>
               <option value="draft">Nháp</option>

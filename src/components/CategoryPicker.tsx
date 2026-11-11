@@ -84,7 +84,7 @@ export function CategoryPicker({ value, categories, onCategoriesChange, onChange
         }
         return (
           <div key={i} className="flex gap-2">
-            <KinSelect value={row.selected} onChange={v => v === "__add__" ? setAddingAt(row.parentId) : onChange(v)}>
+            <KinSelect className="flex-1" aria-label={i === 0 ? "Đầu mục" : `Đầu mục cấp ${i + 1}`} value={row.selected} onChange={v => v === "__add__" ? setAddingAt(row.parentId) : onChange(v)}>
               <option value="">{i === 0 ? "Chọn đầu mục..." : "-- Không chọn thêm --"}</option>
               {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               <option value="__add__">+ Thêm đầu mục {i === 0 ? "gốc" : "con"} mới…</option>
