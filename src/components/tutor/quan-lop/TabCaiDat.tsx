@@ -7,6 +7,7 @@ import { uploadToCloudinary, cloudinaryConfigured } from "@/lib/cloudinary";
 import { DropZone } from "@/components/DropZone";
 import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import type { CourseDB } from "./lessonForm";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // Màu nhãn LƯU vào Course.tagColor: dùng token --kin-* (safeTagColor nhận var(--kin-…)), không mã hex. Nhãn cũ lưu hex vẫn hiện đúng, chỉ không có ô nào sáng.
 const TAG_COLORS = [
@@ -144,15 +145,11 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
             <input className={inp} value={form.instructor} onChange={e => setForm(f => ({ ...f, instructor: e.target.value }))} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
-            <select className={inp + " bg-[var(--kin-nen-trang)]"} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-              <option value="">— Chọn danh mục —</option>
-              {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-              {/* Luôn giữ giá trị hiện tại nếu chưa load xong */}
-              {form.category && !categoryOptions.includes(form.category) && (
-                <option value={form.category}>{form.category}</option>
-              )}
-            </select>
+            <label htmlFor="class-category" className="block text-xs font-medium text-gray-600 mb-1">Danh mục</label>
+            {/* LOI-02 (2.G): KinSelect thay <select> gốc. Luôn giữ giá trị hiện tại nếu danh mục chưa tải xong. */}
+            <KinSelect id="class-category" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} placeholder="— Chọn danh mục —"
+              options={[{ value: "", label: "— Chọn danh mục —" }, ...categoryOptions.map(c => ({ value: c, label: c })),
+                ...(form.category && !categoryOptions.includes(form.category) ? [{ value: form.category, label: form.category }] : [])]} />
           </div>
         </div>
       </div>
@@ -273,12 +270,8 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
           </div>
           <div>
             <label htmlFor="class-status" className="block text-xs font-medium text-gray-600 mb-1">Trạng thái nhận học viên</label>
-            <select id="class-status" className={inp}
-              value={form.classStatus} onChange={e => setForm(f => ({ ...f, classStatus: e.target.value }))}>
-              <option value="open">Đang nhận học viên</option>
-              <option value="paused">Tạm dừng nhận (có thể mở lại)</option>
-              <option value="closed">Đã đóng lớp</option>
-            </select>
+            <KinSelect id="class-status" value={form.classStatus} onChange={v => setForm(f => ({ ...f, classStatus: v }))}
+              options={[{ value: "open", label: "Đang nhận học viên" }, { value: "paused", label: "Tạm dừng nhận (có thể mở lại)" }, { value: "closed", label: "Đã đóng lớp" }]} />
             <p className="text-xs text-gray-400 mt-1">Học viên đã vào lớp vẫn học bình thường; chỉ chặn người mới vào.</p>
           </div>
         </div>
