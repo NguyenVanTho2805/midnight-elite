@@ -44,10 +44,25 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   for (const f of ["src/components/tutor/ClassInvites.tsx", "src/app/lop-cua-toi/(tutor)/kiem-duyet/KiemDuyetClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
     check(`${f.split("/").pop()}: xác nhận việc không hoàn tác bằng KinConfirm nguy hiểm, không window.confirm`, /<KinConfirm/.test(read(f)) && /tone="nguy-hiem"/.test(read(f)) && !/window\.confirm|[^.\w]confirm\(/.test(read(f)));
 
-  const raw = src.filter(f => /\.tsx?$/.test(f) && !f.includes("/generated/")).filter(f => /window\.confirm|(^|[^.\w])confirm\(/.test(read(f).replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")));
+  // LOI-07: `confirm(` trần chỉ là hộp thoại trình duyệt khi tệp KHÔNG tự khai báo hàm tên `confirm` (SignupCodeForm có `async function confirm()` = gửi mã xác thực email).
+  const usesBrowserConfirm = (text: string): boolean => {
+    const t = text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    if (/window\.confirm|globalThis\.confirm/.test(t)) return true;
+    const localDecl = /(?:\bfunction\s+confirm\s*\(|\b(?:const|let|var)\s+confirm\s*=)/.test(t);
+    return !localDecl && /(^|[^.\w])confirm\(/m.test(t);
+  };
+  check("phá: confirm() trần không có hàm cùng tên trong tệp → bị bắt", usesBrowserConfirm(`function X() { if (confirm("Xoá?")) del(); }`));
+  check("phá: window.confirm vẫn bị bắt kể cả khi tệp có hàm tên confirm", usesBrowserConfirm(`async function confirm() {} \n if (window.confirm("x")) go();`));
+  check("hàm tự khai báo tên confirm (gửi mã) không bị coi là hộp thoại trình duyệt", !usesBrowserConfirm(`async function confirm(v = c) { await post(); } \n onComplete={v => { void confirm(v); }}`));
+  const raw = src.filter(f => /\.tsx?$/.test(f) && !f.includes("/generated/")).filter(f => usesBrowserConfirm(read(f)));
   check("toàn bộ mã nguồn không còn window.confirm / confirm() — mọi hỏi lại đi qua KinConfirm", raw.length === 0, raw);
   check("useKinConfirm được xuất ở index.ts và trả { ask, dialog }", /useKinConfirm/.test(idx) && /dialog/.test(read("src/components/kin/useConfirm.tsx")) && /Promise<boolean>/.test(read("src/components/kin/useConfirm.tsx")));
-  for (const f of ["src/app/(student)/student/bai-giang/[lessonId]/page.tsx", "src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx"]) {
+  // LOI-07: từ BU-HS-NOP-TEP (9f91b824) khối nộp bài của trang bài học là <NopTepBox>, câu hỏi "Nộp lại bài đã chấm?" chuyển theo vào đó
+  // (trang bài học không còn hỏi gì). Kiểm câu hỏi ở chỗ nó đang sống, và trang bài học thật sự dùng NopTepBox.
+  const ntb = read("src/components/student/nop-tep/NopTepBox.tsx");
+  check("NopTepBox: hỏi lại bằng useKinConfirm trước khi nộp lại bài đã chấm (đúng một {dialog} cho mỗi hook)", /ask\(\{\s*title:\s*"Nộp lại bài đã chấm\?"/.test(ntb) && (ntb.match(/useKinConfirm\(\)/g) ?? []).length === (ntb.match(/\{dialog\}/g) ?? []).length, { hooks: (ntb.match(/useKinConfirm\(\)/g) ?? []).length, dialogs: (ntb.match(/\{dialog\}/g) ?? []).length });
+  check("student/bai-giang/[lessonId]: phần nộp bài dùng <NopTepBox>", /<NopTepBox\b/.test(read("src/app/(student)/student/bai-giang/[lessonId]/page.tsx")));
+  for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx"]) {
     const t = read(f), asks = (t.match(/await ask\(/g) ?? []).length, dialogs = (t.match(/\{dialog\}/g) ?? []).length, hooks = (t.match(/useKinConfirm\(\)/g) ?? []).length;
     check(`${f.split("/").slice(-2).join("/")}: dùng useKinConfirm (${asks} lần hỏi, ${hooks} hook, ${dialogs} hộp) — mỗi thành phần có hook thì có đúng một {dialog}`, asks >= 1 && hooks >= 1 && hooks === dialogs, { asks, hooks, dialogs });
   }
