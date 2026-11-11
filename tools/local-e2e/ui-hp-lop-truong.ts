@@ -64,7 +64,9 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
       errors.push(`${p.url().replace(BASE, "")} ${m.text().slice(0, 140)}`);
     });
   };
-  const tabUrl = (id: string, m = ym) => `${BASE}/lop-cua-toi/${id}?tab=hoc-phi&ym=${m}`;
+  // Sau GS-LOP-GON (#154): CHỦ lớp mở tab Học phí ở …/quan-lop/<id>?tab=cai-dat&muc=hoc-phi; địa chỉ cũ /lop-cua-toi/<id>?tab=hoc-phi chỉ còn cho đồng giảng và là 307 với chủ lớp.
+  const tabUrl = (id: string, m = ym) => `${BASE}/lop-cua-toi/quan-lop/${id}?tab=cai-dat&muc=hoc-phi&ym=${m}`;
+  const tabUrlCu = (id: string, m = ym) => `${BASE}/lop-cua-toi/${id}?tab=hoc-phi&ym=${m}`; // trang lớp kiểu cũ: người không phải chủ lớp (gia sư bộ môn, gia sư lớp khác)
   const nhapUrl = (id: string, m = ym) => `${BASE}/lop-cua-toi/${id}/bang-hoc-phi/nhap?ym=${m}`;
   const bodyText = (p: Page) => p.evaluate("document.body.innerText") as Promise<string>;
 
@@ -85,7 +87,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await p.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
-  await p.waitForURL(/\/lop-cua-toi\/lop-bang-moi-ui/, { timeout: 90000 });
+  await p.waitForURL(/\/lop-cua-toi\/(quan-lop\/)?lop-bang-moi-ui/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp bảng mới UI" } });
   check("DB: feeMode monthly_sheet, KHÔNG có CourseFeeRate", made.feeMode === "monthly_sheet" && (await prisma.courseFeeRate.count({ where: { courseId: made.id } })) === 0, made.feeMode);
 
@@ -162,7 +164,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   check("DB: đúng số tay tính: Mai Anh 610.000 (đếm môn), Gia Hân 660.000 (số môn 'file'), Tuấn Kiệt 0", maiAnh.net === 610000 && maiAnh.subjectCountSource === "counted" && giaHan.net === 660000 && giaHan.subjectCountSource === "file" && tk.net === 0, { a: maiAnh.net, g: giaHan.net, t: tk.net });
   check("DB: 4 FeeCharge kind sheet (Tuấn Kiệt 0đ không tạo)", (await prisma.feeCharge.count({ where: { courseId: C.id, kind: "sheet" } })) === 4);
   await p.getByRole("link", { name: "Xem bảng học phí" }).click();
-  await p.waitForURL(/tab=hoc-phi/, { timeout: 60000 });
+  await p.waitForURL(/muc=hoc-phi/, { timeout: 60000 });
   await p.locator("[data-bh-total]").waitFor({ timeout: 60000 });
   check("quay về bảng tháng: dòng tổng 3.130.000đ, Mai Anh 610.000đ", /3\.130\.000đ/.test(await p.locator("[data-bh-total]").innerText()) && /610\.000đ/.test(await p.locator("[data-bh-tr]", { hasText: "Mai Anh" }).innerText()));
   check("em đã nhập chưa lập phiếu → 'Chưa lập phiếu'; Tuấn Kiệt 0đ có chữ 'Không tạo khoản phí'", (await p.getByText("Chưa lập phiếu").count()) >= 4 && await p.locator("[data-bh-tr]", { hasText: "Tuấn Kiệt" }).getByText("Không tạo khoản phí").isVisible());
@@ -332,7 +334,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   section("Gia sư bộ môn và gia sư lớp khác: không thấy tab, trang con 404, không rò số");
   for (const [who, u] of [["gia sư bộ môn", sub], ["gia sư lớp khác", other]] as const) {
     const q = await (await ctxFor(u, { width: DW, height: 1000 })).newPage(); watch(q);
-    const r1 = await q.goto(tabUrl(C.id), { waitUntil: "networkidle", timeout: 120000 });
+    const r1 = await q.goto(tabUrlCu(C.id), { waitUntil: "networkidle", timeout: 120000 });
     await q.waitForTimeout(1500);
     const txt = await bodyText(q);
     check(`${who}: mở ?tab=hoc-phi → không có tab 'Học phí', không rò số/tên học sinh`, (await q.getByRole("tab", { name: "Học phí" }).count()) === 0 && !/3\.130\.000đ|610\.000đ|535\.000đ|Mai Anh|Bảo Châu/.test(txt) && (r1?.status() === 404 || who === "gia sư bộ môn"), { s: r1?.status() });
@@ -341,7 +343,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
     const r3 = await q.goto(`${BASE}/lop-cua-toi/${C.id}/bang-hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     check(`${who}: /bang-hoc-phi → 404`, r3?.status() === 404, r3?.status());
     const body404 = await bodyText(q);
-    for (const [r, u2] of [[r1, tabUrl(C.id)], [r2, nhapUrl(C.id)], [r3, `${BASE}/lop-cua-toi/${C.id}/bang-hoc-phi`]] as const) if (r?.status() === 404) notFoundUrls.add(u2.replace(BASE, ""));
+    for (const [r, u2] of [[r1, tabUrlCu(C.id)], [r2, nhapUrl(C.id)], [r3, `${BASE}/lop-cua-toi/${C.id}/bang-hoc-phi`]] as const) if (r?.status() === 404) notFoundUrls.add(u2.replace(BASE, ""));
     check(`${who}: trang 404 không chứa số tiền hay tên lớp`, !/\d\.\d{3}đ/.test(body404) && !/Lớp bảng tháng/.test(body404));
     await q.close();
   }
