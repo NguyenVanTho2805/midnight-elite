@@ -19,13 +19,14 @@ const TOPICS = [
 
 const field = "w-full rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] px-3 py-2.5 text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)]";
 
-export function Composer({ userName, scopes, onPosted }: { userName: string; scopes: ScopeOption[]; onPosted: (item: FeedItem) => void }) {
+// LOI-01: `lockCourseId` = bảng tin chung đang ẩn, chỉ đăng được vào lớp đang xem (không có lựa chọn "Cộng đồng chung").
+export function Composer({ userName, scopes, onPosted, lockCourseId }: { userName: string; scopes: ScopeOption[]; onPosted: (item: FeedItem) => void; lockCourseId?: string }) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<"post" | "question">("post");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<string>("kinh-nghiem");
-  const [courseId, setCourseId] = useState("");
+  const [courseId, setCourseId] = useState(lockCourseId ?? "");
   const [images, setImages] = useState<File[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<"idle" | "upload" | "post">("idle");
@@ -35,7 +36,7 @@ export function Composer({ userName, scopes, onPosted }: { userName: string; sco
   const cache = useRef(new Map<File, string>());
 
   function reset() {
-    setOpen(false); setKind("post"); setTitle(""); setContent(""); setCategory("kinh-nghiem"); setCourseId("");
+    setOpen(false); setKind("post"); setTitle(""); setContent(""); setCategory("kinh-nghiem"); setCourseId(lockCourseId ?? "");
     setImages([]); setFile(null); setError(""); cache.current.clear();
   }
 
@@ -132,7 +133,11 @@ export function Composer({ userName, scopes, onPosted }: { userName: string; sco
             </div>
           </>
         )}
-        {scopes.length > 0 && (
+        {lockCourseId ? (
+          <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]" data-kc-lop-khoa>
+            Đăng vào lớp: <span className="font-semibold text-[var(--kin-chu-chinh)]">{scopes.find(s => s.id === lockCourseId)?.name ?? "lớp này"}</span>
+          </p>
+        ) : scopes.length > 0 && (
           <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
             <span className="whitespace-nowrap">Đăng vào</span>
             <select value={courseId} onChange={e => setCourseId(e.target.value)} className={`${field} min-h-11 py-0`}>

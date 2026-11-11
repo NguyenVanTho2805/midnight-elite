@@ -2,6 +2,7 @@
 // Hình dạng nội dung và kiểm cấu trúc nằm ở siteContent.ts (HOME-01); tệp này thêm: cụm cấm (lời hứa KiN không có), bộ đếm ký tự theo trường,
 // số lượng ô/thẻ, danh sách đường dẫn gợi ý, và so sánh hai bản để ghi nhật ký (chỉ TÊN trường).
 import { HOME_LIMITS, type HomeContent, type HomeIssue } from "@/lib/siteContent";
+import { isLinkHidden } from "@/lib/features";
 
 /** Cụm cấm: chữ trang công khai là lời hứa của KiN với phụ huynh. Danh sách này phải BAO TRÙM sáu dòng STU-002 + các dòng cũ của tools/local-e2e/t-no-fabricated.ts
  *  (có bài khoá trong t-home-content-guard-lib). Khi t-no-fabricated đổi, đổi cả đây. */
@@ -117,7 +118,8 @@ export function limitFor(path: string): number | null {
 }
 
 /** Đường dẫn gợi ý cho ô liên kết (không bắt buộc dùng). */
-export const HREF_SUGGESTIONS: readonly string[] = ["/khoa-hoc", "/thi-thu", "/giang-vien", "/dang-ky", "/dang-ky?vai=gia-su", "/dang-nhap", "/cong-dong", "/tin-tuc", "/diem-chuan"];
+// LOI-01: đường dẫn vào phần đang ẩn (src/lib/features.ts) không gợi ý — gõ tay thì bị nhắc "mở thử" như mọi đường lạ.
+export const HREF_SUGGESTIONS: readonly string[] = ["/khoa-hoc", "/thi-thu", "/giang-vien", "/dang-ky", "/dang-ky?vai=gia-su", "/dang-nhap", "/cong-dong", "/tin-tuc", "/diem-chuan"].filter(h => !isLinkHidden(h));
 
 /** Đường dẫn nội bộ không nằm trong gợi ý và không phải ô kỳ thi (đã tự dựng từ danh mục) → nhắc người sửa mở thử. */
 export function hrefNeedsManualCheck(href: string): boolean {

@@ -22,6 +22,7 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 import { KinCallout } from "@/components/kin/Callout";
 import { OPTIONAL_TUTOR_MODULES, visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
 import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
+import { isLinkHidden, visibleLinks } from "@/lib/features";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
@@ -30,7 +31,9 @@ const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
 // /admin/thi-thu*, /admin/khoa-hoc* — src/lib/tutorRoutes.ts), chạy trong chính vỏ này; gia sư không còn vào /admin/* (proxy 307 sang bí danh).
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
-const MORE_BASE: MoreGroup[] = [
+// LOI-01 (11/11/2026): mục dẫn vào phần đang ẩn (src/lib/features.ts) bị lọc — "Kiểm duyệt cộng đồng" khi Cộng đồng ẩn (Hộp việc vẫn dẫn tới khi có báo cáo bài trong lớp).
+// Nhóm "Dạy học" luôn còn mục (Báo cáo tháng, Sổ điểm) nên thứ tự 4 nhóm mà `wide` bên dưới dựa vào không đổi.
+const MORE_ALL: MoreGroup[] = [
   { title: "Dạy học", links: [
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang", icon: "bao-cao" },
     { label: "Sổ điểm", href: "/lop-cua-toi/so-diem", icon: "bai-kt" },
@@ -44,6 +47,7 @@ const MORE_BASE: MoreGroup[] = [
     { label: "Yêu cầu tìm gia sư", href: "/lop-cua-toi/yeu-cau", icon: "nguoi" },
   ] },
 ];
+const MORE_BASE: MoreGroup[] = MORE_ALL.map(g => ({ ...g, links: visibleLinks(g.links) }));
 
 // BU-00 bước 5 (31/10/2026): vỏ gia sư CHỜ DUYỆT — cùng khung (thanh trái / thanh dưới + dải trên) nhưng thanh chỉ 3 mục, nhãn vai "CHỜ DUYỆT", không bảng "Khác",
 // không số đếm, và một băng "Hồ sơ gia sư đang chờ duyệt" trên vùng nội dung. Cài đặt trỏ thẳng /cai-dat/chu-de vì /lop-cua-toi/cai-dat (module, nhắc lịch, kết nối)
@@ -71,7 +75,9 @@ export default function TutorShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const closeMore = useCallback(() => setMoreOpen(false), []);
   if (pending) return <PendingShell user={user} onLogout={() => void logout()}>{children}</PendingShell>;
-  const visible = visibleTutorModules({ modules });
+  // LOI-01: module Lịch rời thanh khi phần Lịch đang ẩn (chỉ gỡ lối vào: /lop-cua-toi/lich vẫn chạy, Hộp việc còn dòng báo nghỉ / buổi bù / nhắc lịch trỏ vào đó).
+  // Module Thư viện (/thu-vien = "Thư viện của tôi" của gia sư) KHÔNG lọc ở đây: cờ Thư viện chỉ ẩn thư viện CHUNG.
+  const visible = visibleTutorModules({ modules }).filter(m => !(m.key === "lich" && isLinkHidden(m.href)));
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
   const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
 

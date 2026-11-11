@@ -57,7 +57,7 @@ export const DEFAULT_HOME_CONTENT: HomeContent = deepFreeze({
       { icon: "key", title: "Vào lớp bằng mã mời", desc: "Gia sư gửi mã, em nhập là thấy tên gia sư, lịch và học phí (nếu có) của lớp trước khi bấm vào." },
       { icon: "calendar", title: "Lịch học và buổi học", desc: "Một lịch tuần cho mọi lớp: buổi học với gia sư, hạn nộp bài tập và buổi thi thử." },
       { icon: "clipboard", title: "Thi thử trong phòng thi", desc: "Làm đề có giờ như thi thật. Nộp xong, KiN ghi nhận bài và tính điểm phần trắc nghiệm." },
-      { icon: "chat", title: "Bài tập và hỏi đáp", desc: "Nộp bài tập gia sư giao ngay trên KiN. Có thắc mắc thì đăng hỏi trong lớp của mình hoặc ngoài cộng đồng." },
+      { icon: "chat", title: "Bài tập và hỏi đáp", desc: "Nộp bài tập gia sư giao ngay trên KiN. Có thắc mắc thì hỏi gia sư ngay trong lớp của mình." },
     ],
   },
   findTutor: {

@@ -4,6 +4,17 @@ import { BASE, mkUser, mkTutor, mkCourse, mkSuper, wipe, check, eventually, sect
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 
+import { FEATURES as KIN_FEATURES, featureOn as kinFeatureOn } from "@/lib/features";
+
+// LOI-01 (11/11/2026): bài này khẳng định ĐỦ menu / khối trang chủ của các phần mà LOI-01 mặc định ẨN (Lịch, Cộng đồng, Tin tức, Thư viện, Tìm gia sư, Tiếng Anh, Xếp hạng, Coin, Điểm chuẩn).
+// Chạy với NEXT_PUBLIC_KIN_MO_<TÊN>=1 (bật hết) cho CẢ máy chủ dev lẫn bài (cùng env.sh) mới có nghĩa; cờ đang tắt thì bỏ qua có thông báo thay vì đỏ vì thiếu mục đang bị ẩn có chủ đích.
+// Hành vi KHI ẨN do bài của LOI-01 phủ: t-features-lib, ui-links-everywhere, ui-role-everything, ui-tutor-shell, ui-student-shell, ui-coin-an, ui-loi-cong-dong-lop.
+const KIN_OFF = KIN_FEATURES.filter(k => !kinFeatureOn(k));
+if (KIN_OFF.length) {
+  console.log(`\n(BỎ QUA cả bài: LOI-01 đang ẨN ${KIN_OFF.join(", ")}. Chạy với NEXT_PUBLIC_KIN_MO_<TÊN>=1 cho cả máy chủ dev và bài để kiểm đủ menu/khối.)\n0 pass / 0 fail`);
+  process.exit(0);
+}
+
 // Tương phản WCAG giữa màu chữ (có thể có alpha) và nền đã phối.
 type RGBA = [number, number, number, number];
 const over = (fg: RGBA, bg: RGBA): RGBA => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1) as RGBA;

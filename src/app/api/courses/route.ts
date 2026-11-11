@@ -5,7 +5,7 @@ import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-g
 import { PERMISSIONS } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
-import { FEE_MODE_LEGACY, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
+import { FEE_MODE_LEGACY, FEE_MODE_SHEET, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
@@ -160,7 +160,8 @@ export async function POST(req: NextRequest) {
       data.adminId = (maxRow?.adminId ?? 0) + 1;
       if (feeSetup) data.feeMode = feeSetup.mode;
       const created = await tx.course.create({ data: data as Parameters<typeof prisma.course.create>[0]["data"] });
-      if (feeSetup) await createInitialFeeRate(tx, created.id, feeSetup, auth.userId);
+      // HP-LOP-TRUONG: lớp "theo bảng học phí tháng" KHÔNG có đơn giá lớp → không tạo CourseFeeRate (bậc đặt sau ở tab Học phí: CourseFeeTable).
+      if (feeSetup && feeSetup.mode !== FEE_MODE_SHEET) await createInitialFeeRate(tx, created.id, feeSetup, auth.userId);
       if (scheduleRows.length) await tx.classSchedule.createMany({ data: scheduleRows.map(r => ({ courseId: created.id, ...r })) });
       return created;
     });

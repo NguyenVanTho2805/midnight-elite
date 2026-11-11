@@ -57,6 +57,14 @@ const mockBrowser = (cfg: { saved: Saved; unsupported?: boolean }) => `(() => {
   const hasCookie = async (ctx: any) => (await ctx.cookies()).some((c: any) => c.name === "midnight_session");
   const acct = (p: any) => p.getByLabel(/Số điện thoại hoặc email|^Email$/);
   const pass = (p: any) => p.locator("#dn-pass");
+  // Sau đăng xuất trang "/" có thể điều hướng hai lần liên tiếp tới cùng địa chỉ: đọc trạng thái trang phải chờ tải xong và thử lại nếu ngữ cảnh bị huỷ giữa chừng.
+  const safeEval = async (p: any, fn: () => unknown) => {
+    for (let i = 0; i < 6; i++) {
+      try { await p.waitForLoadState("load"); return await p.evaluate(fn); }
+      catch (e) { if (!/Execution context was destroyed|navigation/i.test(String(e))) throw e; await p.waitForTimeout(600); }
+    }
+    return p.evaluate(fn);
+  };
   const left = (p: any) => p.waitForURL((u: URL) => !u.pathname.startsWith("/dang-nhap"), { timeout: 120000 }).then(() => true, () => false);
 
   section("Học sinh có mật khẩu đã lưu → tự vào, không cần bấm");
@@ -129,7 +137,7 @@ const mockBrowser = (cfg: { saved: Saved; unsupported?: boolean }) => `(() => {
     await p.getByRole("button", { name: /^Tài khoản của/ }).first().click();
     await p.getByRole("menuitem", { name: "Đăng xuất" }).click();
     await p.waitForURL(u => u.pathname === "/" || u.pathname.startsWith("/dang-nhap"), { timeout: 120000 });
-    check("đăng xuất xong: đã báo trình duyệt đừng tự đăng nhập (cờ 'đã đăng xuất' được đặt)", await p.evaluate(() => localStorage.getItem("__prevented") === "1"));
+    check("đăng xuất xong: đã báo trình duyệt đừng tự đăng nhập (cờ 'đã đăng xuất' được đặt)", await safeEval(p, () => localStorage.getItem("__prevented") === "1"));
     check("đăng xuất xong: cookie phiên đã mất", !(await hasCookie(ctx)));
     const before = posts.length;
     await p.goto(`${BASE}/dang-nhap`, { waitUntil: "networkidle", timeout: 240000 });
@@ -138,7 +146,7 @@ const mockBrowser = (cfg: { saved: Saved; unsupported?: boolean }) => `(() => {
     check("mở lại /dang-nhap sau khi đăng xuất: KHÔNG tự vào lại (ở lại trang, không gọi API, không cookie)", new URL(p.url()).pathname.startsWith("/dang-nhap") && posts.length === before && !(await hasCookie(ctx)), [p.url(), posts.length, before]);
     await acct(p).fill(S.email); await pass(p).fill(PW);
     await p.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-    check("đăng nhập thủ công lại thì vào được, và cờ 'đã đăng xuất' được xoá (store bật lại tự đăng nhập)", (await left(p)) && (await p.evaluate(() => localStorage.getItem("__prevented"))) === null, p.url());
+    check("đăng nhập thủ công lại thì vào được, và cờ 'đã đăng xuất' được xoá (store bật lại tự đăng nhập)", (await left(p)) && (await safeEval(p, () => localStorage.getItem("__prevented"))) === null, p.url());
     await ctx.close(); }
 
   section("Các lối không tự thử");

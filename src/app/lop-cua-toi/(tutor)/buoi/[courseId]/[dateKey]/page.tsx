@@ -6,7 +6,7 @@ import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import { isValidDateKey } from "@/lib/classSessions";
 import { prisma } from "@/lib/prisma";
-import { isNewFeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_SHEET, isNewFeeMode } from "@/lib/tuitionFee";
 import BuoiChiTiet from "@/components/tutor/BuoiChiTiet";
 import { courseRoleForPage } from "@/lib/courseAccessServer";
 
@@ -20,7 +20,7 @@ export default async function BuoiPage({ params }: { params: Promise<{ courseId:
   let perSessionFee = false;
   try {
     const c = await prisma.course.findUnique({ where: { id: courseId }, select: { feeMode: true, ownerId: true } });
-    perSessionFee = !!c && c.ownerId === session.userId && isNewFeeMode(c.feeMode) && c.feeMode !== "per_course";
+    perSessionFee = !!c && c.ownerId === session.userId && isNewFeeMode(c.feeMode) && c.feeMode !== "per_course" && c.feeMode !== FEE_MODE_SHEET; // HP-LOP-TRUONG: bảng học phí tháng không sinh phí khi chốt buổi
   } catch { /* giữ câu cũ */ }
   // TUT-dong-giang: vai trong lớp (đồng giảng / bộ môn → màn bớt nút chốt, không chữ học phí). Quyền thật vẫn do API kiểm; lỗi đọc vai → coi như chủ (API sẽ 403 nếu không phải).
   let viewRole: "co_teacher" | "subject_teacher" | undefined;

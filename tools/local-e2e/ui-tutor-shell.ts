@@ -3,6 +3,12 @@
 import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
+
+// LOI-01 (11/11/2026): module "Lịch" và mục "Kiểm duyệt cộng đồng" rời menu khi phần Lịch / Cộng đồng đang ẨN (src/lib/features.ts) — route vẫn chạy.
+// Bài đọc cờ ở tiến trình này: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
+const LICH = featureOn("LICH"), CONG_DONG = featureOn("CONG_DONG");
+const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"];
 
 (async () => {
   await wipe();
@@ -40,9 +46,10 @@ import { prisma } from "@/lib/prisma";
 
   section("Thanh module");
   check("nhãn vai trò 'GIA SƯ'", await rail().getByText("GIA SƯ").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0))  /* 4 phần tử khớp (nhãn vai có bản sr-only): chỉ cần có một cái đang hiện */);
-  for (const m of ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  for (const m of RAIL_ORDER) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  if (!LICH) check("LOI-01: Lịch đang ẩn → không có module 'Lịch' trên thanh", await rail().locator("a[href='/lop-cua-toi/lich']").count() === 0);
   const order = await rail().getByRole("link").allInnerTexts();
-  const idx = ["Hộp việc", "Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"].map(l => order.findIndex(t => t.startsWith(l)));
+  const idx = RAIL_ORDER.map(l => order.findIndex(t => t.startsWith(l)));
   check("đúng thứ tự Figma 299:111821: Hộp việc, Lịch, Lớp, Học sinh, Bài tập, Thư viện, Học phí (23/10/2026: đổi Bài KT thành Bài tập; thêm Học sinh sau Lớp, trỏ /lop-cua-toi/hoc-sinh — trang riêng của gia sư)", idx.every((v, i) => v >= 0 && (i === 0 || v > idx[i - 1])), order);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   check("Hộp việc là mục đang ở (aria-current), chỉ một nút", await mod("Hộp việc").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]:visible").count() === 1);
@@ -98,11 +105,12 @@ import { prisma } from "@/lib/prisma";
   const want: Record<string, string> = {
     "Báo cáo tháng": "/lop-cua-toi/bao-cao-thang",
     "Sổ điểm": "/lop-cua-toi/so-diem", // 24/10: trang có sẵn (PT-05) nhưng trước đây không có đường vào từ menu
-    "Kiểm duyệt cộng đồng": "/lop-cua-toi/kiem-duyet", "Doanh thu": "/lop-cua-toi/doanh-thu", "Hồ sơ gia sư": "/lop-cua-toi/ho-so",
+    ...(CONG_DONG ? { "Kiểm duyệt cộng đồng": "/lop-cua-toi/kiem-duyet" } : {}), "Doanh thu": "/lop-cua-toi/doanh-thu", "Hồ sơ gia sư": "/lop-cua-toi/ho-so",
     "Bài đăng tìm học sinh": "/lop-cua-toi/bai-dang", "Yêu cầu tìm gia sư": "/lop-cua-toi/yeu-cau", // B6 GS-09
     "Gói của tôi": "/lop-cua-toi/goi", "Cài đặt": "/lop-cua-toi/cai-dat",
   };
   for (const [l, href] of Object.entries(want)) check(`mục '${l}' → ${href}`, await dlg.getByRole("link", { name: l, exact: true }).getAttribute("href") === href);
+  if (!CONG_DONG) check("LOI-01: Cộng đồng đang ẩn → bảng Khác không có 'Kiểm duyệt cộng đồng' (Hộp việc vẫn dẫn tới khi có báo cáo)", await dlg.getByRole("link", { name: "Kiểm duyệt cộng đồng", exact: true }).count() === 0);
   check("B1: Hộp việc bật thì KHÔNG còn mục 'Tổng quan'; B2: nhóm Tài khoản không còn 'Liên hệ hỗ trợ' (dấu hỏi trên đỉnh còn)", await dlg.getByRole("link", { name: "Tổng quan", exact: true }).count() === 0 && await dlg.getByRole("link", { name: "Liên hệ hỗ trợ" }).count() === 0 && await pg.locator("[data-help-link]").getAttribute("href") === "/lop-cua-toi/ho-tro");
   check("GS-LOP-GON: bảng Khác KHÔNG còn mục 'Kế hoạch buổi' (trang vẫn sống ở /lop-cua-toi/ke-hoach-buoi)", await dlg.getByRole("link", { name: "Kế hoạch buổi" }).count() === 0);
   check("đủ 4 module bật thì KHÔNG còn mục 'Thêm module'", await dlg.getByRole("link", { name: "Thêm module" }).count() === 0);
@@ -122,9 +130,11 @@ import { prisma } from "@/lib/prisma";
   check("chọn 'Báo cáo tháng' → bảng tự đóng, 'Khác' sáng, Hộp việc hết sáng", await dlg.count() === 0 && await mod("Khác").getAttribute("aria-current") === "page" && await mod("Hộp việc").getAttribute("aria-current") === null);
 
   section("Hộp việc chỉ sáng ở đúng /lop-cua-toi");
-  await mod("Lịch").click();
-  await pg.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
-  check("sang Lịch: Lịch sáng, Hộp việc và Khác tắt", await mod("Lịch").getAttribute("aria-current") === "page" && await mod("Hộp việc").getAttribute("aria-current") === null && await mod("Khác").getAttribute("aria-current") === null);
+  // Lịch ẩn khỏi thanh (LOI-01): đi module Lớp thay — cùng ý "sang module khác thì Hộp việc tắt".
+  const other = LICH ? { name: "Lịch", url: /\/lop-cua-toi\/lich/ } : { name: "Lớp", url: /\/lop-cua-toi\/lop/ };
+  await mod(other.name).click();
+  await pg.waitForURL(other.url, { timeout: 90000 });
+  check(`sang ${other.name}: ${other.name} sáng, Hộp việc và Khác tắt`, await mod(other.name).getAttribute("aria-current") === "page" && await mod("Hộp việc").getAttribute("aria-current") === null && await mod("Khác").getAttribute("aria-current") === null);
   await mod("Hộp việc").click();
   await lb.waitFor({ timeout: 90000 });
   check("bấm Hộp việc → về lại danh sách", await mod("Hộp việc").getAttribute("aria-current") === "page");
@@ -175,7 +185,7 @@ import { prisma } from "@/lib/prisma";
   await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
   check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
-  check("thanh chỉ có Lịch + Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ) (+ logo, + Khác)", (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === 3);
+  check(`thanh chỉ có ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`, (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === (LICH ? 3 : 2));
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
   check("bảng Khác có 'Thêm module' → /lop-cua-toi/cai-dat#module", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Thêm module" }).getAttribute("href") === "/lop-cua-toi/cai-dat#module");
   check("B1: Hộp việc tắt thì bảng Khác CÓ 'Tổng quan' (lối duy nhất tới số liệu) và 'Yêu cầu tìm gia sư' (GS-09)", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Tổng quan", exact: true }).getAttribute("href") === "/lop-cua-toi/tong-quan" && await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Yêu cầu tìm gia sư" }).getAttribute("href") === "/lop-cua-toi/yeu-cau");
@@ -197,7 +207,7 @@ import { prisma } from "@/lib/prisma";
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check("B3: 5 ô (Hộp việc, Lịch, Lớp, Học phí + Khác), mỗi nút cao ≥ 44px", hit.length === 5 && hit.every(h => h >= 44), hit);
+  check(`B3: ${LICH ? 5 : 4} ô (Hộp việc, ${LICH ? "Lịch, " : ""}Lớp, Học phí + Khác), mỗi nút cao ≥ 44px`, hit.length === (LICH ? 5 : 4) && hit.every(h => h >= 44), hit);
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
   check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);

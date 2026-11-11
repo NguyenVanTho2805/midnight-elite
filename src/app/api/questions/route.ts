@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { spendCoins, InsufficientBalanceError, QUESTION_COST } from "@/lib/wallet";
 import { COIN_REASONS } from "@/lib/wallet-constants";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_LOGIC_ON } from "@/lib/features";
 import { publicName } from "@/lib/communityRules";
 
 // GET /api/questions — danh sách câu hỏi (mới nhất trước), đọc được cả khi
@@ -53,15 +53,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tiêu đề không được vượt quá 200 ký tự" }, { status: 400 });
   }
 
-  // Chủ quyết 05/11/2026: trong lúc Coin còn ẩn (COIN_VISIBLE = false) hỏi câu hỏi KHÔNG trừ xu,
-  // vì người hỏi không còn thấy ví. Khi bật lại Coin, chủ sẽ quyết lại mức phí.
-  const charge = COIN_VISIBLE ? QUESTION_COST : 0;
+  // Chủ quyết 05/11/2026: trong lúc Coin còn ẩn hỏi câu hỏi KHÔNG trừ xu, vì người hỏi không còn thấy ví. Khi bật lại Coin, chủ sẽ quyết lại mức phí.
+  // LOI-01 (rà soát): trừ xu theo HẰNG COIN_LOGIC_ON (false), KHÔNG theo cờ hiển thị NEXT_PUBLIC_KIN_MO_COIN — bật trừ xu phải qua sửa mã có rà.
+  const charge = COIN_LOGIC_ON ? QUESTION_COST : 0;
   if (charge > 0) {
     try {
       await spendCoins(auth.userId, charge, COIN_REASONS.QUESTION_COST);
     } catch (e) {
       if (e instanceof InsufficientBalanceError) {
-        // charge > 0 chỉ xảy ra khi COIN_VISIBLE = true (xem trên), nên ở đây luôn được nói rõ số xu.
+        // charge > 0 chỉ xảy ra khi COIN_LOGIC_ON = true (xem trên), nên ở đây luôn được nói rõ số xu.
         return NextResponse.json({ error: `Bạn cần ít nhất ${QUESTION_COST} xu để đặt câu hỏi` }, { status: 402 });
       }
       throw e;

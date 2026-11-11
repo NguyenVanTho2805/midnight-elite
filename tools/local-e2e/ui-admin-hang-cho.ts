@@ -3,7 +3,7 @@
 import { mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { prisma } from "@/lib/prisma";
-import { COIN_VISIBLE } from "@/lib/features";
+import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng chờ nạp Coin theo LOGIC Coin (hằng COIN_LOGIC_ON), không theo cờ hiển thị
 
 const N_REVIEWS = 6;
 const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
@@ -42,7 +42,7 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   section("Bảng 1280: cột đầu là định danh, ≤ 2 nút mỗi hàng");
   await pg.goto(`${ADMIN}/admin/kiem-duyet`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.locator("[data-queue-table]").waitFor({ timeout: 120000 });
-  const total = N_REVIEWS + 1 + 1 + (COIN_VISIBLE ? 2 : 0); // đánh giá + bài viết + trả lời (+ 2 nạp Coin khi cờ Coin bật; 05/11/2026 Coin ẩn → không có dòng nạp Coin)
+  const total = N_REVIEWS + 1 + 1 + (COIN_LOGIC_ON ? 2 : 0); // đánh giá + bài viết + trả lời (+ 2 nạp Coin khi cờ Coin bật; 05/11/2026 Coin ẩn → không có dòng nạp Coin)
   check(`${total} dòng; chip 'Tất cả ${total}' và 'Đánh giá khoá ${N_REVIEWS}'`, await rows().count() === total && await pg.locator('[data-chip="tat-ca"]').innerText() === `Tất cả ${total}` && /Đánh giá khoá 6/.test(await pg.locator('[data-chip="danh-gia"]').innerText()));
   const heads = await pg.locator("[data-queue-table] thead th").allInnerTexts();
   check("cột đầu là 'Việc' (định danh), không phải ô tick riêng", /^Việc$/i.test(heads[0].trim()) && heads.length === 5, heads);
@@ -98,14 +98,14 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   section("Panel bên: không hộp thoại, Esc đóng và trả tiêu điểm, chừa lề");
   await pg.goto(`${ADMIN}/admin/kiem-duyet`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.locator("[data-queue-table]").waitFor({ timeout: 120000 });
-  const tr = COIN_VISIBLE ? rows().filter({ hasText: "REF_BU08" }).first() : rows().filter({ hasText: "Câu trả lời bị báo cáo" }).first();
+  const tr = COIN_LOGIC_ON ? rows().filter({ hasText: "REF_BU08" }).first() : rows().filter({ hasText: "Câu trả lời bị báo cáo" }).first();
   const openBtn = tr.locator("[data-row-open]");
   await openBtn.focus(); await pg.keyboard.press("Enter");
   await panel().waitFor({ timeout: 30000 });
   check("panel là aside[data-side-panel]; [role=dialog] = 0", await panel().count() === 1 && await pg.locator("[role=dialog]").count() === 0);
   const lay = await pg.evaluate(`(() => { const t = document.querySelector("[data-queue-table]").getBoundingClientRect(); const p = document.querySelector("aside[data-side-panel]").getBoundingClientRect(); return { tableRight: t.right, panelLeft: p.left, scrollX: document.documentElement.scrollWidth - innerWidth }; })()`) as any;
   check("≥1280: bảng không bị panel đè (mép phải bảng ≤ mép trái panel), không tràn ngang", lay.tableRight <= lay.panelLeft + 1 && lay.scrollX <= 1, lay);
-  if (COIN_VISIBLE) {
+  if (COIN_LOGIC_ON) {
   const approve = panel().getByRole("button", { name: "Duyệt nạp Coin" });
   await approve.click();
   const okBtn = panel().getByRole("button", { name: /^Xác nhận: Duyệt nạp Coin/ });
@@ -122,7 +122,7 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   const focusBack = await pg.waitForFunction(`document.activeElement?.getAttribute("data-row-open") !== null && document.activeElement?.getAttribute("data-row-open") !== undefined`, null, { timeout: 3000 }).then(() => true, () => false);
   check("Esc đóng panel và trả tiêu điểm về nút 'Xem' của dòng", focusBack, await pg.evaluate(`document.activeElement?.outerHTML.slice(0,120)`));
 
-  if (COIN_VISIBLE) {
+  if (COIN_LOGIC_ON) {
   // nạp Coin của chính mình: khoá hẳn
   const mine = rows().filter({ hasText: "REF_TU_DUYET" }).first();
   await mine.locator("[data-row-open]").click();
@@ -141,7 +141,7 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   check("tick → mở", await panel().getByRole("button", { name: /^Xác nhận: Xác nhận vi phạm/ }).isEnabled());
   await pg.keyboard.press("Escape");
 
-  if (COIN_VISIBLE) {
+  if (COIN_LOGIC_ON) {
   // duyệt thật một nạp Coin của người khác → 409 coi như xong ở lần hai
   await tr.locator("[data-row-open]").click();
   await panel().waitFor({ timeout: 30000 });

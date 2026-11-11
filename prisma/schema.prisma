@@ -79,10 +79,13 @@ model Course {
   studentFeeRates    CourseStudentRate[]
   feeCharges         FeeCharge[]
   sessionPackages    SessionPackage[] // HP-31 gói buổi trả trước (bảng mới)
+  feeTable           CourseFeeTable? // HP-LOP-TRUONG: bảng bậc + môn của lớp tính theo bảng học phí tháng
+  feeSheetRows       CourseFeeSheetRow[] // HP-LOP-TRUONG: dòng học phí từng (em, tháng)
 
   // HP-15 (23/10/2026): cách tính học phí của lớp, CHỌN LÚC TẠO LỚP và chỉ lớp tạo sau mới khác mặc định.
   //   "monthly_sessions" (mặc định, MỌI lớp cũ) : gia sư nhập số buổi tháng (MonthlyCourseFee) — cách tính hiện tại, KHÔNG đổi.
   //   "per_session" | "per_hour" | "per_course" : học phí sinh ra từ buổi ĐÃ CHỐT (FeeCharge; chủ chốt 24/10/2026), đơn giá ở CourseFeeRate.
+  //   "monthly_sheet" (HP-LOP-TRUONG)             : gia sư nhập số buổi từng môn của từng em theo tháng/kỳ; bậc theo số môn ở CourseFeeTable; FeeCharge kind "sheet".
   feeMode String @default("monthly_sessions")
   // BUỔI/LỊCH (LI-02, LI-17): màu lớp trên Lịch (khoá trong src/lib/classColor.ts, KHÔNG phải mã hex; null = suy từ mã lớp như cũ)
   // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
@@ -1542,6 +1545,54 @@ model CourseStudentRate {
   @@unique([courseId, studentId, effectiveFrom])
   @@index([courseId, studentId])
   @@map("course_student_rates")
+}
+
+// HP-LOP-TRUONG: bảng bậc theo số môn + danh sách môn + ngày bắt đầu kỳ thu của MỘT lớp tính theo bảng học phí tháng (Course.feeMode = "monthly_sheet"). Một dòng / lớp.
+model CourseFeeTable {
+  id             String   @id @default(cuid())
+  courseId       String   @unique
+  subjects       String[] @default([]) // nhãn môn: 1..6 mục, mỗi mục <= 40 ký tự, không trùng sau normalizeKey
+  tiers          Json // [{ "subjects": 1, "rate": 70000 }, ...] 1..8 dòng, subjects tăng dần, dòng đầu subjects = 1
+  periodStartDay Int      @default(1) // 1..28; 1 = tháng dương lịch. Chỉ đổi được khi lớp chưa có dòng học phí.
+  updatedBy      String // userId (chuỗi, không FK)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("course_fee_tables")
+}
+
+// HP-LOP-TRUONG: một dòng học phí của MỘT em trong MỘT kỳ thu của MỘT lớp: số đầu vào + số đã tính (chụp lúc ghi; đổi bảng bậc sau không đổi dòng cũ).
+model CourseFeeSheetRow {
+  id                 String   @id @default(cuid())
+  courseId           String
+  studentId          String // chuỗi, không FK tới User (như các bảng HP-14..17)
+  yearMonth          String // "YYYY-MM" = tháng chứa NGÀY BẮT ĐẦU kỳ; cùng khoá với FeeCharge / TuitionInvoice
+  subjectCount       Int // số môn dùng để chọn bậc
+  subjectCountSource String   @default("counted") // "file" (gia sư nhập cột Số môn) | "counted" (đếm số môn có buổi)
+  sessions           Json // {"Toán": 8, "Anh": 4} theo nhãn môn lúc ghi, mỗi số 0..60
+  freeSessions       Int      @default(0) // buổi miễn phí, trừ vào TỔNG buổi
+  rateOverride       Int? // đơn giá riêng (đ/buổi) 1.000..100.000.000; null = theo bậc
+  scholarship        Int      @default(0) // học bổng (đ)
+  discount           Int      @default(0) // giảm trừ (đ)
+  tierRate           Int // đơn giá bậc đã tra lúc ghi
+  unitRate           Int // đơn giá áp thật (rateOverride ?? tierRate)
+  billable           Int // buổi tính tiền = tổng buổi - buổi miễn phí
+  gross              Int // billable x unitRate
+  net                Int // max(0, gross - scholarship - discount) = "Phải đóng theo bảng"
+  note               String?  @db.Text // <= 300 ký tự
+  source             String // "xlsx" | "paste" | "manual"
+  feeChargeId        String?  @unique // FeeCharge mang số net sang phiếu; null khi net = 0
+  updatedBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId, yearMonth])
+  @@index([courseId, yearMonth])
+  @@map("course_fee_sheet_rows")
 }
 
 // Một dòng phí đã tính. kind: "session" (một buổi, gắn recordId) | "course" (cả khoá, một lần) | "extra" (phí khác, HP-18).

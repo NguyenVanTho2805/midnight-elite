@@ -10,6 +10,7 @@ import { useFollowedCourses } from "@/hooks/useFollowedCourses";
 import { useEnrollments } from "@/hooks/useEnrollments";
 import { useAuth } from "@/contexts/AuthContext";
 import TeacherTag from "@/components/TeacherTag";
+import { featureOn } from "@/lib/features";
 import { KinStatus, KinBookmark, KinEmptyState, kinButtonClass } from "@/components/kin";
 import {
   buildCatalogQuery, catalogChips, filterCatalog, isFiltered, priceView, safeTagColor, seatLabel, seatTone, sortCatalog,
@@ -173,7 +174,10 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
 
       {cards.length === 0 ? (
         <KinEmptyState title="Chưa có khoá học nào đang mở"
-          action={<Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem gia sư</Link>}>
+          // LOI-01: Tìm gia sư đang ẩn (src/lib/features.ts) thì lối đi tiếp là Thi thử miễn phí — không để màn trống thành ngõ cụt.
+          action={featureOn("TIM_GIA_SU")
+            ? <Link href="/giang-vien" className={kinButtonClass("secondary")}>Xem gia sư</Link>
+            : <Link href="/thi-thu" className={kinButtonClass("secondary")}>Làm đề thi thử</Link>}>
           Khi có lớp mới mở, khoá học sẽ hiện ở đây.
         </KinEmptyState>
       ) : shown.length === 0 ? (

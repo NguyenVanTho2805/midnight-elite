@@ -18,6 +18,7 @@ import { wipe, check, section, done, cookieFor } from "./h";
 import { seedTutorWorld, OTHER } from "./tutor-world";
 import { prisma } from "@/lib/prisma";
 import { toTutorPath } from "@/lib/tutorRoutes";
+import { blockedRouteFeature } from "@/lib/features";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -56,6 +57,8 @@ function watch(p: Page) {
     let u: URL; try { u = new URL(r.url()); } catch { return; }
     if (u.origin !== MAIN_ORIGIN || r.status() < 400) return;
     if (u.pathname.startsWith("/_next/") || /favicon/.test(u.pathname)) return;
+    // HP-LOP-TRUONG: lớp CHƯA dùng bảng học phí tháng → máy chủ CỐ Ý trả 409 NOT_SHEET_MODE (kèm canEnable/suggestedConfig) để trang hiện khung "Bật bảng học phí cho lớp này". Hợp đồng đúng thiết kế (t-hp-lop-truong khẳng định), không phải lỗi.
+    if (r.status() === 409 && r.request().method() === "GET" && /^\/api\/tutor\/lop\/[^/]+\/bang-hoc-phi(\/cau-hinh)?$/.test(u.pathname)) return;
     issues.push({ at, kind: `HTTP ${r.status()}`, msg: `${r.request().method()} ${u.pathname}${u.search}` });
   });
 }
@@ -135,6 +138,8 @@ function classTabAlias(reqPath: string, finPath: string): boolean {
 }
 function expected(reqPath: string, finPath: string): boolean {
   if (STUDENT_ALIASES[reqPath] === finPath) return true;
+  // LOI-01: phần đang ẩn bằng cờ (src/lib/features.ts) chuyển 307 về trang đầu của gia sư — có chủ đích.
+  if (blockedRouteFeature(reqPath, "tutor") !== null && finPath === HOME) return true;
   if (classTabAlias(reqPath, finPath)) return true;
   if (/^\/admin(\/|$)/.test(reqPath)) {
     // đường cũ /admin/... của gia sư: 307 sang bí danh (rồi trang tao-moi còn chuyển tiếp một lần nữa), không có bí danh → Hộp việc

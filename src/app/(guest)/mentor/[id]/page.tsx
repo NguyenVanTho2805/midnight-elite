@@ -22,6 +22,7 @@ import { LopMoCard } from "@/components/tutor/tim-gia-su/LopMoCard";
 import { LienHeHoSo } from "@/components/tutor/tim-gia-su/LienHeHoSo";
 import { VaoLopMienPhi, duocVaoLop, type NguoiXem } from "@/components/tutor/tim-gia-su/VaoLopMienPhi";
 import type { TutorDetailResponse } from "@/components/tutor/tim-gia-su/kieu";
+import { featureOn } from "@/lib/features";
 
 type Fetched = { kind: "ok"; data: TutorDetailResponse } | { kind: "notfound" } | { kind: "error" };
 
@@ -66,6 +67,9 @@ export default async function MentorProfilePage({ params, searchParams }: { para
   const { id } = await params;
   const sp = await searchParams;
   const [r, session] = await Promise.all([fetchTutor(id), getSession()]);
+  // LOI-01: hồ sơ từng gia sư vẫn mở, nhưng SÀN /giang-vien đang ẩn (src/lib/features.ts) thì lối đi tiếp là danh sách lớp đang mở, và không có "Quay lại danh sách".
+  const san = featureOn("TIM_GIA_SU");
+  const floor = san ? { href: "/giang-vien", label: "Xem danh sách gia sư" } : { href: "/khoa-hoc", label: "Xem lớp đang mở" };
   const tab = parseTab(Array.isArray(sp.tab) ? sp.tab[0] : sp.tab);
 
   // Không tìm thấy / chưa duyệt / bị ẩn / bị khoá: CÙNG một khối, không lộ lý do.
@@ -74,7 +78,7 @@ export default async function MentorProfilePage({ params, searchParams }: { para
       <div className="mx-auto max-w-2xl px-4 py-24 text-center" data-ho-so-khong-thay>
         <h1 className="mb-2 text-[length:var(--kin-co-h2)] font-semibold text-[var(--kin-chu-chinh)]">Không tìm thấy gia sư</h1>
         <p className="mb-6 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Gia sư này không tồn tại hoặc chưa được duyệt công khai.</p>
-        <KinLinkButton href="/giang-vien">Xem danh sách gia sư</KinLinkButton>
+        <KinLinkButton href={floor.href}>{floor.label}</KinLinkButton>
       </div>
     );
   }
@@ -85,7 +89,7 @@ export default async function MentorProfilePage({ params, searchParams }: { para
         <p className="mb-6 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo)]">Hệ thống đang bận. Hồ sơ vẫn còn, bạn thử lại sau ít phút.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <KinLinkButton href={`/mentor/${encodeURIComponent(id)}${tab === "gioi-thieu" ? "" : `?tab=${tab}`}`}>Thử lại</KinLinkButton>
-          <KinLinkButton href="/giang-vien" variant="secondary">Xem danh sách gia sư</KinLinkButton>
+          <KinLinkButton href={floor.href} variant="secondary">{floor.label}</KinLinkButton>
         </div>
       </div>
     );
@@ -100,9 +104,9 @@ export default async function MentorProfilePage({ params, searchParams }: { para
 
   return (
     <div data-ho-so className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-5 py-6 sm:px-8 lg:px-14 lg:py-10">
-      <Link href="/giang-vien" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center gap-2 self-start text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-mo)]">
+      {san && <Link href="/giang-vien" className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center gap-2 self-start text-[length:var(--kin-co-small)] font-medium text-[var(--kin-chu-mo)]">
         <ArrowLeft size={16} /> Quay lại danh sách
-      </Link>
+      </Link>}
 
       <div className="flex flex-col items-start gap-8 lg:flex-row lg:gap-12">
         <div className="flex w-full min-w-0 flex-1 flex-col gap-6 lg:basis-[60%]">

@@ -11,7 +11,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { logAction } from "@/lib/auditLog";
 import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
 import { feeOverview, changeRate, type RateChange } from "@/lib/feeChargeServer";
-import { isNewFeeMode, normalizeFeeMode, pickClassRate, pickStudentRate, validateEffectiveFrom, validateFeeSetup } from "@/lib/tuitionFee";
+import { FEE_MODE_SHEET, isNewFeeMode, normalizeFeeMode, pickClassRate, pickStudentRate, validateEffectiveFrom, validateFeeSetup } from "@/lib/tuitionFee";
 import { floorViolation } from "@/lib/feeModeFloor";
 import { buildFeeAuditMetadata, buildFeeOverrideNotification, feeAuditAction, isFeeOverride } from "@/lib/feeRuleAudit";
 import { notify } from "@/lib/notify";
@@ -50,6 +50,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const mode = normalizeFeeMode(r.course!.feeMode);
   if (!isNewFeeMode(mode)) {
     return NextResponse.json({ error: "Lớp này tính học phí theo số buổi trong tháng (cách cũ) nên không đổi đơn giá ở đây." }, { status: 409 });
+  }
+
+  // HP-LOP-TRUONG: lớp theo bảng học phí tháng không có đơn giá lớp (bậc theo số môn ở CourseFeeTable) → không bao giờ ghi CourseFeeRate / CourseStudentRate.
+  if (mode === FEE_MODE_SHEET) {
+    return NextResponse.json({ error: "Lớp này tính học phí theo bảng tháng, không có đơn giá lớp. Đổi bảng bậc ở tab Học phí.", code: "SHEET_MODE" }, { status: 409 });
   }
 
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;

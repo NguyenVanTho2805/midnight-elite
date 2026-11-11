@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { PERMISSIONS } from "@/lib/permissions";
-import { isNewFeeMode, pickClassRate, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
+import { FEE_MODE_SHEET, isNewFeeMode, pickClassRate, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
 import { vnDateKeyOf } from "@/lib/classSessions";
+import type { Prisma } from "@/generated/prisma/client";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
@@ -36,7 +37,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
     // HP-15: bản sao của lớp tính phí kiểu mới giữ hình thức + đơn giá hiện hành (lớp mới tạo ra SAU nên được phép); lớp cách cũ → bản sao mặc định như trước.
     let feeSetup: FeeSetup | null = null;
-    if (isNewFeeMode(source.feeMode)) {
+    // HP-LOP-TRUONG: bản sao của lớp theo bảng học phí tháng giữ cách tính + bảng bậc / môn / ngày bắt đầu kỳ (CourseFeeTable), KHÔNG sao dòng học phí của tháng nào.
+    const sheetTable = source.feeMode === FEE_MODE_SHEET ? await prisma.courseFeeTable.findUnique({ where: { courseId: source.id } }) : null;
+    if (source.feeMode === FEE_MODE_SHEET) {
+      if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
+    } else if (isNewFeeMode(source.feeMode)) {
       if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
       const rates = await prisma.courseFeeRate.findMany({ where: { courseId: source.id } });
       const cur = pickClassRate(rates, vnDateKeyOf(new Date()));
@@ -74,9 +79,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           lessons: 0, hours: source.hours, status: false, createdAt: today,
           ownerId: auth.userId,
           ...(feeSetup ? { feeMode: feeSetup.mode } : {}),
+          ...(source.feeMode === FEE_MODE_SHEET ? { feeMode: FEE_MODE_SHEET } : {}),
         },
       });
       if (feeSetup) await createInitialFeeRate(tx, course.id, feeSetup, auth.userId);
+      if (sheetTable) {
+        await tx.courseFeeTable.create({
+          data: { courseId: course.id, subjects: sheetTable.subjects, tiers: sheetTable.tiers as Prisma.InputJsonValue, periodStartDay: sheetTable.periodStartDay, updatedBy: auth.userId },
+        });
+      }
 
       for (const sec of source.sections) {
         const newSec = await tx.section.create({

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNextResponse } from "@/lib/auth-guard";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
-import { tuitionPreview } from "@/lib/invitePreview";
+import { showsSharedTuitionTiers, tuitionPreview } from "@/lib/invitePreview";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
 import { effectivePolicy, isFreeClass, redeemOutcome } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds, requireStudentForJoin } from "@/lib/enrollServer";
@@ -37,7 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     where:  { id: inv!.courseId },
     select: {
       id: true, name: true, shortTitle: true, category: true,
-      classStatus: true, capacity: true, joinPolicy: true, price: true, tag: true,
+      classStatus: true, capacity: true, joinPolicy: true, price: true, tag: true, feeMode: true,
       owner: { select: { id: true, name: true } },
     },
   });
@@ -95,6 +95,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     alreadyEnrolled: !!existing && existing.status === "active",
     schedule:        slots,
     taught,
-    tuition:         course.owner && !isFree ? tuitionPreview(otherSubjects, override?.pricePerSession ?? null) : null,
+    tuition:         course.owner && !isFree && showsSharedTuitionTiers(course.feeMode) ? tuitionPreview(otherSubjects, override?.pricePerSession ?? null) : null,
   });
 }

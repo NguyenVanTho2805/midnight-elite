@@ -9,7 +9,7 @@ import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guar
 import { PERMISSIONS } from "@/lib/permissions";
 import { parseYearMonth, validateSessionCount } from "@/lib/tuition";
 import { logAction } from "@/lib/auditLog";
-import { isNewFeeMode } from "@/lib/tuitionFee";
+import { FEE_MODE_SHEET, isNewFeeMode } from "@/lib/tuitionFee";
 import { effectiveFeeModeForMonth } from "@/lib/feeModeFloor";
 
 type FeeRow = { id: string; courseId: string; yearMonth: string; sessionCount: number; freeCount: number; updatedBy: string; updatedAt: Date };
@@ -61,8 +61,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // HOCPHI-THEO-BUOI: lớp đã tính theo buổi/giờ/khoá thì số buổi tháng không còn tác dụng (issueInvoice bỏ qua) → từ chối thay vì nhận ghi vô nghĩa.
   // Lớp có mốc tháng chuyển: chỉ từ chối các tháng từ mốc trở đi (tháng trước mốc vẫn tính cách cũ).
   const rates = await prisma.courseFeeRate.findMany({ where: { courseId: id }, select: { effectiveFrom: true } });
-  if (isNewFeeMode(effectiveFeeModeForMonth(r.course!.feeMode, rates, ym.yearMonth))) {
-    return NextResponse.json({ error: "Lớp này tính học phí theo buổi nên không nhập số buổi trong tháng." }, { status: 409 });
+  const effMode = effectiveFeeModeForMonth(r.course!.feeMode, rates, ym.yearMonth);
+  if (isNewFeeMode(effMode)) {
+    return NextResponse.json({ error: effMode === FEE_MODE_SHEET ? "Lớp này tính học phí theo bảng tháng nên không nhập số buổi ở đây. Hãy nhập ở bảng học phí tháng." : "Lớp này tính học phí theo buổi nên không nhập số buổi trong tháng." }, { status: 409 });
   }
   const freeCount = body.freeCount == null ? 0 : validateSessionCount(body.freeCount);
   if (freeCount == null) {

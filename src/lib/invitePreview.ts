@@ -39,6 +39,11 @@ export function tuitionPreview(otherActiveSubjectsOfTutor: number, override: num
   return { subjectCount, pricePerSession: pricePerSessionVnd(subjectCount, override), override: override != null && override >= 0 };
 }
 
+/** HP-LOP-TRUONG: lớp tính theo bảng học phí tháng có bảng bậc RIÊNG của gia sư nên KHÔNG hiện bậc chung 70/60/55/50 (sai số): trả false → `tuition: null`. */
+export function showsSharedTuitionTiers(feeMode: string | null | undefined): boolean {
+  return feeMode !== "monthly_sheet";
+}
+
 /** "55.000đ một buổi khi học 3 môn · tính theo tháng" / "… khi học 4 môn trở lên …" / "… (mức riêng của em) …". */
 export function tuitionLabel(t: TuitionPreview): string {
   const tail = " · tính theo tháng";
