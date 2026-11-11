@@ -275,6 +275,12 @@ function Content() {
               Tài liệu &amp; bản ghi của lớp này →
             </Link>
           )}
+          {/* LOI-01 (rà soát): bảng tin chung ẩn thì đây là lối hỏi gia sư TRONG lớp (/cong-dong?scope=<mã lớp>, chỉ thành viên lớp và gia sư). Bảng tin bật thì hỏi ở Cộng đồng như cũ. */}
+          {isEnrolled && !featureOn("CONG_DONG") && (
+            <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className="flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">
+              Hỏi gia sư trong lớp →
+            </Link>
+          )}
         </div>
 
         <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Nội dung lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} className="mt-8" />

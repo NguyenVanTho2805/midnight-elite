@@ -14,6 +14,8 @@ import type { NavActive } from "./LeftNav";
 import { useFeed } from "./useFeed";
 import { guestErrorText, loginHref } from "./format";
 import { KinEmptyState, kinButtonClass } from "@/components/kin";
+import { landingPath } from "@/lib/landing";
+import "./community.css";
 
 export type HomeTab = "all" | "hoi-dap" | "kinh-nghiem" | "tai-lieu" | "goc-vui" | "da-luu";
 
@@ -28,17 +30,23 @@ function navActive(tab: HomeTab, scope: string): NavActive {
   return "bang-tin";
 }
 
-export function CommunityHome(props: { tab: HomeTab; scope: string; daGui: boolean; loi: string | null; guestOpen: boolean }) {
+// LOI-01 (rà soát, lời hứa với chủ "giữ hỏi gia sư trong lớp"): `classOnly` = bảng tin chung đang ẨN và địa chỉ là /cong-dong?scope=<mã lớp>.
+// Chỉ còn hỏi đáp của lớp đó: không khung Cộng đồng, ô soạn khoá vào lớp, không "Đã lưu", lối đi tiếp về trang của người xem. Quyền thành viên lớp do API quyết.
+type HomeProps = { tab: HomeTab; scope: string; daGui: boolean; loi: string | null; guestOpen: boolean; classOnly?: boolean };
+
+export function CommunityHome(props: HomeProps) {
   return (
-    <CommunityFrame active={navActive(props.tab, props.scope)} scope={props.scope}>
+    <CommunityFrame active={navActive(props.tab, props.scope)} scope={props.scope} bare={!!props.classOnly}>
       <HomeBody {...props} />
     </CommunityFrame>
   );
 }
 
-function HomeBody({ tab, scope, daGui, loi, guestOpen }: { tab: HomeTab; scope: string; daGui: boolean; loi: string | null; guestOpen: boolean }) {
+function HomeBody({ tab, scope, daGui, loi, guestOpen, classOnly = false }: HomeProps) {
   const { user, isLoading } = useAuth();
   const { sidebar, scopes } = useCommunityFrame();
+  const exit = classOnly ? { href: user ? landingPath(user.role ?? "student", user.adminRole) : "/", label: "Về trang của tôi" } : undefined;
+  const className = classOnly ? scopes.find(s => s.id === scope)?.name : undefined;
   const saved = tab === "da-luu";
   const feed = useFeed({ tab: saved ? "all" : tab, scope, saved, enabled: !saved || !!user });
   const loiText = guestErrorText(loi);
@@ -48,7 +56,7 @@ function HomeBody({ tab, scope, daGui, loi, guestOpen }: { tab: HomeTab; scope: 
   return (
     <div>
       <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-        <h1 className="text-[length:var(--kin-co-tieu-de)] font-semibold text-[var(--kin-chu-chinh)]">Cộng đồng</h1>
+        <h1 className="text-[length:var(--kin-co-tieu-de)] font-semibold text-[var(--kin-chu-chinh)]">{classOnly ? `Hỏi đáp trong lớp${className ? ` · ${className}` : ""}` : "Cộng đồng"}</h1>
         {feed.status === "ok" && <KinButton variant="ghost" onClick={() => void feed.reload()}>Bài mới</KinButton>}
       </div>
 
@@ -65,11 +73,11 @@ function HomeBody({ tab, scope, daGui, loi, guestOpen }: { tab: HomeTab; scope: 
 
       {!saved && (
         isLoading ? <div className="kc-card" aria-hidden><div className="kc-col1"><span className="kc-skel" style={{ width: 36, height: 36 }} /></div><span className="kc-skel" style={{ height: 14, width: "55%", alignSelf: "center" }} /></div>
-          : user ? <Composer userName={user.name} scopes={scopes} onPosted={feed.prepend} />
+          : user ? <Composer userName={user.name} scopes={scopes} onPosted={feed.prepend} lockCourseId={classOnly ? scope : undefined} />
           : <GuestQuestionForm open={guestOpen} />
       )}
 
-      <UnansweredStrip data={sidebar} />
+      {!classOnly && <UnansweredStrip data={sidebar} />}
 
       {showChips && (
         <div className="flex gap-2 overflow-x-auto px-4 py-2" role="group" aria-label="Chủ đề" style={{ scrollbarWidth: "none" }}>
@@ -84,7 +92,7 @@ function HomeBody({ tab, scope, daGui, loi, guestOpen }: { tab: HomeTab; scope: 
           <KinEmptyState title="Đăng nhập để xem bài đã lưu." action={<Link href={loginHref("/cong-dong?tab=da-luu")} className={kinButtonClass("primary")}>Đăng nhập</Link>}>
             Bài bạn lưu sẽ nằm ở đây, trên mọi thiết bị.
           </KinEmptyState>
-        ) : <FeedList key={`${tab}|${scope}`} feed={feed} tab={tab} scope={scope} saved={saved} signedIn={!!user} />}
+        ) : <FeedList key={`${tab}|${scope}`} feed={feed} tab={tab} scope={scope} saved={saved} signedIn={!!user} exit={exit} />}
     </div>
   );
 }

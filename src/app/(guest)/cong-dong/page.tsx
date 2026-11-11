@@ -2,7 +2,9 @@
 // Là server component có metadata để liên kết công khai đọc được (og:title ≤ 60, og:description ≤ 110).
 // Cờ KIN_GUEST_QUESTIONS=1 (đọc ở máy chủ, lúc yêu cầu) bật ô hỏi của khách; chưa bật → khách chỉ thấy lời mời đăng nhập.
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { CommunityHome, type HomeTab } from "@/components/community/CommunityHome";
+import { classScopeOf, featureOn } from "@/lib/features";
 
 const TITLE = "Cộng đồng — KiN";
 const DESC = "Hỏi đáp và chia sẻ cách học cùng gia sư và các bạn. Xem tự do, không cần tài khoản.";
@@ -31,6 +33,9 @@ export default async function CongDongPage({ searchParams: raw }: { searchParams
   const s = searchParams.get("scope") ?? "all";
   const scope = /^[A-Za-z0-9_-]{1,64}$/.test(s) ? s : "all";
   const loi = searchParams.get("loi");
+  // LOI-01: bảng tin chung đang ẩn → proxy chỉ cho tới đây khi địa chỉ là MỘT lớp (classScopeOf, học sinh / gia sư). Phòng hờ: địa chỉ khác thì về trang chủ.
+  const classOnly = !featureOn("CONG_DONG");
+  if (classOnly && !classScopeOf(searchParams.toString())) redirect("/");
 
   return (
     <CommunityHome
@@ -39,6 +44,7 @@ export default async function CongDongPage({ searchParams: raw }: { searchParams
       daGui={searchParams.get("da-gui") === "1"}
       loi={loi && /^[a-z_]{1,40}$/.test(loi) ? loi : null}
       guestOpen={process.env.KIN_GUEST_QUESTIONS === "1"}
+      classOnly={classOnly}
     />
   );
 }

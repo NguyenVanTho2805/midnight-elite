@@ -33,6 +33,7 @@ import { classBase } from "@/lib/tutorClassRoutes";
 import GiaoVienLop, { RoleBadge } from "@/components/tutor/GiaoVienLop";
 import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
 import { duyetMessage } from "@/components/tutor/quan-lop/duyetMessage";
+import { featureOn } from "@/lib/features";
 
 export type LopTab = "diem-danh" | "hoc-sinh" | "giao-vien" | "ma-moi" | "hoc-phi" | "cong-dong";
 export interface LopChiTietData {
@@ -276,8 +277,15 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         )}
 
         {mgr && tab === "cong-dong" && (
-          <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"
-            note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
+          <div className="space-y-[var(--kin-cach-muc)]">
+            {/* LOI-01 (rà soát): bảng tin chung ẩn thì hỏi đáp của lớp mở ở /cong-dong?scope=<mã lớp> (chỉ thành viên lớp và gia sư). */}
+            {!featureOn("CONG_DONG") && (
+              <OpenPage title="Hỏi đáp trong lớp" href={`/cong-dong?scope=${encodeURIComponent(d.courseId)}`} action="Mở hỏi đáp của lớp"
+                note="Câu hỏi học sinh của lớp gửi cho cô. Chỉ thành viên lớp và gia sư thấy; câu chưa trả lời cũng hiện ở Hộp việc." />
+            )}
+            <OpenPage title="Kiểm duyệt cộng đồng lớp" href="/lop-cua-toi/kiem-duyet" action="Mở Kiểm duyệt"
+              note="Xem báo cáo bài viết trong các lớp của cô, xoá bài vi phạm hoặc bỏ qua." />
+          </div>
         )}
       </div>
     </KinPage>
