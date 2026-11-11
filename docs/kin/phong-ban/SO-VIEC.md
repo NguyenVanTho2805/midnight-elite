@@ -42,6 +42,7 @@ Một dòng một việc. Trạng thái: `moi` · `dang-lam` · `cho-test` · `c
 | CHỦ-01 | chủ | Đổi feeMode lớp cũ sang per_session; hai hệ phí một phiếu | | | dung | TIỀN = có — chờ Thọ |
 | CHỦ-02 | chủ | Coin ẩn hẳn hay giữ; bật cổng ≥17 + hỏi ngày sinh | | | dung | chờ Thọ |
 | CHỦ-03 | chủ | Lớp 2 ca/ngày có cần không | | | dung | chờ Thọ |
+| LOI-02 | TUT | Lõi dạy học — lớp và bài học của gia sư (gốc lớp = tab Bài học, bỏ tab Giáo trình/Lịch học, panel sửa bài thả tệp, Lesson.scheduledAt, KinSelect, sửa số đỏ Hộp việc) | claude/loi-lop-gia-su | (chưa mở) | cho-gop-pr | L · 11/11/2026 · phiếu COO · rẽ từ origin/main c5f6fb7d · 25 commit, 65 tệp, +2949/−804 · chưa push · TIỀN không · TRẺ EM = trình bày · ĐỔI NỀN không · schema chỉ thêm `Lesson.scheduledAt` · rà soát: P1 0, P2 5 đã đóng, P3 còn nợ 6 · bài mới t-lesson-date-lib 74/0, t-lesson-scheduled 53/0, ui-loi-02 104/0, ui-loi-02-hop-viec 28/0; `tsc` 0 lỗi, `next build` xanh · đỏ có sẵn ghi ở `tien-do-dang-do.md` · chờ Thọ đặt `CLOUDINARY_*` · đặc tả `dac-ta/LOI-02.md` · KHÔNG có dòng trong backlog CSV |
 
 **Đợt S đầu tiên (01/11/2026):** test đã chạy thật trên bản sao test — adm: 9/12 bài sạch, 2 đỏ có sẵn + 1 nợ P3 `parseAuditFilter` nhận 31/02; tut: 8/8 sạch; stu: 5/5 sạch. Chưa chạy các bài `ui-*` (cần trình duyệt). Nợ mới: ADM-002 (validator bài viết, PUT học sinh), restore giữ `banned` cũ, phân trang đếm bản ẩn, nút 'Vào lớp này' khi đang nộp đơn gia sư, đổi 'bạn'→'em' ở màn review.
 
