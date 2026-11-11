@@ -38,7 +38,7 @@ import { contentSummary, giaSuLabel, hocTiep, hocTiepLabel, lessonMetaParts, lop
 
 interface Lesson {
   id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null;
-  status?: string | null; azotaUrl?: string | null; scheduledAt?: string | null; _count?: { assignments?: number };
+  status?: string | null; azotaUrl?: string | null; scheduledAt?: string | null; _count?: { assignments?: number }; order?: number;
 }
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
 interface RecData { recordings: Rec[]; sessions: { id: string; dateKey: string }[] }
@@ -88,6 +88,19 @@ interface Section { id: string; title: string; order: number; chapters: Chapter[
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
 type Tab = "tong-quan" | "noi-dung";
+
+/** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]): /api/courses/[id] chỉ sắp theo `order`, khi hoà `order` thứ tự có thể khác
+ *  ⇒ "Học tiếp" và x/y ở trang lớp lệch thư viện. Trả BẢN SAO, không đổi mảng gốc. */
+function byOrderId<T extends { id: string; order?: number }>(a: T, b: T): number {
+  const d = (a.order ?? 0) - (b.order ?? 0);
+  return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+function sortTree(sections: Section[]): Section[] {
+  return [...sections].sort(byOrderId).map(s => ({
+    ...s,
+    chapters: [...(s.chapters ?? [])].sort(byOrderId).map(c => ({ ...c, lessons: [...(c.lessons ?? [])].sort(byOrderId) })),
+  }));
+}
 const TYPE_LABEL: Record<string, string> = { record: "Bản ghi", live: "Học trực tiếp", quiz: "Bài tập", document: "Tài liệu" };
 
 function Content({ courseId }: { courseId: string }) {
@@ -126,7 +139,8 @@ function Content({ courseId }: { courseId: string }) {
     return () => { live = false; };
   }, [courseId, enrolledHere, recTick]);
 
-  const sections = useMemo(() => course?.sections ?? [], [course]);
+  // Cây đã sắp (order, id) — mọi phép tính (orderedLessonIds / lopProgress / hocTiep / tóm tắt) và cây CourseOutline đều dùng bản này.
+  const sections = useMemo(() => sortTree(course?.sections ?? []), [course]);
   const allLessons = useMemo(() => sections.flatMap(s => s.chapters.flatMap(c => c.lessons)), [sections]);
   // Cùng hàm với /api/student/lop: chỉ bài Đã đăng theo thứ tự giáo trình; tiến độ chỉ đếm id thuộc lớp này.
   const ids = useMemo(() => orderedLessonIds(sections), [sections]);

@@ -3,7 +3,7 @@
 //   Có bài hôm nay: tiêu đề "Hôm nay có lớp" + "Thứ Tư, 11/11"; mỗi bài một hàng [giờ | tên lớp + tên bài | Mở tài liệu ↗ · Bài Azota ↗ · Làm bài tập]; giờ đã qua có chữ "Đã qua".
 //   Sắp tới (7 ngày): tối đa 5 hàng gọn "Ngày mai · 19:30 · Toán 9 · Bài 6", nhiều hơn thì "Xem thêm" (máy chủ cắt ≤ 10).
 //   Không bài hôm nay nhưng có sắp tới: một dòng "Hôm nay không có bài nào được hẹn." + Sắp tới. Cả hai rỗng: KHÔNG vẽ gì. Đang tải: không vẽ gì (tránh nháy).
-//   Lỗi: ErrorStrip "Không tải được bài hôm nay." + Thử lại (không im lặng).
+//   Lỗi: ErrorStrip "Không tải được bài hôm nay." + Thử lại (không im lặng). Riêng 403 (gia sư / quản trị xem thử) ⇒ không vẽ gì.
 // Không hiện thứ API không trả: không đáp án, điểm, lượt xem, đếm ngược, ghi chú; không push, không hẹn giờ. Liên kết ngoài mở tab mới, rel="noopener noreferrer".
 // Móc kiểm thử: [data-hom-nay], [data-hom-nay-bai=<lessonId>], [data-hom-nay-sap-toi], [data-hom-nay-qua], [data-hom-nay-them].
 "use client";
@@ -47,7 +47,7 @@ function TodayRow({ it }: { it: HomNayItem }) {
   );
 }
 
-type State = { s: "dang-tai" } | { s: "loi" } | { s: "ok"; data: HomNayResp };
+type State = { s: "dang-tai" } | { s: "loi" } | { s: "khong-phai-hoc-sinh" } | { s: "ok"; data: HomNayResp };
 
 export default function HomNayCoLop() {
   const [st, setSt] = useState<State>({ s: "dang-tai" });
@@ -56,14 +56,20 @@ export default function HomNayCoLop() {
   useEffect(() => {
     let live = true;
     fetch("/api/student/hom-nay", { credentials: "same-origin", cache: "no-store" })
-      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d: HomNayResp) => { if (live) setSt({ s: "ok", data: { ...d, today: Array.isArray(d.today) ? d.today : [], upcoming: Array.isArray(d.upcoming) ? d.upcoming : [] } }); })
+      .then(async r => {
+        // 403 = không phải học sinh (gia sư / quản trị xem thử trang này) ⇒ im lặng, không vẽ gì; như ThuVienLop.
+        if (r.status === 403) return { s: "khong-phai-hoc-sinh" } as const;
+        if (!r.ok) throw new Error(String(r.status));
+        const d = (await r.json()) as HomNayResp;
+        return { s: "ok", data: { ...d, today: Array.isArray(d.today) ? d.today : [], upcoming: Array.isArray(d.upcoming) ? d.upcoming : [] } } as const;
+      })
+      .then(next => { if (live) setSt(next); })
       .catch(() => { if (live) setSt({ s: "loi" }); });
     return () => { live = false; };
   }, [tick]);
   const retry = useCallback(() => { setSt({ s: "dang-tai" }); setTick(t => t + 1); }, []);
 
-  if (st.s === "dang-tai") return null;
+  if (st.s === "dang-tai" || st.s === "khong-phai-hoc-sinh") return null;
   if (st.s === "loi") return <div className="mb-6" data-hom-nay-loi><ErrorStrip message="Không tải được bài hôm nay." onRetry={retry} /></div>;
   const { today, upcoming, todayKey } = st.data;
   if (today.length === 0 && upcoming.length === 0) return null;

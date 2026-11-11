@@ -45,15 +45,13 @@ export default async function LopCuaToiPage() {
   if (session.role === "student") return <ThuVienLop />;
 
   // 2 danh sách tuỳ role.
-  const [owned] = await Promise.all([
-    session.role === "admin"
-      ? prisma.course.findMany({
-          where:   { ownerId: session.userId },
-          select:  { id: true, name: true, category: true, status: true },
-          orderBy: { createdAt: "desc" },
-        })
-      : Promise.resolve([]),
-  ]);
+  const owned = session.role === "admin"
+    ? await prisma.course.findMany({
+        where:   { ownerId: session.userId },
+        select:  { id: true, name: true, category: true, status: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   const items = session.role === "admin"
     ? owned.map(c => ({ id: c.id, name: c.name, category: c.category,

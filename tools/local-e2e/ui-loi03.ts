@@ -6,14 +6,16 @@
 //   → /student/viec-cua-toi: [data-hom-nay] có bài 19:30 (không bài NHÁP), tài liệu mở tab mới, "Sắp tới" có "Ngày mai · 00:30"; em không có bài hẹn ⇒ không có [data-hom-nay];
 //     /api/student/hom-nay trả 500 ⇒ ErrorStrip + Thử lại. /lop-cua-toi (học sinh) = thư viện; /lop-cua-toi/<X> ⇒ /student/hoc-tap?course=<X> (307).
 //   390: không cuộn ngang ở mọi màn; nút / hàng trong các khối LOI-03 cao ≥ 44px.
+//   Rà soát lượt 1: cảnh báo [data-nop-tep-canh-bao] TRÊN nút Nộp bài; gia sư chủ lớp / quản trị mở /lop-cua-toi/<X> vẫn như cũ (quan-lop / trang lớp), không sang /student/hoc-tap.
 //   Thẻ tiến độ: "Hỏi gia sư trong lớp →" [data-hoi-trong-lop] → /cong-dong?scope=<lớp> chỉ cho học sinh đang học lớp (≥ 44px ở 390); không ghi danh / khách: không có.
 // Dữ liệu tự tạo (wipe() trên DB riêng của worktree). Ngày giờ "hôm nay" theo giờ VN lúc chạy (instantOf) — chạy sát 00:00 VN có thể đỏ giả, chạy lại.
 // Ảnh bìa: địa chỉ https giả, trình duyệt được chặn route trả về một ảnh PNG 1×1 (không ra mạng ngoài). Kho tệp: chặn danh-sach trả enabled:true / false để kiểm trình bày
 // độc lập với cấu hình kho của máy.
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, api, eventually } from "./h";
+import { BASE, mkTutor, mkSuper, mkUser, mkCourse, wipe, check, section, done, api, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { addDaysKey, instantOf, vnDateKeyOf } from "@/lib/classSessions";
+import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 
 const COVER = "https://bia-lop-loi03.example/toan9.png";
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -184,6 +186,11 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("chữ 'Kéo thả tệp Word hoặc PDF vào đây' + 'hoặc' + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
       /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText()) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44
       && /dưới 10 MB.*60 ngày.*Tối đa 3 tệp/.test(await card.locator("[data-nop-tep-chu-thich]").innerText()));
+    // Rà soát lượt 1 (P2): cảnh báo thông tin cá nhân phải đọc được TRƯỚC khi chọn tệp / nộp — ngay dưới chú thích, TRÊN nút Nộp bài (thứ tự DOM + toạ độ y).
+    const warn = card.locator("[data-nop-tep-canh-bao]"), nopBtn = card.locator("[data-nop-tep-nop]");
+    const wb = await warn.boundingBox(), sb = await nopBtn.boundingBox();
+    const warnFirst = await card.evaluate(e => { const w = e.querySelector("[data-nop-tep-canh-bao]"), b = e.querySelector("[data-nop-tep-nop]"); return !!w && !!b && !!(w.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); });
+    check("cảnh báo 'Đừng ghi thông tin cá nhân…' [data-nop-tep-canh-bao] nằm TRÊN nút 'Nộp bài' (DOM trước, y nhỏ hơn)", (await warn.count()) === 1 && warnFirst && !!wb && !!sb && wb.y + wb.height <= sb.y + 1, { wb, sb, warnFirst });
     if (w === 390) {
       const nb = await card.locator("[data-nop-tep-nop]").boundingBox();
       check("390: nút 'Nộp bài' full-width, ≥ 44px; trang không cuộn ngang", !!nb && !!cardB && nb.height >= 44 && nb.width >= cardB.width - 2 * 40 && await p.evaluate(NOT_OVERFLOW) as boolean, { nb, cardB });
@@ -297,6 +304,22 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const Z = await mkCourse(T.id, { name: "Lớp người khác" });
     const r2 = await api("GET", `/lop-cua-toi/${Z.id}`, { as: S });
     check("học sinh KHÔNG ghi danh lớp đó: vẫn 404 như cũ", r2.status === 404, r2.status);
+  }
+
+  // ═════════ Hồi quy: gia sư chủ lớp / quản trị mở /lop-cua-toi/<X> KHÔNG bị đẩy sang trang học sinh ═════════
+  section("/lop-cua-toi/<lớp> với gia sư chủ lớp và quản trị: đi đúng nơi như trước, không sang /student/hoc-tap");
+  {
+    const want = legacyClassTarget(X.id, {}); // GS-LOP-GON: chủ lớp là gia sư → /lop-cua-toi/quan-lop/<X>/giao-trinh
+    const rt = await api("GET", `/lop-cua-toi/${X.id}`, { as: T });
+    const loc = rt.headers.get("location") ?? "";
+    check("gia sư chủ lớp: 307 → dải tab của lớp (quan-lop), KHÔNG /student/hoc-tap", rt.status === 307 && new URL(loc, BASE).pathname === want && !loc.includes("/student/hoc-tap"), [rt.status, loc, want]);
+    const { c, p } = await open(T, 1280, `/lop-cua-toi/${X.id}`);
+    await p.waitForURL(u => u.pathname === want, { timeout: 90000 });
+    check("gia sư chủ lớp (trình duyệt): dừng ở " + want, new URL(p.url()).pathname === want, p.url());
+    await c.close();
+    const A = await mkSuper("Quản trị LOI-03");
+    const ra = await api("GET", `/lop-cua-toi/${X.id}`, { as: A });
+    check("quản trị: trang lớp như cũ (200, không chuyển hướng), KHÔNG /student/hoc-tap", ra.status === 200 && !(ra.headers.get("location") ?? "").includes("/student/hoc-tap") && ra.text.includes("Toán 9 (LOI-03)"), [ra.status, ra.headers.get("location")]);
   }
 
   section("Không lỗi trình duyệt");

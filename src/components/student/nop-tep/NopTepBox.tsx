@@ -356,11 +356,12 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
       {hasSub && (
         <p className={`mb-3 ${SMALL} ${T_MO}`}>Bạn đã nộp bài trước đó. Nộp lại sẽ thay bài cũ{needConfirm ? ", xoá điểm và nhận xét" : ""}.</p>
       )}
-      {/* Một cột: vùng thả rộng hết thẻ → chú thích giới hạn → tệp đã chọn (tiến độ, lỗi tại chỗ) → Nộp bài. */}
+      {/* Một cột: vùng thả rộng hết thẻ → chú thích giới hạn → cảnh báo thông tin cá nhân → tệp đã chọn (tiến độ, lỗi tại chỗ) → Nộp bài. */}
       <div className="grid gap-4">
         <div>
           <Zone onFiles={fs => uploads.addFiles(fs, drafts.length)} describedBy={capId} />
           <Caption id={capId} limits={limits} />
+          <KinCallout className="mt-3"><span data-nop-tep-canh-bao="">Đừng ghi thông tin cá nhân không cần thiết vào bài (số điện thoại, địa chỉ nhà, ảnh có mặt người).</span></KinCallout>
         </div>
         <div>
           {(draftRows.length > 0 || localRows.length > 0) && <ul aria-label="Tệp đã chọn" className="space-y-2 mb-3">{draftRows}{localRows}</ul>}
@@ -371,7 +372,6 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
             </div>
             <p role="status" aria-live="polite" data-nop-tep-tom-tat="" className={`mt-2 ${SMALL} ${T_MO}`}>{submitting ? "Đang gửi bài cho gia sư…" : hint}</p>
           </form>
-          <KinCallout className="mt-3"><span data-nop-tep-canh-bao="">Đừng ghi thông tin cá nhân không cần thiết vào bài (số điện thoại, địa chỉ nhà, ảnh có mặt người).</span></KinCallout>
         </div>
       </div>
     </div>
