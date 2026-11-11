@@ -221,7 +221,7 @@ async function mkTree(courseId: string, lessons: Record<string, unknown>[]) {
   check("nộp thiếu cả tệp lẫn link → 400", (await api("POST", `/api/assignments/${asg.id}/submit`, { as: S, body: {} })).status === 400);
   check("học sinh CHƯA ghi danh nộp → 403", (await api("POST", `/api/assignments/${asg.id}/submit`, { as: S2, body: { linkUrl: AZ } })).status === 403);
   const sub2 = await api("POST", `/api/assignments/${asg.id}/submit`, { as: S, body: { fileUrl: "https://res.cloudinary.com/x/raw/upload/bai.pdf", fileName: "bai.pdf" } });
-  check("đường nộp TỆP cũ vẫn chạy (kind=file)", sub2.status === 200 && sub2.json.kind === "file", sub2.json);
+  check("BU-HS-NOP-TEP: đường nộp TỆP cũ (fileUrl do trình duyệt gửi) bị SIẾT ⇒ 400, không tạo bài nộp kind=file; link Azota vẫn 200", sub2.status === 400 && /nộp tệp mới/.test(sub2.json?.error ?? "") && sub1.status === 200, sub2.json);
 
   section("7. Tách 'đang xem' và 'đã xong' (MD-06) + xem tiếp (MD-05)");
   check("PATCH giây không hợp lệ (-1, chữ) → 400", (await api("PATCH", `/api/progress/${LN.id}`, { as: S, body: { watchedSeconds: -1 } })).status === 400 && (await api("PATCH", `/api/progress/${LN.id}`, { as: S, body: { watchedSeconds: "abc" } })).status === 400);

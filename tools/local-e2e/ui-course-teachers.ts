@@ -51,7 +51,9 @@ const CONTENT = ".kin-chu-than > .flex-1 > :nth-child(n+2)";
   check("chủ lớp mở được lớp (200)", resp?.status() === 200, resp?.status());
   await po.getByText("Lớp này chỉ có cô dạy").waitFor({ timeout: 90000 });
   check("rỗng: câu giải thích + nút 'Mời giáo viên'", await po.getByText("Mời giáo viên nếu có người cùng dạy.").isVisible() && await po.getByRole("button", { name: "Mời giáo viên" }).first().isVisible());
-  check("chủ lớp thấy đủ tab: Mã mời, Học phí, Giáo viên", await po.getByRole("tab", { name: "Mã mời" }).isVisible() && await po.getByRole("tab", { name: "Học phí" }).isVisible() && await po.getByRole("tab", { name: "Giáo viên" }).getAttribute("aria-selected") === "true");
+  // GS-LOP-GON: chủ lớp được chuyển sang quan-lop/<id>?tab=cai-dat&muc=dong-giang — các mục con Học phí · Đồng giảng nằm trong tab Cài đặt, Mã mời nằm trong tab Học sinh.
+  const mucNav = po.getByRole("navigation", { name: "Mục của Cài đặt" });
+  check("chủ lớp thấy đủ: tab Cài đặt (sáng), mục Học phí + Đồng giảng (sáng); tab Học sinh có Mã mời", (await po.getByRole("navigation", { name: /^Trang của/ }).locator("[aria-current=page]").innerText()).trim() === "Cài đặt" && await mucNav.getByRole("link", { name: "Học phí" }).isVisible() && (await mucNav.locator("[aria-current=page]").innerText()).trim() === "Đồng giảng" && await po.getByRole("navigation", { name: /^Trang của/ }).getByRole("link", { name: "Học sinh", exact: true }).isVisible());
   await po.getByRole("button", { name: "Mời giáo viên" }).first().click();
   const dlg = po.getByRole("dialog", { name: "Mời giáo viên cùng dạy" });
   await dlg.waitFor({ timeout: 20000 });

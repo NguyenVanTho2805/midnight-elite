@@ -2,7 +2,7 @@
 // bước 3 chọn Cô duyệt (mặc định) / Chỉ mã mời / Vào ngay (chỉ khi Miễn phí) và có mục gập "Thêm sẵn em đã học lớp khác" (StudentPicker, không mất tính năng cũ). Figma khung mới: chưa dựng.
 // "Tạo lớp" của gia sư, WIZARD 3 BƯỚC (LO-03; Figma "Gia sư · Tạo lớp đầu tiên" 299:112849, bản cũ: Thông tin → Học sinh → Lịch học); nút cuối "Tạo lớp + N buổi".
 // Bước 1 gồm cả "Cách tính học phí" (HP-15: chọn LÚC TẠO LỚP; HOCPHI-THEO-BUOI: mặc định Theo buổi, Theo giờ/Theo khoá nằm trong mục gập, cách cũ bỏ khỏi lớp mới; không đổi được hình thức của lớp đã tạo; số tiền do máy chủ tính).
-// Bước 2: chỉ thêm được em ĐÃ học một lớp khác của gia sư (StudentPicker); em mới vào lớp bằng mã mời (KiN mở sẵn tab Mã mời sau khi tạo). Không thu thêm dữ liệu trẻ ở đây.
+// Bước 2: chỉ thêm được em ĐÃ học một lớp khác của gia sư (StudentPicker); em mới vào lớp bằng mã mời (KiN mở sẵn mục Mã mời sau khi tạo). Không thu thêm dữ liệu trẻ ở đây.
 // TUT-lich-keo-tha: bước Lịch học BẮT BUỘC — dựng bằng WeekScheduleEditor (kéo-thả, chế độ cục bộ) và gửi cùng một lần POST /api/courses kèm schedules[] + requireSchedule
 // (tạo lớp + khung giờ nguyên tử). Lối thoát duy nhất: "Lớp này học buổi lẻ, không lặp hằng tuần" -> KinConfirm -> noFixedSchedule.
 // (Mô tả cũ bên dưới về "gửi khung tuần tự sau khi tạo lớp" không còn đúng.)
@@ -37,6 +37,7 @@ import { KinPageHeader, KIN_PAGE, KIN_TWO_COL, KIN_FIELD, KIN_LABEL } from "@/co
 import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
 import { FREE_CLASS_TAG, type JoinPolicy } from "@/lib/joinRequest";
+import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 
 const FIELD = KIN_FIELD;
 const LABEL = KIN_LABEL;
@@ -197,7 +198,8 @@ export default function TaoLop() {
     if (added !== null) qs.set("them", String(added));
     if (addFailed) qs.set("them", "loi");
     if (codeFailed) qs.set("ma", "loi"); // trang lớp báo một dòng, không chặn việc tạo lớp
-    router.push(`/lop-cua-toi/${slug}?${qs.toString()}`);
+    // GS-LOP-GON: lớp mới hạ cánh thẳng ở tab Học sinh › Mã mời (cùng đích mà /lop-cua-toi/<slug>?tab=ma-moi&moi=1 sẽ chuyển tới), không vòng qua chuyển hướng.
+    router.push(legacyClassTarget(slug, qs));
   }
 
   return (
@@ -393,7 +395,7 @@ export default function TaoLop() {
           <section aria-labelledby="tl-sau">
             <KinSectionHead id="tl-sau" title="Sau khi tạo lớp" />
             <ul className="pt-4 space-y-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
-              <li>Mời học sinh bằng mã lớp (KiN mở sẵn tab Mã mời)</li>
+              <li>Mời học sinh bằng mã lớp (KiN mở sẵn mục Mã mời)</li>
               <li>Lịch học đặt ngay ở bước 2; đổi lại bằng lưới kéo-thả ở trang lớp.</li>
               <li>Điểm danh từng buổi ngay trong trang lớp</li>
             </ul>

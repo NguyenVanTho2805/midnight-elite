@@ -8,14 +8,10 @@ import CoinBalance from "@/components/CoinBalance";
 import NotificationBell from "@/components/NotificationBell";
 import { KinLogo } from "@/components/kin/KinLogo";
 import { landingPath } from "@/lib/landing";
+import { homeNavFor, toHomeViewer } from "@/lib/homeLayout";
 
-// Figma KiN 146:2 "Header": 4 mục, khách và người đã đăng nhập thấy như nhau.
-const navLinks = [
-  { label: "Lớp học",   href: "/khoa-hoc"  },
-  { label: "Thi thử",   href: "/thi-thu"   },
-  { label: "Cộng đồng", href: "/cong-dong" },
-  { label: "Tin tức",   href: "/tin-tuc"   },
-];
+// Figma KiN 146:2 "Header": 4 mục (Lớp học · Thi thử · Cộng đồng · Tin tức). BU-HS-TRANG-CHU (09/11/2026): HỌC SINH thêm mục thứ 5 "Lớp của tôi" (→ /student/hoc-tap) ở cuối —
+// lệch Figma có chủ đích (một chạm từ mặt tiền vào lớp). Danh sách mục do homeNavFor() quyết (src/lib/homeLayout.ts); lúc chưa biết là ai (isLoading) vẫn là 4 mục của khách, không nháy.
 
 const accountLinks = [
   { label: "Thông tin cá nhân", href: "/student/ho-so",     icon: <><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></> },
@@ -53,6 +49,7 @@ export default function Navbar() {
     logout();
   }
 
+  const navLinks = homeNavFor(toHomeViewer(user, isLoading));
   const myPage = user ? landingPath(user.role ?? "student", user.adminRole) : null;
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -64,7 +61,7 @@ export default function Navbar() {
       <div className="mx-auto h-full flex items-center justify-between gap-4 px-4 sm:px-8 max-w-[1440px]">
 
         {/* Logo */}
-        <Link href="/" aria-label="KiN — trang chủ" className="flex items-center flex-shrink-0">
+        <Link href="/" aria-label="KiN — trang chủ" className="flex items-center min-h-11 flex-shrink-0">
           <KinLogo />
         </Link>
 
@@ -78,7 +75,7 @@ export default function Navbar() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "px-[14px] py-[10px] rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium transition-colors hover:bg-[var(--kin-nen-re-chuot)]",
+                  "inline-flex items-center min-h-11 px-[14px] rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-medium transition-colors hover:bg-[var(--kin-nen-re-chuot)]",
                   active ? "text-[var(--kin-chu-chinh)] bg-[var(--kin-nen-re-chuot)]" : "text-[var(--kin-chu-phu)]",
                 ].join(" ")}
               >

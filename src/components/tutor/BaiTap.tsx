@@ -195,7 +195,7 @@ export default function BaiTap() {
   for (const i of shown) byCourse.set(i.courseName, [...(byCourse.get(i.courseName) ?? []), i]);
   const groups = [...byCourse.entries()];
 
-  // A1: "+ Giao bài" soạn bài tập tự nộp ở tab "Bài tập tự nộp" của lớp. Một lớp, hoặc đã lọc lớp → đi thẳng; từ 2 lớp mà chưa chọn → hỏi lớp ngay tại trang này (không đẩy sang danh sách lớp).
+  // A1: "+ Giao bài" soạn bài tập tự nộp ở tab "Bài tập" của lớp. Một lớp, hoặc đã lọc lớp → đi thẳng; từ 2 lớp mà chưa chọn → hỏi lớp ngay tại trang này (không đẩy sang danh sách lớp).
   const nCourses = data?.courses.length ?? 0;
   const onlyCourse = nCourses === 1 ? data!.courses[0].id : null;
   const tuNopHref = (id: string) => contentHref(true, `/admin/khoa-hoc/${encodeURIComponent(id)}?tab=chuong-bai`);
@@ -234,7 +234,7 @@ export default function BaiTap() {
       {needPick && pickOpen && (
         <KinPanel as="section" id="bt-giao-pick" aria-labelledby="bt-giao-pick-h" className="mb-6">
           <h2 id="bt-giao-pick-h" className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">Giao bài cho lớp nào?</h2>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chọn lớp rồi soạn bài tập tự nộp ở tab Bài tập tự nộp của lớp đó. Giao đề thi thì mở một đề ở Quản lý đề thi.</p>
+          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chọn lớp rồi soạn bài tập tự nộp ở tab Bài tập của lớp đó. Giao đề thi thì mở một đề ở Quản lý đề thi.</p>
           <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
             <div className="min-w-0 sm:flex-1 sm:max-w-sm">
               <label htmlFor="bt-giao-lop" className={LABEL}>Lớp</label>
@@ -257,7 +257,7 @@ export default function BaiTap() {
             ? <button type="button" onClick={() => setPickOpen(true)} className={kinButtonClass("primary")}>Giao bài đầu tiên</button>
             : <Link href={giaoHref} className={kinButtonClass("primary")}>{data.courses.length ? "Giao bài đầu tiên" : "Tạo lớp trước"}</Link>}>
           {data.courses.length
-            ? "Giao bài trong tab Bài tập tự nộp của lớp. Bài học sinh nộp sẽ hiện ở đây để cô chấm."
+            ? "Giao bài trong tab Bài tập của lớp. Bài học sinh nộp sẽ hiện ở đây để cô chấm."
             : "Cô cần có lớp trước, rồi mới giao bài được. Đề thi cô tạo cũng sẽ hiện ở đây."}
         </KinEmptyState>
       ) : (

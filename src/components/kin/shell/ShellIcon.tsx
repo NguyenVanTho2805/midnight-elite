@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 const P: Record<string, ReactNode> = {
   // phiếu việc có dấu tick
   viec: <><rect x="4.5" y="3.5" width="13" height="16" rx="2" /><path d="M8 8.5h6M8 12h6M8 15.5h3.5" /></>,
+  nha: <><path d="M3.5 10.2 11 4l7.5 6.2" /><path d="M5.5 9v8.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V9" /><path d="M9 18.5v-5h4v5" /></>,
   lich: <><rect x="3.5" y="5" width="15" height="14" rx="2" /><path d="M3.5 9.5h15M7.5 3v4M14.5 3v4" /></>,
   lop: <><rect x="4" y="3.5" width="14" height="16" rx="2" /><path d="M8 3.5v16M11 8h4M11 11.5h4" /></>,
   "thu-vien": <><path d="M3.5 7.5a2 2 0 0 1 2-2h3.7l1.8 2h5.5a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2z" /></>,

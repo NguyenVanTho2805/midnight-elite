@@ -9,6 +9,7 @@
 // Màu chỉ qua token --kin-*. Không window.confirm.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLenTep";
 import { KinButton } from "@/components/kin/Button";
 import { KinStatus } from "@/components/kin/Status";
 import { KIN_FIELD } from "@/components/kin/PageLayout";
@@ -24,10 +25,6 @@ const SLOT_NAME: Record<MediaSlot, string> = { video: "Video", live: "Buổi liv
 /** Dải nguồn NHẬN ĐƯỢC (bỏ Vimeo: video chỉ nhận link YouTube; Zoom ở đây là link buổi live). */
 const SOURCES = ["YouTube", "Google Drive", "Zoom (phòng học)", "Meet", "Azota", "Google Form", "PDF", "Word", "Excel", "PowerPoint", "Ảnh"];
 const PLEDGE_KEY = "kin.gt.cam-ket";
-const MAX_PARALLEL = 2;
-
-type EntryState = "wait" | "up" | "done" | "err";
-interface Entry { id: number; file: File; pct: number; state: EntryState; message: string | null }
 
 export interface AddedInfo { lessonId: string; key: string; createdLesson: boolean }
 
@@ -43,48 +40,19 @@ export interface OTaiLenProps {
   large?: boolean;
 }
 
-// ── tải byte có thanh tiến trình, huỷ được ─────────────────────────────────────
-function sendWithProgress(method: "PUT" | "POST", url: string, file: File, fields: Record<string, string> | undefined, onPct: (p: number) => void, setAbort: (f: () => void) => void): Promise<{ ok: boolean; status: number; body: Record<string, unknown>; aborted?: boolean }> {
-  return new Promise(resolve => {
-    const x = new XMLHttpRequest();
-    x.open(method, url);
-    if (method === "PUT") { x.withCredentials = true; x.setRequestHeader("Content-Type", file.type || "application/octet-stream"); }
-    x.upload.onprogress = e => { if (e.lengthComputable) onPct(Math.round((e.loaded / e.total) * 100)); };
-    x.onload = () => { let b: Record<string, unknown> = {}; try { b = JSON.parse(x.responseText); } catch { /* không phải JSON */ } resolve({ ok: x.status >= 200 && x.status < 300, status: x.status, body: b }); };
-    x.onerror = () => resolve({ ok: false, status: 0, body: {} });
-    x.onabort = () => resolve({ ok: false, status: 0, body: {}, aborted: true });
-    setAbort(() => x.abort());
-    if (method === "POST") { const fd = new FormData(); Object.entries(fields ?? {}).forEach(([k, v]) => fd.append(k, v)); fd.append("file", file); x.send(fd); }
-    else x.send(file);
-  });
-}
-
-async function postJson(url: string, body: unknown): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
-  try {
-    const r = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const json = await r.json().catch(() => ({}));
-    return { ok: r.ok, status: r.status, json };
-  } catch { return { ok: false, status: 0, json: {} }; }
-}
-
 export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onUndo, large }: OTaiLenProps) {
   const [text, setText] = useState("");
   const [attachTo, setAttachTo] = useState("");
   const [publishNow, setPublishNow] = useState(false);
   const [pledge, setPledge] = useState(false);
   const [drag, setDrag] = useState(false);
-  const [queue, setQueue] = useState<Entry[]>([]);
   const [linkBusy, setLinkBusy] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
   const [done, setDone] = useState<{ text: string; warning: string | null; undo: AddedInfo | null } | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const files = useRef(new Map<number, File>());
-  const aborts = useRef(new Map<number, () => void>());
-  const nextId = useRef(1);
   const live = useRef(true);
-  const started = useRef(new Set<number>());
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { live.current = true; try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } return () => { live.current = false; }; }, []);
@@ -120,68 +88,21 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
   }
 
   // ── Thả / chọn tệp ──────────────────────────────────────────────────────────
-  function enqueue(list: FileList | File[]) {
-    setBoxError(null); setDone(null);
-    const arr = Array.from(list);
-    if (!arr.length) return;
-    const added: Entry[] = [];
-    let needPledge = false;
-    for (const f of arr) {
-      const rec = routeInput({ file: { name: f.name, size: f.size, type: f.type } }, config);
-      const id = nextId.current++;
-      if (!rec.ok) { files.current.set(id, f); added.push({ id, file: f, pct: 0, state: "err", message: rec.error }); continue; }
-      if (!pledge) { needPledge = true; continue; }
-      files.current.set(id, f);
-      added.push({ id, file: f, pct: 0, state: "wait", message: null });
-    }
-    if (needPledge) setBoxError("Hãy tích ô cam kết bản quyền bên dưới trước khi tải tệp lên.");
-    if (added.length) setQueue(prev => [...prev, ...added]);
-  }
-
-  const patch = useCallback((id: number, p: Partial<Entry>) => { if (live.current) setQueue(prev => prev.map(e => (e.id === id ? { ...e, ...p } : e))); }, []);
-
-  const runOne = useCallback(async (e: Entry) => {
-    const file = files.current.get(e.id);
-    if (!file) return;
-    const fail = (message: string) => patch(e.id, { state: "err", message });
-    patch(e.id, { state: "up", pct: 0, message: null });
-    try {
-      const init = await postJson("/api/media/document/init", { courseId, fileName: file.name, size: file.size, mimeType: file.type, confirmedNotice: true });
-      if (!init.ok) { fail((init.json.error as string) ?? (init.status === 0 ? "Mất kết nối. Hãy thử lại." : "Chưa tải được. Hãy thử lại.")); return; }
-      const up = init.json.upload as { method?: "PUT" | "POST"; url: string; fields?: Record<string, string> };
-      const driver = init.json.driver as string;
-      const method: "PUT" | "POST" = up.method ?? (driver === "local" ? "PUT" : "POST");
-      const pr = await sendWithProgress(method, up.url, file, up.fields, p => patch(e.id, { pct: p }), f => aborts.current.set(e.id, f));
-      aborts.current.delete(e.id);
-      if (pr.aborted) { patch(e.id, { state: "err", message: "Đã huỷ." }); return; }
-      if (!pr.ok) { fail((pr.body.error as string) ?? (pr.status === 0 ? "Mất kết nối khi đang tải. Hãy thử lại." : "Kho từ chối tệp này. Hãy thử lại.")); return; }
-      const cr = await postJson("/api/media/document/complete", { assetId: init.json.assetId });
-      if (!cr.ok) { fail((cr.json.error as string) ?? "Chưa chốt được tệp. Hãy thử lại."); return; }
-      const link = (cr.json.link as string) ?? (init.json.link as string);
-      const name = (cr.json.name as string) ?? file.name;
+  // Hàng đợi tải (kiểm → init → gửi → complete, tối đa 2 tệp, huỷ / thử lại) nằm ở hook dùng chung với ngăn "Thêm bài học" (upload/useTaiLenTep.ts).
+  const up = useTaiLenTep({
+    courseId, config, pledge,
+    onUploaded: async (link, name) => {
       const r = await onAdd(targetNow(), link, name, { publish: publishNow && !attach });
       announce(r, name);
-      if (r.ok) patch(e.id, { state: "done", pct: 100, message: null });
-      else patch(e.id, { state: "err", message: r.error ?? "Chưa thêm được." });
-    } catch { fail("Mất kết nối. Hãy thử lại."); }
-    // announce chỉ gọi setState/đọc giá trị đã liệt kê bên dưới; không đưa vào deps để khỏi dựng lại runOne mỗi lần vẽ.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, onAdd, patch, targetNow, publishNow, attach, attachTitle]);
-
-  // Bơm hàng đợi: tối đa MAX_PARALLEL tệp cùng lúc
-  useEffect(() => {
-    const running = queue.filter(e => e.state === "up").length;
-    const waiting = queue.filter(e => e.state === "wait");
-    for (const e of waiting.slice(0, Math.max(0, MAX_PARALLEL - running))) { if (started.current.has(e.id)) continue; started.current.add(e.id); patch(e.id, { state: "up" }); void runOne(e); }
-  }, [queue, patch, runOne]);
-
-  function cancel(id: number) {
-    const abort = aborts.current.get(id);
-    if (abort) abort();
-    else patch(id, { state: "err", message: "Đã huỷ." });
+      return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Chưa thêm được." };
+    },
+  });
+  const { queue, cancel, retry, dismiss } = up;
+  function enqueue(list: FileList | File[]) {
+    setBoxError(null); setDone(null);
+    const r = up.enqueue(list);
+    if (r.needPledge) setBoxError("Hãy tích ô cam kết bản quyền bên dưới trước khi tải tệp lên.");
   }
-  function retry(id: number) { started.current.delete(id); patch(id, { state: "wait", pct: 0, message: null }); }
-  function dismiss(id: number) { files.current.delete(id); setQueue(prev => prev.filter(e => e.id !== id)); }
 
   async function undo() {
     if (!done?.undo || undoBusy) return;
@@ -297,7 +218,7 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
                 </div>
                 <div className="flex flex-wrap gap-2 justify-end">
                   {(e.state === "up" || e.state === "wait") && <KinButton type="button" variant="secondary" onClick={() => cancel(e.id)} aria-label={`Huỷ tải ${e.file.name}`}>Huỷ</KinButton>}
-                  {e.state === "err" && !/^Đã huỷ/.test(e.message ?? "") && e.message && !/loại|đuôi|vượt giới hạn|rỗng|không nhận/i.test(e.message) && <KinButton type="button" variant="secondary" onClick={() => retry(e.id)}>Thử lại</KinButton>}
+                  {canRetryEntry(e) && <KinButton type="button" variant="secondary" onClick={() => retry(e.id)}>Thử lại</KinButton>}
                   {(e.state === "err" || e.state === "done") && <KinButton type="button" variant="ghost" onClick={() => dismiss(e.id)} aria-label={`Đóng thông báo về ${e.file.name}`}>Đóng</KinButton>}
                 </div>
               </div>

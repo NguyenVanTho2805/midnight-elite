@@ -36,7 +36,7 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await page.getByRole("button", { name: "Tiếp tục" }).click();
   await page.getByRole("button", { name: /^Tạo lớp/ }).click();
-  await page.waitForURL(/\/lop-cua-toi\/ly-lop-moi/, { timeout: 60000 });
+  await page.waitForURL(/\/lop-cua-toi\/(quan-lop\/)?ly-lop-moi/, { timeout: 60000 });
   const created = await prisma.course.findFirstOrThrow({ where: { name: "Lý lớp mới" } });
   check("DB: lớp theo giờ + 1 dòng đơn giá 200.000/giờ × 90 phút", created.feeMode === "per_hour" && (await prisma.courseFeeRate.findFirstOrThrow({ where: { courseId: created.id } })).sessionMinutes === 90);
 

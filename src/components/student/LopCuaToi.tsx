@@ -33,6 +33,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { dayTitle, useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { placeLabel } from "@/lib/sessionBook";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
+import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
 
 interface Lesson { id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null }
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
@@ -171,6 +172,14 @@ function Content() {
   const done = allLessons.filter(l => completedIds.has(l.id)).length;
   const pct = Math.round((done * 100) / Math.max(allLessons.length, 1));
   const nextLesson = useMemo(() => allLessons.find(l => !completedIds.has(l.id) && !l.isLocked), [allLessons, completedIds]);
+  // BU-HS-TRANG-CHU: cây Phần > Chương > Bài cho tab "Tổng quan" (CourseOutline). Dòng phụ mỗi bài = loại · thời lượng, như hàng bài cũ.
+  const outlineSections = useMemo<OutlineSection[]>(() => (course?.sections ?? []).map(s => ({
+    id: s.id, title: s.title,
+    chapters: s.chapters.map(c => ({
+      id: c.id, title: c.title,
+      lessons: c.lessons.map(l => ({ id: l.id, title: l.title, isLocked: l.isLocked, meta: `${TYPE_LABEL[parseLessonType(l.type)] ?? "Bài học"}${l.duration ? ` · ${l.duration}` : ""}` })),
+    })),
+  })), [course]);
 
   const head = (sub?: string, back = false) => (
     <header className="pb-6">
@@ -272,13 +281,10 @@ function Content() {
           {tab === "tong-quan" ? (
             course.sections.length === 0 ? (
               <KinEmptyState title="Lớp chưa có bài học nào">Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.</KinEmptyState>
-            ) : course.sections.map(s => (
-              <section key={s.id} aria-label={s.title} className="mb-8">
-                <KinSectionHead title={s.title} aside={`${s.chapters.flatMap(c => c.lessons).filter(l => completedIds.has(l.id)).length}/${s.chapters.flatMap(c => c.lessons).length} bài`} />
-                {tableHead}
-                <ul>{s.chapters.flatMap(c => c.lessons).map(lessonRow)}</ul>
-              </section>
-            ))
+            ) : (
+              <CourseOutline variant="page" idPrefix="lop" sections={outlineSections} completedIds={completedIds} nextId={isEnrolled ? nextLesson?.id : undefined}
+                hrefFor={id => `/student/bai-giang/${id}`} />
+            )
           ) : tab === "tai-lieu" ? (
             <section aria-label="Tài liệu và bản ghi" data-materials-tab className="space-y-8">
               <div>

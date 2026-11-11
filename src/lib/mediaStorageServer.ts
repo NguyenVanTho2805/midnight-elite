@@ -47,7 +47,13 @@ export async function writeStreamLimited(body: ReadableStream<Uint8Array>, path:
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > maxBytes) { await reader.cancel().catch(() => {}); out.destroy(); rmSync(path, { force: true }); return "too_big"; }
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        // Đóng hẳn luồng ghi RỒI mới xoá: destroy() đóng tệp bất đồng bộ, xoá ngay thì khi luồng đóng xong (đang ghi dở dạng chunked) tệp dở vẫn còn trên đĩa.
+        await new Promise<void>(r => { if (out.closed) r(); else { out.once("close", () => r()); out.destroy(); } });
+        rmSync(path, { force: true });
+        return "too_big";
+      }
       if (!out.write(value)) await new Promise<void>(r => out.once("drain", () => r()));
     }
     await new Promise<void>((res, rej) => { out.end(() => res()); out.on("error", rej); });

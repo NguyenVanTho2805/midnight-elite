@@ -29,27 +29,34 @@ import { BASE } from "./h";
   check("không khớp → trạng thái rỗng có 'Xoá bộ lọc'", await p.getByRole("button", { name: "Xoá bộ lọc" }).isVisible());
   await p.getByRole("button", { name: "Xoá bộ lọc" }).click();
   await p.getByRole("link", { name: "Mở lớp Toán 9" }).click();
-  await p.waitForURL(new RegExp(`/lop-cua-toi/${c1.id}$`), { timeout: 90000 });
+  await p.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${c1.id}/giao-trinh$`), { timeout: 90000 }); // GS-LOP-GON: mở lớp vào Giáo trình
 
   section("Chi tiết lớp");
   await p.getByRole("heading", { name: "Toán 9", level: 1 }).waitFor({ timeout: 90000 });
-  check("dòng phụ: 1 học sinh · lịch", (await body()).includes("1 học sinh · T6 · 19:00–20:30"));
-  check("có tab Buổi học & điểm danh / Học sinh · 1 / Mã mời", (await p.getByRole("tab").allInnerTexts()).join("|").includes("Học sinh · 1") && await p.getByRole("tab", { name: "Mã mời" }).isVisible());
+  // GS-LOP-GON: đầu lớp một lần + MỘT dải 6 tab (điều hướng, không role=tab); Mã mời là mục con của Học sinh (?muc=ma-moi).
+  check("dòng phụ: 1 học sinh", (await body()).includes("1 học sinh"));
+  const strip = p.getByRole("navigation", { name: /^Trang của/ });
+  check("dải tab: Giáo trình · Học sinh · Điểm danh · Bài tập · Lịch học · Cài đặt; Giáo trình sáng", (await strip.getByRole("link").allInnerTexts()).join("|") === "Giáo trình|Học sinh|Điểm danh|Bài tập|Lịch học|Cài đặt" && (await strip.locator("[aria-current=page]").innerText()) === "Giáo trình");
+  await strip.getByRole("link", { name: "Điểm danh", exact: true }).click();
+  await p.waitForURL(/\/quan-lop\/[^/]+\/diem-danh/, { timeout: 90000 });
   await p.getByRole("button", { name: "Tạo buổi điểm danh" }).waitFor({ timeout: 90000 });
-  check("điểm danh nhúng: ô 'Buổi đang xem' + 'Tạo buổi điểm danh'", await p.getByLabel("Buổi đang xem").isVisible() && await p.getByRole("button", { name: "Tạo buổi điểm danh" }).isVisible());
-  check("A4c: ở 1280px nút 'Mời học sinh' ở đầu trang đã bỏ (trùng tab Mã mời), 'Mở danh bạ lớp' cũng không còn", await p.getByRole("button", { name: "Mời học sinh" }).isHidden() && await p.getByRole("link", { name: /Mở danh bạ lớp/ }).count() === 0);
-  await p.getByRole("tab", { name: "Mã mời" }).click();
+  check("tab Điểm danh: ô 'Buổi đang xem' + 'Tạo buổi điểm danh'", await p.getByLabel("Buổi đang xem").isVisible() && await p.getByRole("button", { name: "Tạo buổi điểm danh" }).isVisible());
+  await p.getByRole("navigation", { name: /^Trang của/ }).getByRole("link", { name: "Học sinh", exact: true }).click();
+  await p.waitForURL(/\/quan-lop\/[^/]+\/hoc-vien/, { timeout: 90000 });
+  await p.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Mã mời", exact: true }).click();
+  await p.waitForURL(/muc=ma-moi/, { timeout: 90000 });
   await p.getByText("Tạo mã mời mới").waitFor({ timeout: 60000 });
-  check("tab 'Mã mời' mở được mã mời", (await p.getByRole("tab", { name: "Mã mời" }).getAttribute("aria-selected")) === "true");
+  check("mục 'Mã mời' (trong Học sinh) mở được mã mời", (await p.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời");
 
-  section("A4c: 320px giữ lối mời (tab Mã mời nằm ngoài khung nhìn)");
+  section("A4c: 320px giữ lối mời (mục Mã mời của Học sinh còn bấm được)");
   const n320 = await (await ctxFor(T, { width: 320, height: 640 })).newPage();
-  await n320.goto(`${BASE}/lop-cua-toi/${c1.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await n320.getByRole("tablist").waitFor({ timeout: 90000 });
-  const inv = n320.getByRole("button", { name: "Mời học sinh" });
-  check("320px: không tràn ngang; nút 'Mời học sinh' còn, cao ≥ 44px", (await n320.evaluate("document.documentElement.scrollWidth")) <= 320 && await inv.isVisible() && ((await inv.boundingBox())?.height ?? 0) >= 44);
+  await n320.goto(`${BASE}/lop-cua-toi/quan-lop/${c1.id}/hoc-vien`, { waitUntil: "networkidle", timeout: 120000 });
+  const inv = n320.getByRole("navigation", { name: "Mục của Học sinh" }).getByRole("link", { name: "Mã mời", exact: true });
+  await inv.waitFor({ timeout: 90000 });
+  check("320px: không tràn ngang; mục 'Mã mời' còn, cao ≥ 44px", (await n320.evaluate("document.documentElement.scrollWidth")) <= 320 && await inv.isVisible() && ((await inv.boundingBox())?.height ?? 0) >= 44);
   await inv.click();
-  check("320px: 'Mời học sinh' mở tab Mã mời", (await n320.getByRole("tab", { name: "Mã mời" }).getAttribute("aria-selected")) === "true");
+  await n320.waitForURL(/muc=ma-moi/, { timeout: 90000 });
+  check("320px: 'Mã mời' mở mục Mã mời", (await n320.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời");
   section("Tạo lớp (một trang)");
   const ctx3 = await ctxFor(T3, { width: 1280, height: 900 });
   const q = await ctx3.newPage();
@@ -72,15 +79,16 @@ import { BASE } from "./h";
   await q.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await q.getByRole("button", { name: "Tiếp tục" }).click();   // BU-01: bước 3 = Cách vào lớp (mặc định Cô duyệt)
   await q.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }).click();
-  await q.waitForURL(/\/lop-cua-toi\/toan-9-thu/, { timeout: 90000 });
+  await q.waitForURL(/\/lop-cua-toi\/quan-lop\/toan-9-thu/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { name: "Toán 9 thử", ownerId: T3.id } });
   check("DB: lớp thuộc gia sư, giá 0", made.ownerId === T3.id && made.price === 0);
   await eventually("DB: khung giờ T3 19:00–20:30", async () => (await prisma.classSchedule.count({ where: { courseId: made.id, dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } })) === 1);
-  check("tới trang lớp, tab Mã mời mở sẵn", (await q.getByRole("tab", { name: "Mã mời" }).getAttribute("aria-selected")) === "true");
+  await q.getByRole("navigation", { name: "Mục của Học sinh" }).waitFor({ timeout: 90000 });
+  check("tới trang lớp, mục Mã mời (trong tab Học sinh) mở sẵn", /muc=ma-moi/.test(q.url()) && (await q.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời");
 
   section("Điện thoại 390px");
   const m = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
-  for (const path of ["/lop-cua-toi/lop", `/lop-cua-toi/${c1.id}`, "/lop-cua-toi/lop/tao"]) {
+  for (const path of ["/lop-cua-toi/lop", `/lop-cua-toi/quan-lop/${c1.id}`, "/lop-cua-toi/lop/tao"]) {
     await m.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await m.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 90000 });
     check(`${path}: không tràn ngang`, (await m.evaluate("document.documentElement.scrollWidth")) <= 390);

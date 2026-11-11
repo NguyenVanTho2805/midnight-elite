@@ -85,7 +85,8 @@ let seq = 700;
   check("việc khẩn (đối soát) đứng đầu danh sách", todoText.indexOf("Khoản tiền vào cần đối soát") < todoText.indexOf("Báo cáo cộng đồng"));
   check("thẻ lớp Toán 9: 2/2 học viên, đã đầy", await page.getByText("2/2").first().isVisible() && await page.getByText(/đã đầy/).isVisible());
   check("thẻ lớp Lý 9: trạng thái 'Đã đóng'", await page.getByText(/Lý 9/).first().isVisible() && await page.getByText(/Đã đóng/).first().isVisible());
-  check("thẻ có nút Điểm danh và nhãn 'Danh bạ lớp' (không còn 'Danh sách HS')", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2 && (await page.getByRole("link", { name: "Danh bạ lớp" }).count()) === 2 && (await page.getByText("Danh sách HS").count()) === 0);
+  // GS-LOP-GON: nhãn lối tắt trên thẻ lớp đổi "Danh bạ lớp" → "Học sinh" (tab Học sinh của trang lớp). Vẫn đòi: 2 thẻ × (Điểm danh + Học sinh → /quan-lop/<id>/hoc-vien), không còn 'Danh bạ lớp' / 'Danh sách HS'.
+  check("thẻ có nút Điểm danh và nút 'Học sinh' (tab Học sinh của lớp; không còn 'Danh bạ lớp' / 'Danh sách HS')", (await page.getByRole("link", { name: "Điểm danh" }).count()) === 2 && (await page.locator('a[href^="/lop-cua-toi/quan-lop/"][href$="/hoc-vien"]', { hasText: "Học sinh" }).count()) === 2 && (await page.getByRole("link", { name: "Danh bạ lớp" }).count()) === 0 && (await page.getByText("Danh sách HS").count()) === 0);
   check("Tổng quan không còn dải 'Lối tắt'", (await page.getByRole("navigation", { name: "Lối tắt" }).count()) === 0);
   check("Hộp việc tắt: bảng Khác còn mục 'Tổng quan'", await (async () => { await page.getByRole("button", { name: "Khác" }).first().click(); const t = await page.locator("#khac-bang").innerText(); await page.keyboard.press("Escape"); return /Tổng quan/.test(t); })());
   await shot(page, "dash-tutor");
@@ -174,8 +175,7 @@ let seq = 700;
   check("học viên không vào được trang kiểm duyệt", outsider.url().endsWith("/lop-cua-toi"), outsider.url());
 
   section("Hộp việc của lớp: Mã mời");
-  await page.goto(`${BASE}/lop-cua-toi/${c1.id}`, { waitUntil: "networkidle" });
-  await page.getByRole("tab", { name: /Mã mời/ }).first().click();
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=ma-moi`, { waitUntil: "networkidle" }); // GS-LOP-GON: Mã mời là mục con của Học sinh
   await page.getByText("Tạo mã mời mới").waitFor({ timeout: 60000 });
   await eventually("chưa có mã → thông báo", () => page.getByText("Chưa có mã mời nào.").isVisible());
   await page.getByLabel(/Số lượt dùng tối đa/).fill("2");
@@ -185,7 +185,7 @@ let seq = 700;
   const inv = await prisma.classInvite.findFirst({ where: { courseId: c1.id } });
   check("DB: mã 8 ký tự, maxUses 2, hết hạn ~7 ngày", inv?.code.length === 8 && inv.maxUses === 2 && Math.abs((inv.expiresAt!.getTime() - Date.now()) - 7 * 86400000) < 3600000, inv);
   await eventually("danh sách hiện mã + 'Đang dùng được' + 0/2 lượt", async () => (await page.getByText(inv!.code).isVisible()) && (await page.getByText("Đang dùng được").isVisible()) && (await page.getByText(/Đã dùng 0\/2 lượt/).isVisible()));
-  await page.getByRole("button", { name: "Sao chép link" }).click();
+  await page.getByRole("button", { name: "Sao chép link", exact: true }).click(); // exact: khối "Cách học sinh vào lớp" (BU-01) cũng có nút "Sao chép link trang lớp" cùng trang
   await page.getByText("Đã sao chép link mời.").waitFor({ timeout: 10000 });
   const link = await page.evaluate(() => navigator.clipboard.readText());
   check("link mời = /student/nhap-ma-lop?code=<mã>", link.endsWith(`/student/nhap-ma-lop?code=${inv!.code}`), link);
@@ -201,11 +201,12 @@ let seq = 700;
   await page.getByText(/Đã thu hồi mã/).waitFor({ timeout: 20000 });
   await eventually("mã chuyển 'Đã thu hồi', hết nút", async () => (await page.getByText("Đã thu hồi", { exact: true }).isVisible()) && (await page.getByRole("button", { name: "Thu hồi" }).count()) === 0);
   check("DB: revoked", (await prisma.classInvite.findFirst({ where: { courseId: c1.id } }))?.revoked === true);
-  check("hộp việc có mục 'Cộng đồng lớp' dẫn tới kiểm duyệt", await page.getByRole("tab", { name: /Cộng đồng lớp/ }).first().isVisible());
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${c1.id}?tab=cai-dat&muc=cong-dong`, { waitUntil: "networkidle" });
+  check("trang lớp có mục 'Cộng đồng' (tab Cài đặt) dẫn tới kiểm duyệt", await page.getByRole("navigation", { name: /^Mục của/ }).getByRole("link", { name: "Cộng đồng" }).first().isVisible());
 
   section("Mobile 390");
   const mp = await (await ctxFor(T, { width: 390, height: 800 })).newPage();
-  for (const path of ["/lop-cua-toi", "/lop-cua-toi/tong-quan", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/ho-so", "/lop-cua-toi/kiem-duyet", `/lop-cua-toi/${c1.id}`]) {
+  for (const path of ["/lop-cua-toi", "/lop-cua-toi/tong-quan", "/lop-cua-toi/doanh-thu", "/lop-cua-toi/ho-so", "/lop-cua-toi/kiem-duyet", `/lop-cua-toi/quan-lop/${c1.id}`]) {
     await mp.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
     await mp.waitForTimeout(800);
     check(`${path}: không tràn ngang`, !(await mp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));

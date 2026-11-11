@@ -43,7 +43,7 @@ async function skipSchedule(p: import("./ui").Page) {
   await skipSchedule(p);
   check("sang bước 3 'Cách vào lớp'", await stepOf(p) === "3");
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
-  await p.waitForURL(/\/lop-cua-toi\/toan-9-theo-buoi/, { timeout: 90000 });
+  await p.waitForURL(/\/lop-cua-toi\/quan-lop\/toan-9-theo-buoi/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Toán 9 theo buổi" } });
   const rate = await prisma.courseFeeRate.findFirst({ where: { courseId: made.id } });
   check("DB: feeMode per_session + đúng một CourseFeeRate 150.000", made.feeMode === "per_session" && rate?.rate === 150000 && rate?.mode === "per_session", { m: made.feeMode, r: rate });
@@ -63,7 +63,7 @@ async function skipSchedule(p: import("./ui").Page) {
   await skipSchedule(p);
   check("Miễn phí đi thẳng qua bước 1 không cần đơn giá", await stepOf(p) === "3");
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
-  await p.waitForURL(/\/lop-cua-toi\/lop-mien-phi-ui/, { timeout: 90000 });
+  await p.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-mien-phi-ui/, { timeout: 90000 });
   const free = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp miễn phí UI" } });
   check("DB: lớp miễn phí không có CourseFeeRate và không có FeeCharge", (await prisma.courseFeeRate.count({ where: { courseId: free.id } })) === 0 && (await prisma.feeCharge.count({ where: { courseId: free.id } })) === 0, free.feeMode);
 
