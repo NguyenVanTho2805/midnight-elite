@@ -1,5 +1,8 @@
 // Ba màn học sinh dựng theo Figma (Việc của tôi 299:114360, Lịch học 299:114537, Lớp của tôi 299:114766; "Bài tập và đề thi" 299:114951 đã gộp vào Việc của tôi ở B1 08/11/2026,
 // điện thoại 299:116497 / 299:116644): tiêu đề, khu từng trạng thái, tab, chuyển tuần, trạng thái rỗng/lỗi, liên kết còn sống, 390px không tràn ngang.
+// LOI-03 (11/11/2026) sửa kỳ vọng phần "Lớp của tôi" theo đặc tả LOI-03 mục 4.2: h1 = tên lớp; thẻ tiến độ "Bạn đã hoàn thành x/y bài" + "Bắt đầu học →";
+// hai tab Tổng quan · Nội dung (mặc định Nội dung, cây CourseOutline [data-outline-lesson]); bài tập quiz ở "Bài tập của lớp" trong Tổng quan; "Nhập mã lớp" nay ở thư viện lớp
+// (không còn trong trang lớp) — trang lớp có chữ "Phiếu học phí của bạn →" (không số tiền).
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -77,17 +80,17 @@ const H = 3_600_000, D = 24 * H;
 
   section("Lớp của tôi");
   await pg.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await h1("Lớp của tôi").waitFor({ timeout: 90000 });
+  await h1("Toán 9").waitFor({ timeout: 90000 });
   await pg.locator("[data-course-hero]").waitFor({ timeout: 60000 });
   const hero = pg.locator("[data-course-hero]");
-  check("khung đầu lớp: tên lớp, '0/3 bài đã hoàn thành', thanh tiến độ, 'Tiếp theo: …', nút 'Bắt đầu học'", (await hero.innerText()).includes("0/3 bài đã hoàn thành") && (await hero.innerText()).includes("Tiếp theo: ") && await hero.getByRole("progressbar").count() === 1 && /^\/student\/bai-giang\/l-sp-\d$/.test((await hero.getByRole("link", { name: "Bắt đầu học" }).getAttribute("href")) ?? ""));
+  check("thẻ tiến độ: tên lớp, 'Bạn đã hoàn thành 0/3 bài', thanh tiến độ, 'Tiếp theo: …', nút 'Bắt đầu học →'", (await hero.innerText()).includes("Bạn đã hoàn thành 0/3 bài") && (await hero.innerText()).includes("Tiếp theo: ") && await hero.getByRole("progressbar").count() === 1 && /^\/student\/bai-giang\/l-sp-\d$/.test((await hero.getByRole("link", { name: "Bắt đầu học →" }).getAttribute("href")) ?? ""));
   check("giữ lối 'Tài liệu & bản ghi của lớp này' → /thu-vien#c-<lớp>", (await pg.locator("[data-thu-vien-link]").getAttribute("href")) === `/thu-vien#c-${A.id}`);
-  // Cập nhật: tab nay tên "Tài liệu & bản ghi · N" (N = tài liệu + bản ghi của lớp, MD-07/SV-03), không còn "Tài liệu · N".
-  check("tab: Tổng quan, Tài liệu & bản ghi · 2, Bài tập · 1", await pg.getByRole("tab", { name: "Tổng quan" }).isVisible() && await pg.getByRole("tab", { name: "Tài liệu & bản ghi · 2" }).isVisible() && await pg.getByRole("tab", { name: "Bài tập · 1" }).isVisible());
-  check("tổng quan liệt kê 3 bài kèm trạng thái chữ ('Học tiếp', 'Chưa học')", await pg.locator("[data-lesson-row]").count() === 3 && await pg.getByText("Học tiếp").first().isVisible() && await pg.getByText("Chưa học").first().isVisible());
-  await pg.getByRole("tab", { name: "Bài tập · 1" }).click();
-  check("tab 'Bài tập' chỉ còn bài trắc nghiệm", await pg.locator("[data-lesson-row]").count() === 1 && await pg.locator("[data-lesson-row]").getByText("Trắc nghiệm bậc hai").isVisible());
-  check("cột phải: 'Nhập mã lớp' → /student/nhap-ma-lop (một nút), gia sư Cô Lan; A6: không còn 'Xem bài tập'", (await pg.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1 && (await pg.getByRole("link", { name: "Nhập mã lớp" }).getAttribute("href")) === "/student/nhap-ma-lop" && (await pg.getByRole("link", { name: "Xem bài tập" }).count()) === 0 && await pg.getByText(/Gia sư: /).isVisible());
+  check("tab: Tổng quan · Nội dung, mặc định Nội dung", await pg.getByRole("tab", { name: "Tổng quan" }).isVisible() && (await pg.getByRole("tab", { name: "Nội dung" }).getAttribute("aria-selected")) === "true" && (await pg.getByRole("tab").count()) === 2);
+  check("Nội dung liệt kê 3 bài kèm trạng thái chữ ('Học tiếp', 'Chưa học')", await pg.locator("[data-outline-lesson]").count() === 3 && await pg.locator("[data-outline]").getByText("Học tiếp").first().isVisible() && await pg.locator("[data-outline]").getByText("Chưa học").first().isVisible());
+  await pg.getByRole("tab", { name: "Tổng quan" }).click();
+  check("Tổng quan: 'Bài tập của lớp' chỉ có bài trắc nghiệm", await pg.locator("[data-lop-bai-tap] [data-lesson-row]").count() === 1 && await pg.locator("[data-lop-bai-tap] [data-lesson-row]").getByText("Trắc nghiệm bậc hai").isVisible());
+  const info = await pg.getByRole("region", { name: "Thông tin lớp" }).innerText();
+  check("Tổng quan: 'Phiếu học phí của bạn →' → /student/hoc-phi, KHÔNG số tiền; có 'Gia sư: '; A6: không còn 'Xem bài tập'", (await pg.getByRole("link", { name: "Phiếu học phí của bạn →" }).getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)/i.test(info) && /Gia sư: /.test(info) && (await pg.getByRole("link", { name: "Xem bài tập" }).count()) === 0, info);
   await shot(pg, "student-pages-lop");
 
   section("Việc của tôi gom cả phần chỉ 'Bài tập' từng có (B1, 08/11/2026)");

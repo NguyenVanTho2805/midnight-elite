@@ -1,5 +1,5 @@
 // MD-02 / MD-07 / MD-17 / MD-11 — trình duyệt thật, 390px và 1280px: gia sư dán bản ghi bằng form (gắn buổi), thấy bảng ai đã xem; học sinh thấy bản ghi trong
-// tab "Tài liệu & bản ghi" của Lớp của tôi; không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
+// tab "Tài liệu & bản ghi" của Lớp của tôi (LOI-03, 11/11/2026: khối này dời vào tab "Tổng quan" của trang lớp — chỉ đổi tên tab được bấm); không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, closeAll, shot, type Page } from "./ui";
@@ -66,7 +66,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const sctx = await ctxFor(S, { width: w, height: h });
     const sp = await sctx.newPage(); watch(sp);
     await sp.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await sp.getByRole("tab", { name: /Tài liệu & bản ghi/ }).click({ timeout: 120000 });
+    await sp.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 }); // LOI-03: khối "Tài liệu & bản ghi" nay nằm trong tab Tổng quan
     await sp.locator("[data-materials-tab]").waitFor({ timeout: 60000 });
     await sp.locator("[data-recording-row]").first().waitFor({ timeout: 60000 });
     const body = await sp.locator("[data-materials-tab]").innerText();
