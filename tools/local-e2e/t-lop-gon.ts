@@ -276,10 +276,13 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   // ── 6. Đồng giảng / bộ môn ───────────────────────────────────────────────────────────────────────
   section("6. Đồng giảng / giáo viên bộ môn (LOI-02 A3): chỉ 'Bài học' (gốc = màn Giáo trình cũ); …/giao-trinh 307 về gốc; …/lich-hoc mở bằng link; tab còn lại → /lop-cua-toi/<id>");
   for (const [who, u] of [["đồng giảng", CO], ["bộ môn", SUB]] as [string, TUser][]) {
-    for (const p of ["/hoc-vien", "/diem-danh", "?tab=cai-dat", "?tab=hoc-vien"]) {
+    for (const p of ["/hoc-vien", "/diem-danh", "?tab=hoc-vien"]) {
       const r = await api("GET", `${QL}/${idA}${p}`, { as: u });
       check(`${who} → …/<A>${p} → /lop-cua-toi/<A>`, go(r).to === `/lop-cua-toi/${idA}`, [r.status, go(r).to]);
     }
+    // LOI-02 (quan-lop/[id]/page.tsx): Cài đặt chỉ của chủ lớp — đồng giảng về "Bài học" của họ (gốc lớp), không mở thân Cài đặt.
+    const rc = await api("GET", `${QL}/${idA}?tab=cai-dat`, { as: u });
+    check(`${who} → …/<A>?tab=cai-dat → gốc lớp (Bài học của họ), không thân Cài đặt`, go(rc).to === `${QL}/${idA}` && !rc.text.includes("Mục của Cài đặt"), [rc.status, go(rc).to]);
     const rg = await api("GET", `${QL}/${idA}/giao-trinh`, { as: u });
     check(`${who} → …/<A>/giao-trinh → 307 về gốc lớp (không mất lối: gốc vẽ đúng màn cũ)`, rg.status === 307 && go(rg).to === `${QL}/${idA}`, [rg.status, go(rg).to]);
     for (const p of ["", "?tab=chuong-bai", "/lich-hoc"]) {
