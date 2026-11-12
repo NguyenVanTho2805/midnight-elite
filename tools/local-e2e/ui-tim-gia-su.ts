@@ -182,7 +182,9 @@ async function gridColumns(page: Page) {
       await shot(page, "tim-gia-su-390-to-loc");
       await page.keyboard.press("Escape");
       await dlg.waitFor({ state: "detached", timeout: 15000 });
-      check("Esc đóng và trả tiêu điểm về nút Lọc", await page.evaluate(`!!(document.activeElement && /^Lọc \\(/.test((document.activeElement.textContent || "").trim()))`) as boolean);
+      let focusBack = false;
+      for (let i = 0; i < 30 && !focusBack; i++) { focusBack = (await page.evaluate(`!!(document.activeElement && /^Lọc \\(/.test((document.activeElement.textContent || "").trim()))`)) as boolean; if (!focusBack) await page.waitForTimeout(100); }
+      check("Esc đóng và trả tiêu điểm về nút Lọc", focusBack);
       await opener.click();
       await dlg.waitFor({ timeout: 15000 });
       await dlg.getByRole("button", { name: "Xóa lọc" }).click();
