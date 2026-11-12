@@ -1028,3 +1028,14 @@ Nhánh `claude/loi-lop-hoc-sinh`, rẽ từ `origin/main` `c5f6fb7d`. **Không p
   - Chỉ Chromium trong bộ test cục bộ; ảnh 390 + 1600 ở `scratchpad/shots/loi03-*.png`; Figma chưa đối chiếu.
 - **Phụ thuộc khi gộp:** gộp SAU LOI-01 (`claude/loi-an-bang-co`, đụng `LopCuaToi.tsx`) — giữ MỘT liên kết `data-hoi-trong-lop` trong thẻ tiến độ, bọc `featureOn`. Nhánh Gia sư (LOI-02) cũng thêm đúng 2 dòng `scheduledAt` — gộp sạch nếu giống từng byte.
 - **Việc của Thọ:** (1) đặt `CLOUDINARY_*` (+ `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`) trên Production, thiếu thì nộp tệp tự TẮT; (2) xác nhận Q2 (lớp riêng vẫn hiện bài hôm nay); (3) xác nhận Q3 (`scheduledAt` lộ ở lớp công khai: chấp nhận hay chặn); (4) sau khi merge chạy `prisma db push` (cột `scheduledAt`).
+
+## LOI-04 (12/11/2026) — Nhắc học kiểu Reminder cho học sinh — XONG PHẦN MÃ; bài trình duyệt CHƯA CHẠY
+Nhánh `claude/loi-04-nhac-hoc`, rẽ từ `claude/loi-lop-hoc-sinh` (df485dae, đã chứa LOI-01/02/03). **Không push, chưa mở PR.** Đặc tả `docs/kin/phong-ban/dac-ta/LOI-04.md`. Commit: `1bddbf12` đặc tả · `b225d66e` máy chủ (bảng `student_reminders`, API `/api/student/nhac-hoc`, cron, test, mock) · `64331ce3` giao diện `/student/nhac-hoc` + một mục menu · `0e1393cf` test cron thứ 8 + ca bảo mật · commit ghi sổ.
+- Không đổi tiền. Dữ liệu trẻ em: ghi chú riêng chỉ chủ xem, không vào log, không vào chữ thông báo (chỉ số đếm).
+- Cron mới `/api/cron/nhac-hoc-sang` 07:05 giờ VN, hằng ngày (gói Vercel chỉ cho hằng ngày): mục hẹn 15:00 chỉ được báo trong tóm tắt sáng, không đúng giờ; mục tạo sau 07:05 chỉ hiện trong app; quá hạn không nhắc lại. Có `?dryRun=1`. Chống trùng: `study_today` theo ngày VN, `reminder_due` giành `notifiedAt`.
+- KHÔNG có web push (quyết định có chủ ý): học sinh không đăng ký được thiết bị (`pushAuth.ts`), thêm vào `PUSH_TYPES` sẽ lộ ra Cài đặt gia sư. `notify.ts`/`pushRules.ts` không đổi.
+- Đã chạy thật: t-nhac-hoc-lib 100/0 (hai múi giờ, 6 ca phá), t-db-push-guard 28/0, t-adm-003-lib 26/0, t-admin-ops-lib 70/0, t-no-hex 16/0, t-no-fabricated 60/0, `tsc` 0 lỗi.
+- CHƯA CHẠY (khoá dev-server bị phòng loi6 giữ từ 00:13, máy chủ nhàn rỗi): t-nhac-hoc, t-admin-ops, ui-nhac-hoc (ảnh), ui-loi03, ui-student-shell, ui-role-everything ROLE=student, t-notify-links. Không có ảnh chụp.
+- Rà soát: P1 1 = Q3 (xoá tài khoản là ẩn danh hoá nên Cascade không chạy, ghi chú còn lại; cần chủ chốt hoặc phòng Quản trị thêm `deleteMany` ở `accountDelete.ts`). P2: bài trình duyệt chưa chạy; `study_today` chưa có khoá giành chỗ khi hai lượt cron chồng nhau (đặc tả chấp nhận). P3: giành `notifiedAt` trước `notify` (tối đa một lần); đếm-rồi-tạo không nguyên tử (hạn mức 500 mềm, đã nới bài); 400 trước 404 ở PATCH; số buổi trong chuông có thể lệch phiếu nếu LOI-03 lọc khác.
+- `src/lib/adminOps.ts` (phòng Quản trị) thêm đúng một dòng CRON_JOBS; `t-admin-ops*.ts` nâng 7→8. Lề trang `/student/nhac-hoc` chưa có trong danh sách "flush" của `(student)/layout.tsx` (tệp chung) — COO thêm nếu muốn.
+
