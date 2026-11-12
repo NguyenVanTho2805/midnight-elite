@@ -217,10 +217,10 @@ const same = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSO
         await eventually("tham số cũ (grade, district, priceMin, active, sort) và mode rác bị bỏ qua: đủ 5 thẻ", async () => (await cardNames(page)).length === 5);
         await listReady(page, "/giang-vien?subject=V%E1%BA%ADt%20l%C3%BD%2012");
         await eventually("F5 / mở link có lọc: kết quả theo URL", async () => same(await cardNames(page), [LONG, NOIMG]));
-        check("ô chọn Môn hiện đúng giá trị trên URL", (await page.getByRole("combobox", { name: "Môn", exact: true }).inputValue()) === "Vật lý 12");
+        check("ô chọn Môn hiện đúng giá trị trên URL", (await kinSelectValue(page.getByRole("combobox", { name: "Môn" }).first())) === "Vật lý 12");
       } else {
         section("390 — nút 'Lọc (n)' + tờ trượt");
-        check("390: không có hàng ô chọn (Môn / Khu vực ẩn), có nút 'Lọc (0)'", !(await page.getByRole("combobox", { name: "Môn", exact: true }).isVisible()) && await page.getByRole("button", { name: "Lọc (0)" }).isVisible());
+        check("390: không có hàng ô chọn (Môn / Khu vực ẩn), có nút 'Lọc (0)'", !(await page.getByRole("combobox", { name: "Môn" }).first().isVisible()) && await page.getByRole("button", { name: "Lọc (0)" }).isVisible());
         const opener = page.getByRole("button", { name: /^Lọc \(\d+\)$/ });
         await opener.click();
         const dlg = page.getByRole("dialog", { name: "Lọc gia sư" });
