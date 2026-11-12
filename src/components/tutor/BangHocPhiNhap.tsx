@@ -9,6 +9,7 @@ import { DropZone } from "@/components/DropZone";
 import { KinButton } from "@/components/kin";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
@@ -214,10 +215,10 @@ export default function BangHocPhiNhap({ courseId, courseName, ym: ymProp }: { c
     <div className="space-y-1">
       <label className={`${KIN_LABEL} text-[length:var(--kin-co-goc)]`}>
         <span className="sr-only">Chọn em cho dòng {r.line}</span>
-        <select data-bhn-pick={r.line} value={pick[r.line] ?? ""} disabled={skipLines.includes(r.line) || !!busy} onChange={e => void onPick(r.line, e.target.value)} className={`${KIN_FIELD} min-w-[12rem]`}>
+        <KinSelect data-bhn-pick={r.line} value={pick[r.line] ?? ""} disabled={skipLines.includes(r.line) || !!busy} onChange={v => void onPick(r.line, v)} className="min-w-[12rem]">
           <option value="">{r.status === "ambiguous" ? "Chọn đúng em…" : "Chọn em trong lớp…"}</option>
           {optionsFor(r).map(o => <option key={o.id} value={o.id}>{o.text}</option>)}
-        </select>
+        </KinSelect>
       </label>
       {pick[r.line] && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Cô đã chọn em này cho dòng {r.line}.</p>}
       <label className="flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">

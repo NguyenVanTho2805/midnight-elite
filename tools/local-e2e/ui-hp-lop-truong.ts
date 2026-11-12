@@ -11,7 +11,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, section, done, eventually } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
 
@@ -187,8 +187,8 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   const chips = await p.locator("[data-bhn-counts]").innerText();
   check("tóm tắt có đủ chữ trạng thái", /Đúng/.test(chips) && /Không khớp/.test(chips) && /Trùng tên/.test(chips) && /Sai/.test(chips), chips);
   check("còn dòng sai + chưa chọn em → nút xác nhận TẮT, có lý do bằng chữ", await p.getByRole("button", { name: /^Xác nhận ghi/ }).isDisabled() && /Còn 3 dòng/.test(await p.locator("[data-bhn-why]").innerText()));
-  await p.locator("[data-bhn-pick]").nth(0).selectOption({ label: "Minh Khôi" });
-  await p.locator("[data-bhn-pick]").nth(1).selectOption({ index: 1 });
+  await kinSelect(p.locator("[data-bhn-pick]").nth(0), { label: "Minh Khôi" });
+  await kinSelect(p.locator("[data-bhn-pick]").nth(1), { index: 1 });
   await eventually("đã chọn em cho hai dòng → còn đúng 1 dòng sai chặn nút (chọn em gọi lại máy chủ nên chờ cập nhật)", async () => await p.getByRole("button", { name: /^Xác nhận ghi/ }).isDisabled() && /Còn 1 dòng/.test(await p.locator("[data-bhn-why]").innerText()), 15000);
   await p.locator("[data-bhn-skip]").check();
   check("tích 'Bỏ qua dòng sai' → bật: 'Xác nhận ghi 3 dòng' (1 đúng + 2 vừa chọn em)", await p.getByRole("button", { name: "Xác nhận ghi 3 dòng" }).isEnabled());
@@ -375,7 +375,7 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await m.locator("[data-bhn-cards]").waitFor({ timeout: 60000 });
   check("390px: xem trước dạng THẺ, mỗi thẻ có nhãn trạng thái bằng chữ ở đầu thẻ", (await m.locator("[data-bhn-card]").count()) === 4 && /Không khớp/.test(await m.locator("[data-bhn-card=unmatched]").innerText()) && /Trùng tên/.test(await m.locator("[data-bhn-card=ambiguous]").innerText()));
   const sel = await m.locator("[data-bhn-pick]").first().evaluate((e: HTMLElement) => e.getBoundingClientRect().height);
-  check("390px: ô chọn em (select) cao >= 44px", sel >= 43.5, sel);
+  check("390px: ô chọn em (KinSelect) cao >= 44px", sel >= 43.5, sel);
   const bar = await m.locator("[data-bhn-bar]").boundingBox();
   check("390px: thanh xác nhận DÍNH ĐÁY (nằm trong khung nhìn khi chưa cuộn tới cuối)", !!bar && bar.y + bar.height <= 844 + 1 && bar.y >= 0, bar);
   check("390px: không tràn ngang, nút / liên kết >= 44px", (await m.evaluate(NO_OVERFLOW)) === true && ((await m.evaluate(SMALL)) as string[]).length === 0, await m.evaluate(SMALL));

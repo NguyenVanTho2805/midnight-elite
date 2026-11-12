@@ -11,7 +11,7 @@
 // Không dùng goto 'networkidle' (trang có kết nối nền): domcontentloaded rồi chờ bộ chọn. So URL bằng pathname+search. Không khẳng định 404 của nhóm (guest) (trả 200).
 import { BASE, mkUser, mkTutor, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
 
@@ -148,8 +148,7 @@ async function gridColumns(page: Page) {
 
     if (w === 1600) {
       section("1600px — hàng lọc ngang: chọn Môn");
-      const mon = page.getByRole("combobox", { name: "Môn", exact: true });
-      await mon.selectOption("Hoá học");
+      await kinSelect(page.getByRole("combobox", { name: "Môn" }).first(), { label: "Hoá học" });
       await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
       await eventually("lọc theo môn: mọi thẻ đều Hoá học", async () => { const t = await page.locator(CARD).allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
       check("URL có subject=Hoá học", decodeURIComponent(rel(page.url()).replace(/\+/g, " ")).includes("subject=Hoá học"), rel(page.url()));
@@ -160,7 +159,7 @@ async function gridColumns(page: Page) {
       await opener.click();
       const dlg = page.getByRole("dialog", { name: "Lọc gia sư" });
       await dlg.waitFor({ timeout: 15000 });
-      await dlg.getByRole("combobox", { name: "Môn" }).selectOption("Hoá học");
+      await kinSelect(dlg.getByRole("combobox", { name: "Môn" }).first(), { label: "Hoá học" });
       await dlg.getByRole("button", { name: "Xem kết quả" }).click();
       await dlg.waitFor({ state: "detached", timeout: 15000 });
       await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });

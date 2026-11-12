@@ -10,7 +10,7 @@
 import { mkdirSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { BASE, mkUser, mkTutor, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot as rawShot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot as rawShot, closeAll, kinSelect, kinSelectValue, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
 import { vnDateKeyOf } from "@/lib/classSessions";
@@ -178,8 +178,7 @@ const same = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSO
       if (w === 1600) {
         section("1600 — hàng lọc ngang: Môn · Khu vực · Online · ô tìm · Xóa lọc");
         check("không có nút 'Lọc (n)' ở 1600; 'Xóa lọc' chưa hiện khi chưa lọc", !(await page.getByRole("button", { name: /^Lọc \(/ }).isVisible()) && !(await page.getByRole("button", { name: "Xóa lọc" }).isVisible()));
-        const mon = page.getByRole("combobox", { name: "Môn", exact: true });
-        await mon.selectOption("Vật lý 12");
+        await kinSelect(page.getByRole("combobox", { name: "Môn" }).first(), { label: "Vật lý 12" });
         await page.waitForURL(u => u.searchParams.get("subject") === "Vật lý 12", { timeout: 30000 });
         await eventually("Môn 'Vật lý 12': còn đúng 2 gia sư dạy môn đó", async () => same(await cardNames(page), [LONG, NOIMG]));
         const clear = page.getByRole("button", { name: "Xóa lọc" });
@@ -187,7 +186,7 @@ const same = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSO
         await page.waitForURL(u => u.search === "", { timeout: 30000 });
         await eventually("Xóa lọc: URL sạch, đủ 5 thẻ", async () => (await cardNames(page)).length === 5);
 
-        await page.getByRole("combobox", { name: "Khu vực", exact: true }).selectOption("Đà Nẵng");
+        await kinSelect(page.getByRole("combobox", { name: "Khu vực" }).first(), { label: "Đà Nẵng" });
         await page.waitForURL(u => u.searchParams.get("city") === "Đà Nẵng", { timeout: 30000 });
         await eventually("Khu vực 'Đà Nẵng': chỉ Lê Thu Hà", async () => same(await cardNames(page), [NOPRICE]));
         await clear.click();
@@ -238,7 +237,7 @@ const same = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSO
         await eventually("Esc đóng, mở lại cuộn nền, trả tiêu điểm về nút 'Lọc (0)'", async () => (await page.evaluate("document.body.style.overflow")) !== "hidden" && (await page.evaluate(`document.activeElement && document.activeElement.textContent`)) === "Lọc (0)", 3000);
         await opener.click();
         await dlg.waitFor({ timeout: 15000 });
-        await dlg.getByRole("combobox", { name: "Môn" }).selectOption("Tiếng Anh lớp 5");
+        await kinSelect(dlg.getByRole("combobox", { name: "Môn" }).first(), { label: "Tiếng Anh lớp 5" });
         check("đổi trong tờ lọc chưa ghi URL (bản nháp)", !params(page.url()).has("subject"));
         await dlg.getByRole("button", { name: "Xem kết quả" }).click();
         await dlg.waitFor({ state: "detached", timeout: 15000 });
@@ -248,7 +247,7 @@ const same = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSO
         await dlg.waitFor({ timeout: 15000 });
         await dlg.getByRole("button", { name: "Online" }).click();
         await dlg.getByRole("button", { name: "Xóa lọc" }).click();
-        check("'Xóa lọc' trong tờ: Môn về 'Tất cả môn', Hình thức về 'Tất cả'", (await dlg.getByRole("combobox", { name: "Môn" }).inputValue()) === "" && (await dlg.getByRole("button", { name: "Tất cả" }).getAttribute("aria-pressed")) === "true");
+        check("'Xóa lọc' trong tờ: Môn về 'Tất cả môn', Hình thức về 'Tất cả'", (await kinSelectValue(dlg.getByRole("combobox", { name: "Môn" }).first())) === "" && (await dlg.getByRole("button", { name: "Tất cả" }).getAttribute("aria-pressed")) === "true");
         await dlg.getByRole("button", { name: "Xem kết quả" }).click();
         await page.waitForURL(u => u.search === "", { timeout: 30000 });
         await eventually("áp lọc rỗng: đủ 5 thẻ, 'Lọc (0)'", async () => (await cardNames(page)).length === 5 && await page.getByRole("button", { name: "Lọc (0)" }).isVisible());
