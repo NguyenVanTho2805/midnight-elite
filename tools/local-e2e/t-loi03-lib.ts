@@ -11,10 +11,16 @@
 //   (4) hocTiep bỏ `watching`                                                                              ⇒ ca "dang-xem" đỏ.
 //   (5) chiaHomNay biên `dateKey <= lastKey` thành `<`                                                     ⇒ ca "18/11 23:59 VN" đỏ.
 //   (6) orderedLessonIds dùng `status !== "draft"`                                                        ⇒ ca "hidden / null / Published" đỏ.
+//   LOI-07 (nợ P3, đã chạy trên src/ rồi hoàn lại bằng bản sao):
+//   (7) hasScheduledLessonInWindow bỏ cận trên `k <= lastKey`                                              ⇒ ca "91 ngày / 4 tháng" đỏ.
+//   (8) hasScheduledLessonInWindow `k < lastKey` (hụt biên)                                                ⇒ ca "đúng 90 ngày" đỏ.
+//   (9) sessionsBlockState xét `count === 0 && hasScheduledLesson` TRƯỚC `error` (lỗi bị nuốt thành ẩn)     ⇒ ca "lịch lỗi ⇒ loi" đỏ.
+//   (10) asideState coi `null` như `false` (mặc định cũ của ViecCuaToi)                                    ⇒ ca "đang tải ≠ rỗng" đỏ.
 import { check, section, done } from "./h";
 import {
   orderedLessonIds, lopProgress, hocTiep, hocTiepLabel, HOC_TIEP_LABEL, lopTrangThai, LOP_TRANG_THAI_LABEL, locLop, demLoc, giaSuLabel,
   vnTimeHHmm, vnDayTitle, vnDayLong, vnWindow, chiaHomNay, lessonMetaParts, contentSummary, chapterNo, docLinks, azotaLinks,
+  hasScheduledLessonInWindow, sessionsBlockState, asideState, SCHEDULE_WINDOW_DAYS,
   type TreeSection,
 } from "@/lib/studentLop";
 
@@ -188,6 +194,40 @@ section("docLinks / azotaLinks — cho phiếu");
   check("azota: bỏ link hỏng, tối đa 3, nhãn 'Bài Azota' / 'Bài Azota 2' / 'Bài Azota 3'", eq(az.map(a => a.label), ["Bài Azota", "Bài Azota 2", "Bài Azota 3"]) && eq(az.map(a => a.url), ["https://azota.vn/a", "https://azota.vn/b", "https://azota.vn/c"]), az);
   check("azota một chuỗi đơn ⇒ một link", eq(azotaLinks("https://azota.vn/de-thi/abc123"), [{ label: "Bài Azota", url: "https://azota.vn/de-thi/abc123" }]));
   check("azota rỗng/null ⇒ []", eq(azotaLinks(null), []) && eq(azotaLinks(""), []));
+}
+
+section("LOI-07 · bài hẹn chỉ tính trong khung 90 ngày (khối 'Buổi học sắp tới')");
+{
+  // Hôm nay (VN) = 11/11/2026. instantOf-tương đương: 12:00 VN = 05:00Z.
+  const at = (key: string, hhmm = "05:00") => `${key}T${hhmm}:00.000Z`;
+  const add = (n: number) => { const d = new Date(Date.UTC(2026, 10, 11 + n)); return d.toISOString().slice(0, 10); };
+  const T = "2026-11-11";
+  const pub = S(["a"]);
+  const one = (iso: string | Date | null, id = "a") => hasScheduledLessonInWindow([{ id, scheduledAt: iso }], pub, T);
+  check("khung = 90 ngày, khớp loadStudentScheduleEvents", SCHEDULE_WINDOW_DAYS === 90);
+  check("hôm nay, +1, +89 ⇒ có", one(at(T)) && one(at(add(1))) && one(at(add(89))));
+  check("đúng 90 ngày (biên, vẫn trong khung như lịch: iso > maxISO mới bị bỏ) ⇒ có", one(at(add(90))), add(90));
+  check("91 ngày / 4 tháng nữa ⇒ KHÔNG (bài hẹn ngoài khung không được làm ẩn khối)", !one(at(add(91))) && !one(at(add(120))), add(91));
+  check("biên theo NGÀY VN: 23:59 VN ngày +90 (16:59Z) có; 00:00 VN ngày +91 (17:00Z hôm trước) không", one(`${add(90)}T16:59:00.000Z`) && !one(`${add(90)}T17:00:00.000Z`));
+  check("hôm qua, null, chuỗi hỏng, bài chưa đăng ⇒ không", !one(at(add(-1))) && !one(null) && !one("không phải ngày") && !one(at(T), "nhap"));
+  check("nhận cả Date lẫn ISO; todayKey hỏng ⇒ không", one(new Date(at(add(30)))) && !hasScheduledLessonInWindow([{ id: "a", scheduledAt: at(T) }], pub, "11/11/2026"));
+  check("một bài trong khung là đủ (bài ngoài khung đứng cạnh không ảnh hưởng)", hasScheduledLessonInWindow([{ id: "a", scheduledAt: at(add(200)) }, { id: "b", scheduledAt: at(add(3)) }], S(["a", "b"]), T));
+}
+
+section("LOI-07 · khối 'Buổi học sắp tới' (trang lớp): đang tải / lỗi KHÔNG bị ẩn");
+{
+  const st = (loaded: boolean, error: boolean, count: number, has: boolean) => sessionsBlockState({ loaded, error, count, hasScheduledLesson: has });
+  check("chưa tải ⇒ dang-tai (kể cả có bài hẹn)", st(false, false, 0, false) === "dang-tai" && st(false, false, 0, true) === "dang-tai");
+  check("lịch lỗi (500) ⇒ loi — kể cả không buổi + có bài hẹn (không im lặng ẩn)", st(true, true, 0, true) === "loi" && st(false, true, 0, true) === "loi" && st(true, true, 3, false) === "loi");
+  check("có buổi ⇒ co (dù có bài hẹn)", st(true, false, 2, true) === "co");
+  check("không buổi, không bài hẹn trong khung ⇒ trong; có bài hẹn ⇒ an", st(true, false, 0, false) === "trong" && st(true, false, 0, true) === "an");
+}
+
+section("LOI-07 · cột 'Buổi học tiếp theo' (Việc của tôi): đang tải ≠ rỗng");
+{
+  check("có buổi ⇒ buoi-hoc bất kể phiếu", asideState(true, null) === "buoi-hoc" && asideState(true, true) === "buoi-hoc" && asideState(true, false) === "buoi-hoc");
+  check("phiếu chưa trả lời (null) ⇒ dang-tai, KHÔNG 'trong' (không chớp '3 ngày tới chưa có buổi học')", asideState(false, null) === "dang-tai");
+  check("phiếu có bài ⇒ an; phiếu rỗng / lỗi / 403 (báo false) ⇒ trong", asideState(false, true) === "an" && asideState(false, false) === "trong");
 }
 
 void done();

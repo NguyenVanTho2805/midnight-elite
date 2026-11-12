@@ -2,7 +2,7 @@
 // Hình dạng nội dung và kiểm cấu trúc nằm ở siteContent.ts (HOME-01); tệp này thêm: cụm cấm (lời hứa KiN không có), bộ đếm ký tự theo trường,
 // số lượng ô/thẻ, danh sách đường dẫn gợi ý, và so sánh hai bản để ghi nhật ký (chỉ TÊN trường).
 import { HOME_LIMITS, type HomeContent, type HomeIssue } from "@/lib/siteContent";
-import { isLinkHidden } from "@/lib/features";
+import { hiddenLinkFeature, isLinkHidden, type FeatureEnv } from "@/lib/features";
 
 /** Cụm cấm: chữ trang công khai là lời hứa của KiN với phụ huynh. Danh sách này phải BAO TRÙM sáu dòng STU-002 + các dòng cũ của tools/local-e2e/t-no-fabricated.ts
  *  (có bài khoá trong t-home-content-guard-lib). Khi t-no-fabricated đổi, đổi cả đây. */
@@ -126,6 +126,34 @@ export function hrefNeedsManualCheck(href: string): boolean {
   if (!href.startsWith("/")) return false;
   const base = href.split(/[?#]/)[0];
   return !HREF_SUGGESTIONS.some(s => s.split("?")[0] === base);
+}
+
+// LOI-07 (11/11/2026, nợ P3 của LOI-01): liên kết quản trị TỰ NHẬP (ô kỳ thi ở Hero, nút "Tìm gia sư", hai nút CTA) có thể trỏ vào phần đang tạm đóng
+// (src/lib/features.ts). Chỉ CẢNH BÁO ngay dưới ô, KHÔNG chặn lưu (quyết định COO: người sửa có thể đang chuẩn bị trước khi mở lại phần đó).
+/** Địa chỉ tuyệt đối về chính KiN ("https://midnightelite-edu.com/tin-tuc", có/không "www.") quy về đường nội bộ; địa chỉ ngoài giữ nguyên. */
+function ownPath(href: string): string {
+  const m = /^https:\/\/(?:www\.)?midnightelite-edu\.com(?::\d+)?(\/[^\s]*)?$/i.exec(href.trim());
+  return m ? (m[1] ?? "/") : href.trim();
+}
+
+/** Câu cảnh báo khi `href` dẫn vào phần đang tạm đóng; null = bình thường (kể cả địa chỉ ngoài, đường rỗng). */
+export function hiddenHrefWarning(href: string, env?: FeatureEnv): string | null {
+  if (typeof href !== "string" || !href.trim()) return null;
+  return hiddenLinkFeature(ownPath(href), env) ? "Đường dẫn này trỏ vào phần KiN đang tạm đóng: người bấm sẽ được đưa về trang đầu. Vẫn lưu được, nhưng nên đổi sang trang đang mở." : null;
+}
+
+/** Mọi ô ĐƯỜNG DẪN tự nhập kèm đường dẫn trường. */
+export function hrefFields(c: HomeContent): { path: string; value: string }[] {
+  const out: { path: string; value: string }[] = [];
+  c.exams.forEach((e, i) => out.push({ path: `exams[${i}].href`, value: e.href }));
+  out.push({ path: "findTutor.buttonHref", value: c.findTutor.buttonHref });
+  out.push({ path: "cta.primary.href", value: c.cta.primary.href }, { path: "cta.secondary.href", value: c.cta.secondary.href });
+  return out;
+}
+
+/** Cảnh báo (không phải lỗi — KHÔNG đưa vào danh sách chặn lưu) cho từng ô đường dẫn trỏ vào phần đang tạm đóng. */
+export function checkHomeHiddenLinks(c: HomeContent, env?: FeatureEnv): HomeIssue[] {
+  return hrefFields(c).flatMap(f => { const w = hiddenHrefWarning(f.value, env); return w ? [{ path: f.path, message: w }] : []; });
 }
 
 function flatten(v: unknown, path: string, out: Map<string, string>): void {

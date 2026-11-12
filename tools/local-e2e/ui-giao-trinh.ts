@@ -1,11 +1,11 @@
 // BU-02-PHẲNG — màn Giáo trình của gia sư (/lop-cua-toi/quan-lop/<id>/giao-trinh) + "Xem như học sinh", trên trình duyệt thật (1280 + 390, có chụp ảnh).
 // LOI-02 (11/11/2026): tab Giáo trình bỏ — …/giao-trinh 307 về gốc lớp (tab "Bài học"). Màn danh sách phẳng nay CHỈ còn cho ĐỒNG GIẢNG / bộ môn (chủ lớp thấy cây
-// Chương · Bài, kiểm ở ui-loi-02). Bài này chạy màn phẳng bằng vai đồng giảng "Cô Đồng Giảng" ở gốc lớp. Tải tệp lên KiN chỉ của chủ lớp (init 403) ⇒ ca "3 PDF"
-// kiểm 3 hàng báo lỗi quyền, rồi dựng 3 mục Nháp bằng DB để các ca sau giữ nguyên số đếm.
+// Chương · Bài, kiểm ở ui-loi-02). Bài này chạy màn phẳng bằng vai đồng giảng "Cô Đồng Giảng" ở gốc lớp. Tải tệp lên KiN chỉ của chủ lớp (init 403) ⇒ LOI-07: ô thêm của
+// đồng giảng chỉ nhận link (không ô chọn tệp; thả tệp → câu báo tại chỗ, không init), rồi dựng 3 mục Nháp bằng DB để các ca sau giữ nguyên số đếm.
 // Figma: chưa đọc trực tiếp (606:5, 607:218, 607:491) — bài này kiểm hành vi và số đo theo mục 5/6/8.3 của dac-ta/BU-02-PHANG.md, không kiểm giống bản vẽ.
 // Kiểm: ba trạng thái (tải / lỗi giả lập 500 / lớp rỗng), lớp rỗng dán link YouTube ⇒ MỘT mục Nháp và KHÔNG có chữ Phần/Chương, Đăng → Ẩn → Hiện lại → Đưa về Nháp, "Đăng ngay",
 // KHÔNG có giao diện tải video (không ô xác nhận video, không đuôi video trong accept; thả .mp4 ⇒ lỗi tại chỗ, không có yêu cầu mạng; Vimeo ⇒ lỗi "chỉ nhận link YouTube"),
-// thả 3 PDF ⇒ 3 hàng "Đang tải" rồi 3 mục Nháp và F5 vẫn còn, Thêm chương / chuyển nhóm / Bỏ nhóm (mục không mất), ▲▼ đổi thứ tự (>= 44px, tên truy cập rõ, F5 giữ),
+// đồng giảng thả 3 PDF ⇒ "chỉ chủ lớp tải tệp lên", không init; 3 mục Nháp dựng bằng DB vẫn còn sau F5, Thêm chương / chuyển nhóm / Bỏ nhóm (mục không mất), ▲▼ đổi thứ tự (>= 44px, tên truy cập rõ, F5 giữ),
 // lọc theo trạng thái, Đăng tất cả mục Nháp, ngăn kéo Sửa (tên / khoá / miễn phí, Esc), Đăng mục miễn phí hỏi xác nhận bằng hộp KiN, mục rỗng không đăng được (có lý do),
 // lỗi 409 hiện tại hàng, Nhân bản = bản Nháp, Xoá có hộp KiN, "Xem như học sinh" mục Nháp có băng cam + KHÔNG có yêu cầu /api/progress, gia sư chờ duyệt → /lop-cua-toi/cho-duyet,
 // gia sư lớp khác chỉ thấy "Bạn không có quyền với lớp này.", 390px không tràn ngang và nút >= 44px. Cần Postgres + Next dev (xem README).
@@ -26,7 +26,6 @@ async function report(page: Page) {
   })()`) as Promise<{ overflow: boolean; small: string[] }>;
 }
 
-const PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n");
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const seen: Page[] = [];
@@ -104,7 +103,8 @@ const seen: Page[] = [];
   check("dòng nhắc 'Mục Nháp và Ẩn chỉ gia sư thấy'", await pg.locator("[data-gt-nhac-nhap]").getByText(/chỉ gia sư thấy/).isVisible());
   check("dải lọc có số: Nháp 1 · Đã đăng 2 · Ẩn 1", await pg.getByRole("button", { name: "Nháp 1" }).isVisible() && await pg.getByRole("button", { name: "Đã đăng 2" }).isVisible() && await pg.getByRole("button", { name: "Ẩn 1" }).isVisible());
   const lim = await pg.locator("[data-gt-gioi-han]").innerText();
-  check("giới hạn hiện TRƯỚC khi chọn: tối đa 25 MB mỗi tệp, còn ... trong kho, video chỉ link YouTube", /tối đa 25 MB mỗi tệp/.test(lim) && /còn .* trong kho của bạn/.test(lim) && /Video: dán link YouTube/.test(lim), lim);
+  // LOI-07 (nợ LOI-02 d): đồng giảng không tải tệp lên KiN được (init chỉ nhận chủ lớp) ⇒ dòng giới hạn nói thẳng điều đó thay cho hạn mức kho của chủ lớp.
+  check("đồng giảng: dòng giới hạn nói 'Tải tệp lên KiN chỉ dành cho chủ lớp', không hiện hạn mức kho; video chỉ link YouTube", /chỉ dành cho chủ lớp/.test(lim) && !/trong kho của bạn/.test(lim) && /Video: dán link YouTube/.test(lim), lim);
   check("dải nguồn không còn Vimeo", !/Vimeo/.test(await pg.locator("[data-gt-nguon]").innerText()));
   const r0 = await report(pg);
   check("không tràn ngang; mọi nút >= 44px (▲▼, Sửa, Đăng/Ẩn, ⋯)", !r0.overflow && r0.small.length === 0, r0);
@@ -112,8 +112,7 @@ const seen: Page[] = [];
 
   section("KHÔNG có giao diện tải video (video chỉ gắn link YouTube)");
   check("không có ô xác nhận video", await pg.locator("[data-gt-video-xac-nhan]").count() === 0);
-  const accept = (await pg.locator("input[type=file]").getAttribute("accept")) ?? "";
-  check("ô chọn tệp không nhận đuôi video", !/mp4|webm|mov|m4v/i.test(accept), accept);
+  check("LOI-07: đồng giảng KHÔNG có ô chọn tệp / nút 'Chọn tệp từ máy' (ô thêm chỉ nhận link)", await pg.locator("[data-gt-o-tai] input[type=file]").count() === 0 && await pg.getByRole("button", { name: "Chọn tệp từ máy" }).count() === 0);
   const bodyText = await pg.locator("[data-gt-o-tai]").locator("xpath=..").innerText();
   check("không có chữ tải video lên / xác nhận video / 'chưa bật'", !/tải video lên|xác nhận video|chưa bật/i.test(bodyText));
 
@@ -198,25 +197,24 @@ const seen: Page[] = [];
   check("409 của G4 hiện nguyên câu máy chủ NGAY tại hàng, mục không đổi", (await statusOf(b1.id)) === "draft");
   await emp.unroute("**/api/tutor/lop/*/giao-trinh/bai/*");
 
-  section("Thả tệp: .mp4 bị từ chối tại chỗ; 3 PDF thành 3 mục Nháp");
-  const fileInput = emp.locator("input[type=file]");
+  // LOI-07 (nợ LOI-02 d): trước đây đồng giảng thấy ô chọn tệp, thả 3 PDF thì cả 3 hàng đều đỏ vì /api/media/document/init 403 (chỉ chủ lớp). Nay ô thêm của vai này chỉ
+  // nhận link: không có ô chọn tệp, thả tệp vào vùng → một câu báo tại chỗ, KHÔNG có yêu cầu init nào. (Chủ lớp vẫn có ô thả tệp ở panel Sửa bài — ui-loi-02 mục 4.)
+  // Kiểm loại / dung lượng tệp (.mp4, .exe, 26 MB) nằm ở hook tải chung useTaiLenTep, kiểm bằng ui-loi-02 mục 4 trên vai chủ lớp.
+  section("Đồng giảng thả tệp: báo 'chỉ chủ lớp tải tệp lên', không gọi init, không tạo mục");
   const before = empInit.length;
-  await fileInput.setInputFiles({ name: "bai-giang.mp4", mimeType: "video/mp4", buffer: Buffer.from("0000ftypmp42") });
-  check("thả .mp4 → lỗi 'KiN không nhận tệp video' ngay trong hàng, KHÔNG có yêu cầu mạng", await emp.locator('[data-gt-tep="err"]').getByText(/KiN không nhận tệp video/).isVisible() && empInit.length === before, empInit);
-  await emp.locator('[data-gt-tep="err"]').getByRole("button", { name: /^Đóng/ }).click();
-  await fileInput.setInputFiles({ name: "chua-tich.pdf", mimeType: "application/pdf", buffer: PDF });
-  check("chưa tích cam kết bản quyền → báo lỗi tại chỗ, không có yêu cầu init", await emp.locator("[data-gt-loi]").getByText(/cam kết bản quyền/).isVisible() && empInit.length === before);
-  await emp.getByLabel(/Tôi là người tạo ra nội dung này/).check();
-  await fileInput.setInputFiles({ name: "virus.exe", mimeType: "application/x-msdownload", buffer: Buffer.from("MZ\x90\x00\x03\x00\x00\x00") });
-  check(".exe → lỗi ngay tại chỗ, KHÔNG có yêu cầu mạng", await emp.locator('[data-gt-tep="err"]').getByText(/không nhận loại tệp này/).isVisible() && empInit.length === before, empInit);
-  await emp.locator('[data-gt-tep="err"]').getByRole("button", { name: /^Đóng/ }).click();
   const countBefore = await emp.locator("[data-gt-muc]").count();
-  // LOI-02: đồng giảng KHÔNG tải tệp lên KiN được (init chỉ nhận chủ lớp ⇒ 403) — mỗi hàng báo lỗi quyền, không tạo mục.
-  await fileInput.setInputFiles([1, 2, 3].map(n => ({ name: `bai-tap-${n}.pdf`, mimeType: "application/pdf", buffer: PDF })));
-  await eventually("đồng giảng thả 3 PDF → 3 hàng báo 'Bạn không có quyền với lớp này.' (init 403), không tạo mục", async () =>
-    (await emp.locator('[data-gt-tep="err"]').getByText(/không có quyền/).count()) === 3
-    && (await prisma.lesson.count({ where: { chapter: { section: { courseId: B.id } }, documents: { contains: "/api/media/" } } })) === 0, 30000);
-  for (let k = 0; k < 3; k++) await emp.locator('[data-gt-tep="err"]').first().getByRole("button", { name: /^Đóng/ }).click();
+  check("không có ô chọn tệp trong ô thêm", await emp.locator("[data-gt-o-tai] input[type=file]").count() === 0);
+  await emp.evaluate(`(() => {
+    const dt = new DataTransfer();
+    for (const n of [1, 2, 3]) dt.items.add(new File(["%PDF-1.4"], "bai-tap-" + n + ".pdf", { type: "application/pdf" }));
+    const zone = document.querySelector("[data-gt-vung-tha]");
+    zone.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    zone.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt }));
+  })()`);
+  await emp.locator("[data-gt-loi]").waitFor({ timeout: 15000 });
+  await sleep(600);
+  check("thả 3 PDF → câu 'Chỉ chủ lớp tải tệp lên KiN được' tại chỗ, KHÔNG có yêu cầu /api/media/document/init, không hàng tải nào", /Chỉ chủ lớp tải tệp lên KiN được/.test(await emp.locator("[data-gt-loi]").innerText()) && empInit.length === before && await emp.locator("[data-gt-tep]").count() === 0, empInit);
+  check("không tạo mục nào", await emp.locator("[data-gt-muc]").count() === countBefore && (await prisma.lesson.count({ where: { chapter: { section: { courseId: B.id } }, documents: { contains: "/api/media/" } } })) === 0);
   // Dựng 3 mục Nháp bằng DB (thay cho tải tệp) để các ca sau giữ nguyên số đếm.
   for (const n of [1, 2, 3]) await prisma.lesson.create({ data: { id: `gt-b-tep-${n}`, code: `gt-b-tep-${n}`, title: `bai-tap-${n}`, type: "document", order: 100 + n, chapterId: b1.chapterId, status: "draft",
     documents: JSON.stringify([{ name: `bai-tap-${n}.pdf`, url: `https://files.example/bai-tap-${n}.pdf`, type: "pdf" }]) } as never });
@@ -353,7 +351,8 @@ const seen: Page[] = [];
   const mctx = await ctxFor(CO, { width: 390, height: 844 });
   const mp = await mctx.newPage(); watch(mp);
   await open(mp, D.id);
-  check("có hai nút lớn 'Chọn tệp từ máy' và 'Dán link'; thao tác phụ của trang thu vào ⋯", await mp.getByRole("button", { name: "Chọn tệp từ máy" }).isVisible() && await mp.getByRole("button", { name: "Dán link", exact: true }).isVisible()
+  // LOI-07: đồng giảng không tải tệp ⇒ không còn cặp nút 'Chọn tệp từ máy' / 'Dán link'; ô dán link nằm ngay đầu ô thêm.
+  check("đồng giảng 390: ô dán link hiện, KHÔNG có 'Chọn tệp từ máy'; thao tác phụ của trang thu vào ⋯", await mp.locator("#gt-link").isVisible() && await mp.getByRole("button", { name: "Chọn tệp từ máy" }).count() === 0
     && await mp.getByRole("button", { name: "Thêm thao tác của trang" }).isVisible() && await mp.getByRole("button", { name: "Thêm chương" }).count() === 0);
   await mp.getByRole("button", { name: "Thêm thao tác của trang" }).click();
   check("mở ⋯ của trang → thấy 'Thêm chương' và 'Xem như học sinh'", await mp.getByRole("button", { name: "Thêm chương" }).isVisible() && await mp.getByRole("link", { name: "Xem như học sinh" }).isVisible());

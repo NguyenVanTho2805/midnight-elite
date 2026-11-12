@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCurriculumAccess, denyLessonEdit, denyChapterEdit, roleForbidden } from "@/lib/courseAccessServer";
 import { canDo } from "@/lib/courseAccess";
 import { addItem, removeItemFromLesson, type AddItemInput } from "@/lib/giaoTrinhServer";
+import { classBase } from "@/lib/tutorClassRoutes";
 
 const NO_STORE = { "Cache-Control": "private, no-store" } as const;
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
@@ -11,7 +12,8 @@ const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim
 export async function POST(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
   const isForm = /^(application\/x-www-form-urlencoded|multipart\/form-data)/i.test(req.headers.get("content-type") ?? "");
-  const back = (q: string) => NextResponse.redirect(new URL(`/lop-cua-toi/quan-lop/${encodeURIComponent(courseId)}/giao-trinh?${q}`, req.url), { status: 303, headers: NO_STORE });
+  // LOI-07: một chặng 303 THẲNG về gốc lớp (tab "Bài học"), giữ ?ok= / ?loi= / ?lessonId=. Trước đây về …/giao-trinh, mà đường đó nay 307 về gốc và BỎ query ⇒ mất báo kết quả.
+  const back = (q: string) => NextResponse.redirect(new URL(`${classBase(courseId)}?${q}`, req.url), { status: 303, headers: NO_STORE });
 
   const auth = await requireCurriculumAccess(courseId); // TUT-dong-giang: chủ / quản trị / đồng giảng / bộ môn (phạm vi nhóm kiểm ngay dưới)
   if (auth instanceof NextResponse) return isForm && auth.status === 403 ? back("loi=quyen") : auth;

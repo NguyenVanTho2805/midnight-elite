@@ -82,6 +82,20 @@ check("GIA SƯ trên tên miền admin → đưa về tên miền chính, giữ 
 check("gia sư ở '/' của tên miền admin → cũng đưa về tên miền chính", d(ADM, "/", tutor).kind === "redirect");
 check("gia sư vẫn gọi được API / đăng nhập trên tên miền admin (không bị chuyển)", eq(d(ADM, "/api/auth/me", tutor), { kind: "next" }) && eq(d(ADM, "/dang-nhap", tutor), { kind: "next" }));
 
+section("LOI-07: chuyển ra khỏi phần đang ẩn → Location mang dấu ?tam-dong=<CỜ>, trang đích không bị chuyển lại");
+// Ca phá cố ý (đã chạy): bỏ `search: paused` ở nhánh học sinh / gia sư của decideRoute → ca đầu đỏ; cho blockedRouteFeature chặn cả trang đầu khi có ?tam-dong= → ca "không vòng" đỏ.
+if (!featureOn("TIN_TUC")) {
+  check("bài tin tức cũ: học viên → /student/viec-cua-toi?tam-dong=TIN_TUC, gia sư → /lop-cua-toi?tam-dong=TIN_TUC, khách → /?tam-dong=TIN_TUC, quản trị → admin…/admin?tam-dong=TIN_TUC (vẫn 307)",
+    eq(d(MAIN, "/tin-tuc/bai-1", student, "?utm=thu"), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=TIN_TUC" })
+    && eq(d(MAIN, "/tin-tuc/bai-1", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi", search: "?tam-dong=TIN_TUC" })
+    && eq(d(MAIN, "/tin-tuc/bai-1", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=TIN_TUC" })
+    && eq(d(MAIN, "/tin-tuc/bai-1", sup), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "?tam-dong=TIN_TUC" }), [d(MAIN, "/tin-tuc/bai-1", student, "?utm=thu"), d(MAIN, "/tin-tuc/bai-1", sup)]);
+} else console.log("  (máy đang bật TIN_TUC: bỏ qua ca Location có dấu)");
+check("không vòng: trang đầu kèm dấu (thật hay rác) vẫn next / như cũ — '/', Việc của tôi, Hộp việc; /admin?tam-dong= ở tên miền admin next",
+  [["/", null], ["/", student], ["/student/viec-cua-toi", student], ["/lop-cua-toi", tutor]].every(([p, s]) => ["?tam-dong=CONG_DONG", "?tam-dong=%3Cx%3E"].every(q => eq(d(MAIN, p as string, s as RouteSession | null, q), { kind: "next" })))
+  && eq(d(ADM, "/admin", sup, "?tam-dong=CONG_DONG"), { kind: "next" }));
+check("quản trị ở tên miền chính mở /admin?tam-dong=CONG_DONG (trang /cong-dong/<id> chuyển về '/admin' + dấu) → sang tên miền admin, GIỮ dấu", eq(d(MAIN, "/admin", sup, "?tam-dong=CONG_DONG"), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "?tam-dong=CONG_DONG" }));
+
 section("needsSession — chỉ giải mã phiên khi cần");
 check("tên miền chính: chỉ /admin*, /dang-ky, /dang-nhap cần phiên", ["/admin", "/admin/x", "/dang-ky", "/dang-nhap"].every(p => needsSession(MAIN, p)));
 check("tên miền chính: '/' KHÔNG tốn giải mã phiên (01/11/2026); tên miền admin '/' vẫn cần", !needsSession(MAIN, "/") && needsSession(ADM, "/"));

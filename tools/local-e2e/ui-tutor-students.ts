@@ -34,7 +34,19 @@ import { prisma } from "@/lib/prisma";
   await pg.getByRole("heading", { name: "Học sinh", level: 1 }).waitFor({ timeout: 90000 });
   const rail = pg.getByRole("navigation", { name: "Module của gia sư" });
   await pg.getByRole("list", { name: "Danh sách học sinh" }).waitFor({ timeout: 60000 });
-  check("mục 'Học sinh' trên thanh bên đang sáng (aria-current) và là mục duy nhất sáng", await rail.getByRole("link", { name: /^Học sinh/ }).getAttribute("aria-current") === "page" && await rail.locator("[aria-current=page]").count() === 1);
+  // LOI-07: thanh máy tính dựng cả bản hẹp (.kin-rail-items) lẫn bản rộng có nhóm (.kin-rail-groups — nhóm "Khác" của thanh rộng cũng có "Học sinh"); CSS chỉ hiện một
+  // bản theo data-kin-rail (kin-motion.css:228-235). Bản ẩn mang aria-current nhưng không vào cây trợ năng ⇒ đếm mục ĐANG HIỆN (như ui-tutor-shell :55).
+  check("mục 'Học sinh' trên thanh bên đang sáng (aria-current) và là mục duy nhất sáng (đang hiện)", await rail.getByRole("link", { name: /^Học sinh/ }).getAttribute("aria-current") === "page" && await rail.locator("[aria-current=page]:visible").count() === 1,
+    { visible: await rail.locator("[aria-current=page]:visible").count(), all: await rail.locator("[aria-current=page]").count() });
+  {
+    // Đối chứng ở thanh RỘNG 272px (bản có nhóm hiện, bản hẹp ẩn): vẫn đúng MỘT mục đang hiện mang aria-current, đúng mục "Học sinh".
+    const wp = await (await ctxFor(T, { width: 1280, height: 800, rail: "rong" })).newPage(); watch(wp);
+    await wp.goto(`${BASE}/lop-cua-toi/hoc-sinh`, { waitUntil: "networkidle", timeout: 120000 });
+    await wp.getByRole("heading", { name: "Học sinh", level: 1 }).waitFor({ timeout: 90000 });
+    const lit = await wp.getByRole("navigation", { name: "Module của gia sư" }).locator("[aria-current=page]:visible").evaluateAll(els => els.map(e => e.getAttribute("href")));
+    check("thanh rộng: đúng một mục đang hiện mang aria-current, trỏ /lop-cua-toi/hoc-sinh", lit.length === 1 && lit[0] === "/lop-cua-toi/hoc-sinh", lit);
+    await wp.close();
+  }
   check("dòng phụ: 2 học sinh đang học (Bảo, Hà — Hà ở hai lớp vẫn tính một em)", await pg.getByText(/^2 học sinh đang học/).isVisible());
   check("tab 'Đang học · 2' và 'Đã nghỉ · 1'", await pg.getByRole("tab", { name: "Đang học · 2" }).isVisible() && await pg.getByRole("tab", { name: "Đã nghỉ · 1" }).isVisible());
   const rows = pg.locator("[data-hoc-sinh]");

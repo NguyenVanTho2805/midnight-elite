@@ -35,7 +35,7 @@ import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
 import ThuVienLop from "@/components/student/ThuVienLop";
 import { featureOn } from "@/lib/features";
-import { contentSummary, giaSuLabel, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds } from "@/lib/studentLop";
+import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds, sessionsBlockState } from "@/lib/studentLop";
 
 interface Lesson {
   id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null;
@@ -165,14 +165,8 @@ function Content({ courseId }: { courseId: string }) {
   const summary = useMemo(() => contentSummary(sections), [sections]);
   // LOI-03 (vòng test 2): lớp có bài Đã đăng hẹn ngày học từ hôm nay (ngày VN) trở đi ⇒ ngày học đã hiện ở từng dòng bài; khi lịch buổi học rỗng thì
   // KHÔNG vẽ khối "Buổi học sắp tới" (tránh hai khối nói ngược nhau: "chưa có buổi học nào" cạnh "Học Hôm nay · 19:30").
-  const hasScheduledLesson = useMemo(() => {
-    const published = new Set(ids);
-    return allLessons.some(l => {
-      if (!published.has(l.id) || !l.scheduledAt) return false;
-      const at = new Date(l.scheduledAt);
-      return Number.isFinite(at.getTime()) && vnDateKeyOf(at) >= todayKey;
-    });
-  }, [allLessons, ids, todayKey]);
+  // LOI-07 (nợ P3 LOI-03): chỉ tính bài hẹn TRONG khung 90 ngày của lịch (bài hẹn 4 tháng nữa không làm ẩn khối nói về 90 ngày tới) — hàm thuần ở studentLop.
+  const hasScheduledLesson = useMemo(() => hasScheduledLessonInWindow(allLessons, new Set(ids), todayKey), [allLessons, ids, todayKey]);
 
   const back = <Link href="/student/hoc-tap" data-all-classes className={`inline-flex items-center min-h-11 -ml-1 pr-3 ${GOC} text-[var(--kin-nhan-link)] underline`}>← Lớp của tôi</Link>;
   const head = (title: string, sub?: string) => (
@@ -208,8 +202,10 @@ function Content({ courseId }: { courseId: string }) {
   ];
   // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
   const nextSessions = (work.events ?? []).filter(e => e.type === "class" && e.courseId === courseId).slice(0, 4);
-  // Lịch đã tải xong, không lỗi, không buổi nào, nhưng có bài hẹn ⇒ bỏ cả khối (đang tải / lỗi vẫn vẽ như cũ — không im lặng khi lỗi).
-  const hideSessions = work.events !== null && !work.eventsError && nextSessions.length === 0 && hasScheduledLesson;
+  // Lịch đã tải xong, không lỗi, không buổi nào, nhưng có bài hẹn ⇒ bỏ cả khối (đang tải / lỗi vẫn vẽ — không im lặng khi lỗi). Logic thuần: sessionsBlockState.
+  const sessionsState = sessionsBlockState({ loaded: work.events !== null, error: !!work.eventsError, count: nextSessions.length, hasScheduledLesson });
+  const showSessions = isEnrolled && sessionsState !== "an";
+  const showMyClasses = classes.length >= 2;
   const inCourse = (work.items ?? []).filter(i => i.task && i.task.courseId === course.id);
   const needCount = inCourse.filter(i => !i.done).length;
   const waitCount = inCourse.filter(i => i.task?.phase === "cho-cham").length;
@@ -356,7 +352,9 @@ function Content({ courseId }: { courseId: string }) {
   return wrap(<>
     {head(course.name, sub || undefined)}
     {/* Máy tính: [tab + nội dung | thẻ tiến độ, rồi lịch + các lớp]. Điện thoại: thẻ tiến độ → tab → nội dung → lịch → các lớp. */}
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
+    {/* LOI-07 (nợ P3 LOI-03): hàng 1 = đúng cao thẻ tiến độ, hàng 2 nhận phần còn lại (cột trái span 2 hàng cao hơn cột phải thì phần thừa KHÔNG chia đều
+        vào hàng 1 — trước đây để trống ~100px giữa thẻ tiến độ và lịch ở 1600). Cột phải không có gì thì không vẽ <aside> rỗng. */}
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] lg:grid-rows-[auto_1fr] gap-x-8 gap-y-8 items-start">
       <div className="min-w-0 lg:col-start-2 lg:row-start-1">{hero}</div>
       <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
@@ -364,15 +362,15 @@ function Content({ courseId }: { courseId: string }) {
           {tab === "noi-dung" ? contentTab : overview}
         </div>
       </div>
-      <aside aria-label="Lịch và các lớp của bạn" className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">
-        {isEnrolled && !hideSessions && (
+      {(showSessions || showMyClasses) && <aside aria-label="Lịch và các lớp của bạn" data-lop-aside className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">
+        {showSessions && (
           <section aria-labelledby="lop-lich" data-course-sessions>
             <KinSectionHead id="lop-lich" title="Buổi học sắp tới" />
-            {work.events === null && !work.eventsError ? (
+            {sessionsState === "dang-tai" ? (
               <p role="status" className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Đang tải lịch…</p>
-            ) : work.eventsError ? (
-              <div className="pt-4"><ErrorStrip message="Không tải được lịch của lớp." onRetry={work.load} /></div>
-            ) : nextSessions.length === 0 ? (
+            ) : sessionsState === "loi" ? (
+              <div className="pt-4" data-course-sessions-loi><ErrorStrip message="Không tải được lịch của lớp." onRetry={work.load} /></div>
+            ) : sessionsState === "trong" ? (
               <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Lớp chưa có buổi học nào trong 90 ngày tới. Khi gia sư thêm khung giờ hoặc buổi học, chúng sẽ hiện ở đây.</p>
             ) : (
               <ul>
@@ -394,7 +392,7 @@ function Content({ courseId }: { courseId: string }) {
             )}
           </section>
         )}
-        {classes.length >= 2 && (
+        {showMyClasses && (
           <section aria-labelledby="lop-cua-ban" data-my-classes>
             <KinSectionHead id="lop-cua-ban" title="Các lớp của bạn" aside={`${classes.length} lớp`} />
             <ul>
@@ -410,7 +408,7 @@ function Content({ courseId }: { courseId: string }) {
             </ul>
           </section>
         )}
-      </aside>
+      </aside>}
     </div>
   </>);
 }

@@ -54,12 +54,16 @@ import { prisma } from "@/lib/prisma";
   await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
   await eventually("xoá trống → null (không giới hạn)", async () => (await prisma.course.findUnique({ where: { id: course.id } }))?.capacity === null);
 
-  section("Tab Học viên: cột Trạng thái");
+  // LOI-07: bảng học viên nay là DanhBaLop (GS-LOP-GON) — KHÔNG còn cột "Trạng thái"; cột cuối "Hồ sơ" nói trạng thái bằng CHỮ: em đang học có liên kết "Hồ sơ",
+  // em chờ phụ huynh đồng ý hiện "Chờ đồng ý" (DanhBaLop.tsx:126, :154-159). Kiểm theo bảng đang có thật, không thêm lại cột cũ.
+  section("Tab Học viên (danh bạ lớp): cột Hồ sơ nói trạng thái bằng chữ");
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=hoc-vien`, { waitUntil: "networkidle" });
+  await page.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${course.id}/hoc-vien`, { timeout: 60000 });
   await page.getByRole("table").getByText("Em Một", { exact: true }).waitFor({ timeout: 60000 }); // trang nay còn khối link báo cáo ("Mỗi em một link…", tên em) ⇒ chỉ đợi trong bảng
-  check("có cột 'Trạng thái'", await page.getByRole("columnheader", { name: "Trạng thái" }).isVisible());
-  check("Em Một → Đang học", await page.getByRole("row", { name: /Em Một/ }).getByText("Đang học").isVisible());
-  check("Em Hai → Chờ phụ huynh xác nhận (kèm chữ)", await page.getByRole("row", { name: /Em Hai/ }).getByText("Chờ phụ huynh xác nhận").isVisible());
+  const heads = await page.getByRole("table").getByRole("columnheader").allInnerTexts();
+  check("cột bảng: Học sinh · Email · SĐT · Trường · Tiến độ · Ghi danh · Hồ sơ (không còn cột 'Trạng thái')", heads.map(h => h.trim().toLowerCase()).join("|") === "học sinh|email|sđt|trường|tiến độ|ghi danh|hồ sơ", heads);
+  check("Em Một (đang học) → liên kết 'Hồ sơ' tới /lop-cua-toi/hoc-sinh/em/<id>", (await page.getByRole("row", { name: /Em Một/ }).getByRole("link", { name: "Hồ sơ của Em Một" }).getAttribute("href")) === `/lop-cua-toi/hoc-sinh/em/${s1.id}`);
+  check("Em Hai (chờ phụ huynh) → chữ 'Chờ đồng ý', KHÔNG có liên kết hồ sơ", await page.getByRole("row", { name: /Em Hai/ }).getByText("Chờ đồng ý").isVisible() && (await page.getByRole("row", { name: /Em Hai/ }).getByRole("link", { name: /Hồ sơ/ }).count()) === 0);
   await shot(page, "course-ops-students");
 
   check("không lỗi console", errors.length === 0, errors.slice(0, 3));

@@ -31,7 +31,8 @@ export default async function QuanLopPage({ params, searchParams }: { params: Pr
     redirect(d.to);
   }
   if (d.tab === "bai-hoc") {
-    if (gate.role !== "owner") return <GiaoTrinh courseId={id} embedded />;
+    // LOI-07: ô tải tệp lên KiN chỉ cho CHỦ lớp (/api/media/document/init so ownerId, 403 với đồng giảng / bộ môn) ⇒ người ở nhánh này chỉ dán link.
+    if (gate.role !== "owner") return <GiaoTrinh courseId={id} embedded canUploadFiles={false} />;
     return <QuanLopCourse courseId={id} view="bai-hoc" />;
   }
   if (gate.role !== "owner") redirect(classBase(id)); // Cài đặt chỉ của chủ lớp: đồng giảng về "Bài học" của họ

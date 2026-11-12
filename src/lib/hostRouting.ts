@@ -23,11 +23,11 @@
 //   - Vì thế "/" không còn cần giải mã phiên ở tên miền chính (needsSession). Giữ nguyên: /dang-ky và /dang-nhap của người đã đăng nhập vẫn 307 vào dashboard; tên miền admin không đổi.
 // 11/11/2026 (LOI-01, chủ: "xây web dùng trước mắt đáp ứng nhu cầu dạy học"): route của các phần đang ẨN (src/lib/features.ts — tìm gia sư, bảng tin cộng đồng, tin tức,
 //   thư viện chung, Tiếng Anh tự học, xếp hạng, điểm chuẩn) → 307 về trang đầu theo vai (khách → "/", học sinh → Việc của tôi, gia sư → Hộp việc, quản trị → /admin ở
-//   tên miền admin). Bỏ tham số. Bật lại một phần bằng NEXT_PUBLIC_KIN_MO_<TÊN>=1. Các đường đó cần giải mã phiên (đích theo vai) — needsSession trả true.
+//   tên miền admin). Bỏ tham số (LOI-07: chỉ gắn dấu ?tam-dong=<CỜ> cho dòng nhắc ở trang đích). Bật lại một phần bằng NEXT_PUBLIC_KIN_MO_<TÊN>=1. Các đường đó cần giải mã phiên (đích theo vai) — needsSession trả true.
 import { landingPath } from "@/lib/landing";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { toTutorPath } from "@/lib/tutorRoutes";
-import { blockedRouteFeature, mayBlockRoute, type FeatureViewer } from "@/lib/features";
+import { blockedRouteFeature, mayBlockRoute, pausedSearch, type FeatureViewer } from "@/lib/features";
 
 export const ADMIN_HOST = "admin.midnightelite-edu.com";
 export const MAIN_HOST = ADMIN_HOST.replace(/^admin\./, "");
@@ -104,11 +104,14 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
   }
 
   // LOI-01: phần đang ẩn → trang đầu theo vai. Quản trị đi thẳng sang tên miền admin (ở tên miền chính /admin lại bị đẩy sang đó — bớt một vòng).
+  // LOI-07: bỏ tham số cũ, CHỈ gắn dấu `?tam-dong=<CỜ>` (features.pausedSearch) để trang đích nói một dòng "Phần này đang tạm đóng." — vẫn 307 + no-store như cũ.
   const viewer = featureViewerOf(session);
-  if (blockedRouteFeature(pathname, viewer, undefined, search)) {
-    if (viewer === "guest") return { kind: "redirect", status: 307, pathname: "/" };
-    if (viewer === "admin") return { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "" };
-    return { kind: "redirect", status: 307, pathname: landingPath(session!.role, session!.adminRole) };
+  const blocked = blockedRouteFeature(pathname, viewer, undefined, search);
+  if (blocked) {
+    const paused = pausedSearch(blocked);
+    if (viewer === "guest") return { kind: "redirect", status: 307, pathname: "/", search: paused };
+    if (viewer === "admin") return { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: paused };
+    return { kind: "redirect", status: 307, pathname: landingPath(session!.role, session!.adminRole), search: paused };
   }
 
   return { kind: "next" };

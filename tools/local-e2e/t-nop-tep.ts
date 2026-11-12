@@ -203,11 +203,14 @@ async function dl(u: TUser | undefined, id: string, q = "", headers: Record<stri
     check("MIME khai láo (image/png, text/html) / .docx.exe / ảnh / video / macro / zip / .doc / kind lạ / thiếu bài tập ⇒ 400, không tạo hàng", bad.every(r => r.status === 400) && (await prisma.submissionFile.count({ where: { studentUserId: atk.id } })) === 0, bad.map(r => r.status));
     const names = ["../x.docx", "..%2fx.docx", "C:\\Windows\\y.docx", "a\u202Efdp.docx", "x".repeat(300) + ".docx", "😀.docx"];
     const okNames = [];
+    // LOI-07: kiểm đuôi khoá ĐÚNG BẰNG `<mã hàng>.docx` thay cho "không chứa x.docx" — cuid tận cùng bằng "x" (≈1/36 lần) làm ca cũ đỏ oan.
+    const keyFromId = (key: string, id: string) => key.endsWith(`/${id}.docx`);
+    check("phá: khoá dựng từ tên tệp (…/x.docx) bị bắt; khoá dựng từ mã tận cùng 'x' thì đúng", !keyFromId("kin-nop-bai/c/a/x.docx", "cmabcx") && keyFromId("kin-nop-bai/c/a/cmabcx.docx", "cmabcx"));
     for (const n of names) {
       const u = await newStudent();
       const r = await api("POST", INIT, { as: u, body: { kind: "student", assignmentId: AS.id, name: n, size: 100 } });
       const row = r.status === 200 ? await prisma.submissionFile.findUnique({ where: { id: r.json.fileId } }) : null;
-      okNames.push(!!row && !row.storageKey.includes("..") && !row.storageKey.includes("%") && !row.storageKey.includes("x.docx") && row.originalName.length <= 130 && !row.originalName.includes("/") && !row.originalName.includes("\\") && !row.originalName.startsWith(".") && row.originalName.endsWith(".docx") && !/[\u202a-\u202e]/.test(row.originalName) && /^kin-nop-bai\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.docx$/.test(row.storageKey));
+      okNames.push(!!row && !row.storageKey.includes("..") && !row.storageKey.includes("%") && keyFromId(row.storageKey, row.id) && row.originalName.length <= 130 && !row.originalName.includes("/") && !row.originalName.includes("\\") && !row.originalName.startsWith(".") && row.originalName.endsWith(".docx") && !/[\u202a-\u202e]/.test(row.originalName) && /^kin-nop-bai\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.docx$/.test(row.storageKey));
     }
     check("tên độc (../x, ..%2f, C:\\…, ký tự đổi chiều, 300 ký tự, emoji) ⇒ lưu được nhưng storageKey KHÔNG chứa tên, tên hiển thị đã làm sạch, đuôi giữ nguyên", okNames.every(Boolean), okNames);
     const par = await newStudent();

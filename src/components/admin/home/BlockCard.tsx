@@ -27,13 +27,14 @@ export function BlockCard({ id, title, hint, canRestore, onRestore, children }: 
   );
 }
 
-/** Ô chữ một dòng / nhiều dòng. `path` là đường dẫn trường (cũng là khoá lỗi). `limit` null = không đếm. */
-export function Field({ path, label, value, onChange, limit, error, multiline, rows = 2, help, type, list, placeholder }: {
+/** Ô chữ một dòng / nhiều dòng. `path` là đường dẫn trường (cũng là khoá lỗi). `limit` null = không đếm.
+ *  `warn` (LOI-07): cảnh báo KHÔNG chặn lưu (vd đường dẫn trỏ vào phần đang tạm đóng) — chữ màu "chờ" kèm nhãn "Lưu ý:", không viền đỏ, không aria-invalid. */
+export function Field({ path, label, value, onChange, limit, error, multiline, rows = 2, help, warn, type, list, placeholder }: {
   path: string; label: string; value: string; onChange: (v: string) => void; limit: number | null; error?: string;
-  multiline?: boolean; rows?: number; help?: string; type?: string; list?: string; placeholder?: string;
+  multiline?: boolean; rows?: number; help?: string; warn?: string | null; type?: string; list?: string; placeholder?: string;
 }) {
-  const id = fieldId(path), cid = id + "-dem", eid = id + "-loi", hid = id + "-goi-y";
-  const described = [limit ? cid : "", error ? eid : "", help ? hid : ""].filter(Boolean).join(" ") || undefined;
+  const id = fieldId(path), cid = id + "-dem", eid = id + "-loi", hid = id + "-goi-y", wid = id + "-canh-bao";
+  const described = [limit ? cid : "", error ? eid : "", help ? hid : "", warn ? wid : ""].filter(Boolean).join(" ") || undefined;
   const common = {
     id, "data-field": path, value, "aria-invalid": error ? true : undefined, "aria-describedby": described, placeholder,
     className: `${KIN_FIELD} py-2 ${error ? "border-[var(--kin-tt-chu-loi)] border-2" : ""}`,
@@ -47,6 +48,7 @@ export function Field({ path, label, value, onChange, limit, error, multiline, r
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           {help && <p id={hid} className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">{help}</p>}
+          {warn && <p id={wid} data-field-warn={path} className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]"><span className="font-medium">Lưu ý:</span> {warn}</p>}
           {error && <p id={eid} role="alert" data-field-error={path} className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{error}</p>}
         </div>
         {limit ? <CharCounter id={cid} value={value} limit={limit} /> : null}

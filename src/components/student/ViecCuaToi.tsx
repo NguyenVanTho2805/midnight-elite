@@ -21,6 +21,7 @@ import { dmOfKey } from "@/components/student/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
 import HomNayCoLop from "@/components/student/HomNayCoLop";
+import { asideState } from "@/lib/studentLop";
 
 const RESULT_LIMIT = 5; // "Kết quả gần đây": 5 bài mới nhất, còn lại sau nút "Xem thêm"
 const ASSIGN_LIMIT = 3; // "Đề thi được giao": 3 đề đầu (đã sắp theo hạn), còn lại sau nút "Xem thêm"
@@ -60,9 +61,12 @@ export default function ViecCuaToi() {
 
   const sessionBlock = next && <NextSession item={next} />;
   // LOI-03 (vòng test 2): phiếu "Hôm nay có lớp" (Lesson.scheduledAt) đang có bài mà khung buổi học rỗng ⇒ KHÔNG vẽ "3 ngày tới chưa có buổi học" (hai khối nói ngược nhau);
-  // bỏ hẳn cột aside, khối đề thi lên hàng 1 cột phải. Phiếu rỗng / lỗi / đang tải ⇒ như cũ.
-  const [homNayHas, setHomNayHas] = useState(false);
-  const showAside = !!sessionBlock || !homNayHas;
+  // bỏ hẳn cột aside, khối đề thi lên hàng 1 cột phải. Phiếu rỗng / lỗi ⇒ như cũ.
+  // LOI-07 (nợ P3 LOI-03): null = phiếu CHƯA tải xong. Đang tải ≠ rỗng: chưa biết thì giữ chỗ bằng khung xương, KHÔNG vẽ "3 ngày tới chưa có buổi học"
+  // (bản cũ mặc định false nên khối trống chớp lên rồi biến mất khi phiếu có bài). Logic thuần: asideState (src/lib/studentLop.ts).
+  const [homNayHas, setHomNayHas] = useState<boolean | null>(null);
+  const aside = asideState(!!sessionBlock, homNayHas);
+  const showAside = aside !== "an";
   const examBlock = exam && (
     <KinPanel data-exam-card>
       <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Kiểm tra sắp mở</p>
@@ -129,7 +133,9 @@ export default function ViecCuaToi() {
           {/* Điện thoại: buổi học lên đầu; máy tính: cột phải. */}
           {showAside && (
             <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
-              {sessionBlock || (
+              {aside === "buoi-hoc" ? sessionBlock : aside === "dang-tai" ? (
+                <div role="status" aria-busy="true" aria-label="Đang tải buổi học tiếp theo" data-aside-dang-tai className="h-[112px] rounded kin-skel kin-skel--soft" />
+              ) : (
                 <KinEmptyState title="3 ngày tới chưa có buổi học">
                   Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
                 </KinEmptyState>

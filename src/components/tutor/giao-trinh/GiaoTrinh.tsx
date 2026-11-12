@@ -36,7 +36,8 @@ const LIST_BOX = "rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuo
 /** Khung của thân trang: trang riêng dùng KinPage (lề + đầu trang); `embedded` (nằm trong khung lớp quan-lop/[id]) chỉ là một khối trơn vì đầu lớp + dải tab đã lo lề và h1. */
 function Plain({ children }: { children: React.ReactNode }) { return <div data-gt-embedded className="min-w-0">{children}</div>; }
 
-export default function GiaoTrinh({ courseId, embedded = false, noSchedule = false }: { courseId: string; /** GS-LOP-GON (2.2 dòng "Lớp chưa có lịch học"): trang máy chủ báo lớp chưa có khung giờ nào → một dòng nhắc đầu Giáo trình, dẫn sang tab Lịch học. Chỉ chủ lớp. */ noSchedule?: boolean; /** GS-LOP-GON: trong khung lớp → không h1 "Giáo trình" (trùng tên tab), không "← Lớp" (đã có "← Lớp học" ở đầu lớp); giữ nút thao tác. */ embedded?: boolean }) {
+export default function GiaoTrinh({ courseId, embedded = false, noSchedule = false, canUploadFiles = true }: { courseId: string; /** GS-LOP-GON (2.2 dòng "Lớp chưa có lịch học"): trang máy chủ báo lớp chưa có khung giờ nào → một dòng nhắc đầu Giáo trình, dẫn sang tab Lịch học. Chỉ chủ lớp. */ noSchedule?: boolean; /** GS-LOP-GON: trong khung lớp → không h1 "Giáo trình" (trùng tên tab), không "← Lớp" (đã có "← Lớp học" ở đầu lớp); giữ nút thao tác. */ embedded?: boolean;
+  /** LOI-07: người xem tải tệp lên KiN được không (trang máy chủ quyết theo vai: chỉ CHỦ lớp — /api/media/document/init 403 với người khác). false ⇒ ô thêm chỉ nhận link. */ canUploadFiles?: boolean }) {
   const Wrap = embedded ? Plain : KinPage;
   const g = useGiaoTrinh(courseId);
   const gv = useGiaoVienLop(courseId);
@@ -177,8 +178,8 @@ export default function GiaoTrinh({ courseId, embedded = false, noSchedule = fal
       {addingGroup && <ThemChuong busy={g.busy === "nhom:moi"} onSubmit={g.createGroup} onClose={() => setAddingGroup(false)} />}
 
       <div className={empty ? "max-w-3xl" : "max-w-[960px] space-y-[var(--kin-cach-muc)]"}>
-        {empty && <KinEmptyState key="gt-rong" title="Lớp chưa có mục nào">Dán link YouTube hoặc thả tệp đầu tiên. Mục mới ở dạng Nháp, bạn đăng khi sẵn sàng.</KinEmptyState>}
-        <OTaiLen key="gt-o-tai" large={empty} courseId={courseId} config={snap.config} entries={entries} onAdd={g.addItem}
+        {empty && <KinEmptyState key="gt-rong" title="Lớp chưa có mục nào">{canUploadFiles ? "Dán link YouTube hoặc thả tệp đầu tiên." : "Dán link YouTube hoặc Google Drive đầu tiên."} Mục mới ở dạng Nháp, bạn đăng khi sẵn sàng.</KinEmptyState>}
+        <OTaiLen key="gt-o-tai" large={empty} allowFiles={canUploadFiles} courseId={courseId} config={snap.config} entries={entries} onAdd={g.addItem}
           onUndo={i => (i.createdLesson ? g.deleteEntry(i.lessonId) : g.removeItem(i.lessonId, i.key))} />
         {!empty && (
           <>
@@ -271,9 +272,11 @@ export default function GiaoTrinh({ courseId, embedded = false, noSchedule = fal
               </ul>
             </section>
           )}
-          <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            Kho tài liệu của bạn: đã dùng {formatMegabytes(snap.config.document.usedBytes)} / {formatMegabytes(snap.config.document.quotaBytes)}.
-          </p>
+          {canUploadFiles && (
+            <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+              Kho tài liệu của bạn: đã dùng {formatMegabytes(snap.config.document.usedBytes)} / {formatMegabytes(snap.config.document.quotaBytes)}.
+            </p>
+          )}
           </>
         )}
       </div>

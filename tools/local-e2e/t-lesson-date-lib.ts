@@ -8,6 +8,9 @@
 //   - formatVnLessonWhen dùng getDay() của máy → ca 00:30 VN (= 17:30Z hôm trước) đỏ dưới TZ=UTC.
 import { parseVnDateTime, isoToVnParts, formatVnLessonWhen, parseScheduledAtInput } from "@/lib/tutorLessonDate";
 import { lichOpenFrom, isLichOpen } from "@/lib/tutorFlags";
+import { featureOn } from "@/lib/features";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { check, section, done } from "./h";
 
 console.log(`TZ = ${process.env.TZ ?? "(máy)"} · offset máy = ${new Date().getTimezoneOffset()} phút`);
@@ -90,6 +93,15 @@ process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
 check('isLichOpen: "1" → true (đọc lúc gọi, không đóng băng lúc nạp)', isLichOpen() === true);
 process.env.NEXT_PUBLIC_KIN_MO_LICH = "0";
 check('isLichOpen: "0" → false', isLichOpen() === false);
+// LOI-07: một nguồn — isLichOpen / lichOpenFrom phải trả đúng như featureOn("LICH") của features.ts với mọi giá trị biến.
+for (const v of [undefined, "", "0", "1", "true", " 1", "on"]) {
+  if (v === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = v;
+  check(`một nguồn: isLichOpen() === featureOn("LICH") khi biến = ${JSON.stringify(v)}`, isLichOpen() === featureOn("LICH") && lichOpenFrom(v) === featureOn("LICH", { LICH: v }));
+}
+// Phá cố ý: một hàm "đọc riêng" kiểu cũ nhưng lệch luật (coi "true" là bật) phải bị bắt là KHÁC featureOn.
+const lechNguon = (v: string | undefined) => v === "1" || v === "true";
+check('phá: nguồn riêng lệch luật ("true" bật) bị phát hiện khác featureOn', lechNguon("true") !== featureOn("LICH", { LICH: "true" }));
+check("tutorFlags.ts không còn tự đọc process.env (chỉ gọi features.ts)", !readFileSync(join(__dirname, "../../src/lib/tutorFlags.ts"), "utf8").replace(/\/\/.*$/gm, "").includes("process.env"));
 if (saved === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = saved;
 
 done();
