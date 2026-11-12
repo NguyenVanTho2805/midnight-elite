@@ -158,6 +158,30 @@ async function mkLesson(chapterId: string, o: { title: string; order: number; sc
   const gf = await get(F);
   check("GET của F: used 500, max 500, items 500", gf.json?.used === 500 && gf.json?.max === 500 && gf.json?.items?.length === 500, [gf.json?.used, gf.json?.items?.length]);
 
+  // stu-test (vòng 1): ca kẻ tấn công còn thiếu — token cũ, vượt trần bằng gửi song song, rate limit 120/giờ.
+  section("stu-test: token còn ghi 'student' nhưng DB đã đổi vai ⇒ 403; gửi song song không vượt 500; rate limit 120 lần ghi/giờ");
+  const H1 = await mkUser({ name: `HocSinhH1-${stamp}` });
+  await prisma.user.update({ where: { id: H1.id }, data: { role: "admin", adminRole: "teacher" } }); // cookieFor(H1) vẫn mang role "student"
+  const h1g = await get(H1), h1p = await post(H1, { title: `H1-${stamp}` });
+  check("token cũ 'student', DB là gia sư: GET ⇒ 403, POST ⇒ 403, không tạo mục", h1g.status === 403 && h1p.status === 403 && (await prisma.studentReminder.count({ where: { userId: H1.id } })) === 0, [h1g.status, h1p.status]);
+  const J = await mkUser({ name: `HocSinhJ-${stamp}` });
+  await prisma.studentReminder.createMany({ data: Array.from({ length: 495 }, (_, i) => ({ userId: J.id, title: `J-${i}` })) });
+  const par = await Promise.all(Array.from({ length: 20 }, (_, i) => post(J, { title: `J song song ${i}` })));
+  const jCount = await prisma.studentReminder.count({ where: { userId: J.id } });
+  check("495 mục + 20 POST song song ⇒ tổng ≤ 500, số 201 ≤ 5, phần còn lại 409", jCount <= 500 && par.filter(r => r.status === 201).length <= 5 && par.every(r => r.status === 201 || r.status === 409),
+    { tong: jCount, s201: par.filter(r => r.status === 201).length, s409: par.filter(r => r.status === 409).length, khac: par.filter(r => r.status !== 201 && r.status !== 409).map(r => r.status) });
+  const K = await mkUser({ name: `HocSinhK-${stamp}` });
+  people.push(H1, J, K);
+  const k0 = await post(K, { title: `K-${stamp}` });
+  const kId: string = k0.json?.item?.id ?? "x";
+  let kOk = k0.status === 201;
+  for (let i = 0; i < 119; i++) { const r = await patch(K, kId, { done: i % 2 === 0 }); if (r.status !== 200) { kOk = false; break; } }
+  check("120 lần ghi đầu (1 POST + 119 PATCH) đều qua", kOk);
+  const k121 = await patch(K, kId, { title: "lan 121" }), kPost = await post(K, { title: "sau tran" }), kXoa = await post(K, undefined, `${EP}/xoa-da-xong`), kDel = await del(K, kId);
+  check("lần ghi thứ 121 ⇒ 429 ở PATCH / POST / xoa-da-xong / DELETE (chung một ô đếm), có no-store", [k121, kPost, kXoa, kDel].every(r => r.status === 429 && noStore(r)), [k121.status, kPost.status, kXoa.status, kDel.status]);
+  const kG = await get(K);
+  check("đọc không bị chặn: GET vẫn 200; mục K còn đúng 1, tiêu đề không đổi", kG.status === 200 && (await prisma.studentReminder.count({ where: { userId: K.id } })) === 1 && (await prisma.studentReminder.findUnique({ where: { id: kId } }))?.title === `K-${stamp}`, kG.status);
+
   section("Gắn lớp / bài: mọi kiểu sai ⇒ CÙNG 400, cùng chữ");
   for (const [name, u, body] of [
     ["bài lớp Y (A không học)", A, { title: "x", lessonId: YMAI }],
@@ -286,6 +310,14 @@ async function mkLesson(chapterId: string, o: { title: string; order: number; sc
   const run2 = await run2Res.json() as typeof run1;
   check("chạy thật LẦN 2 ⇒ 0 tin mới (A không còn trong danh sách)", run2Res.status === 200 && (await notifCount()) === n2 && !inList(run2.studyToday, A) && !inList(run2.reminderDue, A), run2);
   check("lần 2: alreadySent.studyToday ≥ 1", (run2.alreadySent?.studyToday ?? 0) >= 1, run2.alreadySent);
+  // stu-test: hai lượt chạy CHỒNG nhau (Vercel gọi lại / người bấm tay cùng lúc) — đặc tả mục 7 "giành chỗ trước" ⇒ không báo trùng.
+  const H = await mkUser({ name: `HocSinhH-${stamp}` });
+  await prisma.enrollment.create({ data: { userId: H.id, courseId: X.id, status: "active" } });
+  await prisma.studentReminder.create({ data: { userId: H.id, title: `H-${stamp}`, dueAt: instantOf(today, 0) } });
+  const par2 = await Promise.all([0, 1].map(() => fetch(`${BASE}${CRON}`, { headers: cronKey })));
+  const hN = await prisma.notification.findMany({ where: { userId: H.id, type: { in: ["study_today", "reminder_due"] } }, select: { type: true } });
+  check("hai lượt chạy song song ⇒ cả hai 200; H đúng 1 reminder_due (giành chỗ notifiedAt)", par2.every(r => r.status === 200) && hN.filter(n => n.type === "reminder_due").length === 1, hN);
+  check("hai lượt chạy song song ⇒ H đúng 1 study_today", hN.filter(n => n.type === "study_today").length === 1, hN);
 
   section("Đổi ngày / giờ hẹn ⇒ notifiedAt về null; đổi chữ thì không");
   await patch(A, dueId, { title: `Hen hom nay doi chu ${stamp}` });
