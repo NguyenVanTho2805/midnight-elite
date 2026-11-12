@@ -101,7 +101,8 @@ const err = (r: { error?: string }) => r.error ?? null;
   const root = join(__dirname, "..", "..");
   const read = (f: string) => readFileSync(join(root, f), "utf8");
   const tp = read("src/app/api/users/me/tutor-profile/route.ts"), prefsApi = read("src/app/api/users/me/preferences/route.ts");
-  const pubId = read("src/app/api/tutors/[id]/route.ts"), pubList = read("src/app/api/tutors/route.ts");
+  // LOI-05: phần đọc của route chi tiết tách sang src/lib/tutorPublicProfile.ts (route chỉ còn vỏ mỏng) — quét cả hai.
+  const pubId = read("src/app/api/tutors/[id]/route.ts") + read("src/lib/tutorPublicProfile.ts"), pubList = read("src/app/api/tutors/route.ts");
   // BU-06: logic danh sách nằm ở tutorSearchServer.ts (đọc khu vực) và tutorSearch.ts (lọc, facet).
   const pubSrv = read("src/lib/tutorSearchServer.ts"), pubLib = read("src/lib/tutorSearch.ts");
   const form = read("src/app/lop-cua-toi/(tutor)/ho-so/TutorProfileForm.tsx"), reg = read("src/app/(guest)/dang-ky/page.tsx");

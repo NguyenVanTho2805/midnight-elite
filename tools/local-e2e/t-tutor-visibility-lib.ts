@@ -59,7 +59,8 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   section("Quét tĩnh: mọi lối công khai đều tôn trọng công tắc");
   const root = join(__dirname, "..", "..");
   const read = (f: string) => readFileSync(join(root, f), "utf8");
-  const tp = read("src/app/api/users/me/tutor-profile/route.ts"), pubId = read("src/app/api/tutors/[id]/route.ts"), pubList = read("src/app/api/tutors/route.ts");
+  // LOI-05: phần đọc của route chi tiết tách sang src/lib/tutorPublicProfile.ts (route chỉ còn vỏ mỏng) — quét cả hai.
+  const tp = read("src/app/api/users/me/tutor-profile/route.ts"), pubId = read("src/app/api/tutors/[id]/route.ts") + read("src/lib/tutorPublicProfile.ts"), pubList = read("src/app/api/tutors/route.ts");
   const visit = read("src/app/api/tutors/[id]/visit/route.ts"), draft = read("src/app/api/tutor/post-draft/route.ts"), home = read("src/app/page.tsx");
   const mentor = read("src/app/(guest)/mentor/[id]/page.tsx"), toggle = read("src/app/lop-cua-toi/(tutor)/ho-so/ProfileVisibilityToggle.tsx"), hoso = read("src/app/lop-cua-toi/(tutor)/ho-so/page.tsx");
   const prev = read("src/components/tutor/PublicProfilePreview.tsx"), baidang = read("src/app/lop-cua-toi/(tutor)/bai-dang/BaiDangClient.tsx"), prefsApi = read("src/app/api/users/me/preferences/route.ts");
@@ -68,9 +69,12 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   check("API giao diện (preferences) không có đường ghi profile", !/profile/.test(prefsApi) || /applyPreferencesPatch/.test(prefsApi));
   const srv = read("src/lib/tutorSearchServer.ts"); // BU-06: danh sách + gợi ý dùng chung một hàm tải
   check("GET /api/tutors và /suggest: bỏ gia sư ẩn TRƯỚC khi tính area / facets", /isProfileHidden\(prefs\)/.test(srv) && srv.indexOf("isProfileHidden(") < srv.indexOf("area: publicArea(") && /loadSearchableTutors/.test(pubList) && /loadSearchableTutors/.test(read("src/app/api/tutors/suggest/route.ts")));
-  check("GET /api/tutors/[id]: ẩn → 404; ngoại lệ DUY NHẤT là chính chủ xem trước (?preview=1 + phiên đúng chủ)", /isProfileHidden\(readPreferences\(t\.preferences\)\)/.test(pubId) && /preview"\) === "1"/.test(pubId) && /\.userId === id/.test(pubId) && /status: 404/.test(pubId));
+  check("GET /api/tutors/[id]: ẩn → 404; ngoại lệ DUY NHẤT là chính chủ xem trước (?preview=1 + phiên đúng chủ)", /isProfileHidden\(readPreferences\(t\.preferences\)\)/.test(pubId) && /preview"\) === "1"/.test(pubId) && /(\.userId|viewerId) === id/.test(pubId) && /status: 404/.test(pubId));
   check("POST /api/tutors/[id]/visit: hồ sơ ẩn không ghi lượt (404)", /isProfileHidden\(/.test(visit));
-  check("trang /mentor/[id] và thẻ og lấy dữ liệu qua API công khai KHÔNG kèm cookie (nên ẩn = 404 cho cả thẻ og)", /fetch\(`\$\{proto\}:\/\/\$\{host\}\/api\/tutors\/\$\{(?:encodeURIComponent\(id\)|id)\}`, \{ cache: "no-store" \}\)/.test(mentor) && !/preview=1/.test(mentor) && !/cookie/i.test(mentor.split("fetchTutor")[1]?.slice(0, 600) ?? ""));
+  // LOI-05: trang không còn tự fetch lại API theo tên miền; gọi THẲNG loadPublicTutorProfile(prisma, id) — KHÔNG truyền preview/viewerId,
+  // nên hồ sơ ẩn = không tìm thấy cho cả trang lẫn thẻ og (ý ca cũ "không kèm cookie" giữ nguyên: không có đường xem trước ở trang này).
+  const mentorCode = mentor.replace(/\/\/[^\n]*/g, ""); // bỏ chú thích (chú thích có nhắc "?preview=1" của route)
+  check("trang /mentor/[id] và thẻ og gọi loadPublicTutorProfile không kèm preview/viewerId, KHÔNG fetch theo tên miền (nên ẩn = không tìm thấy cho cả thẻ og)", /loadPublicTutorProfile\(prisma, id\)/.test(mentorCode) && !/loadPublicTutorProfile\([^)]*,[^)]*,/.test(mentorCode) && !/preview|viewerId/.test(mentorCode) && !/fetch\(/.test(mentorCode) && !/\/api\/tutors/.test(mentorCode));
   check("bài đăng tìm học sinh: cảnh báo 'đang ẩn nên link chưa mở được'", /profileHidden/.test(draft) && /đang ẩn nên link/.test(baidang));
   check("số 'Gia sư' ở trang chủ không đếm gia sư ẩn", /isProfileHidden/.test(home));
   check("công tắc: PUT profile.hidden, trạng thái 'Đang lưu…', lỗi + 'Thử lại', role=switch, vùng bấm ≥ 44px", /profile: \{ hidden: wantHidden \}/.test(toggle) && /Đang lưu…/.test(toggle) && /Thử lại/.test(toggle) && /role="switch"/.test(toggle) && /h-11/.test(toggle));

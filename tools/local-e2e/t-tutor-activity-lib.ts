@@ -56,7 +56,8 @@ const NOW = new Date("2026-10-21T05:00:00Z"); // 12:00 ngày 21/10 giờ VN
   section("Quét tĩnh: API và giao diện công khai");
   const root = join(__dirname, "..", "..");
   const read = (p: string) => readFileSync(join(root, p), "utf8");
-  const apiId = read("src/app/api/tutors/[id]/route.ts"), apiList = read("src/app/api/tutors/route.ts");
+  // LOI-05: phần đọc của route chi tiết tách sang src/lib/tutorPublicProfile.ts — quét cả hai.
+  const apiId = read("src/app/api/tutors/[id]/route.ts") + read("src/lib/tutorPublicProfile.ts"), apiList = read("src/app/api/tutors/route.ts");
   // BU-06: danh sách chuyển sang tutorSearchServer.ts (truy vấn + số liệu) và tutorSearch.ts (sắp xếp thuần); route chỉ ghép lại.
   const apiAll = apiList + read("src/lib/tutorSearchServer.ts") + read("src/lib/tutorSearch.ts");
   const card = read("src/components/tutor/TutorCard.tsx"), head = read("src/components/tutor/TutorProfileHeader.tsx"), prev = read("src/components/tutor/PublicProfilePreview.tsx");
