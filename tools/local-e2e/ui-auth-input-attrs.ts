@@ -11,7 +11,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import bcrypt from "bcryptjs";
 import { BASE, mkUser, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import type { Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -65,7 +65,7 @@ const protectedAttrs = (a: Awaited<ReturnType<typeof read>>) => a.cap === "off" 
   check("ô Họ và tên KHÔNG bị tắt viết hoa (tên người vẫn viết hoa chữ đầu)", nameAttrs.cap !== "off" && nameAttrs.spell !== "false", nameAttrs);
   await p.locator('input[type="tel"]').nth(0).fill("0912345678");
   await p.locator('input[type="tel"]').nth(1).fill("0987654321");
-  await p.locator("form select").first().selectOption({ index: 1 });
+  await kinSelect(p.locator('form [role="combobox"]').first(), { index: 1 });
   await p.getByPlaceholder("THPT Chu Văn An").fill("THCS Thử Nghiệm");
   await p.getByRole("button", { name: /Tiếp theo/ }).click();
   const em = p.getByPlaceholder("ten@gmail.com"), pw = p.getByPlaceholder("Tối thiểu 8 ký tự"), cf = p.getByPlaceholder("Nhập lại mật khẩu");

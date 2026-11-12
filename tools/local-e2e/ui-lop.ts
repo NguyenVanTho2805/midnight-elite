@@ -1,6 +1,6 @@
 // Ba màn "Lớp" của gia sư (Figma 299:112349 / 299:112581 / 299:112849): bảng lớp + lọc, chi tiết lớp (tab, điểm danh nhúng, mã mời), tạo lớp một trang. 1280 và 390px.
 import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { BASE } from "./h";
 
@@ -75,8 +75,8 @@ import { BASE } from "./h";
   await q.getByRole("button", { name: "Tiếp tục" }).click();   // BU-01: bước 2 = Lịch học
   await q.getByRole("button", { name: "Thêm khung giờ" }).click();
   // TUT-lich-keo-tha: khung giờ đặt bằng panel của lưới (mặc định 19:00–20:30 là giờ do cô chọn ở đây).
-  await q.locator("[data-block-panel] select").first().selectOption("2");
-  await q.locator("#sched-s").selectOption("1140"); await q.locator("#sched-e").selectOption("1230");
+  await kinSelect(q.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(q.locator("#sched-s"), "1140"); await kinSelect(q.locator("#sched-e"), "1230");
   await q.getByRole("button", { name: "Lưu khung giờ" }).click();
   await q.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await q.getByRole("button", { name: "Tiếp tục" }).click();   // BU-01: bước 3 = Cách vào lớp (mặc định Cô duyệt)

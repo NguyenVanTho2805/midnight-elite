@@ -60,7 +60,7 @@ import { featureOn } from "@/lib/features";
   await ps.locator("[data-kc-feed]").waitFor({ timeout: 60000 });
   check("thấy câu hỏi đã có của lớp", await ps.getByText("lực ma sát nghỉ").first().isVisible());
   await ps.locator("[data-kc-viet-bai]").click();
-  check("ô soạn khoá vào lớp: có 'Đăng vào lớp: <tên lớp>', KHÔNG có lựa chọn 'Cộng đồng chung'", await ps.locator("[data-kc-lop-khoa]").isVisible() && /Lý 10 Hỏi đáp/.test(await ps.locator("[data-kc-lop-khoa]").innerText()) && await ps.locator("option", { hasText: "Cộng đồng chung" }).count() === 0);
+  check("ô soạn khoá vào lớp: có 'Đăng vào lớp: <tên lớp>', KHÔNG có lựa chọn 'Cộng đồng chung'", await ps.locator("[data-kc-lop-khoa]").isVisible() && /Lý 10 Hỏi đáp/.test(await ps.locator("[data-kc-lop-khoa]").innerText()) && await ps.locator("option, [data-kin-select-nut]", { hasText: "Cộng đồng chung" }).count() === 0);
   await ps.getByRole("radio", { name: "Câu hỏi" }).click();
   await ps.getByLabel("Tiêu đề câu hỏi").fill("Em hỏi bài định luật hai");
   await ps.getByLabel("Mô tả câu hỏi").fill("Gia tốc bằng lực chia khối lượng phải không ạ?");

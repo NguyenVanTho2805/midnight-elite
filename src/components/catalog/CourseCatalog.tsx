@@ -16,6 +16,7 @@ import {
   buildCatalogQuery, catalogChips, filterCatalog, isFiltered, priceView, safeTagColor, seatLabel, seatTone, sortCatalog,
   DEFAULT_FILTERS, type CatalogFilters, type PublicCard,
 } from "@/lib/courseCatalogPublic";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const CONTROL = "min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] text-[length:var(--kin-co-goc)] px-[var(--kin-kc-6)]";
 const FALLBACK_GRADIENT = "linear-gradient(135deg, var(--kin-nhan-nen), var(--kin-nhan-nen-re))";
@@ -147,16 +148,16 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
         </div>
 
         <div className="flex flex-wrap items-center gap-[var(--kin-kc-5)]">
-          <select aria-label="Giá" value={f.fee} onChange={e => apply({ fee: e.target.value as CatalogFilters["fee"] })} className={CONTROL}>
+          <KinSelect className="w-44" aria-label="Giá" value={f.fee} onChange={v => apply({ fee: v as CatalogFilters["fee"] })}>
             <option value="">Mọi mức giá</option>
             <option value="free">Miễn phí</option>
             <option value="paid">Có phí</option>
-          </select>
-          <select aria-label="Sắp xếp" value={f.sort} onChange={e => apply({ sort: e.target.value as CatalogFilters["sort"] })} className={CONTROL}>
+          </KinSelect>
+          <KinSelect className="w-52" aria-label="Sắp xếp" value={f.sort} onChange={v => apply({ sort: v as CatalogFilters["sort"] })}>
             <option value="moi">Thứ tự mặc định</option>
             <option value="gia-tang">Giá thấp → cao</option>
             <option value="gia-giam">Giá cao → thấp</option>
-          </select>
+          </KinSelect>
           <label className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
             <input type="checkbox" checked={f.seat} onChange={e => apply({ seat: e.target.checked })} className="h-5 w-5" />
             Chỉ lớp còn chỗ

@@ -11,6 +11,7 @@ import { MAIN_HOST } from "@/lib/hostRouting";
 import { BlockCard, Field, fieldId } from "./BlockCard";
 import IconPicker from "./IconPicker";
 import PreviewFrame from "./PreviewFrame";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Loaded { content: HomeContent; defaults: HomeContent; isDefault: boolean; updatedAt: string | null; updatedBy: { name: string } | null }
 interface Toast { tone: ToastTone; title: string; detail?: string; action?: { label: string; run: () => void }; keep?: boolean }
@@ -296,11 +297,10 @@ export default function HomeEditor() {
                   {categories && categories.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor={`cat-${i}`} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lấy đường dẫn từ danh mục</label>
-                      <select id={`cat-${i}`} data-cat-pick={i} value="" onChange={e => { const c = e.target.value; if (c) edit(d => { d.exams[i].href = "/khoa-hoc?category=" + encodeURIComponent(c); }); }}
-                        className="w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                      <KinSelect id={`cat-${i}`} data-cat-pick={i} value="" onChange={v => { const c = v; if (c) edit(d => { d.exams[i].href = "/khoa-hoc?category=" + encodeURIComponent(c); }); }}>
                         <option value="">Chọn danh mục…</option>
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      </KinSelect>
                     </div>
                   )}
                   <div className="flex gap-3">

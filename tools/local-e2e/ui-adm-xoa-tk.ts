@@ -5,7 +5,7 @@
 // CA PHÁ CỐ Ý: email không tồn tại -> "Không tìm thấy học sinh phù hợp"; chưa tick 18 -> nút khoá; không lộ email người khác trên trang.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-adm-xoa-tk.ts  (cần API xoa-tai-khoan / len-gia-su của adm-code)
 import { mkSuper, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -49,8 +49,8 @@ import { prisma } from "@/lib/prisma";
   check("bước 2: nêu rõ không hoàn tác + giữ bằng chứng + email dùng lại được", await grp.getByText(/Không hoàn tác được/).isVisible() && await grp.getByText(/phiếu thu được giữ lại làm bằng chứng/).isVisible() && await grp.getByText(/dùng lại được/).isVisible());
   check("chưa gõ gì → nút 'Xoá vĩnh viễn' khoá", await final.isDisabled());
   const sel = grp.locator("[data-xoa-ly-do]");
-  check("có ô 'Lý do (không bắt buộc)' đủ 5 mã + trống", await grp.getByText("Lý do (không bắt buộc)").isVisible() && (await sel.locator("option").count()) === 6);
-  await sel.selectOption("duplicate");
+  check("có ô 'Lý do (không bắt buộc)' đủ 5 mã + trống", await grp.getByText("Lý do (không bắt buộc)").isVisible() && (await kinSelectOptions(sel)).length === 6);
+  await kinSelect(sel, "duplicate");
   await grp.locator("[data-xoa-input]").fill("xoo");
   check("gõ sai chữ → vẫn khoá", await final.isDisabled());
   const nb = await final.boundingBox();

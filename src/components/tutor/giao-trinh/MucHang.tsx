@@ -12,6 +12,7 @@ import { baiHocHref } from "@/lib/tutorRoutes";
 import type { GtEntry, GtGroup, GtItem } from "@/lib/giaoTrinh";
 import type { LessonStatus } from "@/lib/lessonStatus";
 import { ChipKieu, ChipTrangThai, KIND_LABEL } from "./ChipTrangThai";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const STORAGE_LABEL: Record<GtItem["storage"], string> = { link: "Link ngoài", kin: "Tệp trên KiN (riêng tư)", cloudinary_cu: "Tệp cũ (công khai)" };
 
@@ -150,11 +151,10 @@ export default function MucHang({ entry: e, courseId, groups, canUp, canDown, bu
           {groups.length > 0 && (
             <div className="min-w-0 sm:w-56">
               <label htmlFor={`${uid}-nhom`} className="block text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Chuyển nhóm</label>
-              <select id={`${uid}-nhom`} className="w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]"
-                value={e.groupId ?? ""} disabled={busy} onChange={ev => onMoveGroup(ev.target.value || null)}>
+              <KinSelect id={`${uid}-nhom`} value={e.groupId ?? ""} disabled={busy} onChange={v => onMoveGroup(v || null)}>
                 <option value="">Chưa nhóm</option>
                 {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
+              </KinSelect>
             </div>
           )}
           <KinButton type="button" variant="danger" disabled={busy} onClick={onDelete}>Xoá mục</KinButton>

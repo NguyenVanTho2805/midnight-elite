@@ -164,7 +164,8 @@ function judge(requested: URL, r: { status: number | null; final: URL; text: str
 }
 
 // ── B. nút ─────────────────────────────────────────────────────────────────────────────────────────────────────
-const BTN_SEL = 'button, [role="button"], [role="tab"], [role="menuitem"], summary';
+// Ô chọn (KinSelect) là điều khiển biểu mẫu, không phải nút điều hướng.
+const BTN_SEL = 'button:not([role="combobox"]), [role="button"], [role="tab"], [role="menuitem"], summary';
 // Mỗi nút đủ điều kiện được gắn data-audit-i = số thứ tự rồi bấm theo thẻ ấy (không dùng chỉ số trong danh sách: bộ chọn của Playwright còn xuyên vào shadow DOM
 // của thanh công cụ dev nên chỉ số lệch và bấm nhầm / hết giờ).
 const CANDIDATES = `(() => {

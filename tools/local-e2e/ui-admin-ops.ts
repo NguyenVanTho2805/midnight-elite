@@ -1,7 +1,7 @@
 // QT-01/02/03/04/06/07 + TK-07/GO-08 trên trình duyệt thật: Triển khai và hạn mức, Nhật ký, Hôm nay cần làm gì, bảng vai, lối vào Duyệt nạp Coin,
 // lọc học sinh theo lớp, nhắc theo lớp, Cài đặt gia sư (Kết nối trung thực + thẻ hạn mức). 1280px và 390px (không tràn ngang).
 import { BASE, mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng chờ nạp Coin theo LOGIC Coin (hằng COIN_LOGIC_ON), không theo cờ hiển thị
 
@@ -62,14 +62,14 @@ import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng c
   check("KHÔNG thấy tên trẻ, SĐT trẻ ở bất cứ đâu trong trang", !(await pg.content()).includes(kidName) && !(await pg.content()).includes("0912345678"));
   const tab = pg.getByRole("navigation", { name: /^Trang của / });
   check("dải tab (Vận hành) có 'Nhật ký' đang ở", await tab.getByRole("link", { name: "Nhật ký" }).getAttribute("aria-current") === "page");
-  await pg.getByLabel("Loại việc").selectOption("tutor.approve");
+  await kinSelect(pg.getByLabel("Loại việc"), "tutor.approve");
   await pg.waitForFunction(`document.querySelectorAll('[data-testid=nhat-ky] tr').length === 1`, null, { timeout: 30000 });
   check("lọc 'Duyệt hồ sơ gia sư' → còn đúng 1 dòng (nay là bảng: <tr>)", await list.locator("tr").count() === 1);
-  await pg.getByLabel("Loại việc").selectOption("user.role_change");
+  await kinSelect(pg.getByLabel("Loại việc"), "user.role_change");
   await pg.getByText("Chưa có dòng nhật ký nào khớp").waitFor({ timeout: 30000 });
   check("lọc ra rỗng → câu giải thích, không bảng trống", await pg.getByText("Chưa có dòng nhật ký nào khớp").isVisible());
   // BU-08: chip nhóm + dải "Đang lọc" + Xoá lọc
-  await pg.getByLabel("Loại việc").selectOption("");
+  await kinSelect(pg.getByLabel("Loại việc"), "");
   await pg.getByRole("button", { name: "Duyệt", exact: true }).click();
   await pg.waitForFunction(`document.querySelectorAll('[data-testid=nhat-ky] tr').length === 1`, null, { timeout: 30000 });
   check("chip nhóm 'Duyệt' → còn dòng duyệt gia sư, có dải 'Đang lọc: Nhóm: Duyệt' và nút Xoá lọc", await pg.locator("[data-dang-loc]").isVisible() && /Nhóm: Duyệt/.test(await pg.locator("[data-dang-loc]").innerText()) && await pg.getByRole("button", { name: /Xoá lọc/ }).isVisible());
@@ -103,9 +103,9 @@ import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng c
   await pg.goto(`${ADMIN}/admin/hoc-sinh`, { waitUntil: "networkidle", timeout: 120000 });
   const lop = pg.getByTestId("loc-lop");
   await lop.waitFor({ timeout: 60000 });
-  const opts = await lop.locator("option").allInnerTexts();
+  const opts = await kinSelectOptions(lop);
   check("bộ lọc lớp liệt kê từng lớp kèm số học sinh", opts.includes("Mọi lớp") && opts.includes("Toán 9 Lan · 2 học sinh") && opts.includes("Lý 9 Lan · 1 học sinh"), opts);
-  await lop.selectOption({ label: "Lý 9 Lan · 1 học sinh" });
+  await kinSelect(lop, { label: "Lý 9 Lan · 1 học sinh" });
   await pg.waitForFunction(`document.body.innerText.includes("1/") && document.body.innerText.includes("học sinh ·")`, null, { timeout: 30000 });
   const txt = await pg.innerText("body");
   check("chọn lớp Lý → chỉ thấy Em Ba, không thấy Em Một / Em Hai", /Em Ba/.test(txt) && !/Em Một/.test(txt) && !/Em Hai/.test(txt));

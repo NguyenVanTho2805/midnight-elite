@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinEmptyState } from "@/components/kin/EmptyState";
-import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL, KIN_TWO_COL } from "@/components/kin/PageLayout";
+import { KinPage, KinPageHeader, KIN_LABEL, KIN_TWO_COL } from "@/components/kin/PageLayout";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinStatus } from "@/components/kin/Status";
@@ -23,6 +23,7 @@ import {
   type Conflict, type OpResult, type ScheduleBlock, type ScheduleOp,
 } from "@/lib/scheduleDrag";
 import { hmOf } from "@/lib/classSessions";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface CourseInfo { id: string; name: string; color: string | null; scheduleCount: number }
 type Phase = "loading" | "error" | "ready" | "forbidden" | "notfound" | "nocourse";
@@ -211,9 +212,9 @@ export default function LichKhung({ courseId, selectable = false, embedded = fal
         <div className="mb-5 max-w-md">
           {selectable && courses && courses.length > 0 && (
             <label className={KIN_LABEL}>Lớp
-              <select value={current ?? ""} onChange={e => pick(e.target.value)} className={`${KIN_FIELD} mt-2`} data-course-picker>
+              <KinSelect value={current ?? ""} onChange={v => pick(v)} className="mt-2" data-course-picker>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.name}{c.scheduleCount === 0 ? " (chưa có lịch)" : ""}</option>)}
-              </select>
+              </KinSelect>
             </label>
           )}
           {coursesFailed && (

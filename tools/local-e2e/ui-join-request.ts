@@ -4,7 +4,7 @@
 // Từ chối kèm lời nhắn → em thấy lời nhắn; lớp miễn phí + "Vào ngay" → vào thẳng; wizard đúng thứ tự bước, "Miễn phí" ẩn mục học phí, "Vào ngay" khoá khi có học phí.
 // 390px: không tràn ngang, nút >= 44px. Ba trạng thái: rỗng / lỗi giả lập 500 / đang tải. Cần Postgres + Next dev (xem README). Phần thuần: t-join-request-lib.ts.
 import { BASE, mkUser, mkTutor, mkCourse, api, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 const FREE_TAG = "Miễn phí";
@@ -163,7 +163,7 @@ async function mobileReport(page: Page) {
   await wz.getByRole("button", { name: "Tiếp tục" }).click();
   // TUT-lich-keo-tha: bước Lịch học bắt buộc có khung giờ.
   await wz.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await wz.locator("[data-block-panel] select").first().selectOption("2");
+  await kinSelect(wz.locator('[data-block-panel] [role="combobox"]').first(), "2");
   await wz.getByRole("button", { name: "Lưu khung giờ" }).click();
   await wz.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await wz.getByRole("button", { name: "Tiếp tục" }).click();

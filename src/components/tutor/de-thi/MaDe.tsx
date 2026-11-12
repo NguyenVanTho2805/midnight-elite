@@ -20,6 +20,7 @@ import {
   deThiDetailHref, deThiListHref, deThiSubHref, fetchMaDe, hasFormulaPlaceholder, MA_DE_MAX, MA_DE_MIN, PUBLISH_BLOCK_TEXT, taoMaDe, variantCodeOf, warningText,
   type MaDeRes,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // Phương án kiểu "Cả A và B" dựa vào thứ tự nên đảo là sai đề: máy chủ (optionsShuffleUnsafe) không đảo câu đó; ở đây báo trước cho cô, mô tả cùng nhóm cụm từ.
 const UNSAFE_OPTION = /(c[ảa]\s+[a-d]\s+(v[àa]|,)\s+[a-d])|(t[ấa]t\s+c[ảa]\s+(c[áa]c\s+)?([đd][áa]p\s+[áa]n|ph[ưu][ơo]ng\s+[áa]n)\s+tr[êe]n)|(kh[ôo]ng\s+([đd][áa]p\s+[áa]n|ph[ưu][ơo]ng\s+[áa]n)\s+n[àa]o)|(\b[a-d]\s+v[àa]\s+[a-d]\b)/i;
@@ -151,9 +152,9 @@ export default function MaDe({ id }: { id: string }) {
             <form className="space-y-4" onSubmit={e => { e.preventDefault(); void create(); }}>
               <div className="max-w-[320px]">
                 <label htmlFor="md-n" className={`${KIN_LABEL} mb-2`}>Số mã đề</label>
-                <select id="md-n" className={KIN_FIELD} value={count} onChange={e => setCount(Number(e.target.value))}>
+                <KinSelect id="md-n" value={String(count)} onChange={v => setCount(Number(v))}>
                   {Array.from({ length: MA_DE_MAX - MA_DE_MIN + 1 }, (_, i) => MA_DE_MIN + i).map(n => <option key={n} value={n}>{n} mã đề ({variantCodeOf(1)}–{variantCodeOf(n)})</option>)}
-                </select>
+                </KinSelect>
               </div>
               <fieldset className="min-w-0">
                 <legend className={`${KIN_LABEL} mb-1`}>Cách đảo</legend>

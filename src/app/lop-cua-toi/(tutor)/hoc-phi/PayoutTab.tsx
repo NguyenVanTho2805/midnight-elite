@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { BANKS } from "@/lib/banks";
 import { CARD_STYLE, FIELD_STYLE, callApi, copyText, useNotify } from "@/components/tutor/shared";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Account { bankBin: string; bankName: string; accountNo: string; accountName: string; hasKey: boolean; keyHint: string | null; seenAt: string | null }
 interface Info { account: Account | null; webhookUrl: string; sepay: { monthCount: number; freeLimit: number; warn: boolean } }
@@ -75,10 +76,10 @@ export default function PayoutTab() {
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm">Ngân hàng
-            <select value={bank} onChange={e => setBank(e.target.value)} className="block w-full mt-1 px-3 py-2 rounded-lg min-h-[44px]" style={FIELD_STYLE}>
+            <KinSelect value={bank} onChange={v => setBank(v)} className="block mt-1">
               {BANKS.map(b => <option key={b.bin} value={b.bin}>{b.name}</option>)}
               <option value={OTHER}>Ngân hàng khác (nhập mã BIN)</option>
-            </select>
+            </KinSelect>
           </label>
           {bank === OTHER && (
             <label className="text-sm">Mã BIN (6 số)

@@ -2,7 +2,7 @@
 // gia sư xem / tiếp nhận (đồng ý của khách được sao sang) / từ chối, 390px, gia sư ẩn hồ sơ thì khách không gửi được.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-yeu-cau.ts
 import { BASE, mkCourse, mkTutor, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -36,8 +36,8 @@ import { prisma } from "@/lib/prisma";
   check("đổi sang người học → chữ đồng ý đổi theo ('đã đủ 16 tuổi')", /đã đủ 16 tuổi/.test(await g.locator("[data-request-consent]").innerText()));
   await g.getByLabel("Phụ huynh / người giám hộ").check();
   check("vẫn chưa tích → khoá", await submit.isDisabled());
-  await g.getByLabel("Cấp học", { exact: true }).selectOption("thcs");
-  await g.getByLabel(/Hình thức học/).selectOption("online");
+  await kinSelect(g.getByLabel("Cấp học", { exact: true }), "thcs");
+  await kinSelect(g.getByLabel(/Hình thức học/), "online");
   await g.getByLabel("Khung giờ có thể học").fill("tối thứ 3, 5");
   await g.getByLabel("Tên anh/chị (không bắt buộc)").fill("Chị Hoa");
   await g.getByLabel(/Số Zalo/).fill("0912345678");
@@ -98,7 +98,7 @@ import { prisma } from "@/lib/prisma";
   check("em 7-15 tuổi: hộp đồng ý CHỈ còn bên 'Em' (phụ huynh đã bấm ở biểu mẫu), không tích sẵn", await acc.locator("[data-consent-party]").count() === 1 && await acc.locator("[data-consent-party=child]").count() === 1 && await go.isDisabled());
   await acc.locator("[data-consent-party=child]").check();
   check("tích xong → mở khoá", await go.isEnabled());
-  await acc.getByLabel("Lớp", { exact: true }).selectOption({ label: "Toán 9" });
+  await kinSelect(acc.getByLabel("Lớp", { exact: true }), { label: "Toán 9" });
   await go.click();
   await tp.getByText("Đã tiếp nhận. Hồ sơ của em nằm ở trang Học sinh.").waitFor({ timeout: 30000 });
   const prof = await prisma.studentProfile.findFirst({ where: { name: "Bé Tiếp Nhận Giao Diện" } });
