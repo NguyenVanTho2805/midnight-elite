@@ -57,6 +57,7 @@ const code = () => `KIN${String(++seq).padStart(5, "0")}`;
   await prisma.pushSubscription.create({ data: { userId: S.id, endpoint: "https://push.example/s1", p256dh: "k", auth: "a" } });
   await prisma.verifyToken.create({ data: { token: "vt-" + S.id, userId: S.id, expiresAt: new Date(Date.now() + 1e7) } });
   await prisma.passwordResetToken.create({ data: { token: "pr-" + S.id, userId: S.id, expiresAt: new Date(Date.now() + 1e7) } });
+  await prisma.studentReminder.create({ data: { userId: S.id, title: "ghi chú riêng của em", note: "nội dung riêng", tags: ["rieng"] } });
   const snap = async () => JSON.stringify({
     wallet: await prisma.wallet.findUnique({ where: { userId: S.id } }),
     inv: await prisma.tuitionInvoice.findMany({ where: { studentId: S.id }, orderBy: { id: "asc" } }),
@@ -75,6 +76,7 @@ const code = () => `KIN${String(++seq).padStart(5, "0")}`;
   check("5. User cũ VẪN tồn tại; Wallet / TuitionInvoice / FeeCharge / Enrollment / CoinTransaction nguyên vẹn (so trước-sau)", (await snap()) === before);
   check("5b. PushSubscription / VerifyToken / PasswordResetToken đã xoá",
     (await prisma.pushSubscription.count({ where: { userId: S.id } })) === 0 && (await prisma.verifyToken.count({ where: { userId: S.id } })) === 0 && (await prisma.passwordResetToken.count({ where: { userId: S.id } })) === 0);
+  check("5c. StudentReminder của học sinh đã xoá (ẩn danh không chạy Cascade)", (await prisma.studentReminder.count({ where: { userId: S.id } })) === 0);
   let rows = await audits({ action: "account.delete" });
   check("6. đúng 1 dòng account.delete: actor SA, User, resourceId S, không chứa tên/email/SĐT",
     rows.length === 1 && rows[0].actorId === SA.id && rows[0].resourceType === "User" && rows[0].resourceId === S.id && noPII(rows[0].metadata, S.name, S.email, "0912345678", "Bí Mật", "THPT"), rows);
