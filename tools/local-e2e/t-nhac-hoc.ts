@@ -344,6 +344,7 @@ async function mkLesson(chapterId: string, o: { title: string; order: number; sc
   await notify(G.id, { type: "reminder_due", title: "Nhắc việc hôm nay", message: "x", link: "/student/nhac-hoc" });
   await new Promise(r => setTimeout(r, 800));
   check("notify() study_today / reminder_due ⇒ bộ gửi giả KHÔNG được gọi", sent.length === 0, sent);
+  await prisma.user.update({ where: { id: G.id }, data: { preferences: { push: { types: { unmarked_daily: true } } } } });
   const ctl = await pushToUser(G.id, "unmarked_daily", { env, now: at(0, 10, 0), count: 1 });
   check("đối chứng: unmarked_daily (loại đẩy) lúc 10:00 VN ⇒ bộ gửi giả được gọi (đường đẩy thật sự sống, nên ca trên không xanh giả)", ctl.skipped === null && ctl.sent >= 1 && sent.length >= 1, [ctl, sent.length]);
   setPushSender(null);

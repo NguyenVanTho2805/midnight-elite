@@ -183,7 +183,7 @@ type Item = { id: string; title: string; tags: string[]; dueDate: string | null;
 
     section(`${w}px · bấm Xong ⇒ 'Đã xong' → xoá các mục đã xong`);
     await nhom(p, "da-hen").click();
-    await row(p, id).locator("[data-nhac-xong]").check();
+    await row(p, id).locator("[data-nhac-xong]").click();
     await eventually("bấm 'Xong' ⇒ mục rời 'Đã hẹn', 'Đã xong (1)'", async () => (await row(p, id).count()) === 0 && /Đã xong\s*\(1\)/.test(await nhom(p, "da-xong").innerText()), 20000);
     mine = await items(p);
     check("máy chủ đặt doneAt (giao diện không tự báo xong)", !!mine[0].doneAt, mine[0]);
