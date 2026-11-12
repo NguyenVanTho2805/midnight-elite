@@ -103,9 +103,10 @@ async function mobileReport(page: Page) {
     && (await prisma.classJoinRequest.count({ where: { courseId: A.id, userId: S1.id, status: "approved" } })) === 1);
 
   section("Học sinh F5 thấy lớp; thẻ Đang chờ duyệt biến mất");
-  await sp.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "networkidle" });
-  await sp.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 60000 });
-  await eventually("thấy tên lớp, không còn khối Đang chờ duyệt", async () => (await sp.getByText(/Toán 9 Cô duyệt/).count()) > 0 && (await sp.locator("[data-pending-join]").count()) === 0);
+  // LOI-03 (11/11/2026): khối "Đang chờ duyệt" nay chỉ ở THƯ VIỆN lớp (/student/hoc-tap) và trang lớp có h1 = tên lớp — kiểm ở thư viện: thẻ lớp hiện, khối chờ duyệt biến mất.
+  await sp.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle" });
+  await sp.getByRole("heading", { level: 1, name: "Lớp của tôi" }).waitFor({ timeout: 60000 });
+  await eventually("thấy thẻ lớp trong thư viện, không còn khối Đang chờ duyệt", async () => (await sp.locator(`[data-class-card="${A.id}"]`).getByText(/Toán 9 Cô duyệt/).count()) > 0 && (await sp.locator("[data-pending-join]").count()) === 0);
 
   // ───────── Từ chối kèm lời nhắn
   section("Từ chối kèm lời nhắn → em thấy lời nhắn, chưa gửi lại được ngay");

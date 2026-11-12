@@ -86,6 +86,8 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     { key: "trang-chu", label: "Trang chủ", href: "/", icon: "nha", desktopOnly: true },
     // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
+    // LOI-04 (11/11/2026): "Nhắc học" — việc học sinh tự ghi + buổi học có hẹn ngày. LUÔN hiện (không theo cờ LICH); không desktopOnly ⇒ lên thanh dưới điện thoại.
+    { key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" },
     // LOI-01: "Lịch học" rời thanh khi phần Lịch đang ẩn; /student/lich-hoc vẫn chạy (Việc của tôi có "Xem lịch tuần", thông báo đổi lịch trỏ vào).
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.

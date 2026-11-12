@@ -1,12 +1,14 @@
 // GS-LOP-GON (09/11/2026) — "Lớp gọn của gia sư" chạy thật bằng trình duyệt ở 1280 và 390: thư viện lớp dạng thẻ, mở lớp vào Giáo trình, MỘT dải tab 6 mục,
 // mục con ?muc= trong Học sinh / Cài đặt, không h1 / dải tab / breadcrumb quản trị trùng, ngăn kéo "Thêm bài học" có khung thả tệp (đọc cờ /api/media/config),
 // "Kế hoạch buổi" đã rời thanh bên và bảng Khác. Mọi chuyển trang dùng waitForURL; thanh bên chỉ MỘT mục aria-current=page.
+// LOI-02 (11/11/2026): mở lớp vào tab "Bài học" (gốc lớp); dải còn 4 tab "Bài học · Học sinh · Điểm danh · Cài đặt"; panel "Thêm bài học" mở từ "+ Thêm bài" → "Chi tiết…",
+// ô thả tệp mới (data-o-tha), không còn ô dán link tài liệu. Chi tiết LOI-02 ở ui-loi-02.ts.
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 const RAIL = "Module của gia sư";
-const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịch học", "Cài đặt"];
+const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
 
 (async () => {
   await wipe();
@@ -60,24 +62,24 @@ const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịc
     await noOverflow("thư viện lớp");
     await shot(pg, `gs-lop-gon-thu-vien-${tag}`);
 
-    section(`Mở lớp → Giáo trình · ${tag}px`);
+    section(`Mở lớp → Bài học · ${tag}px`);
     await pg.locator("[data-lop-the]", { hasText: "Toán 9" }).getByRole("link", { name: /^Mở lớp/ }).click();
-    await pg.waitForURL(new RegExp(`/lop-cua-toi/quan-lop/${c1.id}`), { timeout: 120000 });
+    await pg.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${c1.id}` && u.search === "", { timeout: 120000 });
     await pg.locator('nav[aria-label^="Trang của"]').first().waitFor({ timeout: 120000 });
     await oneStrip("trang lớp"); await oneH1("trang lớp");
     const strip = pg.locator('nav[aria-label^="Trang của"]:visible');
-    check(`${tag}: dải tab đúng 6 mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
-    check(`${tag}: mở lớp rơi vào Giáo trình (aria-current)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Giáo trình");
+    check(`${tag}: dải tab đúng 4 mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
+    check(`${tag}: mở lớp rơi vào Bài học (aria-current)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: h1 là tên lớp; không breadcrumb quản trị, không liên kết /admin`, (await pg.locator("h1:visible").innerText()).includes("Toán 9") && (await pg.locator('main a[href*="/admin"]').count()) === 0 && !(await pg.getByText(/Quản trị|Khoá học|Khóa học ›/).count()));
     check(`${tag}: thanh bên vẫn MỘT mục sáng ('Lớp')`, (await railCurrent()) === 1);
-    await noOverflow("Giáo trình");
-    await shot(pg, `gs-lop-gon-giao-trinh-${tag}`);
+    await noOverflow("Bài học");
+    await shot(pg, `gs-lop-gon-bai-hoc-${tag}`);
 
-    section(`Sáu tab, mỗi trang một h1 + một dải · ${tag}px`);
+    section(`Bốn tab, mỗi trang một h1 + một dải · ${tag}px`);
     const tabUrl: Record<string, RegExp> = {
-      "Học sinh": /\/hoc-vien/, "Điểm danh": /\/diem-danh/, "Bài tập": /tab=chuong-bai/, "Lịch học": /\/lich-hoc/, "Cài đặt": /tab=cai-dat/, "Giáo trình": /\/giao-trinh|quan-lop\/[^/?]+(\?|$)/,
+      "Học sinh": /\/hoc-vien/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
     };
-    for (const name of ["Học sinh", "Điểm danh", "Bài tập", "Lịch học", "Cài đặt", "Giáo trình"]) {
+    for (const name of ["Học sinh", "Điểm danh", "Cài đặt", "Bài học"]) {
       await pg.locator('nav[aria-label^="Trang của"]:visible').getByRole("link", { name, exact: true }).click();
       await pg.waitForURL(tabUrl[name], { timeout: 120000 });
       await pg.waitForFunction(n => [...document.querySelectorAll('nav[aria-label^="Trang của"] [aria-current=page]')].some(e => (e as HTMLElement).innerText.trim() === n), name, { timeout: 120000 });
@@ -123,26 +125,27 @@ const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịc
     await oneStrip("Cài đặt › Học phí"); await oneH1("Cài đặt › Học phí");
     await noOverflow("Cài đặt › Học phí");
 
-    section(`Bài tập: ngăn kéo "Thêm bài học" · ${tag}px`);
+    section(`Bài học: panel "Thêm bài học" · ${tag}px`);
     await pg.goto(`${BASE}${base}?tab=chuong-bai`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.getByText("Bài giảng 1").first().waitFor({ timeout: 120000 });
-    check(`${tag}: dòng giải thích "Bài tập" có mặt`, (await pg.locator("[data-bai-tap-dan]").count()) === 1);
-    await pg.getByRole("button", { name: /Thêm bài học/ }).first().click();
+    check(`${tag}: ?tab=chuong-bai (liên kết cũ) → thân Bài học, tab Bài học sáng; không còn dòng dẫn sang Giáo trình`, (await pg.locator("[data-bai-tap-dan]").count()) === 0 && (await pg.locator('nav[aria-label^="Trang của"] [aria-current=page]').innerText()).trim() === "Bài học");
+    await pg.getByRole("button", { name: "+ Thêm bài" }).first().click();
+    await pg.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
     await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
-    await pg.locator("[data-tai-lieu-khung]").first().waitFor({ timeout: 60000 });
-    await pg.waitForFunction(() => document.querySelector("[data-tai-lieu-khung]")?.getAttribute("data-tai-lieu-khung") !== "dang-kiem", undefined, { timeout: 60000 });
-    const khung = await pg.locator("[data-tai-lieu-khung]").first().getAttribute("data-tai-lieu-khung");
+    await pg.locator("[data-o-tha]").first().waitFor({ timeout: 60000 });
+    await pg.waitForFunction(() => document.querySelector("[data-o-tha]")?.getAttribute("data-o-tha") !== "dang-kiem", undefined, { timeout: 60000 });
+    const khung = await pg.locator("[data-o-tha]").first().getAttribute("data-o-tha");
     const cfg = await pg.evaluate(`fetch("/api/media/config", { credentials: "same-origin" }).then(r => r.json())`) as { document?: { enabled?: boolean; reason?: string } };
     check(`${tag}: khung thả phản ánh cờ document.enabled (khung="${khung}")`, cfg.document?.enabled ? khung === "san-sang" : khung === "tat");
     if (!cfg.document?.enabled) {
-      const ly = await pg.locator("[data-tai-lieu-ly-do]").innerText();
-      check(`${tag}: kho tắt → hiện nguyên văn lý do của máy chủ`, !!cfg.document?.reason ? ly.includes(cfg.document.reason.slice(0, 30)) : ly.length > 5, ly);
+      const ly = await pg.locator("[data-o-tha-ly-do]").innerText();
+      check(`${tag}: kho tắt → "Kho tệp chưa bật — chủ cần cấu hình."`, ly.includes("Kho tệp chưa bật — chủ cần cấu hình."), ly);
     } else {
       check(`${tag}: khung thả có nút "Chọn tệp từ máy" ≥ 44px + dòng nhắc "đăng ngay"`,
         (await pg.getByRole("button", { name: "Chọn tệp từ máy" }).evaluate(e => e.getBoundingClientRect().height >= 43.5)) && (await pg.locator("[data-tai-lieu-nhac]").innerText()).includes("hiện cho học sinh của lớp ngay khi bài được lưu"));
       check(`${tag}: không nhận video (input tệp không có video/*)`, !/\.(mp4|mov|webm|mkv|avi)\b|video\//i.test((await pg.locator('[data-tai-lieu] input[type=file]').first().getAttribute("accept")) ?? ""));
     }
-    check(`${tag}: dán link vẫn dùng được`, (await pg.getByPlaceholder(/Dán link|https:\/\//).count()) > 0 || (await pg.getByText(/Dán link/).count()) > 0);
+    check(`${tag}: LOI-02 — không còn ô dán link tài liệu / Drive`, (await pg.getByPlaceholder(/Dán link Google Drive/).count()) === 0);
     const tiny = await pg.evaluate(`[...document.querySelectorAll("[data-tai-lieu] button, [data-tai-lieu] label")].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5).length`) as number;
     check(`${tag}: nút trong khung tài liệu ≥ 44px`, tiny === 0, tiny);
     await noOverflow("ngăn kéo Thêm bài học");
@@ -178,7 +181,7 @@ const TABS = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịc
   section("320px: mọi màn của lớp không tràn ngang");
   const ctx3 = await ctxFor(T, { width: 320, height: 700, rail: "mac-dinh" });
   const pg3 = await ctx3.newPage(); watch(pg3);
-  for (const path of ["/lop-cua-toi/lop", `/lop-cua-toi/quan-lop/${c1.id}/giao-trinh`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=xin-vao`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=ma-moi`,
+  for (const path of ["/lop-cua-toi/lop", `/lop-cua-toi/quan-lop/${c1.id}`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=xin-vao`, `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=ma-moi`,
     `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=them`, `/lop-cua-toi/quan-lop/${c1.id}/diem-danh`, `/lop-cua-toi/quan-lop/${c1.id}?tab=chuong-bai`, `/lop-cua-toi/quan-lop/${c1.id}/lich-hoc`,
     `/lop-cua-toi/quan-lop/${c1.id}?tab=cai-dat`, `/lop-cua-toi/quan-lop/${c1.id}?tab=cai-dat&muc=hoc-phi`, `/lop-cua-toi/quan-lop/${c1.id}?tab=cai-dat&muc=dong-giang`, `/lop-cua-toi/quan-lop/${c1.id}?tab=cai-dat&muc=cong-dong`]) {
     await pg3.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180000 });

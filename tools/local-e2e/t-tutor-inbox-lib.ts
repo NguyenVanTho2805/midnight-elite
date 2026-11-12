@@ -1,5 +1,8 @@
 // Hộp việc của gia sư — phần thuần (src/lib/tutorInbox.ts): thứ tự dòng, chữ, góc giờ, số việc còn lại.
-import { buildInboxItems, inboxTotal, inboxWhen, inboxDateTime, inboxVnd, INBOX_DETAIL_LIMIT, INBOX_KINDS, type InboxRaw, type InboxSource } from "@/lib/tutorInbox";
+// Ca phá cố ý (LOI-02 F): cho inboxTotal cộng lại INBOX_KINDS (gồm consent) → ca "inboxTotal bỏ consent" + "số đỏ = Σ dòng không waiting" đỏ;
+//   bỏ một khoá trong todoCountsToRaw → ca "đủ 14 khoá, không khoá nào rơi" đỏ; todoBadgeTotal cộng Object.values (kiểu cũ) → ca "bỏ pendingConsent" đỏ.
+import { buildInboxItems, inboxTotal, inboxWhen, inboxDateTime, inboxVnd, INBOX_DETAIL_LIMIT, INBOX_KINDS, INBOX_ACTION_KINDS, todoCountsToRaw, todoBadgeTotal, type InboxRaw, type InboxSource } from "@/lib/tutorInbox";
+import { buildTodoItems, type TodoCounts } from "@/lib/tutorTodo";
 import { buildHopViecOverview } from "@/lib/tutorOverview";
 import { check, section, done } from "./h";
 
@@ -27,7 +30,7 @@ const ns = buildInboxItems(raw({ noSchedule: { count: 2, rows: [{ title: "Toán 
 check("TUT-lich-keo-tha: 'noSchedule' là việc thường (KHÔNG khẩn), tiêu đề có số, chữ trạng thái 'Chưa có lịch'", ns.id === "noSchedule" && !ns.urgent && ns.title === "2 lớp chưa có lịch học" && ns.status.label === "Chưa có lịch" && ns.status.tone === "cho", ns);
 check("TUT-lich-keo-tha: dòng việc dẫn tới trang khung giờ của lớp đầu tiên; dòng chỉ có tên lớp (không tên em)", ns.href === "/lop-cua-toi/quan-lop/c1/lich-hoc" && ns.detail.rows[0].title === "Toán 9" && ns.detail.commands.length === 0, ns);
 check("TUT-lich-keo-tha (phá): count 0 thì không có dòng noSchedule; có việc khẩn thì khẩn đứng trước", buildInboxItems(raw({ noSchedule: { count: 0, rows: rows(2), at: null } }), NOW).length === 0 && buildInboxItems(raw({ noSchedule: { count: 9, rows: rows(1), at: null }, bank: { count: 1, rows: rows(1), at: null } }), NOW).map(i => i.id).join() === "bank,noSchedule");
-check("TUT-lich-keo-tha: tính vào số đỏ (inboxTotal)", inboxTotal(raw({ noSchedule: { count: 3, rows: [], at: null }, bank: { count: 1, rows: [], at: null } })) === 4);
+check("TUT-lich-keo-tha: khi có dòng (cờ lịch bật), tính vào số đỏ (inboxTotal)", inboxTotal(raw({ noSchedule: { count: 3, rows: [], at: null }, bank: { count: 1, rows: [], at: null } })) === 4);
 const mixedU = buildInboxItems(raw({ unmarked: { count: 9, rows: rows(2), at: null }, bank: { count: 1, rows: rows(1), at: null } }), NOW);
 check("ĐX-01: việc khẩn (bank 1) vẫn đứng trước unmarked (9)", mixedU.map(i => i.id).join() === "bank,unmarked", mixedU.map(i => i.id));
 
@@ -64,8 +67,14 @@ check("count lớn hơn rows → phần dư = count − rows", lag.detail.more =
 const empty = buildInboxItems(raw({ consent: { count: 2, rows: [], at: null } }), NOW)[0];
 check("không có dòng chi tiết → dòng phụ dùng lời giải thích, không để trống", empty.subtitle.length > 10 && empty.detail.rows.length === 0 && empty.detail.more === 2, empty.subtitle);
 
-section("inboxTotal = số đỏ trên thanh module");
-check("cộng đủ mọi loại", inboxTotal(raw({ bank: { count: 2, rows: [], at: null }, draft: { count: 5, rows: [], at: null }, makeup: { count: 1, rows: [], at: null } })) === 8);
+section("inboxTotal = số đỏ trên thanh module (LOI-02: chỉ việc cô cần làm)");
+check("cộng đủ mọi loại việc của cô", inboxTotal(raw({ bank: { count: 2, rows: [], at: null }, draft: { count: 5, rows: [], at: null }, makeup: { count: 1, rows: [], at: null } })) === 8);
+check("LOI-02 phá: inboxTotal BỎ 'consent' (chờ phụ huynh)", inboxTotal(raw({ consent: { count: 3, rows: [], at: null } })) === 0 && inboxTotal(raw({ consent: { count: 3, rows: [], at: null }, bank: { count: 1, rows: [], at: null } })) === 1);
+check("LOI-02: inboxTotal = Σ số đầu tiêu đề các dòng KHÔNG waiting (đúng 'N việc' của Hộp việc), với đủ 14 loại có việc", (() => {
+  const r = raw(Object.fromEntries(INBOX_KINDS.map((k, i) => [k, { count: i + 1, rows: [], at: null }])));
+  const items = buildInboxItems(r, NOW);
+  return inboxTotal(r) === items.filter(i => !i.waiting).reduce((n, i) => n + Number(i.title.match(/^\d+/)?.[0] ?? 0), 0) && items.length === 14;
+})());
 check("số âm / thiếu bị bỏ qua", inboxTotal(raw({ bank: { count: -3, rows: [], at: null } })) === 0);
 check("rỗng = 0", inboxTotal(raw({})) === 0);
 
@@ -100,4 +109,41 @@ check("buổi sắp tới: giờ, báo nghỉ chờ, buổi tiếp theo; link đ
 const none2 = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [] });
 check("không có dữ liệu: không số bịa (0đ, 'Trống', next=null, không lớp)", none2.stats.confirmed.value === "0đ" && none2.stats.today.value === "Trống" && none2.next === null && none2.classes.rows.length === 0 && /Chưa có phiếu/.test(none2.stats.invoices.hint));
 check("dòng ngày: 'Thứ Tư, 14 tháng 10'", ov.dateLine === "Thứ Tư, 14 tháng 10", ov.dateLine);
+section("LOI-02 F: INBOX_ACTION_KINDS · todoCountsToRaw · todoBadgeTotal (một nguồn cho số đỏ)");
+const zeroC: TodoCounts = { bankPending: 0, needBankCheck: 0, draftInvoices: 0, pendingConsent: 0, classReports: 0, ungraded: 0, lateAbsences: 0, remindersDue: 0, makeupExpiring: 0, invoiceReminders: 0, unmarkedSessions: 0, joinRequests: 0, noSchedule: 0, unansweredQuestions: 0 };
+check("INBOX_ACTION_KINDS: 13 loại, KHÔNG có 'consent', đủ mọi loại còn lại theo thứ tự khai báo", INBOX_ACTION_KINDS.length === 13 && !INBOX_ACTION_KINDS.includes("consent") && INBOX_ACTION_KINDS.join() === INBOX_KINDS.filter(k => k !== "consent").join(), INBOX_ACTION_KINDS);
+check("INBOX_ACTION_KINDS = đúng các loại buildInboxItems đánh dấu KHÔNG waiting", (() => { const it = buildInboxItems(raw(Object.fromEntries(INBOX_KINDS.map(k => [k, { count: 1, rows: [], at: null }]))), NOW); return it.filter(i => !i.waiting).map(i => i.id).sort().join() === [...INBOX_ACTION_KINDS].sort().join(); })());
+{
+  // Mỗi bộ đếm một số nguyên tố khác nhau ⇒ khoá nào rơi / gán nhầm đều lộ.
+  const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+  const keys = Object.keys(zeroC) as (keyof TodoCounts)[];
+  const c = Object.fromEntries(keys.map((k, i) => [k, primes[i]])) as unknown as TodoCounts;
+  const m = todoCountsToRaw(c);
+  check("todoCountsToRaw: đủ 14 khoá = INBOX_KINDS, không khoá nào rơi, mỗi bộ đếm dùng đúng một lần", Object.keys(m).sort().join() === [...INBOX_KINDS].sort().join() && Object.values(m).sort((a, b) => a - b).join() === primes.join(), m);
+  check("todoCountsToRaw: gán đúng tên (consent ← pendingConsent, absence ← lateAbsences, questions ← unansweredQuestions, unmarked ← unmarkedSessions, invoiceRemind ← invoiceReminders, draft ← draftInvoices, check ← needBankCheck, bank ← bankPending, reports ← classReports, reminders ← remindersDue, makeup ← makeupExpiring)",
+    m.consent === c.pendingConsent && m.absence === c.lateAbsences && m.questions === c.unansweredQuestions && m.unmarked === c.unmarkedSessions && m.invoiceRemind === c.invoiceReminders && m.draft === c.draftInvoices
+    && m.check === c.needBankCheck && m.bank === c.bankPending && m.reports === c.classReports && m.reminders === c.remindersDue && m.makeup === c.makeupExpiring && m.ungraded === c.ungraded && m.joinRequests === c.joinRequests && m.noSchedule === c.noSchedule);
+  const all = primes.reduce((a, b) => a + b, 0);
+  check("todoBadgeTotal = Σ mọi bộ đếm TRỪ pendingConsent", todoBadgeTotal(c) === all - c.pendingConsent, [todoBadgeTotal(c), all, c.pendingConsent]);
+  check("todoBadgeTotal = inboxTotal của dòng dựng từ cùng bộ đếm (một nguồn)", todoBadgeTotal(c) === inboxTotal(raw(Object.fromEntries(Object.entries(m).map(([k, v]) => [k, { count: v, rows: [], at: null }])) as Partial<InboxRaw>)));
+}
+{
+  // LOI-02 vòng 2 P3-B: ô "Việc cần làm" của Tổng quan = buildTodoItems(c) lọc bằng INBOX_ACTION_KINDS (đúng phép lọc ở
+  // src/app/lop-cua-toi/(tutor)/TutorDashboard.tsx:64-65) ⇒ không có "consent" và Σ count = todoBadgeTotal(c) = số đỏ Hộp việc.
+  const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+  const c = Object.fromEntries((Object.keys(zeroC) as (keyof TodoCounts)[]).map((k, i) => [k, primes[i]])) as unknown as TodoCounts;
+  const allItems = buildTodoItems(c);
+  const dash = allItems.filter(t => (INBOX_ACTION_KINDS as string[]).includes(t.key));
+  const sum = (xs: { count: number }[]) => xs.reduce((n, t) => n + t.count, 0);
+  check("P3-B: mọi khoá của buildTodoItems trùng tên một InboxKind (không khoá nào bị lọc nhầm vì sai tên)", allItems.length === 14 && allItems.every(t => (INBOX_KINDS as string[]).includes(t.key)), allItems.map(t => t.key));
+  check("P3-B: pendingConsent > 0 (và mọi khoá khác > 0) — sau lọc KHÔNG có khoá 'consent', còn đúng 13 dòng", c.pendingConsent > 0 && dash.length === 13 && !dash.some(t => t.key === "consent"), dash.map(t => t.key));
+  check("P3-B: Σ count của 'Việc cần làm' (đã lọc) = todoBadgeTotal(c) (= số đỏ Hộp việc)", sum(dash) === todoBadgeTotal(c), [sum(dash), todoBadgeTotal(c)]);
+  check("P3-B (phá): KHÔNG lọc thì Σ count ≠ todoBadgeTotal (lệch đúng pendingConsent)", sum(allItems) !== todoBadgeTotal(c) && sum(allItems) - todoBadgeTotal(c) === c.pendingConsent, [sum(allItems), todoBadgeTotal(c), c.pendingConsent]);
+  const only = { ...zeroC, pendingConsent: 1 };
+  check("P3-B: tình huống của chủ (chỉ pendingConsent = 1) → 'Việc cần làm' rỗng, Σ 0 = số đỏ 0", buildTodoItems(only).filter(t => (INBOX_ACTION_KINDS as string[]).includes(t.key)).length === 0 && todoBadgeTotal(only) === 0);
+}
+check("LOI-02 F, tình huống của chủ (cờ lịch tắt): chỉ pendingConsent = 1 → số đỏ 0", todoBadgeTotal({ ...zeroC, pendingConsent: 1 }) === 0);
+check("LOI-02 F (giả thuyết H1+H2, cờ bật): noSchedule 1 + pendingConsent 1 → số đỏ 1 (trước sửa: 2)", todoBadgeTotal({ ...zeroC, pendingConsent: 1, noSchedule: 1 }) === 1);
+check("phá: bộ đếm âm / NaN không làm số đỏ âm hay NaN", todoBadgeTotal({ ...zeroC, bankPending: -5, draftInvoices: Number.NaN, ungraded: 2 }) === 2);
+check("rỗng → 0", todoBadgeTotal(zeroC) === 0);
 done();

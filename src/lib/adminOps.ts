@@ -66,6 +66,7 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "article-publish", label: "Báo bài hẹn giờ đã lên", path: "/api/cron/article-publish", schedule: "Mỗi ngày 07:15 giờ VN", maxGapHours: 36 },
   // BU-HS-NOP-TEP: dọn tệp nộp bài hết hạn 60 ngày. Mặc định CHẠY KHÔ (đường dẫn không có ?xoa=1); chuyển sang xoá thật là commit riêng, kèm đổi `path` ở đây và ở vercel.json.
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
+  { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
 ];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 

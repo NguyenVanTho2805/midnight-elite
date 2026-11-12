@@ -13,7 +13,6 @@
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import OutlookShell from "./OutlookShell";
 import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
@@ -124,5 +123,7 @@ export default async function LopPage({ params, searchParams }: Props) {
     }} />;
   }
 
-  return <OutlookShell courseId={course.id} courseName={course.name} category={course.category} role={roleView} viewerName={viewerName} isTeacher={isTeacher} />;
+  // LOI-03 mục 4.5 (Q4): học sinh đã ghi danh (đã qua kiểm ở trên; người không ghi danh vẫn 404) → trang lớp của học sinh. Trang không có loading.tsx nên đây là 307 thật.
+  // OutlookShell (vỏ cũ chỉ có lối sang Lịch / Bài tập / Học phí) không còn ai gọi — để nguyên tệp, gỡ ở đợt sau (đặc tả mục 11).
+  redirect("/student/hoc-tap?course=" + encodeURIComponent(course.id));
 }

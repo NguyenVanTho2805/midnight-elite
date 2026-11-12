@@ -20,7 +20,7 @@ import { api, mkTutor, mkUser, mkCourse, mkSuper, cookieFor, wipe, check, sectio
   check("không cookie → 401", (await api("GET", "/api/admin/trien-khai")).status === 401);
   check("quản trị nội dung → 403; gia sư → 403; học sinh → 403", (await api("GET", "/api/admin/trien-khai", { as: CA })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: T })).status === 403 && (await api("GET", "/api/admin/trien-khai", { as: kid })).status === 403);
   let r = await api("GET", "/api/admin/trien-khai", { as: SA });
-  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 5 && r.json.crons.length === 7 && r.json.crons.some((c: any) => c.key === "article-publish") && r.json.flags.some((f: any) => f.key === "KIN_GUEST_QUESTIONS") && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
+  check("cấp 1 → 200, có cờ, cron, hạn mức, số đo", r.status === 200 && r.json.flags.length === 5 && r.json.crons.length === 8 && r.json.crons.some((c: any) => c.key === "article-publish") && r.json.crons.some((c: any) => c.key === "nhac-hoc-sang") && r.json.flags.some((f: any) => f.key === "KIN_GUEST_QUESTIONS") && r.json.limits.free.studentLimit > 0 && typeof r.json.measure.tutors === "number", r.json);
   check("KHÔNG lộ giá trị CRON_SECRET / DATABASE_URL / SESSION_SECRET / VAPID_PRIVATE_KEY", ![SECRET, process.env.DATABASE_URL, process.env.SESSION_SECRET, process.env.VAPID_PRIVATE_KEY].some(v => v && r.text.includes(v)));
   const fl = (k: string) => r.json.flags.find((f: any) => f.key === k);
   check("CRON_SECRET hiện 'Đã đặt' (máy chủ thử có đặt), chỉ là chữ", fl("CRON_SECRET").on === true && fl("CRON_SECRET").state === "Đã đặt");

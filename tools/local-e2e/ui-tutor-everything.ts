@@ -134,6 +134,8 @@ const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lo
 function classTabAlias(reqPath: string, finPath: string): boolean {
   const m = /^\/lop-cua-toi\/(?:quan-lop\/)?([^/]+)$/.exec(reqPath);
   if (!m || m[1] === "tao-moi") return false;
+  // LOI-02 (11/11/2026, đặc tả mục 2.A4): /lop-cua-toi/<lớp> của chủ lớp 307 về GỐC lớp /lop-cua-toi/quan-lop/<lớp> (tab Bài học), không còn …/giao-trinh.
+  if (finPath === `/lop-cua-toi/quan-lop/${m[1]}`) return true;
   return ["giao-trinh", "lich-hoc", "hoc-vien"].some(tab => finPath === `/lop-cua-toi/quan-lop/${m[1]}/${tab}`);
 }
 function expected(reqPath: string, finPath: string): boolean {

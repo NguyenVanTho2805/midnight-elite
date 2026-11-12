@@ -3,6 +3,9 @@
 //   mode "tutor_return" : gia sư trong khung chấm — vùng thả nhỏ cho "Tệp trả bài"; KHÔNG tự nộp, cha gọi ref.attach() sau khi chấm điểm xong.
 // Ngoài ra xuất NopTepStudentFiles: danh sách tệp học sinh nộp (Tải xuống / Xem) cho gia sư.
 // Quy tắc: không hiển thị thứ máy chủ không trả; không tự đoán hạn (lấy expiresAt máy chủ); tính năng tắt ⇒ nói rõ và để nguyên đường nộp link Azota.
+// LOI-03 mục 4.3 (chỉ trình bày, mode "student"): vùng thả rộng hết thẻ, cao ≥ 200px (≥ 240px từ md), chữ chính "Kéo thả tệp Word hoặc PDF vào đây" cỡ tiêu đề,
+// dòng "hoặc" + nút "Chọn tệp"; danh sách tệp + Nộp bài xếp DƯỚI vùng thả (không còn hai cột); kho chưa cấu hình ⇒ tiêu đề "Kho tệp chưa bật".
+// KHÔNG đổi: giới hạn (10 MB / 3 tệp / 60 ngày), luồng tải lên / nộp (nopTepClient.ts), quy tắc trẻ em (không ảnh), vùng thả nhỏ của gia sư.
 "use client";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { KinButton } from "@/components/kin/Button";
@@ -211,10 +214,17 @@ function Zone({ onFiles, compact, describedBy, disabled }: { onFiles: (f: File[]
         onDragLeave={e => { stop(e); depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setOver(false); }}
         onDragOver={stop}
         onDrop={e => { stop(e); depth.current = 0; setOver(false); if (disabled) return; const fs = Array.from(e.dataTransfer.files ?? []); if (fs.length) onFiles(fs); }}
-        className={`w-full flex flex-col items-center justify-center gap-3 px-4 py-5 text-center rounded-[var(--kin-bo-xl)] border-2 transition-colors ${compact ? "min-h-24" : "min-h-[132px] md:min-h-[160px]"} ${over
+        className={`w-full flex flex-col items-center justify-center gap-3 px-4 py-5 text-center rounded-[var(--kin-bo-xl)] border-2 transition-colors ${compact ? "min-h-24" : "min-h-[200px] md:min-h-[240px]"} ${over
           ? "border-solid border-[var(--kin-nhan-nen)] bg-[var(--kin-nhan-nen-nhat)]"
           : "border-dashed border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
-        <span className={`${GOC} font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : "Kéo tệp Word hoặc PDF vào đây"}</span>
+        {compact ? (
+          <span className={`${GOC} font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : "Kéo tệp Word hoặc PDF vào đây"}</span>
+        ) : (
+          <>
+            <span data-nop-tep-chu-chinh="" className={`text-[length:var(--kin-co-tieu-de)] leading-6 font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : "Kéo thả tệp Word hoặc PDF vào đây"}</span>
+            <span aria-hidden className={`${GOC} ${T_MO}`}>hoặc</span>
+          </>
+        )}
         <span data-nop-tep-chon="" className={`${kinButtonClass("secondary")} pointer-events-none`}>Chọn tệp</span>
       </button>
     </>
@@ -232,7 +242,7 @@ function Caption({ id, limits, extra }: { id: string; limits: NopTepLimits; extr
 }
 
 function Skeleton() {
-  return <div aria-busy="true" aria-label="Đang tải khối nộp bài" className="kin-skel kin-skel--soft h-[132px] rounded" />;
+  return <div aria-busy="true" aria-label="Đang tải khối nộp bài" className="kin-skel kin-skel--soft h-[200px] md:h-[240px] rounded" />;
 }
 function LoadError({ onRetry }: { onRetry: () => void }) {
   return (
@@ -242,10 +252,10 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
     </div>
   );
 }
-function DisabledNote() {
+function DisabledNote({ title = "Tính năng nộp tệp chưa bật" }: { title?: string }) {
   return (
     <div role="status" data-nop-tep-chua-bat="">
-      <KinCallout title="Tính năng nộp tệp chưa bật">Tính năng nộp tệp chưa bật. Bạn vẫn nộp được bằng link Azota.</KinCallout>
+      <KinCallout title={title}>Tính năng nộp tệp chưa bật. Bạn vẫn nộp được bằng link Azota.</KinCallout>
     </div>
   );
 }
@@ -346,7 +356,8 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
       {hasSub && (
         <p className={`mb-3 ${SMALL} ${T_MO}`}>Bạn đã nộp bài trước đó. Nộp lại sẽ thay bài cũ{needConfirm ? ", xoá điểm và nhận xét" : ""}.</p>
       )}
-      <div className="grid gap-4 @min-[720px]:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] @min-[720px]:items-start">
+      {/* Một cột: vùng thả rộng hết thẻ → chú thích giới hạn → cảnh báo thông tin cá nhân → tệp đã chọn (tiến độ, lỗi tại chỗ) → Nộp bài. */}
+      <div className="grid gap-4">
         <div>
           <Zone onFiles={fs => uploads.addFiles(fs, drafts.length)} describedBy={capId} />
           <Caption id={capId} limits={limits} />
@@ -356,7 +367,7 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
           {(draftRows.length > 0 || localRows.length > 0) && <ul aria-label="Tệp đã chọn" className="space-y-2 mb-3">{draftRows}{localRows}</ul>}
           <form ref={formRef} method="post" action={`/api/student/nop-bai/${encodeURIComponent(assignmentId)}/nop`} onSubmit={onSubmit} data-nop-tep-form="">
             <div className="flex flex-wrap items-center gap-3">
-              <KinButton type="submit" variant="primary" loading={submitting} loadingLabel="Đang nộp…" disabled={!canSubmit} data-nop-tep-nop="">Nộp bài</KinButton>
+              <KinButton type="submit" variant="primary" loading={submitting} loadingLabel="Đang nộp…" disabled={!canSubmit} data-nop-tep-nop="" className="w-full sm:w-auto">Nộp bài</KinButton>
               {hasSub && <KinButton type="button" variant="ghost" onClick={() => void cancelResubmit()} disabled={submitting} data-nop-tep-huy="">Huỷ nộp lại</KinButton>}
             </div>
             <p role="status" aria-live="polite" data-nop-tep-tom-tat="" className={`mt-2 ${SMALL} ${T_MO}`}>{submitting ? "Đang gửi bài cho gia sư…" : hint}</p>
@@ -414,7 +425,7 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
   return (
     <section data-nop-tep="student" data-trang-thai={trang} aria-busy={uploading > 0 || submitting ? true : undefined} className="mt-1">
       {dialog}
-      {!enabled && <DisabledNote />}
+      {!enabled && <DisabledNote title="Kho tệp chưa bật" />}
       {composeBlock}
       {submittedBlock}
     </section>

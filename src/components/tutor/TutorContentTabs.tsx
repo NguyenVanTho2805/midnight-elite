@@ -2,7 +2,8 @@
 // Là ĐIỀU HƯỚNG giữa các trang (Link + aria-current), không phải tab đổi nội dung → dùng KIN_TAB_BOX + KinTabInner như AdminShell, không role=tab.
 // GS-LOP-GON (09/11/2026): MỘT dải duy nhất cho mỗi vùng. `scope` nói dải này của vùng nào: "de-thi" do (noi-dung)/layout.tsx vẽ, "quan-lop" do layout lồng
 // quan-lop/[id]/layout.tsx vẽ (sau đầu lớp). Dải chỉ hiện khi đường đang mở thuộc đúng vùng — nhờ vậy layout cha không vẽ thêm một dải thứ hai trên trang lớp.
-// `role` (đồng giảng / bộ môn) → chỉ "Giáo trình · Lịch học". Tự bọc <Suspense> vì đọc ?tab= (useSearchParams). Tab đang sáng được kéo vào khung nhìn (điện thoại: dải cuộn ngang).
+// LOI-02 (11/11/2026): dải của lớp còn đúng 4 tab "Bài học · Học sinh · Điểm danh · Cài đặt" (Giáo trình, Bài tập, Lịch học đã bỏ — contentTabsFor ở tutorRoutes.ts);
+// …/lich-hoc vẫn mở bằng link và không tab nào sáng. `role` (đồng giảng / bộ môn) → chỉ "Bài học". Tự bọc <Suspense> vì đọc ?tab= (useSearchParams). Tab đang sáng được kéo vào khung nhìn (điện thoại: dải cuộn ngang).
 "use client";
 import Link from "next/link";
 import { Suspense, useEffect, useRef } from "react";
