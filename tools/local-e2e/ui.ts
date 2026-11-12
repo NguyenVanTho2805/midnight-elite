@@ -71,7 +71,9 @@ export async function kinValue(combo: import("playwright").Locator) { return (aw
  */
 export async function kinSelect(target: import("playwright").Locator, choice: string | { value?: string; label?: string; index?: number }, o: { timeout?: number } = {}) {
   const timeout = o.timeout ?? 30000;
-  const combo = (await target.getAttribute("role", { timeout })) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  const found = (await target.getAttribute("role", { timeout })) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  // Khoá vào id của nút: khi danh sách mở, listbox cũng mang nhãn ⇒ getByLabel(...) khớp 2 phần tử (strict mode).
+  const combo = found.page().locator(`[id="${await found.getAttribute("id", { timeout })}"]`);
   await combo.click({ timeout });
   const listId = await combo.getAttribute("aria-controls");
   const list = combo.page().locator(`[id="${listId}"]`);
@@ -84,7 +86,11 @@ export async function kinSelect(target: import("playwright").Locator, choice: st
   const v = await opt.first().getAttribute("data-value", { timeout });
   await opt.first().click({ timeout });
   await list.waitFor({ state: "detached", timeout });
-  for (let i = 0; i < 50 && (await combo.getAttribute("data-value")) !== v; i++) await combo.page().waitForTimeout(100);
+  // Ô có thể bị dựng lại sau khi chọn (vd mục chuyển sang nhóm khác ⇒ id mới): không còn nút cũ thì thôi đợi.
+  for (let i = 0; i < 50; i++) {
+    if ((await combo.count()) === 0 || (await combo.getAttribute("data-value", { timeout: 1000 }).catch(() => v)) === v) break;
+    await combo.page().waitForTimeout(100);
+  }
   return v ?? "";
 }
 /** Giá trị đang chọn của KinSelect (thay cho inputValue() của <select>) — đọc data-value của nút. */
@@ -94,7 +100,8 @@ export async function kinSelectValue(target: import("playwright").Locator, o: { 
 }
 /** Chữ các mục của KinSelect (thay cho locator("option").allInnerTexts()): mở, đọc, Esc đóng. */
 export async function kinSelectOptions(target: import("playwright").Locator) {
-  const combo = (await target.getAttribute("role")) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  const found = (await target.getAttribute("role")) === "combobox" ? target : target.locator('[role="combobox"]').first();
+  const combo = found.page().locator(`[id="${await found.getAttribute("id")}"]`);
   await combo.click();
   const list = combo.page().locator(`[id="${await combo.getAttribute("aria-controls")}"]`);
   await list.waitFor({ timeout: 30000 });

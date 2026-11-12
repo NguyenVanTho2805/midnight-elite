@@ -276,22 +276,26 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
     const C = await mkCourse(T.id, { name: "Toán 9 Ô Chọn" });
     await prisma.enrollment.create({ data: { userId: S.id, courseId: C.id, status: "active" } });
     /** Danh sách đang mở: hộp nằm trong khung nhìn, và điểm giữa mục đầu / mục cuối đang thấy bấm trúng CHÍNH mục đó (không bị panel / khung cuộn cắt hay đè). */
-    const listOk = (pg: import("playwright").Page) => pg.locator("[data-kin-select-mo]").evaluate(box => {
-      const r = box.getBoundingClientRect(), ul = box.querySelector('[role="listbox"]')!, u = ul.getBoundingClientRect();
-      const opts = [...box.querySelectorAll<HTMLElement>('[role="option"]')].filter(o => { const q = o.getBoundingClientRect(); return q.bottom > u.top + 2 && q.top < u.bottom - 2; });
-      const hit = (o: HTMLElement) => { const q = o.getBoundingClientRect(); const x = q.left + q.width / 2, y = Math.max(q.top, u.top) / 2 + Math.min(q.bottom, u.bottom) / 2; return o.contains(document.elementFromPoint(x, y)); };
-      return { inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, hitFirst: !!opts[0] && hit(opts[0]), hitLast: !!opts.at(-1) && hit(opts.at(-1)!), n: opts.length, r: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] };
-    });
-    const noHScroll = (pg: import("playwright").Page) => pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
+    const listOk = (pg: import("playwright").Page) => pg.evaluate(`(() => {
+      const box = document.querySelector("[data-kin-select-mo]");
+      const r = box.getBoundingClientRect(), ul = box.querySelector('[role="listbox"]'), u = ul.getBoundingClientRect();
+      const opts = [...box.querySelectorAll('[role="option"]')].filter(o => { const q = o.getBoundingClientRect(); return q.bottom > u.top + 2 && q.top < u.bottom - 2; });
+      const hit = o => { const q = o.getBoundingClientRect(); const x = q.left + q.width / 2, y = Math.max(q.top, u.top) / 2 + Math.min(q.bottom, u.bottom) / 2; return o.contains(document.elementFromPoint(x, y)); };
+      return { inView: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5, hitFirst: !!opts[0] && hit(opts[0]), hitLast: !!opts.length && hit(opts[opts.length - 1]), n: opts.length, r: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] };
+    })()`) as Promise<{ inView: boolean; hitFirst: boolean; hitLast: boolean; n: number; r: number[] }>;
+    const noHScroll = (pg: import("playwright").Page) => pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1") as Promise<boolean>;
     for (const [W, H] of [[1600, 900], [390, 844]] as const) {
-      // 1. Khách — <label htmlFor="dc-m"> riêng: tên đọc = nhãn + giá trị; chọn được bằng bàn phím.
+      // 1. Khách (/dang-ky) — <label htmlFor="dk-city"> riêng: tên đọc = nhãn + giá trị; getByLabel vẫn tìm được; chọn có ô tìm (34 tỉnh).
       const cg = await ctxFor(null, { width: W, height: H }), pgG = await cg.newPage();
       pgG.on("pageerror", e => errors.push(String(e)));
-      await pgG.goto(`${BASE}/diem-chuan`, { waitUntil: "domcontentloaded", timeout: 170000 });
-      const dm = pgG.locator("#dc-m");
-      await dm.waitFor({ timeout: 120000 });
-      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Phương thức xét Tất cả')`, async () => (await pgG.getByRole("combobox", { name: "Phương thức xét Tất cả", exact: true }).count()) === 1);
-      check(`${W}: getByLabel('Phương thức xét', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Phương thức xét", { exact: true }).getAttribute("role")) === "combobox");
+      await pgG.goto(`${BASE}/dang-ky`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const dk = pgG.locator("#dk-city");
+      await dk.waitFor({ timeout: 120000 });
+      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Tỉnh / Thành phố * Chọn tỉnh / thành phố')`, async () => (await pgG.getByRole("combobox", { name: "Tỉnh / Thành phố * Chọn tỉnh / thành phố", exact: true }).count()) === 1);
+      check(`${W}: getByLabel('Tỉnh / Thành phố *', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Tỉnh / Thành phố *", { exact: true }).getAttribute("role")) === "combobox");
+      await kinSelect(dk, "Thành phố Hà Nội");
+      check(`${W}: chọn tỉnh → nút mang giá trị, danh sách đóng`, (await kinSelectValue(dk)) === "Thành phố Hà Nội" && (await dk.getAttribute("aria-expanded")) === "false");
+      check(`${W}: /dang-ky không cuộn ngang`, await noHScroll(pgG));
       await cg.close();
 
       // 2. Quản trị — nhãn BỌC ô ("Khoảng thời gian"): tên đọc gọn, bấm mục không bị nhãn mở lại, giá trị đổi, máy chủ nhận ?days=7.
@@ -317,7 +321,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
       await pa.waitForTimeout(600); // ngăn kéo trượt xong
       await dmc.click();
       await pa.locator("[data-kin-select-mo]").waitFor({ timeout: 10000 });
-      const g = await pa.evaluate(() => { const b = document.querySelector('[data-kin-select-nut][aria-expanded="true"]')!.getBoundingClientRect(), m = document.querySelector("[data-kin-select-mo]")!.getBoundingClientRect(); return { dx: Math.abs(m.left - Math.max(16, Math.min(b.left, innerWidth - 16 - m.width))), dy: Math.min(Math.abs(m.top - (b.bottom + 4)), Math.abs(m.bottom - (b.top - 4))) }; });
+      const g = await pa.evaluate(`(() => { const b = document.querySelector('[data-kin-select-nut][aria-expanded="true"]').getBoundingClientRect(), m = document.querySelector("[data-kin-select-mo]").getBoundingClientRect(); return { dx: Math.abs(m.left - Math.max(16, Math.min(b.left, innerWidth - 16 - m.width))), dy: Math.min(Math.abs(m.top - (b.bottom + 4)), Math.abs(m.bottom - (b.top - 4))) }; })()`) as { dx: number; dy: number };
       check(`${W}: PHÁ — ngăn kéo có transform: danh sách bám mép nút (lệch ≤ 2px), không trôi theo khối chứa`, g.dx <= 2 && g.dy <= 2, g);
       const lo = await listOk(pa);
       check(`${W}: ngăn kéo: danh sách nằm trong khung nhìn, mục đầu + cuối đang thấy bấm trúng (không bị cắt/đè)`, lo.inView && lo.hitFirst && lo.hitLast, lo);

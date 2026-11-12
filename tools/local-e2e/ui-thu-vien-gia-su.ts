@@ -4,7 +4,7 @@
 // (gắn / xoá có hộp xác nhận KiN), nhóm "Đề gốc" chỉ xem, học sinh vẫn thấy thư viện học sinh (D2) và thấy tài liệu tải lên KiN (D4), 390px không tràn ngang, nút >= 44px.
 // Cần Postgres + Next dev (xem README).
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page, kinSelect, kinSelectValue } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect, kinSelectValue, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 async function report(page: Page) {
@@ -80,7 +80,7 @@ const seen: Page[] = [];
   const cf = rows(pg).filter({ hasText: "Bảng công thức" });
   await cf.getByRole("button", { name: "Dùng ở lớp khác" }).click();
   await kinSelect(cf.getByLabel("Lớp"), { label: "Văn 8" });
-  check("đích mặc định là 'Mục mới (Nháp)' và có dòng nói mục mới chỉ bạn thấy", (await kinSelectValue(cf.getByLabel("Mục", { exact: true }))) === "new" && await cf.getByText(/Mục mới ở dạng Nháp, chỉ bạn thấy/).isVisible() && await cf.getByLabel("Mục", { exact: true }).locator("option", { hasText: "Mục mới (Nháp)" }).count() === 1);
+  check("đích mặc định là 'Mục mới (Nháp)' và có dòng nói mục mới chỉ bạn thấy", (await kinSelectValue(cf.getByLabel("Mục", { exact: true }))) === "new" && await cf.getByText(/Mục mới ở dạng Nháp, chỉ bạn thấy/).isVisible() && (await kinSelectOptions(cf.getByLabel("Mục", { exact: true }))).filter(t => /Mục mới \(Nháp\)/.test(t)).length === 1);
   await cf.getByRole("button", { name: "Thêm vào lớp này" }).click();
   await cf.getByRole("alert").getByText("Thêm mục thất bại").waitFor({ timeout: 15000 }).catch(() => undefined);
   check("lỗi máy chủ → báo tại chỗ (role=alert), không mất khung chọn", await cf.getByRole("alert").getByText("Thêm mục thất bại").isVisible());

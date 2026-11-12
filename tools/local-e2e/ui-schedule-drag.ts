@@ -258,6 +258,8 @@ const rowsOf = (courseId: string) => prisma.classSchedule.findMany({ where: { co
   await p.getByRole("link", { name: "Sửa khung giờ" }).click();
   await p.waitForURL(/\/lop-cua-toi\/lich\/khung/, { timeout: 60000 });
   await p.locator("[data-course-picker]").waitFor({ timeout: 60000 });
+  // KinSelect (như người dùng thật) không phát onChange khi chọn lại mục đang chọn; <select>.selectOption thì có ⇒ nếu Lý 8 đã là lớp mặc định, chọn lớp kia trước.
+  if ((await kinSelectValue(p.locator("[data-course-picker]"))) === B.id) await kinSelect(p.locator("[data-course-picker]"), A.id);
   await kinSelect(p.locator("[data-course-picker]"), B.id);
   await p.waitForURL(new RegExp(`lop=${B.id}`), { timeout: 30000 });
   await p.waitForSelector("[data-week-editor][data-schedule-state=ready]", { timeout: 60000 });

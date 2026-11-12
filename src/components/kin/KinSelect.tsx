@@ -195,7 +195,9 @@ export function KinSelect({
     setForLabel(l.id);
   }, [baseId, ariaLabelledby, ariaLabel]);
   // Mở có ô tìm: đưa tiêu điểm vào ô tìm. Không có ô tìm: tiêu điểm ở lại nút (aria-activedescendant chỉ mục đang tô).
-  useEffect(() => { if (open && searchable) search.current?.focus(); }, [open, searchable]);
+  // Đợi danh sách có vị trí (lần vẽ đầu ẩn để đo) rồi mới đưa tiêu điểm — phần tử visibility:hidden không nhận tiêu điểm.
+  const placed = place !== null;
+  useEffect(() => { if (open && searchable && placed) search.current?.focus(); }, [open, searchable, placed]);
   // Lọc đổi ⇒ tô mục đầu còn chọn được.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (open && searchable) setActive(firstEnabled(shown)); }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
