@@ -54,7 +54,9 @@ const H = 3_600_000, D = 24 * H;
   check("/student chuyển tới /student/viec-cua-toi", new URL(pg.url()).pathname === "/student/viec-cua-toi", pg.url());
 
   section("Thanh module");
-  check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").first().isVisible());
+  // LOI-07: "HỌC SINH" có 2 bản trong thanh — <span aria-hidden> cạnh logo (chỉ thanh RỘNG 272px, display:none ở thanh hẹp) và <p sr-only> cho trình đọc màn hình
+  // (ModuleRail.tsx:201, :205). Bài chạy thanh hẹp 79px ⇒ `.first()` rơi vào bản ẩn. Kiểm như ui-tutor-shell: có ít nhất một bản đang dựng (sr-only vẫn có hộp 1px).
+  check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0)));
   for (const m of ["Việc của tôi", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   if (!LICH) check("LOI-01: Lịch đang ẩn → không có module 'Lịch học' trên thanh", await mod("Lịch học").count() === 0 && await rail().locator(":scope a[href='/student/lich-hoc']").count() === 0);
   check("BU-HS-TRANG-CHU: module 'Trang chủ' là liên kết tới '/', đứng ĐẦU thanh, KHÔNG có aria-current (vỏ không bao giờ hiện ở '/')",
@@ -62,7 +64,21 @@ const H = 3_600_000, D = 24 * H;
     && (await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent && e.getAttribute("data-rail-home") === null)[0].textContent.trim().startsWith("Trang chủ")`)) === true);
   check("B1: chỉ còn 3 module + 'Khác' (module 'Bài tập' đã bỏ khỏi thanh)", await mod("Bài tập").count() === 0 && await rail().locator(":scope a[href='/student/bai-tap']").count() === 0);
   check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
-  check("module đang ở có aria-current=page (đúng một nút)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && await rail().locator("[aria-current=page]").count() === 1);
+  // LOI-07: thanh máy tính dựng CẢ hai bản mục (thanh hẹp .kin-rail-items và thanh rộng .kin-rail-groups), CSS ẩn một bản theo data-kin-rail (kin-motion.css:228-235) ⇒
+  // bản ẩn cũng mang aria-current nhưng không vào cây trợ năng. Đếm mục ĐANG HIỆN (như ui-tutor-shell :55), và đếm riêng bản ẩn để thấy rõ đó là bản thanh rộng.
+  const currentVisible = await rail().locator("[aria-current=page]:visible").count();
+  const currentHiddenWide = await rail().locator(".kin-rail-groups [aria-current=page]").evaluateAll(els => els.filter(e => !(e as HTMLElement).offsetParent && e.getClientRects().length === 0).length);
+  check("module đang ở có aria-current=page (đúng một mục ĐANG HIỆN; bản thanh rộng đang ẩn không tính)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && currentVisible === 1, { currentVisible, currentHiddenWide });
+  {
+    // Đối chứng ở thanh RỘNG 272px (bản hẹp ẩn, bản có nhóm hiện): vẫn đúng MỘT mục đang hiện mang aria-current và nhãn "HỌC SINH" cạnh logo hiện thật.
+    const wp = await (await ctxFor(S, { width: 1280, height: 800, rail: "rong" })).newPage(); watch(wp);
+    await wp.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
+    await wp.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 90000 });
+    const wr = wp.getByRole("navigation", { name: railName });
+    const lit = await wr.locator("[aria-current=page]:visible").evaluateAll(els => els.map(e => e.getAttribute("href")));
+    check("thanh rộng: đúng một mục đang hiện mang aria-current (Việc của tôi); nhãn 'HỌC SINH' cạnh logo hiện", lit.length === 1 && lit[0] === "/student/viec-cua-toi" && await wr.locator(".kin-rail-tag", { hasText: "HỌC SINH" }).isVisible(), lit);
+    await wp.close();
+  }
   const clipped = await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a span.truncate, nav[aria-label="${railName}"] button span.truncate')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth).map(e => e.textContent)`) as string[];
   check("nhãn module hiện đủ chữ, không bị cắt thành '…' ('Việc của tôi' nằm vừa nút 66px)", clipped.length === 0, clipped);
   const railBox = await rail().boundingBox();

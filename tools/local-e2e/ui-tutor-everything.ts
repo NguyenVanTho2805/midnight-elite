@@ -57,6 +57,7 @@ function watch(p: Page) {
     let u: URL; try { u = new URL(r.url()); } catch { return; }
     if (u.origin !== MAIN_ORIGIN || r.status() < 400) return;
     if (u.pathname.startsWith("/_next/") || /favicon/.test(u.pathname)) return;
+    if (r.status() === 404 && r.request().resourceType() === "document" && seedFake404(u)) return;   // 404 cố ý của thế giới thử (xem SEED_FAKE_404)
     issues.push({ at, kind: `HTTP ${r.status()}`, msg: `${r.request().method()} ${u.pathname}${u.search}` });
   });
 }
@@ -146,11 +147,18 @@ function expected(reqPath: string, finPath: string): boolean {
     const alias = toTutorPath(reqPath)?.split("?")[0] ?? null;
     return finPath === (alias ?? HOME) || (alias !== null && (STUDENT_ALIASES[alias] === finPath || classTabAlias(alias, finPath)));
   }
-  if (["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) return finPath === HOME;
+  // LOI-07 (A2): "/" KHÔNG còn chuyển gia sư vào Hộp việc — từ 01/11/2026 (HOME-01) trang chủ mở được cho MỌI vai (src/lib/hostRouting.ts:21-23, :99:
+  // "/" không nằm trong nhánh AUTH_PAGES), Navbar có nút «Vào trang của tôi» thay lối đó. Chỉ /dang-nhap và /dang-ky của người đã đăng nhập còn 307 vào trang đầu.
+  if (["/dang-nhap", "/dang-ky"].includes(reqPath)) return finPath === HOME;
   if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
   return false;
 }
+// LOI-07 (A1): 404 CỐ Ý của chính thế giới thử. tutor-world.ts tạo bài nộp với `fileUrl: "x"` (không phải tệp thật) và BaiTap.tsx dựng nút «Mở bài nộp gốc ↗» bằng
+// đúng chuỗi đó ⇒ trình duyệt giải thành /lop-cua-toi/x. 404 ở đây là ĐÚNG (không có trang ấy); vẫn mở thật để bài rà gom lỗi của trang 404 (mục C, vd. cảnh báo <script>).
+const SEED_FAKE_404 = new Set(["/lop-cua-toi/x"]);
+const seedFake404 = (u: URL) => SEED_FAKE_404.has(norm(u.pathname));
 function judge(requested: URL, r: { status: number | null; final: URL; text: string }): string | null {
+  if (seedFake404(requested) && (r.status === 404 || r.status === null) && NOT_FOUND.test(r.text)) return null;
   if (r.status !== null && r.status >= 400) return `HTTP ${r.status}`;
   if (NOT_FOUND.test(r.text)) return "giao diện 404";
   if (APP_ERROR.test(r.text)) return "trang báo lỗi";
@@ -342,9 +350,17 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   // 16/10/2026: bản đầu của bài rà này chỉ bắt khung SAI, không bắt "không có khung nào" — nên trang lớp /lop-cua-toi/[lớp] (trần, không thanh module, không dải trên) lọt qua.
   // Bài rà vai học sinh (ui-role-everything) kiểm cả hai chiều và bắt được; nay kiểm cả hai chiều ở đây.
   const NO_SHELL_OK = /^\/(dang-nhap|dang-ky|quen-mat-khau|dat-lai-mat-khau|xac-thuc-email|xac-nhan-phu-huynh|phieu|so-cua-con|xem-tai-lieu)(\/|$)/;   // trang xác thực / trang phụ huynh mở bằng link
-  const bareShell = visited.filter(v => !v.why && new URL(v.final).origin === MAIN_ORIGIN && !v.shell && !NO_SHELL_OK.test(new URL(v.final).pathname));
+  // "/" = trang chủ CHUNG cho mọi vai (HOME-01, src/lib/hostRouting.ts:21-23) — có Navbar + «Vào trang của tôi», không vỏ module; trang 404 cố ý của thế giới thử cũng không vỏ.
+  const publicHome = (u: URL) => norm(u.pathname) === "/";
+  const bareShell = visited.filter(v => !v.why && new URL(v.final).origin === MAIN_ORIGIN && !v.shell && !NO_SHELL_OK.test(new URL(v.final).pathname) && !publicHome(new URL(v.final)) && !seedFake404(new URL(v.final)));
   for (const w2 of bareShell.slice(0, 20)) console.log(`   ✗ ${new URL(w2.final).pathname} KHÔNG có khung gia sư (trang trần)`);
   check("mọi trang của gia sư (kể cả trang công khai, trang lớp) nằm trong khung GIA SƯ — không trang nào hiện trần", bareShell.length === 0, bareShell.slice(0, 5).map(w2 => new URL(w2.final).pathname));
+  {
+    // A2 (LOI-07): gia sư mở "/" ở lại trang chủ chung (không 307), và có lối đi tiếp vào trang của mình — không ngõ cụt.
+    const r = await open(p, MAIN + "/");
+    const mine = await p.getByRole("link", { name: "Vào trang của tôi" }).evaluateAll(els => els.filter(e => (e as HTMLElement).offsetParent !== null || e.getClientRects().length > 0).map(e => e.getAttribute("href")));
+    check("gia sư mở '/' → ở lại trang chủ chung (HOME-01), có «Vào trang của tôi» trỏ /lop-cua-toi…", norm(r.final.pathname) === "/" && mine.length >= 1 && mine.every(h => (h ?? "").startsWith("/lop-cua-toi")), { final: abs(r.final), mine });
+  }
   const shellSeen = new Set(visited.map(v => v.shell));
   check("đã thực sự nhìn thấy khung gia sư ở nhiều trang (bài rà không rỗng)", visited.filter(v => v.shell === "Module của gia sư").length >= 20, [...shellSeen]);
 
@@ -423,6 +439,24 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
   const unnamedTotal = [...unnamed.values()].reduce((a, b) => a + b, 0);
   console.log(`  ℹ ${unnamedTotal} nút chỉ có biểu tượng, không có tên truy cập được, trên ${unnamed.size} kiểu trang (xem báo cáo)`);
   console.log(`  ℹ địa chỉ ngoài đã mở bằng nút: ${[...new Set(externalNavs.map(x => x.url))].slice(0, 6).join(" · ") || "không có"}`);
+
+  // ── A3 (LOI-07): trang 404 do trang con gọi notFound() làm React dựng lại cây gốc ở trình duyệt; các <script> khởi tạo của layout gốc từng báo
+  // console.error "Encountered a script tag while rendering React component". Nay qua InitScript (src/components/InitScript.tsx). Kiểm cả hai chiều:
+  // không còn cảnh báo ở hai kiểu 404 đã gặp (nhóm (tutor) và nhóm (parent)), VÀ HTML máy chủ vẫn in đủ 4 script chạy được (không có type) — không đổi lỗi lấy nháy chủ đề.
+  section("A3: 404 trong nhóm không còn cảnh báo <script>; HTML vẫn có 4 script khởi tạo chạy được");
+  {
+    for (const path of ["/lop-cua-toi/x", "/phieu/khong-co-phieu-nay-404"]) {
+      const n0 = issues.length;
+      const r = await open(p, MAIN + path);
+      const mine = issues.splice(n0);
+      issues.push(...mine.filter(i => !(i.kind === "HTTP 404" && i.msg.startsWith("GET ")) && !/Encountered a script tag/.test(i.msg)));   // 404 của chính trang là kỳ vọng
+      check(`${path} → trang 404 (${r.status}) KHÔNG có cảnh báo "Encountered a script tag"`, NOT_FOUND.test(r.text) && !mine.some(i => /Encountered a script tag/.test(i.msg)), mine.slice(0, 3));
+    }
+    const html = await p.evaluate(`fetch("/", { credentials: "same-origin" }).then(r => r.text())`) as string;
+    const inits = [/<script>try\{var h=document\.documentElement,t=localStorage/, /<script>\(function\(\)\{var v="rong"/, /<script>try\{var v=localStorage\.getItem/, /<script>try\{if\(location\.hostname===/];
+    check("HTML máy chủ: 4 script khởi tạo (chủ đề, thanh bên, gợi ý vỏ, tên miền) là <script> thường, không type (chạy khi đọc HTML)", inits.every(re => re.test(html)), inits.map(re => re.test(html)));
+    check("HTML máy chủ: không còn bản self.__next_s của next/script cho các script đó", !/__next_s[^<]*kin-(rail|shell|host)-init/.test(html));
+  }
 
   // ── C. lỗi ──
   section("C. Lỗi: JS chưa bắt, console.error của ứng dụng, phản hồi HTTP ≥ 400");

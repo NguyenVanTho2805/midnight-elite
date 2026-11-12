@@ -207,6 +207,50 @@ export function contentSummary(s: TreeSection[]): string {
 /** 0 → "01", 9 → "10". */
 export const chapterNo = (i: number): string => String(Math.max(0, Math.floor(i)) + 1).padStart(2, "0");
 
+// ── Khối "Buổi học sắp tới" / "Buổi học tiếp theo": khi nào vẽ, khi nào ẩn (LOI-07, nợ P3 LOI-03) ─────────────
+
+/** Khung lịch buổi học của học sinh: hôm nay .. hôm nay + 90 (ngày VN), khớp từng chữ với loadStudentScheduleEvents (src/lib/studentSchedule.ts: `iso > maxISO` bị bỏ). */
+export const SCHEDULE_WINDOW_DAYS = 90;
+
+/** Lớp có bài Đã đăng (id thuộc `publishedIds`) hẹn ngày học TRONG khung lịch [hôm nay, hôm nay + days] theo ngày VN không.
+ *  Bài hẹn xa hơn khung (vd 4 tháng nữa) KHÔNG tính: khối "Buổi học sắp tới" nói về đúng khung đó, nên bài ngoài khung không được làm ẩn nó.
+ *  scheduledAt nhận ISO hoặc Date; null / hỏng / ngày đã qua → không tính. */
+export function hasScheduledLessonInWindow(
+  lessons: readonly { id: string; scheduledAt?: string | Date | null }[],
+  publishedIds: ReadonlySet<string>,
+  todayKey: string,
+  days: number = SCHEDULE_WINDOW_DAYS,
+): boolean {
+  if (!isValidDateKey(todayKey)) return false;
+  const lastKey = addDaysKey(todayKey, Math.max(0, Math.floor(days)));
+  return (lessons ?? []).some(l => {
+    if (!l || !publishedIds.has(l.id) || !l.scheduledAt) return false;
+    const at = l.scheduledAt instanceof Date ? l.scheduledAt : new Date(l.scheduledAt);
+    if (!isValidDate(at)) return false;
+    const k = vnDateKeyOf(at);
+    return k >= todayKey && k <= lastKey;
+  });
+}
+
+/** Trang lớp, khối "Buổi học sắp tới": dang-tai / loi (vẽ dải lỗi + Thử lại — KHÔNG im lặng ẩn) / co (có buổi) / trong (chữ "chưa có buổi học nào trong 90 ngày tới")
+ *  / an (lịch tải xong, không lỗi, không buổi nào NHƯNG có bài hẹn trong khung — tránh hai khối nói ngược nhau). */
+export type SessionsBlock = "dang-tai" | "loi" | "co" | "trong" | "an";
+export function sessionsBlockState(s: { loaded: boolean; error: boolean; count: number; hasScheduledLesson: boolean }): SessionsBlock {
+  if (s.error) return "loi";
+  if (!s.loaded) return "dang-tai";
+  if (s.count > 0) return "co";
+  return s.hasScheduledLesson ? "an" : "trong";
+}
+
+/** Việc của tôi, cột "Buổi học tiếp theo": buoi-hoc (có buổi) / dang-tai (phiếu "Hôm nay có lớp" CHƯA trả lời — đang tải ≠ rỗng, không vẽ khối trống)
+ *  / an (phiếu có bài, không buổi → bỏ cột, khỏi nói ngược phiếu) / trong ("3 ngày tới chưa có buổi học"). Phiếu lỗi / 403 báo `false` ⇒ trong (không ẩn vì lỗi). */
+export type NextSessionAside = "buoi-hoc" | "dang-tai" | "an" | "trong";
+export function asideState(hasSession: boolean, homNayHas: boolean | null): NextSessionAside {
+  if (hasSession) return "buoi-hoc";
+  if (homNayHas === null) return "dang-tai";
+  return homNayHas ? "an" : "trong";
+}
+
 // ── Phiếu: tài liệu + Azota ─────────────────────────────────────────────────────
 
 export const MAX_DOC_LINKS = 5;

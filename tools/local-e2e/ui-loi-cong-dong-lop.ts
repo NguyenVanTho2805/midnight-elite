@@ -5,10 +5,13 @@
 //     (courseId trong DB); gia sư chủ lớp thấy câu hỏi đó; khách bị chuyển về "/"; /cong-dong (không lớp) và scope=common bị chuyển về.
 //  C. Lối vào: trang lớp của học sinh có "Hỏi gia sư trong lớp" → đúng địa chỉ; bảng tin chung không còn lối nào.
 //  D. 390px: một cột, không tràn ngang, nút ≥ 44px.
+//  E. LOI-07: bị chuyển về trang đầu từ phần đang ẩn (bài chung / bài lớp ngoài quyền / câu hỏi cũ /student/hoi-dap/<id> / bài tin tức cũ) → trang đích có MỘT dòng nhắc
+//     "Phần này đang tạm đóng." [data-paused-notice], không nói tên phần; "Đã hiểu" ≥ 44px đóng và bỏ ?tam-dong= khỏi địa chỉ; dấu rác ⇒ không nhắc; 390 không tràn.
+//     Ca phá cố ý (đã chạy): bỏ `+ pausedSearch("CONG_DONG")` ở trang /cong-dong/[id] → ca A "… + dòng nhắc" đỏ; PausedNotice bỏ kiểm pausedNoticeFrom (hiện với mọi giá trị) → ca "dấu rác" đỏ.
 // Chạy với máy chủ dev KHÔNG đặt NEXT_PUBLIC_KIN_MO_CONG_DONG (bài tự bỏ qua nếu cờ đang bật).
 // Ca phá cố ý (đã chạy): bỏ dòng ngoại lệ classScopeOf trong features.blockedRouteFeature → bài sập ở phần B (học sinh bị đẩy về Việc của tôi, không thấy tiêu đề);
 // trong src/app/(guest)/cong-dong/[id]/page.tsx bỏ `&& (await canAccessClass(...))` → ca "người ngoài lớp" đỏ.
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, cookieFor } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
@@ -47,6 +50,9 @@ import { featureOn } from "@/lib/features";
       await settle(page, `/cong-dong/${id}`);
       await page.waitForURL(u => new URL(u).pathname === home, { timeout: 60000 }).catch(() => {});
       check(`${who} mở ${what} → ${home} (cùng một kết quả)`, new URL(page.url()).pathname === home && !(await bare(page)), page.url());
+      const note = page.locator('[data-paused-notice="CONG_DONG"]');
+      await note.waitFor({ timeout: 30000 }).catch(() => {});
+      check(`${who} mở ${what} → trang đích có dòng nhắc 'Phần này đang tạm đóng.' (không nói tên phần)`, await note.isVisible() && /Phần này đang tạm đóng\./.test(await note.innerText()) && !/Cộng đồng|bảng tin/i.test(await note.innerText()), page.url());
     }
   }
   await settle(ps, `/cong-dong/${publicT.id}`);
@@ -77,7 +83,7 @@ import { featureOn } from "@/lib/features";
   for (const [who, page, search, home] of [["khách", pg, `?scope=${C.id}`, "/"], ["học sinh", ps, "", "/student/viec-cua-toi"], ["học sinh", ps, "?scope=common", "/student/viec-cua-toi"], ["học sinh", ps, `?scope=${C.id}&tab=da-luu`, "/student/viec-cua-toi"]] as const) {
     await settle(page, `/cong-dong${search}`);
     await page.waitForURL(u => new URL(u).pathname === home, { timeout: 60000 }).catch(() => {});
-    check(`${who} mở /cong-dong${search} → ${home} (bảng tin chung vẫn ẩn)`, new URL(page.url()).pathname === home, page.url());
+    check(`${who} mở /cong-dong${search} → ${home} (bảng tin chung vẫn ẩn), 307 mang dấu ?tam-dong=CONG_DONG, có dòng nhắc`, new URL(page.url()).pathname === home && new URL(page.url()).searchParams.get("tam-dong") === "CONG_DONG" && await page.locator('[data-paused-notice="CONG_DONG"]').isVisible(), page.url());
   }
 
   section("C. Lối vào từ trang lớp");
@@ -105,6 +111,42 @@ import { featureOn } from "@/lib/features";
   await pm.locator("[data-kc-thread]").waitFor({ timeout: 90000 });
   check("390px: bài lớp một cột, không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await shot(pm, "loi-bai-lop-390");
+
+  section("E. LOI-07: dòng nhắc 'Phần này đang tạm đóng.' ở trang đích (390px)");
+  {
+    // câu hỏi cũ /student/hoi-dap/<id> (thông báo cũ) — chốt chặn ở proxy, 307 + no-store, Location mang dấu
+    const r = await fetch(`${BASE}/student/hoi-dap/cau-hoi-cu`, { redirect: "manual", headers: { cookie: await cookieFor(S) } });
+    const loc = r.headers.get("location") ?? "";
+    check("câu hỏi cũ /student/hoi-dap/<id>: 307 (không 308) + no-store, Location = /student/viec-cua-toi?tam-dong=CONG_DONG", r.status === 307 && /no-store/.test(r.headers.get("cache-control") ?? "") && new URL(loc, BASE).pathname === "/student/viec-cua-toi" && new URL(loc, BASE).search === "?tam-dong=CONG_DONG", [r.status, loc, r.headers.get("cache-control")]);
+    await settle(pm, "/student/hoi-dap/cau-hoi-cu");
+    await pm.waitForURL(u => new URL(u).pathname === "/student/viec-cua-toi", { timeout: 60000 }).catch(() => {});
+    const note = pm.locator('[data-paused-notice="CONG_DONG"]');
+    await note.waitFor({ timeout: 60000 }).catch(() => {});
+    const ok = pm.getByRole("button", { name: "Đã hiểu" });
+    check("390: về Việc của tôi + dòng nhắc nhìn thấy, role=status, nút 'Đã hiểu' ≥ 44px", new URL(pm.url()).pathname === "/student/viec-cua-toi" && await note.isVisible() && (await note.getByRole("status").count()) === 1 && ((await ok.boundingBox())?.height ?? 0) >= 44, pm.url());
+    check("390: có dòng nhắc vẫn không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
+    await shot(pm, "loi07-tam-dong-390");
+    await ok.click();
+    await pm.waitForTimeout(500);
+    check("bấm 'Đã hiểu' → dòng nhắc biến mất, địa chỉ bỏ ?tam-dong= (vẫn ở Việc của tôi)", (await note.count()) === 0 && new URL(pm.url()).searchParams.get("tam-dong") === null && new URL(pm.url()).pathname === "/student/viec-cua-toi", pm.url());
+    await pm.reload({ waitUntil: "domcontentloaded" });
+    await pm.waitForTimeout(1500);
+    check("tải lại sau khi đóng → không hiện lại", (await pm.locator("[data-paused-notice]").count()) === 0);
+    for (const q of ["?tam-dong=rac", "?tam-dong=cong_dong", "?tam-dong=%3Cb%3Ex%3C%2Fb%3E"]) {
+      await settle(pm, `/student/viec-cua-toi${q}`);
+      await pm.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 60000 });
+      await pm.waitForTimeout(800);
+      check(`dấu rác ${q} → KHÔNG nhắc (chỉ nhận đúng tên cờ)`, (await pm.locator("[data-paused-notice]").count()) === 0);
+    }
+    if (!featureOn("TIN_TUC")) {
+      const cg2 = await ctxFor(null, { width: 390, height: 844 }); const pg2 = await cg2.newPage(); watch(pg2);
+      await settle(pg2, "/tin-tuc/bai-tin-cu");
+      await pg2.waitForURL(u => new URL(u).pathname === "/", { timeout: 60000 }).catch(() => {});
+      await pg2.locator('[data-paused-notice="TIN_TUC"]').waitFor({ timeout: 60000 }).catch(() => {});
+      check("khách mở bài tin tức cũ → '/' + dòng nhắc (cùng component)", new URL(pg2.url()).pathname === "/" && await pg2.locator('[data-paused-notice="TIN_TUC"]').isVisible(), pg2.url());
+      await cg2.close();
+    }
+  }
 
   section("Không lỗi trình duyệt");
   check("không có pageerror / console.error", errors.length === 0, errors.slice(0, 3));

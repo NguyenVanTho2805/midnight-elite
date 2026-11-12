@@ -10,6 +10,18 @@
 import { BASE, api, cookieFor, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { featureOn } from "@/lib/features";
+import { homeNavFor } from "@/lib/homeLayout";
+
+// LOI-07 (11/11/2026): kỳ vọng THEO CỜ LOI-01 (src/lib/features.ts), đọc ở tiến trình bài — chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
+// Tắt hết: thanh module không có "Lịch học" (điện thoại 3 ô), bảng "Khác" chỉ còn "Lớp miễn phí", trang chủ không có bảng tin / quiz (nằm trong bảng tin) / tính điểm,
+// Navbar chỉ "Lớp học · Thi thử" (+ "Lớp của tôi" cho học sinh) — các phần C2, C3, D, E chỉ chạy khi phần tương ứng mở; khi ẩn thì kiểm khối KHÔNG có và không gọi API bảng tin.
+// Bật đủ 9 cờ: như trước LOI-01.
+const CD = featureOn("CONG_DONG"), DC = featureOn("DIEM_CHUAN"), LICH = featureOn("LICH");
+const QUIZ = CD && process.env.KIN_HOME_QUIZ !== "0"; // khối quiz nằm trong bảng tin (homeLayout.homeBlocksFor)
+const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(CD ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
+const NAV_GUEST = homeNavFor({ kind: "guest" }).map(i => i.label).join("|"), NAV_STUDENT = homeNavFor({ kind: "student" }).map(i => i.label).join("|");
+const BAR_CELLS = LICH ? 4 : 3; // Việc của tôi · (Lịch học) · Lớp của tôi · Khác
 
 const stamp = Date.now().toString(36);
 const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`;
@@ -69,7 +81,9 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     return { c, p };
   };
-  const homeReady = async (p: Page) => { await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); await p.locator('[data-home-block="community"]').waitFor({ timeout: 60000 }); };
+  // Trang chủ đã vẽ phần máy khách: có bảng tin thì chờ khối bảng tin; ẩn thì chờ khối "Học ở đây thì được gì?" (luôn có) rồi đợi máy khách quyết xong.
+  const homeReady = async (p: Page, settle = true) => { await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); if (CD) await p.locator('[data-home-block="community"]').waitFor({ timeout: 60000 }); else { await p.locator('[data-home-block="why"]').first().waitFor({ timeout: 60000 }); if (settle) await p.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {}); } };
+  // LOI-07: ca "đang tải" (C1) chặn API 3 giây rồi nhả — KHÔNG chờ networkidle ở đó (networkidle chờ chính lời gọi bị giữ, đến khi bắt kịp thì khung xương đã mất).
   const blockState = (p: Page, b: string) => p.locator(`[data-home-block="${b}"]`).first().getAttribute("data-home-state");
   const waitState = (p: Page, b: string, s: string, ms = 30000) => p.locator(`[data-home-block="${b}"][data-home-state="${s}"]`).first().waitFor({ timeout: ms });
   const railName = "Module của học sinh";
@@ -113,7 +127,8 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await rail.waitFor({ timeout: 120000 });
     await p.waitForTimeout(500);
     const g = await p.evaluate(`(() => { const nv = [...document.querySelectorAll('nav[aria-label="${railName}"]')].find(n => getComputedStyle(n).position !== "fixed"); const grp = nv.querySelector('.kin-rail-groups [role="group"]'); const links = [...grp.querySelectorAll('a')]; return { title: grp.getAttribute('aria-label'), items: links.map(a => (a.textContent || '').trim()), first: links[0].getAttribute('href'), firstCur: links[0].getAttribute('aria-current'), firstH: Math.round(links[0].getBoundingClientRect().height), width: Math.round(document.querySelector('#kin-rail').getBoundingClientRect().width) }; })()`) as any;
-    check(`${w}px: thanh rộng ${g.width}px, nhóm đầu '${g.title}' = ${g.items.join(" | ")} (Trang chủ đầu), → '/', không aria-current`, g.width === 272 && g.items[0] === "Trang chủ" && g.first === "/" && g.firstCur === null && g.firstH >= 36 && g.items.join("|") === "Trang chủ|Việc của tôi|Lịch học|Lớp của tôi", g);
+    const wantItems = ["Trang chủ", "Việc của tôi", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"].join("|");
+    check(`${w}px: thanh rộng ${g.width}px, nhóm đầu '${g.title}' = ${g.items.join(" | ")} (Trang chủ đầu; cần ${wantItems}), → '/', không aria-current`, g.width === 272 && g.items[0] === "Trang chủ" && g.first === "/" && g.firstCur === null && g.firstH >= 36 && g.items.join("|") === wantItems, g);
     await rail.locator(".kin-rail-groups").getByRole("link", { name: "Trang chủ", exact: true }).click();
     await p.waitForURL(u => u.pathname === "/", { timeout: 120000 });
     await p.waitForTimeout(2500);
@@ -153,14 +168,14 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     const lb = await lg.boundingBox({ timeout: 8000 }).catch(() => null); // thiếu logo → ca ĐỎ chứ không treo 30 giây rồi sập bài
     check(`${w}px: logo [data-mobile-home] → '/', nhãn 'KiN — Trang chủ', rộng và cao ≥ 44px`, !!lb && lb.width >= 44 && lb.height >= 44 && (await lg.getAttribute("href", { timeout: 3000 }).catch(() => null)) === "/" && (await lg.getAttribute("aria-label", { timeout: 3000 }).catch(() => null)) === "KiN — Trang chủ", lb);
     const four = await p.evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a, nav[aria-label="${railName}"] button')].filter(e => e.offsetParent && getComputedStyle(e.closest('nav')).position === 'fixed').map(e => [Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])`) as number[][];
-    check(`${w}px: thanh dưới vẫn ĐÚNG 4 ô (3 module + Khác), mỗi ô ≥ 44×44 (mục Trang chủ không lên thanh dưới)`, four.length === 4 && four.every(([a, b]) => a >= 44 && b >= 44), four);
+    check(`${w}px: thanh dưới vẫn ĐÚNG ${BAR_CELLS} ô (${BAR_CELLS - 1} module + Khác; "Lịch học" ${LICH ? "có" : "ẩn theo cờ LICH"}), mỗi ô ≥ 44×44 (mục Trang chủ không lên thanh dưới)`, four.length === BAR_CELLS && four.every(([a, b]) => a >= 44 && b >= 44), four);
     check(`${w}px: không có liên kết 'Trang chủ KiN' ở dải trên bằng chữ (chỉ máy tính, khi thu thanh); không tràn ngang`, (await p.locator("[data-top-home]").isVisible().catch(() => false)) === false && await p.evaluate(NOT_OVERFLOW) as boolean);
     await bar.getByRole("button", { name: /^Khác/ }).click();
     const dm = p.getByRole("dialog", { name: "Các mục khác" });
     await dm.waitFor({ timeout: 15000 });
     const first = dm.getByRole("link").first();
-    check(`${w}px: bảng Khác — hàng ĐẦU là 'Trang chủ KiN' → '/', cao ≥ 44px; còn đủ 5 mục cũ (tổng 6), không có mục bị cấm`,
-      (await first.innerText()).trim() === "Trang chủ KiN" && (await first.getAttribute("href")) === "/" && (await h(first)) >= 44 && (await dm.getByRole("link").count()) === 6
+    check(`${w}px: bảng Khác — hàng ĐẦU là 'Trang chủ KiN' → '/', cao ≥ 44px; còn ${MORE_EXPECT.length} mục theo cờ (${MORE_EXPECT.join(", ")}; tổng ${MORE_EXPECT.length + 1}), không có mục bị cấm`,
+      (await first.innerText()).trim() === "Trang chủ KiN" && (await first.getAttribute("href")) === "/" && (await h(first)) >= 44 && (await dm.getByRole("link").count()) === MORE_EXPECT.length + 1
       && (await dm.getByRole("link", { name: /^(Thư viện|Thi thử|Bảng xếp hạng|Hỏi đáp|Khoá học đang mở|Lớp đang theo dõi|Tra cứu điểm chuẩn|Ví và Coin)$/ }).count()) === 0);
     if (w === 390) await shot(p, "home-doors-390-khac");
     await first.click();
@@ -186,7 +201,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await p.getByRole("navigation", { name: railName }).first().getByRole("button", { name: /^Khác/ }).click();
     const dm = p.getByRole("dialog", { name: "Các mục khác" });
     await dm.waitFor({ timeout: 15000 });
-    check("1280: bảng Khác có 5 liên kết nhìn thấy, 'Trang chủ KiN' có trong DOM nhưng ẨN", (await dm.getByRole("link").count()) === 5 && (await dm.locator("[data-more-home]").count()) === 1 && !(await dm.locator("[data-more-home]").isVisible()));
+    check(`1280: bảng Khác có ${MORE_EXPECT.length} liên kết nhìn thấy (theo cờ), 'Trang chủ KiN' có trong DOM nhưng ẨN`, (await dm.getByRole("link").count()) === MORE_EXPECT.length && (await dm.locator("[data-more-home]").count()) === 1 && !(await dm.locator("[data-more-home]").isVisible()));
     await c.close();
   }
 
@@ -212,9 +227,12 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     const cta = blk.locator("[data-home-my-class-cta]");
     check(`${w}px: nút 'Vào Lớp của tôi' → /student/hoc-tap, cao ≥ 44px`, (await cta.getAttribute("href")) === "/student/hoc-tap" && (await h(cta)) >= 44);
     const go = p.locator("header").getByRole("link", { name: "Vào trang của tôi" });
-    check(`${w}px: 'Vào trang của tôi' → /student/viec-cua-toi; Navbar có 'Lớp của tôi' → /student/hoc-tap (cuối, ≥ 44px)`, (await go.getAttribute("href")) === "/student/viec-cua-toi" && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link").allInnerTexts()).join("|") === "Lớp học|Thi thử|Cộng đồng|Tin tức|Lớp của tôi" && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Lớp của tôi" }).getAttribute("href")) === "/student/hoc-tap");
+    check(`${w}px: 'Vào trang của tôi' → /student/viec-cua-toi; Navbar có 'Lớp của tôi' → /student/hoc-tap (cuối, ≥ 44px)`, (await go.getAttribute("href")) === "/student/viec-cua-toi" && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link").allInnerTexts()).join("|") === NAV_STUDENT && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Lớp của tôi" }).getAttribute("href")) === "/student/hoc-tap");
     check(`${w}px: CTA cuối trang chủ ('Đăng ký') ẨN với học sinh đã đăng nhập`, (await p.locator("[data-home-cta-final]").count()) === 0);
-    check(`${w}px: có đủ 4 khối: Lớp của tôi, Cộng đồng, Quiz, Tính điểm (thứ tự DOM: Lớp của tôi → Cộng đồng → Tính điểm)`, await p.evaluate(`(() => { const o = ["my-class","community","score"].map(b => [...document.querySelectorAll("[data-home-block]")].findIndex(e => e.getAttribute("data-home-block") === b)); return o.every(i => i >= 0) && o[0] < o[1] && o[1] < o[2] && !!document.querySelector('[data-home-block="quiz"]'); })()`) as boolean);
+    {
+      const want = ["my-class", ...(CD ? ["community"] : []), ...(DC ? ["score"] : [])];
+      check(`${w}px: khối theo cờ, đúng thứ tự DOM: ${want.join(" → ")}${QUIZ ? " + quiz" : ""}; khối của phần ẩn KHÔNG có (bảng tin ${CD ? "mở" : "ẩn"}, tính điểm ${DC ? "mở" : "ẩn"})`, await p.evaluate(`(() => { const all = [...document.querySelectorAll("[data-home-block]")].map(e => e.getAttribute("data-home-block")); const want = ${JSON.stringify(want)}; const o = want.map(b => all.indexOf(b)); return o.every((i, k) => i >= 0 && (k === 0 || o[k - 1] < i)) && all.includes("community") === ${CD} && all.includes("score") === ${DC} && all.includes("quiz") === ${QUIZ}; })()`) as boolean);
+    }
     if (w === 1280) await shot(p, "home-student-1280");
     await p.locator('[data-home-class-row] a').first().click();
     await p.waitForURL(u => u.pathname === "/student/hoc-tap", { timeout: 120000 });
@@ -236,9 +254,9 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await homeReady(p);
     if (u) await p.locator("header").getByRole("link", { name: "Vào trang của tôi" }).waitFor({ timeout: 90000 });
     await p.waitForTimeout(1500);
-    check(`${name}: URL '/', không khối 'Lớp của tôi', không mục 'Lớp của tôi' ở Navbar, Navbar đúng 4 mục`, pathOf(p) === "/" && (await p.locator('[data-home-block="my-class"]').count()) === 0 && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link").allInnerTexts()).join("|") === "Lớp học|Thi thử|Cộng đồng|Tin tức" && (await p.getByText("Lớp của tôi", { exact: true }).count()) === 0);
+    check(`${name}: URL '/', không khối 'Lớp của tôi', không mục 'Lớp của tôi' ở Navbar, Navbar đúng 4 mục`, pathOf(p) === "/" && (await p.locator('[data-home-block="my-class"]').count()) === 0 && (await p.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link").allInnerTexts()).join("|") === NAV_GUEST && (await p.getByText("Lớp của tôi", { exact: true }).count()) === 0);
     check(`${name}: CTA cuối ${cta ? "CÓ" : "ẨN"}`, (await p.locator("[data-home-cta-final]").count()) === (cta ? 1 : 0));
-    check(`${name}: vẫn có bảng tin, quiz, tính điểm`, (await p.locator('[data-home-block="community"]').count()) === 1 && (await p.locator('[data-home-block="quiz"]').count()) === 1 && (await p.locator('[data-home-block="score"]').count()) === 1);
+    check(`${name}: bảng tin ${CD ? "có" : "ẩn"}, quiz ${QUIZ ? "có" : "ẩn"}, tính điểm ${DC ? "có" : "ẩn"} (theo cờ)`, (await p.locator('[data-home-block="community"]').count()) === (CD ? 1 : 0) && (await p.locator('[data-home-block="quiz"]').count()) === (QUIZ ? 1 : 0) && (await p.locator('[data-home-block="score"]').count()) === (DC ? 1 : 0));
     if (!u) {
       check("khách: có 'Đăng nhập' và 'Đăng ký' ở header, không 'Vào trang của tôi'", await p.locator("header").getByRole("link", { name: "Đăng nhập", exact: true }).isVisible() && await p.locator("header").getByRole("link", { name: "Đăng ký", exact: true }).isVisible() && (await p.getByRole("link", { name: "Vào trang của tôi" }).count()) === 0);
       const hero = await p.evaluate(`Math.round(document.querySelector("main section").getBoundingClientRect().height)`) as number;
@@ -253,7 +271,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
   {
     // đang tải
     const { c, p } = await open(S, 1280, "/", { setup: async pg => { await pg.route("**/api/enrollments**", async r => { await new Promise(x => setTimeout(x, 3000)); await r.continue(); }); } });
-    await homeReady(p);
+    await homeReady(p, false);
     await waitState(p, "my-class", "loading", 40000);
     const sk = p.locator('[data-home-block="my-class"] [data-home-skeleton]');
     check("đang tải: có khung xương role=status aria-busy=true, nhãn 'Đang tải Lớp của tôi'", (await sk.getAttribute("aria-busy")) === "true" && (await sk.getAttribute("role")) === "status" && (await sk.getAttribute("aria-label")) === "Đang tải Lớp của tôi");
@@ -286,126 +304,147 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await c.close();
   }
 
-  section("C2 · bảng tin: đang tải · rỗng · lỗi 500 · mất mạng (+ 'Thử lại')");
-  {
-    const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", async r => { await new Promise(x => setTimeout(x, 3000)); await r.continue(); }); } });
-    await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 });
-    await waitState(p, "community", "loading", 40000);
-    const sk = p.locator('[data-home-block="community"] [data-home-skeleton]');
-    check("đang tải: khung xám role=status aria-busy=true, nhãn 'Đang tải bảng tin'", (await sk.getAttribute("aria-busy")) === "true" && (await sk.getAttribute("aria-label")) === "Đang tải bảng tin");
-    await waitState(p, "community", "ok", 60000);
-    check("tải xong: khung xám biến mất, có thẻ bài", (await p.locator('[data-home-block="community"] [data-home-skeleton]').count()) === 0 && (await p.locator("[data-feed-card]").count()) > 0);
-    await c.close();
-  }
-  {
-    const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pinned: [], items: [] }) })); } });
-    await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); await waitState(p, "community", "empty", 60000);
-    const blk = p.locator('[data-home-block="community"]');
-    const open1 = blk.getByRole("link", { name: "Mở Cộng đồng" });
-    check("rỗng: 'Chưa có bài viết nào.' + lời giải thích + nút 'Mở Cộng đồng' → /cong-dong (≥ 44px); không thẻ bài", /Chưa có bài viết nào\./.test(await blk.innerText()) && /Khi gia sư hoặc các bạn đăng bài/.test(await blk.innerText()) && (await open1.getAttribute("href")) === "/cong-dong" && (await h(open1)) >= 44 && (await p.locator("[data-feed-card]").count()) === 0);
-    await c.close();
-  }
-  for (const [kind, fulfill] of [["500", true], ["mất mạng", false]] as const) {
-    let broken = true;
-    const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", r => broken ? (fulfill ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.abort("failed")) : r.continue()); } });
-    await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); await waitState(p, "community", "error", 60000);
-    const blk = p.locator('[data-home-block="community"]');
-    const t = await blk.innerText();
-    check(`lỗi (${kind}): 'Không tải được bảng tin' + kicker 'Lỗi · Có thể thử lại'${fulfill ? "" : " + chữ 'Mất kết nối mạng'"}`, /Không tải được bảng tin/.test(t) && /Lỗi · Có thể thử lại/i.test(t) && (fulfill || /Mất kết nối mạng/.test(t)), t);
-    const retry = blk.getByRole("button", { name: "Thử lại" });
-    check(`lỗi (${kind}): 'Thử lại' cao ≥ 44px`, (await h(retry)) >= 44);
-    broken = false;
-    await retry.click();
-    await waitState(p, "community", "ok", 60000);
-    check(`lỗi (${kind}): 'Thử lại' khi mạng ổn → hiện bài`, (await p.locator("[data-feed-card]").count()) > 0);
-    await c.close();
-  }
-
-  section("C3 · quiz: HIỆN mặc định ở trạng thái rỗng đúng chữ + nút 'Làm đề thi thử' → /thi-thu (đang tải / lỗi của quiz: N/A — chưa có nguồn dữ liệu để gây ra)");
-  {
-    const { c, p } = await open(null, 1280, "/");
-    await homeReady(p);
-    const q = p.locator('[data-home-block="quiz"]');
-    await q.waitFor({ timeout: 30000 });
-    const btn = q.getByRole("link", { name: "Làm đề thi thử" });
-    check("quiz: state=empty, 'Chưa có quiz nào được đăng.', nút → /thi-thu cao ≥ 44px, không có mục quiz giả", (await q.getAttribute("data-home-state")) === "empty" && /Chưa có quiz nào được đăng\./.test(await q.innerText()) && (await btn.getAttribute("href")) === "/thi-thu" && (await h(btn)) >= 44 && (await q.locator("[data-home-quiz-item]").count()) === 0);
-    check("quiz: không lộ đáp án / điểm / thứ hạng / 'người đã làm' trong khối", !/đáp án|giải thích|điểm số|thứ hạng|người đã làm|xếp hạng/i.test(await q.innerText()));
-    await c.close();
-  }
-
-  // ═════════════════════════ D. Bảng tin: nội dung riêng tư, nhắn riêng, tương tác ═════════════════════════
-  section("D · bảng tin (khách và học sinh): ≤ 5 thẻ, chỉ bài chung, tên rút gọn, không trường / lớp / họ tên đầy đủ, không nhắn riêng; Thích → đăng nhập; 'Xem tất cả' → /cong-dong");
-  for (const [name, u] of [["khách", null], ["học sinh trong lớp", S]] as const) {
-    const { c, p } = await open(u, 1280, "/");
-    await homeReady(p); await waitState(p, "community", "ok", 60000);
-    const blk = p.locator('[data-home-block="community"]');
-    const txt = await blk.innerText();
-    const all = await p.locator("body").innerText();
-    const cards = await blk.locator("[data-feed-card]").count();
-    check(`${name}: 1 ≤ thẻ bài ≤ 5 (${cards})`, cards >= 1 && cards <= 5);
-    check(`${name}: KHÔNG có bài riêng của lớp, KHÔNG có bài chờ duyệt`, !all.includes(CLASS_ONLY) && !all.includes(`BAI-CHO-DUYET-${stamp}`));
-    check(`${name}: không có họ tên đầy đủ '${FULL_NAME}', tên trường, thành phố, số điện thoại trên trang`, !all.includes(FULL_NAME) && !all.includes(SCHOOL) && !all.includes("Thành Phố Bí Mật") && !all.includes("0912345678") && !all.includes("0987654321"));
-    check(`${name}: tên tác giả đã rút gọn ('Anh N.') và tên gia sư hiện ở dạng nhãn`, /Anh N\./.test(txt));
-    check(`${name}: không có nút / liên kết nhắn riêng ('nhắn tin', 'tin nhắn', 'gửi tin', 'inbox') và không liên kết /tin-nhan, /messages trong khối`, !/nhắn tin|tin nhắn|nhắn riêng|gửi tin|inbox/i.test(txt) && (await blk.locator('a[href*="tin-nhan"], a[href*="message"], a[href*="inbox"]').count()) === 0);
-    check(`${name}: không có ô soạn bài / ô hỏi trong khối (không textarea, không nút 'Đăng bài' / 'Đặt câu hỏi')`, (await blk.locator("textarea").count()) === 0 && !/Đăng bài|Đặt câu hỏi|Viết bài|Soạn bài/.test(txt));
-    const feedAll = blk.locator("[data-home-feed-all]");
-    check(`${name}: 'Xem tất cả bài viết' → /cong-dong, cao ≥ 44px`, (await feedAll.getAttribute("href")) === "/cong-dong" && (await h(feedAll)) >= 44);
-    if (!u) {
-      await blk.locator('button[data-act="like"]').first().click();
-      await p.waitForURL(/\/dang-nhap/, { timeout: 60000 });
-      check("khách bấm 'Thích' → /dang-nhap?redirect=%2F", /redirect=%2F(&|$)/.test(p.url()) || new URL(p.url()).searchParams.get("redirect") === "/", p.url());
-    } else {
-      const like = blk.locator('button[data-act="like"]').first();
-      const before = await like.getAttribute("aria-pressed");
-      check("học sinh: nút Thích / Lưu là nút thật (aria-pressed), cao ≥ 44px", before === "false" && (await h(like)) >= 44);
-      // bài của chính mình không có Báo cáo; của người khác có
-      check("học sinh: bài của người khác có nút 'Báo cáo'", (await blk.locator('button[data-act="report"]').count()) >= 1);
+  if (!CD) {
+    section("C2/C3/D · bảng tin ẨN (cờ CONG_DONG tắt): không khối bảng tin, không quiz, không gọi /api/community/feed, không lối vào /cong-dong");
+    for (const [name, u] of [["khách", null], ["học sinh", S]] as const) {
+      const feedReqs: string[] = [];
+      const { c, p } = await open(u, 1280, "/", { setup: async pg => { pg.on("request", r => { if (/\/api\/community\/feed/.test(r.url())) feedReqs.push(r.url()); }); } });
+      await homeReady(p);
+      if (u) await waitState(p, "my-class", "ok", 60000);
+      await p.waitForTimeout(1500);
+      check(`${name}: không khối bảng tin / quiz, không thẻ bài, không gọi API bảng tin, không liên kết /cong-dong`, (await p.locator('[data-home-block="community"], [data-home-block="quiz"], [data-feed-card]').count()) === 0 && feedReqs.length === 0 && (await p.locator('main a[href^="/cong-dong"], header a[href^="/cong-dong"]').count()) === 0, feedReqs);
+      await c.close();
     }
-    await c.close();
-  }
-  {
-    const { c, p } = await open(null, 1280, "/");
-    await homeReady(p); await waitState(p, "community", "ok", 60000);
-    await p.locator("[data-home-feed-all]").click();
-    await p.waitForURL(u => u.pathname === "/cong-dong", { timeout: 120000 });
-    check("bấm 'Xem tất cả bài viết' → /cong-dong", pathOf(p) === "/cong-dong");
-    await c.close();
+  } else {
+    section("C2 · bảng tin: đang tải · rỗng · lỗi 500 · mất mạng (+ 'Thử lại')");
+    {
+      const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", async r => { await new Promise(x => setTimeout(x, 3000)); await r.continue(); }); } });
+      await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 });
+      await waitState(p, "community", "loading", 40000);
+      const sk = p.locator('[data-home-block="community"] [data-home-skeleton]');
+      check("đang tải: khung xám role=status aria-busy=true, nhãn 'Đang tải bảng tin'", (await sk.getAttribute("aria-busy")) === "true" && (await sk.getAttribute("aria-label")) === "Đang tải bảng tin");
+      await waitState(p, "community", "ok", 60000);
+      check("tải xong: khung xám biến mất, có thẻ bài", (await p.locator('[data-home-block="community"] [data-home-skeleton]').count()) === 0 && (await p.locator("[data-feed-card]").count()) > 0);
+      await c.close();
+    }
+    {
+      const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pinned: [], items: [] }) })); } });
+      await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); await waitState(p, "community", "empty", 60000);
+      const blk = p.locator('[data-home-block="community"]');
+      const open1 = blk.getByRole("link", { name: "Mở Cộng đồng" });
+      check("rỗng: 'Chưa có bài viết nào.' + lời giải thích + nút 'Mở Cộng đồng' → /cong-dong (≥ 44px); không thẻ bài", /Chưa có bài viết nào\./.test(await blk.innerText()) && /Khi gia sư hoặc các bạn đăng bài/.test(await blk.innerText()) && (await open1.getAttribute("href")) === "/cong-dong" && (await h(open1)) >= 44 && (await p.locator("[data-feed-card]").count()) === 0);
+      await c.close();
+    }
+    for (const [kind, fulfill] of [["500", true], ["mất mạng", false]] as const) {
+      let broken = true;
+      const { c, p } = await open(null, 1280, "/", { setup: async pg => { await pg.route("**/api/community/feed**", r => broken ? (fulfill ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.abort("failed")) : r.continue()); } });
+      await p.getByRole("heading", { level: 1 }).waitFor({ timeout: 120000 }); await waitState(p, "community", "error", 60000);
+      const blk = p.locator('[data-home-block="community"]');
+      const t = await blk.innerText();
+      check(`lỗi (${kind}): 'Không tải được bảng tin' + kicker 'Lỗi · Có thể thử lại'${fulfill ? "" : " + chữ 'Mất kết nối mạng'"}`, /Không tải được bảng tin/.test(t) && /Lỗi · Có thể thử lại/i.test(t) && (fulfill || /Mất kết nối mạng/.test(t)), t);
+      const retry = blk.getByRole("button", { name: "Thử lại" });
+      check(`lỗi (${kind}): 'Thử lại' cao ≥ 44px`, (await h(retry)) >= 44);
+      broken = false;
+      await retry.click();
+      await waitState(p, "community", "ok", 60000);
+      check(`lỗi (${kind}): 'Thử lại' khi mạng ổn → hiện bài`, (await p.locator("[data-feed-card]").count()) > 0);
+      await c.close();
+    }
+
+    section("C3 · quiz: HIỆN mặc định ở trạng thái rỗng đúng chữ + nút 'Làm đề thi thử' → /thi-thu (đang tải / lỗi của quiz: N/A — chưa có nguồn dữ liệu để gây ra)");
+    {
+      const { c, p } = await open(null, 1280, "/");
+      await homeReady(p);
+      const q = p.locator('[data-home-block="quiz"]');
+      await q.waitFor({ timeout: 30000 });
+      const btn = q.getByRole("link", { name: "Làm đề thi thử" });
+      check("quiz: state=empty, 'Chưa có quiz nào được đăng.', nút → /thi-thu cao ≥ 44px, không có mục quiz giả", (await q.getAttribute("data-home-state")) === "empty" && /Chưa có quiz nào được đăng\./.test(await q.innerText()) && (await btn.getAttribute("href")) === "/thi-thu" && (await h(btn)) >= 44 && (await q.locator("[data-home-quiz-item]").count()) === 0);
+      check("quiz: không lộ đáp án / điểm / thứ hạng / 'người đã làm' trong khối", !/đáp án|giải thích|điểm số|thứ hạng|người đã làm|xếp hạng/i.test(await q.innerText()));
+      await c.close();
+    }
+
+    // ═════════════════════════ D. Bảng tin: nội dung riêng tư, nhắn riêng, tương tác ═════════════════════════
+    section("D · bảng tin (khách và học sinh): ≤ 5 thẻ, chỉ bài chung, tên rút gọn, không trường / lớp / họ tên đầy đủ, không nhắn riêng; Thích → đăng nhập; 'Xem tất cả' → /cong-dong");
+    for (const [name, u] of [["khách", null], ["học sinh trong lớp", S]] as const) {
+      const { c, p } = await open(u, 1280, "/");
+      await homeReady(p); await waitState(p, "community", "ok", 60000);
+      const blk = p.locator('[data-home-block="community"]');
+      const txt = await blk.innerText();
+      const all = await p.locator("body").innerText();
+      const cards = await blk.locator("[data-feed-card]").count();
+      check(`${name}: 1 ≤ thẻ bài ≤ 5 (${cards})`, cards >= 1 && cards <= 5);
+      check(`${name}: KHÔNG có bài riêng của lớp, KHÔNG có bài chờ duyệt`, !all.includes(CLASS_ONLY) && !all.includes(`BAI-CHO-DUYET-${stamp}`));
+      check(`${name}: không có họ tên đầy đủ '${FULL_NAME}', tên trường, thành phố, số điện thoại trên trang`, !all.includes(FULL_NAME) && !all.includes(SCHOOL) && !all.includes("Thành Phố Bí Mật") && !all.includes("0912345678") && !all.includes("0987654321"));
+      check(`${name}: tên tác giả đã rút gọn ('Anh N.') và tên gia sư hiện ở dạng nhãn`, /Anh N\./.test(txt));
+      check(`${name}: không có nút / liên kết nhắn riêng ('nhắn tin', 'tin nhắn', 'gửi tin', 'inbox') và không liên kết /tin-nhan, /messages trong khối`, !/nhắn tin|tin nhắn|nhắn riêng|gửi tin|inbox/i.test(txt) && (await blk.locator('a[href*="tin-nhan"], a[href*="message"], a[href*="inbox"]').count()) === 0);
+      check(`${name}: không có ô soạn bài / ô hỏi trong khối (không textarea, không nút 'Đăng bài' / 'Đặt câu hỏi')`, (await blk.locator("textarea").count()) === 0 && !/Đăng bài|Đặt câu hỏi|Viết bài|Soạn bài/.test(txt));
+      const feedAll = blk.locator("[data-home-feed-all]");
+      check(`${name}: 'Xem tất cả bài viết' → /cong-dong, cao ≥ 44px`, (await feedAll.getAttribute("href")) === "/cong-dong" && (await h(feedAll)) >= 44);
+      if (!u) {
+        await blk.locator('button[data-act="like"]').first().click();
+        await p.waitForURL(/\/dang-nhap/, { timeout: 60000 });
+        check("khách bấm 'Thích' → /dang-nhap?redirect=%2F", /redirect=%2F(&|$)/.test(p.url()) || new URL(p.url()).searchParams.get("redirect") === "/", p.url());
+      } else {
+        const like = blk.locator('button[data-act="like"]').first();
+        const before = await like.getAttribute("aria-pressed");
+        check("học sinh: nút Thích / Lưu là nút thật (aria-pressed), cao ≥ 44px", before === "false" && (await h(like)) >= 44);
+        // bài của chính mình không có Báo cáo; của người khác có
+        check("học sinh: bài của người khác có nút 'Báo cáo'", (await blk.locator('button[data-act="report"]').count()) >= 1);
+      }
+      await c.close();
+    }
+    {
+      const { c, p } = await open(null, 1280, "/");
+      await homeReady(p); await waitState(p, "community", "ok", 60000);
+      await p.locator("[data-home-feed-all]").click();
+      await p.waitForURL(u => u.pathname === "/cong-dong", { timeout: 120000 });
+      check("bấm 'Xem tất cả bài viết' → /cong-dong", pathOf(p) === "/cong-dong");
+      await c.close();
+    }
   }
 
   // ═════════════════════════ E. Tính điểm ═════════════════════════
-  section("E · tính điểm: nhập điểm → kết quả đúng (24,94 / 30); KHÔNG có request nào phát sinh khi bấm; lưu ý thường trực; không công thức → thẻ dẫn /diem-chuan");
-  {
+  if (!DC) {
+    section("E · tính điểm ẨN (cờ DIEM_CHUAN tắt): không khối tính điểm, không thẻ dẫn /diem-chuan");
     const { c, p } = await open(null, 1280, "/");
     await homeReady(p);
-    const calc = p.locator("[data-score-calc]");
-    await calc.waitFor({ timeout: 60000 });
-    check("khối tính điểm state=ok; lưu ý 'Chỉ mang tính tham khảo. KiN không lưu điểm bạn nhập.' hiện NGAY (trước khi tính)", (await blockState(p, "score")) === "ok" && /Chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-disclaimer]").innerText()) && /KiN không lưu điểm bạn nhập/.test(await calc.locator("[data-calc-disclaimer]").innerText()));
-    await calc.locator("#tc-m1").fill("8,5"); await calc.locator("#tc-m2").fill("7.25"); await calc.locator("#tc-m3").fill("9");
-    await p.waitForTimeout(800);
-    const reqs: string[] = [];
-    const bodies: string[] = [];
-    p.on("request", r => { if (!r.url().startsWith("data:")) { reqs.push(`${r.method()} ${r.url()}`); const b = r.postData(); if (b) bodies.push(b); } });
-    await calc.getByRole("button", { name: "Tính điểm" }).click();
-    await calc.locator("[data-calc-result]").waitFor({ timeout: 15000 });
-    await p.waitForTimeout(1500);
-    const rt = await calc.locator("[data-calc-result]").innerText();
-    check("Toán 8,5 + Lý 7,25 + Hoá 9 → 24,94 / 30 kèm lời giải từng bước", /24,94/.test(rt) && /\/ 30/.test(rt) && /Toán: 8,5 × 2 = 17/.test(rt), rt);
-    check("KHÔNG có yêu cầu mạng nào khi bấm 'Tính điểm' (đếm mọi request trong 1,5 giây sau khi bấm)", reqs.length === 0, reqs);
-    check("điểm đã nhập không nằm trong bất kỳ thân yêu cầu nào", bodies.every(b => !/8,5|7\.25/.test(b)) && reqs.every(r => !/8,5|7\.25|8\.5/.test(r)));
-    check("kết quả KÈM câu lưu ý 'chỉ mang tính tham khảo'; ô bấm 'Tính điểm' / 'Xoá nhập' cao ≥ 44px", /chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-result-note]").innerText()) && (await h(calc.getByRole("button", { name: "Tính điểm" }))) >= 44 && (await h(calc.getByRole("button", { name: "Xoá nhập" }))) >= 44);
-    await shot(p, "home-guest-tinh-diem-1280");
+    check("không [data-home-block=score], không [data-score-calc], không liên kết /diem-chuan trong thân trang", (await p.locator('[data-home-block="score"], [data-score-calc]').count()) === 0 && (await p.locator('main a[href^="/diem-chuan"]').count()) === 0);
     await c.close();
-  }
-  {
-    await prisma.admissionFormula.delete({ where: { id: formula.id } });
-    const { c, p } = await open(null, 1280, "/");
-    await homeReady(p);
-    const sc = p.locator('[data-home-block="score"]');
-    await sc.waitFor({ timeout: 30000 });
-    const btn = sc.getByRole("link", { name: "Mở Tra cứu điểm chuẩn" });
-    check("không có công thức công khai: state=empty, thẻ 'Tra cứu điểm chuẩn' + câu nói thật + nút → /diem-chuan (≥ 44px); không form tính điểm", (await blockState(p, "score")) === "empty" && /KiN chưa có công thức tính điểm nào được công khai/.test(await sc.innerText()) && (await btn.getAttribute("href")) === "/diem-chuan" && (await h(btn)) >= 44 && (await p.locator("[data-score-calc]").count()) === 0);
-    await c.close();
-    await prisma.admissionFormula.create({ data: { id: formula.id, name: formula.name, school: formula.school, year: formula.year, scale: formula.scale, inputs: formula.inputs as object, multiplier: formula.multiplier, bonuses: formula.bonuses as object, sourceUrl: formula.sourceUrl, sourceName: formula.sourceName, verified: false, published: true } });
+  } else {
+    section("E · tính điểm: nhập điểm → kết quả đúng (24,94 / 30); KHÔNG có request nào phát sinh khi bấm; lưu ý thường trực; không công thức → thẻ dẫn /diem-chuan");
+    {
+      const { c, p } = await open(null, 1280, "/");
+      await homeReady(p);
+      const calc = p.locator("[data-score-calc]");
+      await calc.waitFor({ timeout: 60000 });
+      check("khối tính điểm state=ok; lưu ý 'Chỉ mang tính tham khảo. KiN không lưu điểm bạn nhập.' hiện NGAY (trước khi tính)", (await blockState(p, "score")) === "ok" && /Chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-disclaimer]").innerText()) && /KiN không lưu điểm bạn nhập/.test(await calc.locator("[data-calc-disclaimer]").innerText()));
+      await calc.locator("#tc-m1").fill("8,5"); await calc.locator("#tc-m2").fill("7.25"); await calc.locator("#tc-m3").fill("9");
+      await p.waitForTimeout(800);
+      const reqs: string[] = [];
+      const bodies: string[] = [];
+      p.on("request", r => { if (!r.url().startsWith("data:")) { reqs.push(`${r.method()} ${r.url()}`); const b = r.postData(); if (b) bodies.push(b); } });
+      await calc.getByRole("button", { name: "Tính điểm" }).click();
+      await calc.locator("[data-calc-result]").waitFor({ timeout: 15000 });
+      await p.waitForTimeout(1500);
+      const rt = await calc.locator("[data-calc-result]").innerText();
+      check("Toán 8,5 + Lý 7,25 + Hoá 9 → 24,94 / 30 kèm lời giải từng bước", /24,94/.test(rt) && /\/ 30/.test(rt) && /Toán: 8,5 × 2 = 17/.test(rt), rt);
+      check("KHÔNG có yêu cầu mạng nào khi bấm 'Tính điểm' (đếm mọi request trong 1,5 giây sau khi bấm)", reqs.length === 0, reqs);
+      check("điểm đã nhập không nằm trong bất kỳ thân yêu cầu nào", bodies.every(b => !/8,5|7\.25/.test(b)) && reqs.every(r => !/8,5|7\.25|8\.5/.test(r)));
+      check("kết quả KÈM câu lưu ý 'chỉ mang tính tham khảo'; ô bấm 'Tính điểm' / 'Xoá nhập' cao ≥ 44px", /chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-result-note]").innerText()) && (await h(calc.getByRole("button", { name: "Tính điểm" }))) >= 44 && (await h(calc.getByRole("button", { name: "Xoá nhập" }))) >= 44);
+      await shot(p, "home-guest-tinh-diem-1280");
+      await c.close();
+    }
+    {
+      await prisma.admissionFormula.delete({ where: { id: formula.id } });
+      const { c, p } = await open(null, 1280, "/");
+      await homeReady(p);
+      const sc = p.locator('[data-home-block="score"]');
+      await sc.waitFor({ timeout: 30000 });
+      const btn = sc.getByRole("link", { name: "Mở Tra cứu điểm chuẩn" });
+      check("không có công thức công khai: state=empty, thẻ 'Tra cứu điểm chuẩn' + câu nói thật + nút → /diem-chuan (≥ 44px); không form tính điểm", (await blockState(p, "score")) === "empty" && /KiN chưa có công thức tính điểm nào được công khai/.test(await sc.innerText()) && (await btn.getAttribute("href")) === "/diem-chuan" && (await h(btn)) >= 44 && (await p.locator("[data-score-calc]").count()) === 0);
+      await c.close();
+      await prisma.admissionFormula.create({ data: { id: formula.id, name: formula.name, school: formula.school, year: formula.year, scale: formula.scale, inputs: formula.inputs as object, multiplier: formula.multiplier, bonuses: formula.bonuses as object, sourceUrl: formula.sourceUrl, sourceName: formula.sourceName, verified: false, published: true } });
+    }
   }
 
   // ═════════════════════════ F. Kích thước chạm, tràn ngang, chữ 130% ═════════════════════════
@@ -415,7 +454,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
       const { c, p } = await open(u, w, "/", { h: 900 });
       await homeReady(p);
       if (u) await waitState(p, "my-class", "ok", 60000);
-      await waitState(p, "community", "ok", 60000);
+      if (CD) await waitState(p, "community", "ok", 60000);
       await p.waitForTimeout(800);
       const smAll = await small(p, "main"), smHead = await small(p, "header");
       const smMain = smAll.filter(x => !x.startsWith("[thẻ bài]")), smCard = smAll.filter(x => x.startsWith("[thẻ bài]"));

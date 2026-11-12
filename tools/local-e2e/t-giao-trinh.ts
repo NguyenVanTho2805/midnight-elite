@@ -2,7 +2,7 @@
 // Bài gọi wipe(): chỉ chạy trên DB riêng của worktree. Không cần Cloudinary (tệp KiN được tạo thẳng trong DB, driver local).
 // Ca phá cố ý: gia sư LỚP KHÁC (403 ở G1/G2/G3), gia sư CHỜ DUYỆT (403), học sinh/khách, bài của lớp khác trong cùng đường dẫn (404), link độc (cột KHÔNG đổi),
 // tệp KiN của người khác (403), 5 yêu cầu song song vào một bài (đủ 5 mục), 3 yêu cầu song song vào lớp trống (đúng 1 Phần), gỡ hai lần, học sinh chưa ghi danh không thấy link vừa thêm.
-import { api, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
+import { api, BASE, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { itemKey } from "@/lib/giaoTrinh";
 
@@ -147,14 +147,23 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   section("G2 · form (POST thường → 303)");
   const form = (courseId: string, as: typeof T, fields: Record<string, string>) => api("POST", `/api/tutor/lop/${courseId}/giao-trinh/muc`, { as, raw: new URLSearchParams(fields).toString(), headers: { "content-type": "application/x-www-form-urlencoded" } });
   const f1 = await form(A.id, T, { lessonId: L3.id, url: yt(60) });
-  check("form hợp lệ → 303 về /lop-cua-toi/quan-lop/<id>/giao-trinh?ok=1", f1.status === 303 && (f1.headers.get("location") ?? "").includes(`/lop-cua-toi/quan-lop/${A.id}/giao-trinh`) && (f1.headers.get("location") ?? "").includes("ok=1"), f1.headers.get("location"));
+  // LOI-07: đích là GỐC lớp (tab "Bài học"), MỘT chặng: …/giao-trinh nay 307 về gốc và bỏ query, nên 303 về đó từng làm mất ?ok= / ?loi=.
+  const loc = (r: { headers: Headers }) => new URL(r.headers.get("location") ?? "/", BASE);
+  const dest1 = loc(f1);
+  check("form hợp lệ → 303 THẲNG về gốc lớp /lop-cua-toi/quan-lop/<id>?ok=1&lessonId=… (không qua …/giao-trinh)", f1.status === 303 && dest1.pathname === `/lop-cua-toi/quan-lop/${A.id}` && dest1.searchParams.get("ok") === "1" && dest1.searchParams.get("lessonId") === L3.id, f1.headers.get("location"));
+  check("303 có Cache-Control no-store", /no-store/.test(f1.headers.get("cache-control") ?? ""), f1.headers.get("cache-control"));
+  const hop = await api("GET", `${dest1.pathname}${dest1.search}`, { as: T });
+  check("mở đích 303 → 200 ngay (đích đã là trang cuối: không chặng 307 nào cắt query)", hop.status === 200 && !hop.headers.get("location"), [hop.status, hop.headers.get("location")]);
+  // Ca phá cố ý: đích cũ …/giao-trinh?ok=1 thì chặng 307 tiếp theo làm rơi query — giữ ca này để không ai đổi đích về chỗ cũ.
+  const old = await api("GET", `/lop-cua-toi/quan-lop/${A.id}/giao-trinh?ok=1&lessonId=${L3.id}`, { as: T });
+  check("phá cố ý: đường cũ …/giao-trinh?ok=1 → 307 về gốc và MẤT ?ok= (lý do không được 303 về đó)", old.status === 307 && !new URL(old.headers.get("location") ?? "/", BASE).searchParams.has("ok"), [old.status, old.headers.get("location")]);
   check("form: cột đã ghi", (await lessonDb(L3.id)).videoUrl?.includes(yt(60)) === true);
   const f2 = await form(A.id, T, { lessonId: L3.id, url: "javascript:alert(1)" });
-  check("form link độc → 303 ?loi=link và GIỮ lessonId", f2.status === 303 && /loi=link/.test(f2.headers.get("location") ?? "") && (f2.headers.get("location") ?? "").includes(`lessonId=${L3.id}`), f2.headers.get("location"));
+  check("form link độc → 303 gốc lớp ?loi=link và GIỮ lessonId", f2.status === 303 && loc(f2).pathname === `/lop-cua-toi/quan-lop/${A.id}` && loc(f2).searchParams.get("loi") === "link" && loc(f2).searchParams.get("lessonId") === L3.id, f2.headers.get("location"));
   const f3 = await form(A.id, T, { lessonId: L4.id, url: yt(600) });
   check("form vượt giới hạn → 303 ?loi=gioi-han", f3.status === 303 && /loi=gioi-han/.test(f3.headers.get("location") ?? ""), f3.headers.get("location"));
   const f4 = await form(A.id, T2, { lessonId: L3.id, url: yt(61) });
-  check("form của gia sư lớp khác → 303 ?loi=quyen, cột không đổi", f4.status === 303 && /loi=quyen/.test(f4.headers.get("location") ?? "") && !(await lessonDb(L3.id)).videoUrl?.includes(yt(61)), f4.headers.get("location"));
+  check("form của gia sư lớp khác → 303 gốc lớp ?loi=quyen, cột không đổi", f4.status === 303 && loc(f4).pathname === `/lop-cua-toi/quan-lop/${A.id}` && loc(f4).searchParams.get("loi") === "quyen" && !(await lessonDb(L3.id)).videoUrl?.includes(yt(61)), f4.headers.get("location"));
   check("form không có url → 303 ?loi=link", /loi=link/.test((await form(A.id, T, { lessonId: L3.id })).headers.get("location") ?? ""));
 
   section("G3 · DELETE muc — gỡ, hai lần không lỗi");

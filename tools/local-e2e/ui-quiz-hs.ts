@@ -56,12 +56,12 @@ import { prisma } from "@/lib/prisma";
   // Thanh công thức (24/10/2026): chèn CHỮ THUẦN vào đúng ô tự luận, vẫn đi qua đường lưu nháp sẵn có.
   const bar = pg.getByRole("toolbar", { name: /Chèn ký hiệu/ });
   check("thanh công thức có 3 nút (không còn nút B in đậm), mỗi nút cao ≥ 44px", await bar.getByRole("button").count() === 3 && await bar.getByRole("button", { name: /đậm/ }).count() === 0 && (await bar.getByRole("button").evaluateAll(bs => bs.every(b => b.getBoundingClientRect().height >= 43.5))));
-  await area.focus(); await pg.keyboard.press("End");
+  await area.focus(); await area.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length)); // LOI-07: phím End trên macOS KHÔNG đưa con trỏ về cuối ô (chỉ cuộn) — đặt con trỏ thẳng, chạy giống nhau trên mọi máy
   await bar.getByRole("button", { name: /căn bậc hai/ }).click();
   check("bấm √x → chèn chữ thuần 'sqrt()' vào ô (không HTML), ô vẫn giữ chữ cũ", (await area.inputValue()).endsWith("x=3sqrt()") && (await area.inputValue()).includes("x=2"), await area.inputValue());
   await pg.keyboard.type("16");
   check("con trỏ nằm GIỮA ngoặc: gõ tiếp thành sqrt(16)", (await area.inputValue()).endsWith("sqrt(16)"), await area.inputValue());
-  await pg.keyboard.press("End");
+  await area.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length)); // (như trên: không dùng phím End)
   await bar.getByRole("button", { name: /phân số/ }).click();
   await bar.getByRole("button", { name: /bình phương/ }).click();
   check("phân số + bình phương chèn đúng mẫu '(a)/(b)' và 'x^2'", (await area.inputValue()).includes("(a)/(b)x^2"), await area.inputValue());
