@@ -7,6 +7,9 @@
 // Móc kiểm thử: [data-outline] (data-outline-variant), [data-outline-section], [data-outline-chapter] (+ aria-expanded), [data-outline-lesson=<id>], [data-outline-title] (chữ tiêu đề từng cấp),
 // [data-outline-search], [data-outline-open-all], [data-outline-close-all], [data-outline-clear], [data-outline-status], [data-outline-nomatch].
 // Tên bài dài (200 ký tự) xuống dòng, không tràn ngang; mọi hàng / nút / ô nhập cao ≥ 44px.
+// LOI-03 (chỉ variant "page", rail/sheet không đổi): mỗi chương là một thẻ có viền, số thứ tự "01", "02"… đếm trong toàn lớp ([data-chapter-no]), mũi tên bên phải;
+// dòng bài có biểu tượng ▷, dòng phụ `meta` ([data-lesson-meta], ví dụ "1 tài liệu · Có bài tập · Học Hôm nay · 19:30"), nhãn chữ Đã học / Học tiếp / Đang xem / Chưa học / Đã khoá;
+// thanh công cụ có `heading` (dòng "Nội dung lớp: n chương · m bài") và hai nút đổi chữ "Mở rộng tất cả" / "Thu gọn tất cả" (vẫn [data-outline-open-all] / [data-outline-close-all]).
 "use client";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
@@ -15,6 +18,7 @@ import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
 import { KIN_FIELD } from "@/components/kin/PageLayout";
+import { chapterNo } from "@/lib/studentLop";
 import { allChapterIds, chapterProgress, filterOutline, initialOpenChapters, outlineShape, type OChapter, type OLesson, type OSection } from "@/lib/lessonOutline";
 
 export interface OutlineLesson extends OLesson { /** Dòng phụ ("Bài tập · 15 phút") — chỉ variant "page" vẽ. */ meta?: string; isFree?: boolean }
@@ -39,12 +43,14 @@ export interface CourseOutlineProps {
   idPrefix: string;
   /** Thêm vào dòng nhãn của bài (variant rail / sheet), ví dụ nhãn loại bài. */
   lessonExtra?: (lesson: OutlineLesson) => ReactNode;
+  /** Chỉ variant "page": dòng tóm tắt đầu thanh công cụ (cạnh hai nút Mở rộng / Thu gọn). */
+  heading?: ReactNode;
   className?: string;
 }
 
 const HEADING_CLS = "kin-chu-tieu-de font-semibold text-[var(--kin-chu-chinh)]";
 
-export default function CourseOutline({ sections, completedIds, currentId, nextId, watching, variant, hrefFor, onSelect, idPrefix, lessonExtra, className = "" }: CourseOutlineProps) {
+export default function CourseOutline({ sections, completedIds, currentId, nextId, watching, variant, hrefFor, onSelect, idPrefix, lessonExtra, heading, className = "" }: CourseOutlineProps) {
   const page = variant === "page";
   const shape = useMemo(() => outlineShape(sections), [sections]);
   const original = useMemo(() => {
@@ -53,6 +59,13 @@ export default function CourseOutline({ sections, completedIds, currentId, nextI
     return m;
   }, [sections]);
   const hasChapterRows = sections.some(s => shape.showChapterIn[s.id]);
+  // Số thứ tự chương (variant page): đếm trên các hàng chương của CẢ lớp theo cây gốc, nên lọc / tìm không làm đổi số.
+  const chapterNoOf = useMemo(() => {
+    const m = new Map<string, string>();
+    let i = 0;
+    for (const s of sections) if (shape.showChapterIn[s.id]) for (const c of s.chapters) m.set(c.id, chapterNo(i++));
+    return m;
+  }, [sections, shape]);
 
   const [open, setOpen] = useState<Set<string>>(() => initialOpenChapters(sections, { currentId, nextId }));
   const [query, setQuery] = useState("");
@@ -100,14 +113,16 @@ export default function CourseOutline({ sections, completedIds, currentId, nextI
 
     let inner: ReactNode;
     if (page) {
-      const label = done ? <KinStatus tone="xong">Đã học</KinStatus> : locked ? <KinStatus tone="mo">Đã khoá</KinStatus> : isNext ? <KinStatus tone="cho">Học tiếp</KinStatus> : <KinStatus tone="mo">Chưa học</KinStatus>;
+      const label = done ? <KinStatus tone="xong">Đã học</KinStatus> : locked ? <KinStatus tone="mo">Đã khoá</KinStatus> : isNext ? <KinStatus tone="cho">Học tiếp</KinStatus>
+        : watching && l.id in watching ? <KinStatus tone="cho">Đang xem</KinStatus> : <KinStatus tone="mo">Chưa học</KinStatus>;
       inner = (
-        <span className="grid w-full items-center gap-x-4 gap-y-1 md:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)] min-h-9">
-          <span data-outline-title className={`min-w-0 [overflow-wrap:anywhere] ${lit ? "font-semibold" : ""} text-[var(--kin-chu-chinh)]`}>{l.title}</span>
-          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 md:contents">
-            <span className="min-w-0 text-[var(--kin-chu-mo)]">{l.meta ?? ""}</span>
-            <span>{label}</span>
+        <span className="flex w-full items-start gap-3 min-h-9">
+          <span aria-hidden className="mt-0.5 flex-shrink-0 text-[length:var(--kin-co-phu)] leading-5 text-[var(--kin-chu-mo)]">▷</span>
+          <span className="min-w-0 flex-1">
+            <span data-outline-title className={`block leading-5 [overflow-wrap:anywhere] ${lit ? "font-semibold" : ""} text-[var(--kin-chu-chinh)]`}>{l.title}</span>
+            {l.meta && <span data-lesson-meta className="mt-1 block leading-5 text-[var(--kin-chu-mo)] [overflow-wrap:anywhere]">{l.meta}</span>}
           </span>
+          <span className="flex-shrink-0">{label}</span>
         </span>
       );
     } else {
@@ -137,27 +152,42 @@ export default function CourseOutline({ sections, completedIds, currentId, nextI
     return <li key={l.id}><button type="button" onClick={() => onSelect?.(l.id)} data-outline-lesson={l.id} {...aria} className={`${base} hover:bg-[var(--kin-nen-re-chuot)] transition-colors`}>{inner}</button></li>;
   };
 
+  const openAllLabel = page ? "Mở rộng tất cả" : "Mở hết";
+  const closeAllLabel = page ? "Thu gọn tất cả" : "Thu hết";
+  const searchBox = (
+    <div className={`relative min-w-0 flex-1 ${page ? "md:col-span-2 md:row-start-2" : ""}`}>
+      <label htmlFor={`${idPrefix}-tim`} className="sr-only">Tìm bài trong lớp</label>
+      <input id={`${idPrefix}-tim`} data-outline-search type="search" value={query} autoComplete="off" maxLength={100}
+        placeholder="Gõ tên bài hoặc tên chương" aria-describedby={`${idPrefix}-trang-thai`}
+        onChange={e => onQuery(e.target.value)} onKeyDown={e => { if (e.key === "Escape" && query) onQuery(""); }}
+        className={`${KIN_FIELD} pr-16 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden`} />
+      {query !== "" && !noMatch && (
+        <button type="button" data-outline-clear aria-label="Xoá ô tìm kiếm" onClick={() => onQuery("")}
+          className="absolute right-0 top-0 h-11 min-w-11 px-3 text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-nhan-link)] hover:underline">Xoá</button>
+      )}
+    </div>
+  );
+  const allButtons = hasChapterRows && (
+    <div className={`flex gap-3 ${page ? "md:col-start-2 md:row-start-1" : ""}`}>
+      <button type="button" data-outline-open-all onClick={openAll} className={`${kinButtonClass("secondary")} flex-1 md:flex-none`}>{openAllLabel}</button>
+      <button type="button" data-outline-close-all onClick={closeAll} className={`${kinButtonClass("secondary")} flex-1 md:flex-none`}>{closeAllLabel}</button>
+    </div>
+  );
   const toolbar = (
     <div data-outline-toolbar className={`${page ? "sticky top-0 md:static z-10 pb-3 pt-1" : variant === "sheet" ? "sticky top-0 z-10 pb-3 pt-1 px-[var(--kin-kc-5)]" : "flex-shrink-0 px-[var(--kin-kc-5)] pb-3 pt-3"} bg-[var(--kin-nen-trang)]`}>
-      <div className={`flex flex-col gap-3 ${page ? "md:flex-row md:items-center" : ""}`}>
-        <div className="relative min-w-0 flex-1">
-          <label htmlFor={`${idPrefix}-tim`} className="sr-only">Tìm bài trong lớp</label>
-          <input id={`${idPrefix}-tim`} data-outline-search type="search" value={query} autoComplete="off" maxLength={100}
-            placeholder="Gõ tên bài hoặc tên chương" aria-describedby={`${idPrefix}-trang-thai`}
-            onChange={e => onQuery(e.target.value)} onKeyDown={e => { if (e.key === "Escape" && query) onQuery(""); }}
-            className={`${KIN_FIELD} pr-16 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden`} />
-          {query !== "" && !noMatch && (
-            <button type="button" data-outline-clear aria-label="Xoá ô tìm kiếm" onClick={() => onQuery("")}
-              className="absolute right-0 top-0 h-11 min-w-11 px-3 text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-nhan-link)] hover:underline">Xoá</button>
-          )}
+      {page ? (
+        // Trang lớp: điện thoại = tóm tắt → ô tìm → hai nút (cạnh nhau, dưới ô tìm); màn rộng = [tóm tắt | hai nút] rồi ô tìm cả hàng dưới.
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          {heading && <div className="min-w-0 md:col-start-1 md:row-start-1">{heading}</div>}
+          {searchBox}
+          {allButtons}
         </div>
-        {hasChapterRows && (
-          <div className="flex gap-3">
-            <button type="button" data-outline-open-all onClick={openAll} className={`${kinButtonClass("secondary")} flex-1 md:flex-none`}>Mở hết</button>
-            <button type="button" data-outline-close-all onClick={closeAll} className={`${kinButtonClass("secondary")} flex-1 md:flex-none`}>Thu hết</button>
-          </div>
-        )}
-      </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {searchBox}
+          {allButtons}
+        </div>
+      )}
       <p id={`${idPrefix}-trang-thai`} role="status" data-outline-status className={statusText ? "mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" : "sr-only"}>{statusText}</p>
     </div>
   );
@@ -187,6 +217,30 @@ export default function CourseOutline({ sections, completedIds, currentId, nextI
               const prog = chapterProgress(original.get(c.id) ?? c, completedIds);
               const expanded = isOpen(c.id);
               const panelId = `${idPrefix}-ch-${c.id}`;
+              if (page) {
+                const no = chapterNoOf.get(c.id) ?? "";
+                return (
+                  <div key={c.id} data-outline-chapter-wrap={c.id} className="mt-3 overflow-hidden rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
+                    <h4>
+                      <button type="button" data-outline-chapter={c.id} aria-expanded={expanded} aria-controls={panelId} onClick={() => toggle(c.id)}
+                        className={`flex w-full min-h-14 items-center justify-between gap-3 pl-[var(--o1)] pr-[var(--kin-kc-6)] py-[var(--kin-kc-4)] text-left hover:bg-[var(--kin-nen-re-chuot)] transition-colors ${expanded ? "border-b border-[var(--kin-vien-nhat)]" : ""}`}>
+                        <span className="flex min-w-0 items-baseline gap-2">
+                          {no && <span data-chapter-no={no} className="flex-shrink-0 text-[length:var(--kin-co-goc)] font-semibold tabular-nums text-[var(--kin-nhan-link)]">{no}</span>}
+                          <span data-outline-title className="min-w-0 text-[length:var(--kin-co-goc)] font-semibold [overflow-wrap:anywhere] text-[var(--kin-chu-chinh)]">{c.title}</span>
+                        </span>
+                        <span className="flex flex-shrink-0 items-center gap-x-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+                          <span className="flex flex-wrap items-center justify-end gap-x-2">
+                            <span className="tabular-nums">{prog.done}/{prog.total} bài</span>
+                            {prog.complete && <span data-outline-done className="font-semibold text-[var(--kin-tt-chu-xong)]">Đã xong</span>}
+                          </span>
+                          <KinChevron open={expanded} />
+                        </span>
+                      </button>
+                    </h4>
+                    <KinFold open={expanded} id={panelId}><ul className="[&>li:last-child>*]:border-b-0">{c.lessons.map(l => lessonRow(l, true))}</ul></KinFold>
+                  </div>
+                );
+              }
               return (
                 <div key={c.id} data-outline-chapter-wrap={c.id}>
                   <h4>

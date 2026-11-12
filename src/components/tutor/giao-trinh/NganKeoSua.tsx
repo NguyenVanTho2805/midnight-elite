@@ -8,10 +8,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KIN_FIELD } from "@/components/kin/PageLayout";
 import { formatDeadlineVn } from "@/components/media/StudentLessonPanels";
-import { contentHref, giaoTrinhHref } from "@/lib/tutorRoutes";
+import { contentHref, baiHocHref } from "@/lib/tutorRoutes";
 import type { GtEntry, GtGroup, GtItem } from "@/lib/giaoTrinh";
 import { ChipKieu, ChipTrangThai } from "./ChipTrangThai";
 import { NoiDungKem } from "./MucHang";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export interface SuaThayDoi { title: string; duration: string | null; isLocked: boolean; isFree: boolean; groupId: string | null }
 
@@ -74,10 +75,10 @@ export default function NganKeoSua({ entry, courseId, groups, busy, error, onSav
           {groups.length > 0 && (
             <div>
               <label htmlFor={`${uid}-nhom`} className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Nhóm</label>
-              <select id={`${uid}-nhom`} className={`${KIN_FIELD} mt-2`} value={groupId} onChange={e => setGroupId(e.target.value)}>
+              <KinSelect id={`${uid}-nhom`} className="mt-2" value={groupId} onChange={v => setGroupId(v)}>
                 <option value="">Chưa nhóm</option>
                 {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
+              </KinSelect>
             </div>
           )}
 
@@ -105,7 +106,7 @@ export default function NganKeoSua({ entry, courseId, groups, busy, error, onSav
           </section>
 
           <div className="flex flex-wrap gap-2">
-            <Link href={`${giaoTrinhHref(courseId, true)}/xem/${entry.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
+            <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${entry.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
             <KinButton type="button" variant="secondary" disabled={busy} onClick={onDuplicate}>Nhân bản</KinButton>
             <KinButton type="button" variant="danger" disabled={busy} onClick={onDelete}>Xoá mục</KinButton>
           </div>

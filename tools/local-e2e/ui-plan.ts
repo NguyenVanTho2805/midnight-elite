@@ -1,5 +1,5 @@
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinSelect, kinSelectValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -21,9 +21,9 @@ import { prisma } from "@/lib/prisma";
   await page.goto(`${BASE}/lop-cua-toi/ke-hoach-buoi?courseId=${ly.id}&date=2026-09-24`, { waitUntil: "networkidle", timeout: 120000 });
   await page.getByRole("heading", { name: "Kế hoạch buổi" }).waitFor({ timeout: 90000 });
   check("giải thích hai bản: bản gia sư và phiếu học sinh (không đáp án)", await page.getByText(/bản gia sư/).first().isVisible() && await page.getByText(/không có đáp án/).isVisible());
-  check("mở từ Lịch (?courseId&date): điền sẵn lớp Lý 9 và ngày 24/09", (await page.locator("label", { hasText: /^Lớp/ }).locator("select").inputValue()) === ly.id && (await page.getByLabel(/Ngày dạy/).inputValue()) === "2026-09-24");
+  check("mở từ Lịch (?courseId&date): điền sẵn lớp Lý 9 và ngày 24/09", (await kinSelectValue(page.locator("label", { hasText: /^Lớp/ }).locator('[role="combobox"]'))) === ly.id && (await page.getByLabel(/Ngày dạy/).inputValue()) === "2026-09-24");
   check("chưa có kế hoạch: thông báo rỗng", await page.getByText("Chưa có kế hoạch nào.").isVisible());
-  await page.locator("label", { hasText: /^Lớp/ }).locator("select").selectOption(toan.id);
+  await kinSelect(page.locator("label", { hasText: /^Lớp/ }).locator('[role="combobox"]'), toan.id);
   await page.getByLabel(/Tên buổi/).fill("Hàm số bậc nhất");
   await page.getByRole("button", { name: "Tạo và soạn" }).click();
   await page.waitForURL(/\/lop-cua-toi\/ke-hoach-buoi\/[^/]+$/, { timeout: 30000 });

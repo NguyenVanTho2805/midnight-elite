@@ -1,6 +1,6 @@
 // FE-099 — /diem-chuan (công khai) + /admin/diem-chuan (quản lý) trên trình duyệt thật.
 import { BASE, mkTutor, mkSuper, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect, kinSelectValue, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { SEED_SCORES } from "@/lib/admissionScoreSeed";
 
@@ -38,10 +38,10 @@ import { SEED_SCORES } from "@/lib/admissionScoreSeed";
 
   section("Lọc và tìm kiếm");
   const sel = pg.getByLabel("Phương thức xét");
-  check("ô chọn phương thức chỉ có phương thức đang có dữ liệu (Tất cả, THPT, Tổng hợp, Khác)", (await sel.locator("option").allInnerTexts()).join("|") === "Tất cả|Điểm thi tốt nghiệp THPT|Xét tuyển tổng hợp|Khác / theo thông báo của trường");
-  await sel.selectOption("tong-hop");
+  check("ô chọn phương thức chỉ có phương thức đang có dữ liệu (Tất cả, THPT, Tổng hợp, Khác)", (await kinSelectOptions(sel)).join("|") === "Tất cả|Điểm thi tốt nghiệp THPT|Xét tuyển tổng hợp|Khác / theo thông báo của trường");
+  await kinSelect(sel, "tong-hop");
   check("chọn 'Xét tuyển tổng hợp' → 1 ngành, đếm '1 / 6 ngành'", (await list.getByRole("listitem").count()) === 1 && await pg.getByText(/1 \/ 6 ngành/).isVisible());
-  await sel.selectOption("");
+  await kinSelect(sel, "");
   await pg.getByLabel("Tìm kiếm trường / ngành").fill("bách khoa");
   check("tìm 'bách khoa' (không phân biệt hoa thường) → 3 ngành (2 HUST + 1 HCMUT)", (await list.getByRole("listitem").count()) === 3);
   await pg.getByLabel("Tìm kiếm trường / ngành").fill("y khoa");
@@ -51,9 +51,9 @@ import { SEED_SCORES } from "@/lib/admissionScoreSeed";
   check("không khớp → trạng thái rỗng có nút quay lại", await pg.getByRole("button", { name: /Xem tất cả điểm chuẩn/ }).isVisible() && (await list.count()) === 0);
   await pg.getByRole("button", { name: /Xem tất cả điểm chuẩn/ }).click();
   check("'Xem tất cả' xoá bộ lọc → 6 ngành", (await list.getByRole("listitem").count()) === 6 && (await pg.getByLabel("Tìm kiếm trường / ngành").inputValue()) === "");
-  await sel.selectOption("thpt"); await pg.getByLabel("Tìm kiếm trường / ngành").fill("ngoại thương");
+  await kinSelect(sel, "thpt"); await pg.getByLabel("Tìm kiếm trường / ngành").fill("ngoại thương");
   await pg.getByRole("button", { name: "Đặt lại", exact: true }).click();
-  check("'Đặt lại' xoá cả hai bộ lọc", (await sel.inputValue()) === "" && (await pg.getByLabel("Tìm kiếm trường / ngành").inputValue()) === "" && (await list.getByRole("listitem").count()) === 6);
+  check("'Đặt lại' xoá cả hai bộ lọc", (await kinSelectValue(sel)) === "" && (await pg.getByLabel("Tìm kiếm trường / ngành").inputValue()) === "" && (await list.getByRole("listitem").count()) === 6);
 
   section("Quản trị: nạp dữ liệu khởi đầu vào cơ sở dữ liệu");
   const actx = await ctxFor(SA);

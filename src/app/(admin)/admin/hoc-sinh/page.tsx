@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Search } from "griddy-icons";
 import type { CourseFull } from "@/lib/api";
 import { DeleteAccountBlock, PromoteTutorBlock } from "@/components/admin/AccountActions";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Student {
@@ -610,11 +611,10 @@ function AddDrawer({ open, dbCourses, onClose, onSave }: {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">Kích hoạt khoá học ngay</label>
-            <select value={form.courseId} onChange={e => setForm(f => ({ ...f, courseId: e.target.value }))}
-              className={inp + " bg-[var(--kin-nen-trang)]"}>
+            <KinSelect aria-label="Kích hoạt khoá học ngay" value={form.courseId} onChange={v => setForm(f => ({ ...f, courseId: v }))}>
               <option value="">— Không kích hoạt —</option>
               {dbCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </KinSelect>
           </div>
           <div className="rounded-lg p-3 bg-blue-50 border border-blue-100">
             <p className="text-xs text-blue-700">
@@ -821,12 +821,10 @@ export default function HocSinhPage() {
             ))}
           </div>
 
-          <select aria-label="Lọc theo lớp" value={classFilter} onChange={e => setClassFilter(e.target.value)} data-testid="loc-lop"
-            className="px-3 min-h-11 rounded-xl text-sm"
-            style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
+          <KinSelect className="w-64 max-w-full" aria-label="Lọc theo lớp" value={classFilter} onChange={v => setClassFilter(v)} data-testid="loc-lop">
             <option value="all">Mọi lớp</option>
             {classOptions.map(c => <option key={c.id} value={c.id}>{c.name} · {c.n} học sinh</option>)}
-          </select>
+          </KinSelect>
 
           <div className="flex-1 relative min-w-[200px]">
             <input type="text" placeholder="Tìm theo tên, SĐT, email, SBD..."

@@ -3,7 +3,7 @@
 // mật khẩu không bao giờ lộ trong DOM hay JSON; học sinh bị chặn; khách về đăng nhập; tên học sinh chỉ ở khối bảng điểm.
 // CHƯA CHẠY lần nào (viết khi không được bật máy chủ, và API P3 do tut-code viết song song) — chạy lần đầu có thể cần chỉnh bộ chọn.
 import { BASE, mkTutor, mkUser, mkCourse, api, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { AUDIENCE_LINK_READY } from "@/lib/deThiAssign";
 
@@ -79,7 +79,7 @@ const SECRET = "Mk-BiMat-9137";
 
   section("Giao đề: lưu cấu hình kiểm tra; mật khẩu không bao giờ hiện lại");
   await p.getByRole("radio", { name: /^Kiểm tra/ }).check();
-  await p.locator("#gd-lop").selectOption(course.id);
+  await kinSelect(p.locator("#gd-lop"), course.id);
   await p.fill("#gd-ngay", "2030-01-15"); await p.fill("#gd-gio", "19:30"); await p.fill("#gd-tl", "45");
   await p.fill("#gd-mk", SECRET);
   await p.getByRole("button", { name: "Lưu cấu hình" }).click();
@@ -145,7 +145,7 @@ const SECRET = "Mk-BiMat-9137";
   check("tên học sinh CHỈ xuất hiện trong khối bảng điểm", namesInTable >= 2 && namesAll === namesInTable, { namesAll, namesInTable });
   check("tiêu đề tab không có tên học sinh", !/Em An|Em Bình/.test(await p.title()));
   check("tên đề (không phải tên học sinh) ở tiêu đề trang", (await p.getByText(/Kết quả · Đề đã có lượt làm/).count()) >= 1);
-  const [resp] = await Promise.all([p.waitForResponse(r => /bang-diem\?chon=dau/.test(r.url()), { timeout: 30000 }), p.locator("#kq-chon").selectOption("dau")]);
+  const [resp] = await Promise.all([p.waitForResponse(r => /bang-diem\?chon=dau/.test(r.url()), { timeout: 30000 }), kinSelect(p.locator("#kq-chon"), "dau")]);
   check("đổi 'Lần làm đầu tiên' gọi lại bảng điểm", resp.status() === 200);
   const xl = await p.locator("[data-ket-qua-xlsx]").getAttribute("href");
   check("nút Xuất Excel trỏ đúng đường tải, đúng lựa chọn", !!xl && /\/ket-qua\/xuat-xlsx\?chon=dau$/.test(xl), xl);

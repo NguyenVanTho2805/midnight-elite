@@ -17,6 +17,9 @@
 //   - HAI lớp chặn cùng lúc: hoc-vien/page.tsx bỏ `if (!gate.ok) return null` VÀ layout.tsx vẫn render {children} khi bị cấm → ca 'B không lộ tên lớp / học sinh' đỏ cho …/hoc-vien (chỉ bỏ MỘT lớp thì bài vẫn xanh vì lớp kia còn chặn — đúng ý phòng thủ hai tầng);
 //   - phần hàm thuần (t-class-routes-lib.ts): bỏ danh sách trắng query, nới coverImageOf nhận http (phải bỏ CẢ kiểm u.protocol — còn một tầng chặn thứ hai), bỏ kiểm tài khoản trong địa chỉ, bỏ lọc vai đồng giảng → ca tương ứng đỏ.
 //   LƯU Ý khi tự phá: máy chủ `next dev` có thể giữ bản đã phá của một module dù đã trả lại tệp (gặp ở tutorClassRoutes.ts, kèm `touch` cũng không đỡ) → kết quả đỏ giả; dừng + bật lại bằng .local-dev/wt-up.sh.
+// LOI-02 (11/11/2026): kỳ vọng đổi theo docs/kin/phong-ban/dac-ta/LOI-02.md A2–A5 — gốc lớp (không ?tab=, ?tab=chuong-bai | giao-trinh | lạ) = thân "Bài học", KHÔNG chuyển hướng;
+//   …/giao-trinh là route.ts 307 + no-store về gốc (bỏ hết query); dải tab chủ lớp "Bài học · Học sinh · Điểm danh · Cài đặt"; đồng giảng / bộ môn chỉ "Bài học".
+//   /lop-cua-toi/<id> (chủ lớp, không tab / tab lạ) → 307 về gốc lớp (legacyClassTarget).
 import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, BASE, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
@@ -49,6 +52,8 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const ADM = await mkUser({ name: "Quản trị", role: "admin", adminRole: "admin_super" });
   const PEND = await mkUser({ name: "Ứng Viên Chờ Duyệt" }); await prisma.user.update({ where: { id: PEND.id }, data: { tutorAppliedAt: new Date() } });
   const STU = await mkUser({ name: "Học Sinh Ngoài Lớp" });
+  // Gia sư bị TỪ CHỐI: tutorApplicationStatus = "rejected" (có tutorAppliedAt + tutorRejectedAt, chưa tutorVerified) ⇒ tutorGateTarget coi như học sinh → /lop-cua-toi.
+  const REJ = await mkUser({ name: "Ứng Viên Bị Từ Chối" }); await prisma.user.update({ where: { id: REJ.id }, data: { tutorAppliedAt: new Date(Date.now() - 86_400_000), tutorRejectedAt: new Date() } });
   const ENR = await mkUser({ name: "Học Sinh Bí Mật Trong Lớp A" });
 
   const CA = await mkCourse(A.id, { name: "Lớp Toán Bí Mật Của Cô A" });
@@ -66,7 +71,7 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   // ── 1. /lop-cua-toi/[courseId]: chủ lớp → 307 + Cache-Control, giữ query phụ ─────────────────────────
   section("1. Chủ lớp mở /lop-cua-toi/<id> → 307 sang đúng tab (không 308, không cho lưu lại), giữ moi / lich / them / duyet / n / ma");
   const rows: [string, string, string][] = [
-    ["", "", `${QL}/${idA}/giao-trinh`],
+    ["", "", `${QL}/${idA}`],
     ["?tab=diem-danh", "", `${QL}/${idA}/diem-danh`],
     ["?tab=hoc-sinh", "", `${QL}/${idA}/hoc-vien`],
     ["?tab=hoc-sinh&duyet=ok&n=2", "", `${QL}/${idA}/hoc-vien?muc=xin-vao&duyet=ok&n=2`],
@@ -76,7 +81,7 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
     ["?tab=giao-vien", "", `${QL}/${idA}?tab=cai-dat&muc=dong-giang`],
     ["?tab=hoc-phi", "", `${QL}/${idA}?tab=cai-dat&muc=hoc-phi`],
     ["?tab=cong-dong", "", `${QL}/${idA}?tab=cai-dat&muc=cong-dong`],
-    ["?tab=khong-biet", "", `${QL}/${idA}/giao-trinh`],
+    ["?tab=khong-biet", "", `${QL}/${idA}`],
     ["?moi=1", "", `${QL}/${idA}/hoc-vien?muc=ma-moi&moi=1`],
     ["?moi=1&them=2&ma=loi&lich=loi", "", `${QL}/${idA}/hoc-vien?muc=ma-moi&moi=1&them=2&ma=loi&lich=loi`],
     ["?lich=loi", "", `${QL}/${idA}/lich-hoc?lich=loi`],
@@ -122,18 +127,24 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const rNone = await api("GET", `/lop-cua-toi/khong-co-lop-nay`, { as: A });
   check("id không có lớp → 404 (không 500)", rNone.status === 404, rNone.status);
 
-  // ── 2. quan-lop/<id> của chủ lớp: gốc → giao-trinh, liên kết cũ, thân tab ───────────────────────────
-  section("2. Chủ lớp: quan-lop/<id> (không ?tab=) → Giáo trình; liên kết cũ → trang con; ?tab=cai-dat | chuong-bai → thân tab");
-  const dec: [string, string][] = [
-    ["", `${QL}/${idA}/giao-trinh`], ["?tab=giao-trinh", `${QL}/${idA}/giao-trinh`], ["?tab=lich-hoc", `${QL}/${idA}/lich-hoc`], ["?tab=hoc-vien", `${QL}/${idA}/hoc-vien`],
-    ["?tab=diem-danh", `${QL}/${idA}/diem-danh`], ["?tab=xyz", `${QL}/${idA}/giao-trinh`],
+  // ── 2. quan-lop/<id> của chủ lớp: gốc = Bài học (LOI-02), liên kết cũ, thân tab ──────────────────────
+  section("2. Chủ lớp: quan-lop/<id> (không ?tab=, chuong-bai, giao-trinh, lạ) → thân Bài học tại chỗ; liên kết cũ → trang con; …/giao-trinh → 307 về gốc");
+  const dec: [string, string | null][] = [
+    ["", null], ["?tab=chuong-bai", null], ["?tab=giao-trinh", null], ["?tab=xyz", null],
+    ["?tab=lich-hoc", `${QL}/${idA}/lich-hoc`], ["?tab=hoc-vien", `${QL}/${idA}/hoc-vien`], ["?tab=diem-danh", `${QL}/${idA}/diem-danh`],
   ];
   for (const [q, want] of dec) {
-    const g = go(await api("GET", `${QL}/${idA}${q}`, { as: A }));
-    check(`${q || "(gốc trần)"} → ${want.replace(idA, "<A>")}`, g.to === want, g);
+    const r = await api("GET", `${QL}/${idA}${q}`, { as: A });
+    const g = go(r);
+    if (want === null) check(`${q || "(gốc trần)"} → 200, thân Bài học, KHÔNG chuyển hướng, không phải thân Cài đặt`, r.status === 200 && g.to === null && !r.text.includes("Mục của Cài đặt") && r.text.includes("Lớp Toán Bí Mật Của Cô A"), [r.status, g]);
+    else check(`${q} → ${want.replace(idA, "<A>")}`, g.to === want, g);
   }
-  const g0 = await api("GET", `${QL}/${idA}`, { as: A });
-  console.log(`    (đo: quan-lop/<id> trần trả HTTP ${g0.status}, kiểu chuyển hướng "${go(g0).kind}" — dưới (tutor)/loading.tsx; 307 thật cần proxy, xem bàn giao mục D)`);
+  for (const q of ["", "?tab=chuong-bai", "?moi=1&x=2", "?tab=cai-dat&evil=https://evil.example"]) {
+    const r = await api("GET", `${QL}/${idA}/giao-trinh${q}`, { as: A });
+    check(`A5: …/giao-trinh${q} → 307 thật (route.ts) + no-store → gốc lớp, BỎ hết query`, r.status === 307 && go(r).kind === "http" && go(r).to === `${QL}/${idA}` && /no-store/.test(r.headers.get("cache-control") ?? ""), [r.status, go(r), r.headers.get("cache-control")]);
+  }
+  const xem = await api("GET", `${QL}/${idA}/giao-trinh/xem/khong-co-bai`, { as: A });
+  check("…/giao-trinh/xem/<bài> vẫn là trang (không bị 307 về gốc)", xem.status === 200 && go(xem).to === null, [xem.status, go(xem).to]);
   const cd = await api("GET", `${QL}/${idA}?tab=cai-dat`, { as: A });
   check("?tab=cai-dat → 200, thân Cài đặt, không chuyển hướng", cd.status === 200 && go(cd).to === null && cd.text.includes("Mục của Cài đặt"), [cd.status, go(cd).to]);
   for (const m of ["hoc-phi", "dong-giang", "cong-dong", "ban-ghi", "rac-ruoi"]) {
@@ -150,27 +161,31 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   }
   const dd = await api("GET", `${QL}/${idA}/diem-danh`, { as: A });
   check("diem-danh → 200, có 'Lịch sử buổi học', không chuyển hướng", dd.status === 200 && go(dd).to === null && dd.text.includes("Lịch sử buổi học"), [dd.status]);
-  section("2b. Một đầu lớp, MỘT dải tab (6 tab đúng thứ tự), không breadcrumb quản trị — trên cả 6 trang của chủ lớp");
-  const ORDER = ["Giáo trình", "Học sinh", "Điểm danh", "Bài tập", "Lịch học", "Cài đặt"];
-  for (const p of [`/giao-trinh`, `/hoc-vien`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
+  section("2b. Một đầu lớp, MỘT dải tab (4 tab đúng thứ tự, LOI-02), không breadcrumb quản trị — trên mọi trang của chủ lớp (kể cả …/lich-hoc mở bằng link)");
+  const ORDER = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
+  for (const p of [``, `/hoc-vien`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
     const r = await api("GET", `${QL}/${idA}${p}`, { as: A });
     const strip = /<nav[^>]*aria-label="Trang của[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(r.text)?.[1] ?? "";
     const labels = [...strip.matchAll(/<a [^>]*>([\s\S]*?)<\/a>/g)].map(m => m[1].replace(/<[^>]+>/g, "").trim());
-    check(`${p}: đúng 1 <h1> (tên lớp), 1 dải tab, không "Bảng điều khiển /"`, r.status === 200 && h1Count(r.text) === 1 && stripCount(r.text) === 1 && !/Bảng điều khiển\s*\//.test(r.text.replace(/<[^>]+>/g, "")) && r.text.includes("Lớp Toán Bí Mật Của Cô A"), { s: r.status, h1: h1Count(r.text), nav: stripCount(r.text) });
-    check(`${p}: thứ tự tab ${ORDER.join(" · ")}`, labels.join(" · ") === ORDER.join(" · "), labels);
+    check(`${p || "(gốc)"}: đúng 1 <h1> (tên lớp), 1 dải tab, không "Bảng điều khiển /"`, r.status === 200 && h1Count(r.text) === 1 && stripCount(r.text) === 1 && !/Bảng điều khiển\s*\//.test(r.text.replace(/<[^>]+>/g, "")) && r.text.includes("Lớp Toán Bí Mật Của Cô A"), { s: r.status, h1: h1Count(r.text), nav: stripCount(r.text) });
+    check(`${p || "(gốc)"}: thứ tự tab ${ORDER.join(" · ")}`, labels.join(" · ") === ORDER.join(" · "), labels);
   }
 
   // ── 3. Cô lập hai gia sư ──────────────────────────────────────────────────────────────────────────
   section("3. Cô lập: gia sư B mở lớp của A ở MỌI đường → màn 'Bạn không có quyền với lớp này', không lộ tên lớp / học sinh / chuyển hướng");
-  const PATHS = ["", "/giao-trinh", "/hoc-vien", "/diem-danh", "/lich-hoc", "?tab=cai-dat", "?tab=chuong-bai", "/hoc-vien?muc=ma-moi", "/giao-trinh/xem/khong-co", "/diem-danh/in"];
+  const PATHS = ["", "/hoc-vien", "/diem-danh", "/lich-hoc", "?tab=cai-dat", "?tab=chuong-bai", "/hoc-vien?muc=ma-moi", "/giao-trinh/xem/khong-co", "/diem-danh/in"];
+  {
+    const r = await api("GET", `${QL}/${idA}/giao-trinh`, { as: B });
+    check("B → …/<A>/giao-trinh: 307 về gốc lớp A (gốc tự kiểm quyền, ca '/' ở dưới), thân phản hồi không lộ tên lớp / học sinh", r.status === 307 && go(r).to === `${QL}/${idA}` && !/Lớp Toán Bí Mật|Học Sinh Bí Mật/.test(r.text), [r.status, go(r).to]);
+  }
   for (const p of PATHS) {
     const r = await api("GET", `${QL}/${idA}${p}`, { as: B });
     const ok = hasGate(r.text, "forbidden") && go(r).to === null && !r.text.includes("Lớp Toán Bí Mật Của Cô A") && !r.text.includes("Học Sinh Bí Mật") && !r.text.includes(A.name) && !r.text.includes("cdn.example.com");
     check(`B → …/<A>${p || "/"}: màn không có quyền, không lộ tên lớp / học sinh / chủ lớp / ảnh bìa`, ok, { s: r.status, gate: hasGate(r.text, "forbidden"), to: go(r).to, leak: r.text.includes("Lớp Toán Bí Mật") });
   }
-  const own = await api("GET", `${QL}/${idB}/giao-trinh`, { as: B });
+  const own = await api("GET", `${QL}/${idB}`, { as: B });
   check("B mở lớp CỦA B → vào được (không màn cấm), đúng 1 h1 = tên lớp B", !hasGate(own.text, "forbidden") && own.text.includes("Lớp Văn Riêng Của Thầy B") && h1Count(own.text) === 1, [own.status, h1Count(own.text)]);
-  const ownA = await api("GET", `${QL}/${idB}/giao-trinh`, { as: A });
+  const ownA = await api("GET", `${QL}/${idB}`, { as: A });
   check("và A KHÔNG vào được lớp của B (đối xứng)", hasGate(ownA.text, "forbidden") && !ownA.text.includes("Lớp Văn Riêng Của Thầy B"));
 
   section("3b. API: lớp của gia sư khác → 403, không có → 404 (mã HTTP thật nằm ở API)");
@@ -237,16 +252,18 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   section("4. Id lạ: không có / NUL / quá dài → màn 'Không tìm thấy lớp', không 500");
   const weird: [string, string][] = [["khong-co", "khong-co"], ["chứa %00", "a%00b"], ["300 ký tự", "x".repeat(300)], ["a%2Fb", "a%2Fb"], ["..%2F..%2Fadmin", "..%2F..%2Fadmin"], ["dấu cách", "a%20b"]];
   for (const [label, id] of weird) {
-    for (const sub of ["", "/giao-trinh", "/hoc-vien", "/diem-danh"]) {
+    for (const sub of ["", "/hoc-vien", "/diem-danh"]) {
       const r = await api("GET", `${QL}/${id}${sub}`, { as: A });
       check(`id ${label} ${sub || "(gốc)"} → không 500, màn không tìm thấy, không chuyển hướng`, r.status < 500 && hasGate(r.text, "not-found") && go(r).to === null, [r.status, hasGate(r.text, "not-found"), go(r).to]);
     }
+    const rg = await api("GET", `${QL}/${id}/giao-trinh`, { as: A });
+    check(`id ${label} /giao-trinh → không 500, 307 về đúng gốc của id đó (không thoát khỏi quan-lop)`, rg.status === 307 && (go(rg).to ?? "").startsWith(`${QL}/`) && go(rg).to!.split("/").length === 4, [rg.status, go(rg).to]);
   }
   const idPhaAdmin = await api("GET", `${QL}/${idA}%2F..%2F..%2Fadmin`, { as: A });
   check("id có %2F..%2F không thoát khỏi nhóm lớp (không vào trang quản trị)", idPhaAdmin.status < 500 && hasGate(idPhaAdmin.text, "not-found"), idPhaAdmin.status);
 
   // ── 5. Gia sư chờ duyệt, khách, học sinh, quản trị ───────────────────────────────────────────────
-  section("5. Gia sư chờ duyệt / khách / học sinh / quản trị mở quan-lop/**");
+  section("5. Gia sư chờ duyệt / bị từ chối / khách / học sinh / quản trị mở quan-lop/**");
   for (const p of ["", "/giao-trinh", "/hoc-vien", "/diem-danh", "/lich-hoc", "?tab=cai-dat", "?tab=chuong-bai"]) {
     const rp = await api("GET", `${QL}/${idA}${p}`, { as: PEND });
     check(`chờ duyệt → …/<A>${p || "/"}: chuyển /lop-cua-toi/cho-duyet, không lộ lớp`, go(rp).to === "/lop-cua-toi/cho-duyet" && !rp.text.includes("Lớp Toán Bí Mật"), [rp.status, go(rp).to]);
@@ -256,20 +273,34 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
     check(`học sinh → …/<A>${p || "/"}: chuyển /lop-cua-toi, không lộ lớp`, go(rs).to === "/lop-cua-toi" && !rs.text.includes("Lớp Toán Bí Mật"), [rs.status, go(rs).to]);
     const ra = await api("GET", `${QL}/${idA}${p}`, { as: ADM });
     check(`quản trị cấp 1 → …/<A>${p || "/"}: về /admin (vỏ gia sư không phải của họ), không lộ lớp`, go(ra).to === "/admin" && !ra.text.includes("Lớp Toán Bí Mật"), [ra.status, go(ra).to]);
+    const rr = await api("GET", `${QL}/${idA}${p}`, { as: REJ });
+    check(`gia sư bị từ chối → …/<A>${p || "/"}: về /lop-cua-toi (như học sinh, không phải trang chờ duyệt), không lộ lớp`, go(rr).to === "/lop-cua-toi" && !rr.text.includes("Lớp Toán Bí Mật"), [rr.status, go(rr).to]);
+    if (p === "/giao-trinh") {
+      // LOI-02 vòng 2 P3-C: route.ts của giao-trinh tự dựng 307 + no-store cho cả nhánh cổng (2195c0c7) — đo CHẶT "no-store" (không nhận no-cache của next dev).
+      for (const [who, r] of [["khách", rg], ["học sinh", rs], ["quản trị", ra], ["gia sư chờ duyệt", rp], ["gia sư bị từ chối", rr]] as [string, Res][]) {
+        const cc = r.headers.get("cache-control") ?? "";
+        check(`/giao-trinh · ${who}: 307 thật (Location) + Cache-Control chứa no-store`, r.status === 307 && go(r).kind === "http" && /no-store/.test(cc), [r.status, go(r).kind, cc]);
+      }
+    }
   }
 
   // ── 6. Đồng giảng / bộ môn ───────────────────────────────────────────────────────────────────────
-  section("6. Đồng giảng / giáo viên bộ môn: chỉ Giáo trình + Lịch học; mọi tab còn lại → /lop-cua-toi/<id>");
+  section("6. Đồng giảng / giáo viên bộ môn (LOI-02 A3): chỉ 'Bài học' (gốc = màn Giáo trình cũ); …/giao-trinh 307 về gốc; …/lich-hoc mở bằng link; tab còn lại → /lop-cua-toi/<id>");
   for (const [who, u] of [["đồng giảng", CO], ["bộ môn", SUB]] as [string, TUser][]) {
-    for (const p of ["/hoc-vien", "/diem-danh", "?tab=cai-dat", "?tab=chuong-bai", "?tab=hoc-vien"]) {
+    for (const p of ["/hoc-vien", "/diem-danh", "?tab=hoc-vien"]) {
       const r = await api("GET", `${QL}/${idA}${p}`, { as: u });
       check(`${who} → …/<A>${p} → /lop-cua-toi/<A>`, go(r).to === `/lop-cua-toi/${idA}`, [r.status, go(r).to]);
     }
-    for (const p of ["/giao-trinh", "/lich-hoc"]) {
+    // LOI-02 (quan-lop/[id]/page.tsx): Cài đặt chỉ của chủ lớp — đồng giảng về "Bài học" của họ (gốc lớp), không mở thân Cài đặt.
+    const rc = await api("GET", `${QL}/${idA}?tab=cai-dat`, { as: u });
+    check(`${who} → …/<A>?tab=cai-dat → gốc lớp (Bài học của họ), không thân Cài đặt`, go(rc).to === `${QL}/${idA}` && !rc.text.includes("Mục của Cài đặt"), [rc.status, go(rc).to]);
+    const rg = await api("GET", `${QL}/${idA}/giao-trinh`, { as: u });
+    check(`${who} → …/<A>/giao-trinh → 307 về gốc lớp (không mất lối: gốc vẽ đúng màn cũ)`, rg.status === 307 && go(rg).to === `${QL}/${idA}`, [rg.status, go(rg).to]);
+    for (const p of ["", "?tab=chuong-bai", "/lich-hoc"]) {
       const r = await api("GET", `${QL}/${idA}${p}`, { as: u });
       const strip = /<nav[^>]*aria-label="Trang của[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(r.text)?.[1] ?? "";
       const labels = [...strip.matchAll(/<a [^>]*>([\s\S]*?)<\/a>/g)].map(m => m[1].replace(/<[^>]+>/g, "").trim());
-      check(`${who} → …/<A>${p}: vào được, dải chỉ "Giáo trình · Lịch học", đúng 1 h1`, !hasGate(r.text, "forbidden") && go(r).to === null && labels.join(" · ") === "Giáo trình · Lịch học" && h1Count(r.text) === 1, [r.status, labels, h1Count(r.text)]);
+      check(`${who} → …/<A>${p || "/"}: vào được, dải chỉ "Bài học", đúng 1 h1`, !hasGate(r.text, "forbidden") && go(r).to === null && labels.join(" · ") === "Bài học" && h1Count(r.text) === 1, [r.status, labels, h1Count(r.text), go(r).to]);
     }
   }
 

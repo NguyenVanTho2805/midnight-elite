@@ -1,7 +1,7 @@
 // QZ hoàn thiện — trình duyệt thật: (A) tab "Hạn riêng" đặt/bỏ hạn cho học sinh trong lớp; (B) tải mẫu Excel + nhập bảng .xlsx (2 hàng đúng, 1 hàng lỗi, 1 hàng nhiều đáp án) → rà soát → lưu nháp;
 // (C) tải nhật ký CSV từ tab "Lịch sử công bố"; (D) "Lưu vào ngân hàng" ở trình soạn; (E) học sinh chữa bài câu NHIỀU ĐÁP ÁN. 1280px và 390px không tràn ngang. Cần máy chủ dev đang chạy.
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually, cookieFor } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -130,8 +130,8 @@ const dmy = (offset: number) => { const d = new Date(Date.now() + 7 * 3600_000 +
   check("hộp nói thật: bản nháp, sao chép độc lập, giữ mọi đáp án đúng của câu nhiều đáp án", (await box.innerText()).includes("trạng thái nháp") && (await box.innerText()).includes("độc lập") && (await box.innerText()).includes("Mọi đáp án đúng"));
   await box.getByRole("button", { name: "Lưu vào ngân hàng" }).click();
   check("chưa chọn đầu mục → báo lỗi", (await box.getByText("Chọn đầu mục của ngân hàng.").count()) === 1);
-  await box.getByLabel("Đầu mục").selectOption({ label: "Toán 9 (UI)" });
-  await box.getByLabel("Độ khó").selectOption("VD");
+  await kinSelect(box.getByLabel("Đầu mục"), { label: "Toán 9 (UI)" });
+  await kinSelect(box.getByLabel("Độ khó"), "VD");
   await box.getByRole("button", { name: "Lưu vào ngân hàng" }).click();
   // Sửa 2026-10: component cũ hiện toast TRƯỚC khi nạp lại danh sách (QuizEditor onDone) nên đọc ngay sau toast còn thấy nút cũ — đã sửa ở component (nạp rồi mới báo).
   // Bài vẫn chờ điều kiện cụ thể (nhãn "Đã lưu vào ngân hàng" của câu 1 xuất hiện), không dựa vào toast.

@@ -1,33 +1,31 @@
-// Lớp của tôi (Figma "Học sinh · Lớp của tôi" 299:114766): tiêu đề + dòng phụ; khung nền nhạt (tên lớp, x/y bài đã học, thanh tiến độ, "Tiếp theo", "Tiếp tục học");
-// tab Tổng quan / Tài liệu / Bài tập; bảng nội dung lớp; cột phải "Tham gia lớp khác" + "Thông tin lớp".
-// NC2-041 (góp ý 28/10: học Sử + Địa mà chỉ thấy lớp Sử): trước đây thiếu ?course= thì TỰ chọn lớp đầu tiên và trang không có chỗ đổi lớp. Nay: 1 lớp → vào thẳng (như cũ);
-// từ 2 lớp → "danh mục lớp" để chọn (components/student/DanhMucLop), trong lớp có lối "Tất cả lớp" và danh sách "Các lớp của bạn" để đổi lớp. Đếm bài theo ID lớp, không theo tên.
-// NC2-042: bản ghi buổi học gom theo THÁNG, thu gọn / mở được (tháng mới nhất mở sẵn).
-// Rà soát độc lập 28/10: "đổi lớp" thành luồng chính nên trạng thái phải gắn với TỪNG lớp — Content được dựng lại (key = ID lớp) mỗi khi đổi lớp, nên phản hồi chậm
-// của lớp trước, bản ghi, tab và trạng thái gập của lớp trước không thể lọt sang lớp đang xem. Lỗi tải danh sách lớp nói là lỗi, không coi là "chưa vào lớp nào".
-// BỎ vì chưa có dữ liệu thật: nút "Liên hệ cô …" (chưa có kênh nhắn), "Hoạt động buổi học" (không có bản ghi từng buổi theo lớp), tab "Thông báo",
-// "n học sinh" (không hiện dữ liệu bạn học), dung lượng tệp, "Học trực tuyến". Giữ: mọi liên kết cũ (Tiếp tục học, Xem lớp học, Tài liệu & bản ghi của lớp này).
-// BU-01: khối "Đang chờ duyệt" (yêu cầu vào lớp đã gửi, gia sư chưa duyệt) đứng trên "Tham gia lớp khác"; rỗng thì ẩn, lỗi tải thì báo + thử lại. Huỷ = biểu mẫu POST (máy chủ 303).
-// MD-07/SV-03: tab "Tài liệu & bản ghi" gộp 3 nguồn của CHÍNH lớp này: bản ghi gia sư dán theo buổi (/api/courses/[id]/recordings, chỉ học sinh đã ghi danh),
-// tài liệu đính kèm bài (Lesson.documents) và các bài giảng/bản ghi bài. Không có dung lượng tệp, không "n lượt xem" (KiN không đo).
+// Lớp của tôi của học sinh. LOI-03 (11/11/2026, đặc tả docs/kin/phong-ban/dac-ta/LOI-03.md mục 4.1–4.2):
+//   - Không ?course= ⇒ THƯ VIỆN LỚP (components/student/ThuVienLop) — LUÔN, kể cả khi chỉ có 1 lớp (Q1: bỏ tự nhảy vào lớp của NC2-041).
+//   - ?course=<id> ⇒ TRANG LỚP: "← Lớp của tôi", h1 = tên lớp, dòng phụ "Môn · Gia sư: …"; hai tab Tổng quan · Nội dung (mặc định Nội dung).
+//       Nội dung  = "Nội dung lớp: n chương · m bài" + cây CourseOutline (thẻ chương có số "01", dòng phụ bài "1 tài liệu · Có bài tập · Học Hôm nay · 19:30").
+//       Tổng quan = Thông tin lớp (gia sư, môn, bài cần làm / chờ chấm, chữ "Phiếu học phí của bạn →" — KHÔNG số tiền), Tài liệu & bản ghi (nguyên tab cũ), Bài tập của lớp.
+//     Cột phải: thẻ tiến độ [data-course-hero] (nút "Học tiếp →" theo hocTiep: bài đang xem dở đầu tiên → bài chưa xong đầu tiên → xong hết thì "Xem lại →"),
+//     "Buổi học sắp tới", "Các lớp của bạn" (≥ 2 lớp). Điện thoại: thẻ tiến độ lên TRƯỚC dải tab. Không có "Đánh giá", không "lượt xem".
+//   x/y, % và "Học tiếp" tính bằng CÙNG hàm thuần với máy chủ (src/lib/studentLop.ts: orderedLessonIds / lopProgress / hocTiep) ⇒ thư viện và trang lớp không lệch nhau.
+// Giữ từ trước: NC2-041 (đổi lớp; đếm bài theo ID lớp), NC2-042 (bản ghi theo THÁNG, gập/mở), rà soát 28/10 (Content dựng lại theo ID lớp — phản hồi chậm của lớp trước
+// không lọt sang; lỗi tải danh sách lớp là LỖI, không phải "chưa vào lớp"), MD-07/SV-03 (Tài liệu & bản ghi gộp 3 nguồn của chính lớp), lớp đã nghỉ → SuspendedNotice.
+// BỎ vì chưa có dữ liệu thật: "Liên hệ cô …", "Hoạt động buổi học", tab "Thông báo", "n học sinh", dung lượng tệp, "Học trực tuyến", "Đánh giá".
 "use client";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useProgress } from "@/hooks/useProgress";
 import { groupRecordingsBySession, groupRecordingsByMonth, type RecordingMonthGroup } from "@/lib/classRecordings";
 import { planDocumentPreview } from "@/lib/mediaLink";
 import { viewerHref } from "@/lib/library";
+import { vnDateKeyOf } from "@/lib/classSessions";
 import { parseMaterials } from "@/components/media/StudentLessonPanels";
 import { useMyClasses } from "@/hooks/useMyClasses";
-import DanhMucLop from "@/components/student/DanhMucLop";
 import { KinFold, KinChevron } from "@/components/kin/Fold";
 import { parseLessonType } from "@/lib/types";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinTabs } from "@/components/kin/Tabs";
 import { KinSectionHead } from "@/components/kin/SectionHead";
-import { featureOn } from "@/lib/features";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
@@ -35,13 +33,20 @@ import { dayTitle, useStudentWork, WorkSkeleton } from "@/components/student/sha
 import { placeLabel } from "@/lib/sessionBook";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
+import ThuVienLop from "@/components/student/ThuVienLop";
+import { featureOn } from "@/lib/features";
+import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds, sessionsBlockState } from "@/lib/studentLop";
 
-interface Lesson { id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null }
+interface Lesson {
+  id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null;
+  status?: string | null; azotaUrl?: string | null; scheduledAt?: string | null; _count?: { assignments?: number }; order?: number;
+}
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
 interface RecData { recordings: Rec[]; sessions: { id: string; dateKey: string }[] }
 const REC_KIND: Record<string, string> = { youtube: "YouTube", vimeo: "Vimeo", drive: "Google Drive", zoom_record: "Zoom cloud" };
 const dmy = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
 type RecRow = Omit<Rec, "createdAt"> & { createdAt: Date };
+const GOC = "text-[length:var(--kin-co-goc)]";
 
 /** NC2-042: bản ghi theo tháng; bấm tiêu đề tháng để thu gọn / mở. Tháng mới nhất mở sẵn, các tháng cũ gập lại. */
 function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) {
@@ -79,69 +84,41 @@ function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) 
     </div>
   );
 }
-interface Chapter { id: string; title: string; order: number; lessons: Lesson[] }
+interface Chapter { id: string; title: string; order: number; isImplicit?: boolean; lessons: Lesson[] }
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
-interface MyJoinReq { id: string; status: string; course: { id: string; name: string }; personalCode?: string | null }
+type Tab = "tong-quan" | "noi-dung";
 
-/** BU-01: yêu cầu vào lớp đang chờ gia sư duyệt của chính em. Rỗng/đang tải = không hiện gì; lỗi = báo và cho thử lại. */
-function PendingJoinBlock({ className = "" }: { className?: string }) {
-  const [items, setItems] = useState<MyJoinReq[] | "loi" | null>(null);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    let live = true;
-    fetch("/api/invites/my-requests", { credentials: "same-origin", cache: "no-store" })
-      .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d: { items?: MyJoinReq[] }) => { if (live) setItems((d.items ?? []).filter(i => i.status === "pending")); })
-      .catch(() => { if (live) setItems("loi"); });
-    return () => { live = false; };
-  }, [tick]);
-  if (items === null || (Array.isArray(items) && items.length === 0)) return null;
-  if (items === "loi") return <div className={className}><ErrorStrip message="Không tải được các yêu cầu vào lớp của bạn." onRetry={() => { setItems(null); setTick(t => t + 1); }} /></div>;
-  return (
-    <section aria-labelledby="lop-cho-duyet" data-pending-join className={className}>
-      <KinSectionHead id="lop-cho-duyet" title="Đang chờ duyệt" aside={`${items.length} lớp`} />
-      <ul>
-        {items.map(r => (
-          <li key={r.id} data-pending-join-row className="py-[var(--kin-kc-5)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
-            <p className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{r.course.name}</p>
-            <p className="mt-1"><KinStatus tone="cho">Chờ gia sư duyệt</KinStatus></p>
-            <div className="mt-2 flex flex-wrap gap-3">
-              <Link href={r.personalCode ? `/student/nhap-ma-lop?code=${encodeURIComponent(r.personalCode)}` : "/student/nhap-ma-lop"} className={kinButtonClass("secondary")}>Xem yêu cầu</Link>
-              <form method="post" action={`/api/invites/my-requests/${encodeURIComponent(r.id)}/cancel`}>
-                <button type="submit" aria-label={`Huỷ yêu cầu vào lớp ${r.course.name}`} className={kinButtonClass("ghost")}>Huỷ yêu cầu</button>
-              </form>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+/** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]): /api/courses/[id] chỉ sắp theo `order`, khi hoà `order` thứ tự có thể khác
+ *  ⇒ "Học tiếp" và x/y ở trang lớp lệch thư viện. Trả BẢN SAO, không đổi mảng gốc. */
+function byOrderId<T extends { id: string; order?: number }>(a: T, b: T): number {
+  const d = (a.order ?? 0) - (b.order ?? 0);
+  return d !== 0 ? d : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
-
-type Tab = "tong-quan" | "tai-lieu" | "bai-tap";
+function sortTree(sections: Section[]): Section[] {
+  return [...sections].sort(byOrderId).map(s => ({
+    ...s,
+    chapters: [...(s.chapters ?? [])].sort(byOrderId).map(c => ({ ...c, lessons: [...(c.lessons ?? [])].sort(byOrderId) })),
+  }));
+}
 const TYPE_LABEL: Record<string, string> = { record: "Bản ghi", live: "Học trực tiếp", quiz: "Bài tập", document: "Tài liệu" };
 
-function Content() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const courseId = searchParams.get("course");
+function Content({ courseId }: { courseId: string }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<Tab>("tong-quan");
-  const { completedIds, courseCompletion, loading: progressLoading } = useProgress();
+  const [tab, setTab] = useState<Tab>("noi-dung");
+  const { completedIds, watching, loading: progressLoading } = useProgress();
   const { classes, loading: enrollmentsLoading, error: classesError, reload: reloadClasses } = useMyClasses();
   const enrolledIds = useMemo(() => new Set(classes.map(c => c.id)), [classes]);
   const work = useStudentWork();
 
   useEffect(() => {
-    if (!courseId) { void Promise.resolve().then(() => setLoading(false)); return; }
     let live = true;
     void Promise.resolve().then(() => { if (live) { setLoading(true); setError(""); } });
-    fetch(`/api/courses/${courseId}`, { credentials: "same-origin" })
+    fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: "same-origin" })
       .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data: Course) => { if (live && data.id === courseId) setCourse(data); else if (live) setError("Không tìm thấy khóa học"); })
       .catch(() => { if (live) setError("Không tìm thấy khóa học"); })
@@ -149,257 +126,263 @@ function Content() {
     return () => { live = false; };
   }, [courseId, tick]);
 
-  // Thiếu ?course= và chỉ có MỘT lớp → vào thẳng lớp đó. Từ 2 lớp trở lên thì hiện danh mục để em tự chọn (NC2-041: không tự chọn hộ lớp đầu tiên nữa).
-  useEffect(() => {
-    if (courseId || enrollmentsLoading || classes.length !== 1) return;
-    router.replace(`/student/hoc-tap?course=${classes[0].id}`);
-  }, [courseId, enrollmentsLoading, classes, router]);
-
   // MD-07: bản ghi theo buổi của lớp. Chỉ hỏi khi đã ghi danh (API trả 403 cho người chưa vào lớp, nên không hỏi vô ích).
-  const enrolledHere = !!courseId && enrolledIds.has(courseId);
+  const enrolledHere = enrolledIds.has(courseId);
   const [recs, setRecs] = useState<RecData | "loi" | null>(null);
   const [recTick, setRecTick] = useState(0);
   useEffect(() => {
-    if (!courseId || !enrolledHere) return;
+    if (!enrolledHere) return;
     let live = true;
-    fetch(`/api/courses/${courseId}/recordings`, { credentials: "same-origin" })
+    fetch(`/api/courses/${encodeURIComponent(courseId)}/recordings`, { credentials: "same-origin" })
       .then(r => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: RecData) => { if (live) setRecs({ recordings: d.recordings, sessions: d.sessions }); })
       .catch(() => { if (live) setRecs("loi"); });
     return () => { live = false; };
   }, [courseId, enrolledHere, recTick]);
 
-  const allLessons = useMemo(() => course?.sections.flatMap(s => s.chapters.flatMap(c => c.lessons)) ?? [], [course]);
-  const done = allLessons.filter(l => completedIds.has(l.id)).length;
-  const pct = Math.round((done * 100) / Math.max(allLessons.length, 1));
-  const nextLesson = useMemo(() => allLessons.find(l => !completedIds.has(l.id) && !l.isLocked), [allLessons, completedIds]);
-  // BU-HS-TRANG-CHU: cây Phần > Chương > Bài cho tab "Tổng quan" (CourseOutline). Dòng phụ mỗi bài = loại · thời lượng, như hàng bài cũ.
-  const outlineSections = useMemo<OutlineSection[]>(() => (course?.sections ?? []).map(s => ({
+  // Cây đã sắp (order, id) — mọi phép tính (orderedLessonIds / lopProgress / hocTiep / tóm tắt) và cây CourseOutline đều dùng bản này.
+  const sections = useMemo(() => sortTree(course?.sections ?? []), [course]);
+  const allLessons = useMemo(() => sections.flatMap(s => s.chapters.flatMap(c => c.lessons)), [sections]);
+  // Cùng hàm với /api/student/lop: chỉ bài Đã đăng theo thứ tự giáo trình; tiến độ chỉ đếm id thuộc lớp này.
+  const ids = useMemo(() => orderedLessonIds(sections), [sections]);
+  const prog = useMemo(() => lopProgress(ids, completedIds), [ids, completedIds]);
+  const watchingSet = useMemo(() => new Set(Object.keys(watching)), [watching]);
+  const lockedSet = useMemo(() => new Set(allLessons.filter(l => l.isLocked).map(l => l.id)), [allLessons]);
+  const next = useMemo(() => hocTiep(ids, completedIds, watchingSet, lockedSet), [ids, completedIds, watchingSet, lockedSet]);
+  const nextLesson = next.lessonId ? allLessons.find(l => l.id === next.lessonId) ?? null : null;
+  // Nhãn "Hôm nay / Ngày mai" ở dòng phụ bài: ngày VN theo đồng hồ trình duyệt (chỉ là chữ hiển thị, không quyết quyền).
+  const todayKey = useMemo(() => vnDateKeyOf(new Date()), []);
+  const outlineSections = useMemo<OutlineSection[]>(() => sections.map(s => ({
     id: s.id, title: s.title,
     chapters: s.chapters.map(c => ({
       id: c.id, title: c.title,
-      lessons: c.lessons.map(l => ({ id: l.id, title: l.title, isLocked: l.isLocked, meta: `${TYPE_LABEL[parseLessonType(l.type)] ?? "Bài học"}${l.duration ? ` · ${l.duration}` : ""}` })),
+      lessons: c.lessons.map(l => ({
+        id: l.id, title: l.title, isLocked: l.isLocked,
+        meta: lessonMetaParts({ documents: l.documents, azotaUrl: l.azotaUrl, assignmentCount: l._count?.assignments, scheduledAt: l.scheduledAt }, todayKey).join(" · ") || undefined,
+      })),
     })),
-  })), [course]);
+  })), [sections, todayKey]);
+  const summary = useMemo(() => contentSummary(sections), [sections]);
+  // LOI-03 (vòng test 2): lớp có bài Đã đăng hẹn ngày học từ hôm nay (ngày VN) trở đi ⇒ ngày học đã hiện ở từng dòng bài; khi lịch buổi học rỗng thì
+  // KHÔNG vẽ khối "Buổi học sắp tới" (tránh hai khối nói ngược nhau: "chưa có buổi học nào" cạnh "Học Hôm nay · 19:30").
+  // LOI-07 (nợ P3 LOI-03): chỉ tính bài hẹn TRONG khung 90 ngày của lịch (bài hẹn 4 tháng nữa không làm ẩn khối nói về 90 ngày tới) — hàm thuần ở studentLop.
+  const hasScheduledLesson = useMemo(() => hasScheduledLessonInWindow(allLessons, new Set(ids), todayKey), [allLessons, ids, todayKey]);
 
-  const head = (sub?: string, back = false) => (
+  const back = <Link href="/student/hoc-tap" data-all-classes className={`inline-flex items-center min-h-11 -ml-1 pr-3 ${GOC} text-[var(--kin-nhan-link)] underline`}>← Lớp của tôi</Link>;
+  const head = (title: string, sub?: string) => (
     <header className="pb-6">
-      {back && <Link href="/student/hoc-tap" data-all-classes className="inline-flex items-center min-h-11 -ml-1 pr-3 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">← Tất cả lớp</Link>}
-      <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Lớp của tôi</h1>
-      {sub && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{sub}</p>}
+      {back}
+      <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)] break-words [overflow-wrap:anywhere]">{title}</h1>
+      {sub && <p className={`mt-1 ${GOC} text-[var(--kin-chu-mo)] break-words`}>{sub}</p>}
     </header>
   );
   const wrap = (children: React.ReactNode) => <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">{children}</div>;
 
   if (!enrollmentsLoading && classesError) {
-    return wrap(<>{head()}<ErrorStrip message="Không tải được danh sách lớp của bạn." onRetry={reloadClasses} /></>);
+    return wrap(<>{head("Lớp của tôi")}<ErrorStrip message="Không tải được danh sách lớp của bạn." onRetry={reloadClasses} /></>);
   }
-  if (!courseId) {
-    if (enrollmentsLoading || progressLoading || classes.length === 1) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
-    if (classes.length === 0) {
-      return wrap(<>{head()}
-        <KinEmptyState title="Bạn chưa vào lớp nào" action={<span className="flex flex-wrap gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link><Link href="/khoa-hoc?gia=free" data-lop-mien-phi className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link></span>}>
-          Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây. Chưa có mã thì xem các lớp miễn phí đang mở.
-        </KinEmptyState>
-        <PendingJoinBlock className="pt-8" /></>);
-    }
-    return wrap(<>{head(`Bạn đang học ${classes.length} lớp. Chọn một lớp để xem bài học, tài liệu và bản ghi của lớp đó.`)}
-      <DanhMucLop classes={classes} doneByCourse={courseCompletion} />
-      <PendingJoinBlock className="pt-8" />
-      <JoinAnotherClass className="mt-8" /></>);
-  }
-  if (loading || progressLoading || enrollmentsLoading) return wrap(<>{head()}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
+  if (loading || progressLoading || enrollmentsLoading) return wrap(<>{head("Lớp của tôi")}<WorkSkeleton label="Đang tải Lớp của tôi" /></>);
   if (error || !course) {
-    return wrap(<>{head(undefined, classes.length >= 2)}
+    return wrap(<>{head("Lớp của tôi")}
       <ErrorStrip message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."} onRetry={() => setTick(t => t + 1)} />
       <div className="pt-4"><Link href="/khoa-hoc" className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Về danh sách khóa học</Link></div></>);
   }
 
   // Đã nghỉ lớp này (quyết định 06/11/2026): không xem bài / bản ghi nữa; thông báo + nút liên hệ gia sư.
-  if (course.suspended) return wrap(<>{head(undefined, classes.length >= 2)}<SuspendedNotice contactHref={course.suspended.contactHref} /></>);
+  if (course.suspended) return wrap(<>{head(course.name)}<SuspendedNotice contactHref={course.suspended.contactHref} /></>);
 
-  const isEnrolled = enrolledIds.has(courseId);
+  const isEnrolled = enrolledHere;
+  const giaSu = giaSuLabel(course.instructor);
+  const sub = [course.category?.trim(), giaSu].filter(Boolean).join(" · ");
   const docs = allLessons.filter(l => { const t = parseLessonType(l.type); return t === "document" || t === "record"; });
   const quizzes = allLessons.filter(l => parseLessonType(l.type) === "quiz");
   const tabs = [
     { key: "tong-quan" as const, label: "Tổng quan" },
-    { key: "tai-lieu" as const, label: `Tài liệu & bản ghi · ${docs.length + (typeof recs === "object" && recs ? recs.recordings.length : 0)}` },
-    { key: "bai-tap" as const, label: `Bài tập · ${quizzes.length}` },
+    { key: "noi-dung" as const, label: "Nội dung" },
   ];
   // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
   const nextSessions = (work.events ?? []).filter(e => e.type === "class" && e.courseId === courseId).slice(0, 4);
+  // Lịch đã tải xong, không lỗi, không buổi nào, nhưng có bài hẹn ⇒ bỏ cả khối (đang tải / lỗi vẫn vẽ — không im lặng khi lỗi). Logic thuần: sessionsBlockState.
+  const sessionsState = sessionsBlockState({ loaded: work.events !== null, error: !!work.eventsError, count: nextSessions.length, hasScheduledLesson });
+  const showSessions = isEnrolled && sessionsState !== "an";
+  const showMyClasses = classes.length >= 2;
   const inCourse = (work.items ?? []).filter(i => i.task && i.task.courseId === course.id);
   const needCount = inCourse.filter(i => !i.done).length;
   const waitCount = inCourse.filter(i => i.task?.phase === "cho-cham").length;
+  // Bài kế để tô trong cây: chỉ khi thật sự còn bài để học (xong hết thì không tô bài nào là "Học tiếp").
+  const outlineNext = isEnrolled && (next.reason === "dang-xem" || next.reason === "chua-hoc") ? next.lessonId : undefined;
 
   const lessonRow = (l: Lesson) => {
-    const isDone = completedIds.has(l.id), isNext = l.id === nextLesson?.id;
+    const isDone = completedIds.has(l.id), isNext = l.id === outlineNext;
     const label = isDone ? <KinStatus tone="xong">Đã học</KinStatus> : l.isLocked ? <KinStatus tone="mo">Đã khoá</KinStatus> : isNext ? <KinStatus tone="cho">Học tiếp</KinStatus> : <KinStatus tone="mo">Chưa học</KinStatus>;
     const meta = `${TYPE_LABEL[parseLessonType(l.type)] ?? "Bài học"}${l.duration ? ` · ${l.duration}` : ""}`;
-    const cls = "grid md:grid-cols-[1.6fr_1fr_1fr] gap-x-4 gap-y-1 items-center px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] min-h-[62px] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]";
-    const inner = (<><span className="text-[var(--kin-chu-chinh)]">{l.title}</span><span className="text-[var(--kin-chu-mo)]">{meta}</span><span>{label}</span></>);
+    const cls = `grid md:grid-cols-[1.6fr_1fr_1fr] gap-x-4 gap-y-1 items-center px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] min-h-[62px] border-b border-[var(--kin-vien-nhat)] ${GOC}`;
+    const inner = (<><span className="text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{l.title}</span><span className="text-[var(--kin-chu-mo)]">{meta}</span><span>{label}</span></>);
     return l.isLocked
       ? <li key={l.id} data-lesson-row className={`${cls} opacity-70`}>{inner}</li>
       : <li key={l.id}><Link href={`/student/bai-giang/${l.id}`} data-lesson-row className={`${cls} hover:bg-[var(--kin-nen-re-chuot)] transition-colors`}>{inner}</Link></li>;
   };
   const tableHead = (
-    <div aria-hidden className="hidden md:grid grid-cols-[1.6fr_1fr_1fr] px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
+    <div aria-hidden className={`hidden md:grid grid-cols-[1.6fr_1fr_1fr] px-[var(--kin-kc-6)] h-11 items-center bg-[var(--kin-nen-bang)] ${GOC} text-[var(--kin-chu-mo)]`}>
       <span>Bài</span><span>Loại · thời lượng</span><span>Trạng thái</span>
     </div>
   );
 
-  return wrap(<>
-    {head(`${course.name} · ${course.instructor}`, classes.length >= 2)}
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
-      <div className="min-w-0">
-        <div data-course-hero className="rounded-[var(--kin-bo-sm)] bg-[var(--kin-nen-nhan)] px-[var(--kin-kc-8)] py-[var(--kin-kc-8)]">
-          <p className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">{course.name}</p>
-          <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">{done}/{allLessons.length} bài đã hoàn thành</p>
-          <div role="progressbar" aria-label="Tiến độ lớp" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="mt-3 h-1.5 rounded-full overflow-hidden bg-[var(--kin-vien-thuong)]">
-            <div className="h-1.5 rounded-full bg-[var(--kin-nhan-nen)]" style={{ width: `${pct}%` }} />
-          </div>
-          {isEnrolled ? (nextLesson ? (
+  const hero = (
+    <section aria-label="Tiến độ của bạn trong lớp" data-course-hero className="rounded-[var(--kin-bo-sm)] bg-[var(--kin-nen-nhan)] px-[var(--kin-kc-8)] py-[var(--kin-kc-8)]">
+      <p className={`${GOC} font-medium text-[var(--kin-chu-mo-tren-nen-nhan)] break-words [overflow-wrap:anywhere]`}>{course.name}</p>
+      {isEnrolled ? (
+        <>
+          {prog.total > 0 ? (
             <>
-              <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Tiếp theo: {nextLesson.title}</p>
-              <Link href={`/student/bai-giang/${nextLesson.id}`} className={`${kinButtonClass("primary")} mt-4`}>{done === 0 ? "Bắt đầu học" : "Tiếp tục học"}</Link>
+              <p className={`mt-2 ${GOC} tabular-nums text-[var(--kin-chu-chinh)]`}>Bạn đã hoàn thành {prog.done}/{prog.total} bài</p>
+              <div role="progressbar" aria-label="Tiến độ lớp" aria-valuemin={0} aria-valuemax={100} aria-valuenow={prog.pct} className="mt-3 h-1.5 rounded-full overflow-hidden bg-[var(--kin-vien-thuong)]">
+                <div className="h-1.5 rounded-full bg-[var(--kin-nhan-nen)]" style={{ width: `${prog.pct}%` }} />
+              </div>
             </>
-          ) : <p className="mt-4"><KinStatus tone="xong">Đã hoàn thành khóa học</KinStatus></p>) : (
+          ) : <p className={`mt-2 ${GOC} text-[var(--kin-chu-mo-tren-nen-nhan)]`}>Lớp chưa có bài học</p>}
+          {next.reason === "on-lai" && <p className="mt-4"><KinStatus tone="xong">Đã hoàn thành khóa học</KinStatus></p>}
+          {nextLesson && next.reason !== "trong" && (
             <>
-              <p className="mt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bạn chưa vào lớp này</p>
-              {/* Học viên học miễn phí, không có bước "mua" (quyết định D01): nút đưa tới trang lớp (cách vào lớp: mã mời của gia sư / nhắn tư vấn). */}
-              <Link href={`/khoa-hoc/${courseId}`} className={`${kinButtonClass("primary")} mt-4`}>Xem lớp học →</Link>
+              {next.reason !== "on-lai" && <p className={`mt-4 ${GOC} text-[var(--kin-chu-chinh)] break-words [overflow-wrap:anywhere]`}>{next.reason === "dang-xem" ? "Đang xem dở" : "Tiếp theo"}: {nextLesson.title}</p>}
+              <Link href={`/student/bai-giang/${nextLesson.id}`} data-hoc-tiep={nextLesson.id} className={`${kinButtonClass("primary")} mt-4 w-full lg:w-auto`}>{hocTiepLabel(next.reason, prog.done)}</Link>
             </>
           )}
-          {isEnrolled && (
-            <Link href={`/thu-vien#c-${courseId}`} data-thu-vien-link className="mt-2 flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">
-              Tài liệu &amp; bản ghi của lớp này →
-            </Link>
-          )}
-          {/* LOI-01 (rà soát): bảng tin chung ẩn thì đây là lối hỏi gia sư TRONG lớp (/cong-dong?scope=<mã lớp>, chỉ thành viên lớp và gia sư). Bảng tin bật thì hỏi ở Cộng đồng như cũ. */}
-          {isEnrolled && !featureOn("CONG_DONG") && (
-            <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className="flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">
-              Hỏi gia sư trong lớp →
-            </Link>
-          )}
-        </div>
+        </>
+      ) : (
+        <>
+          <p className={`mt-4 ${GOC} text-[var(--kin-chu-mo-tren-nen-nhan)]`}>Bạn chưa vào lớp này</p>
+          {/* Học viên học miễn phí, không có bước "mua" (quyết định D01): nút đưa tới trang lớp (cách vào lớp: mã mời của gia sư / nhắn tư vấn). */}
+          <Link href={`/khoa-hoc/${courseId}`} className={`${kinButtonClass("primary")} mt-4`}>Xem lớp học →</Link>
+        </>
+      )}
+      {giaSu && <p className={`mt-4 ${GOC} text-[var(--kin-chu-chinh)]`}>{giaSu}</p>}
+      {isEnrolled && <p className={`mt-2 text-[length:var(--kin-co-small)] text-[var(--kin-chu-mo-tren-nen-nhan)]`}>Tiến độ tính theo số bài bạn đã đánh dấu hoàn thành.</p>}
+      {isEnrolled && (
+        <Link href={`/thu-vien#c-${courseId}`} data-thu-vien-link className={`mt-2 flex items-center min-h-11 ${GOC} text-[var(--kin-nhan-link)] underline`}>
+          Tài liệu &amp; bản ghi của lớp này →
+        </Link>
+      )}
+      {/* LOI-01: lối hỏi gia sư TRONG lớp (/cong-dong?scope=<mã lớp>, chỉ thành viên lớp và gia sư) — lối duy nhất khi bảng tin chung bị ẩn. Bảng tin bật thì hỏi ở Cộng đồng như cũ. */}
+      {isEnrolled && !featureOn("CONG_DONG") && (
+        <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className={`mt-1 flex items-center min-h-11 ${GOC} text-[var(--kin-nhan-link)] underline`}>
+          Hỏi gia sư trong lớp →
+        </Link>
+      )}
+    </section>
+  );
 
-        <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Nội dung lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} className="mt-8" />
-        <div role="tabpanel" id="lop-panel" aria-labelledby={`lop-tab-${tab}`} className="pt-6">
-          {tab === "tong-quan" ? (
-            course.sections.length === 0 ? (
-              <KinEmptyState title="Lớp chưa có bài học nào">Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.</KinEmptyState>
-            ) : (
-              <CourseOutline variant="page" idPrefix="lop" sections={outlineSections} completedIds={completedIds} nextId={isEnrolled ? nextLesson?.id : undefined}
-                hrefFor={id => `/student/bai-giang/${id}`} />
-            )
-          ) : tab === "tai-lieu" ? (
-            <section aria-label="Tài liệu và bản ghi" data-materials-tab className="space-y-8">
-              <div>
-                <KinSectionHead title="Bản ghi các buổi học" aside={typeof recs === "object" && recs ? `${recs.recordings.length} bản ghi` : undefined} />
-                {!isEnrolled ? (
-                  <KinEmptyState title="Bản ghi dành cho học sinh của lớp">Vào lớp bằng mã mời của gia sư để xem bản ghi các buổi học.</KinEmptyState>
-                ) : recs === null ? (
-                  <p role="status" className="py-6 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang tải bản ghi…</p>
-                ) : recs === "loi" ? (
-                  <div className="pt-4"><ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} /></div>
-                ) : recs.recordings.length === 0 ? (
-                  <KinEmptyState title="Chưa có bản ghi nào">Khi gia sư dán link bản ghi sau buổi học, nó sẽ hiện ở đây.</KinEmptyState>
-                ) : (
-                  <RecordingMonths months={groupRecordingsByMonth(groupRecordingsBySession(recs.recordings.map(r => ({ ...r, createdAt: new Date(r.createdAt) })), recs.sessions))} />
-                )}
-                <KinCallout title="Mở ở dịch vụ bên ngoài" className="mt-4">KiN chỉ lưu liên kết bản ghi do gia sư chia sẻ. KiN không có dịch vụ phát trực tiếp hay ghi hình tích hợp, và không biết bạn đã mở bản ghi hay chưa.</KinCallout>
-              </div>
-              {(() => {
-                const mats = allLessons.flatMap(l => parseMaterials(l.documents).map(m => ({ lesson: l, m })));
-                return mats.length > 0 && (
-                  <div>
-                    <KinSectionHead title="Tài liệu đính kèm bài" aside={`${mats.length} tệp`} />
-                    <ul>
-                      {mats.map(({ lesson, m }, i) => {
-                        const plan = planDocumentPreview(m.url);
-                        if (plan.mode === "none") return null;
-                        return (
-                          <li key={`${lesson.id}-${i}`} data-material-row className="flex items-start justify-between gap-3 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[var(--kin-chu-chinh)] break-words">{m.name}</p>
-                              <p className="mt-1 text-[var(--kin-chu-mo)]">Bài: {lesson.title}</p>
-                            </div>
-                            <a href={viewerHref(m.name, m.url)} target="_blank" rel="noopener noreferrer" aria-label={`Mở ${m.name}`} className={kinButtonClass("secondary")}>Mở ↗</a>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                );
-              })()}
-              <div>
-                <KinSectionHead title="Bài giảng và bản ghi bài" aside={`${docs.length} bài`} />
-                {docs.length === 0 ? (
-                  <KinEmptyState title="Chưa có bài giảng hay tài liệu bài" action={<button type="button" onClick={() => setTab("tong-quan")} className={kinButtonClass("secondary")}>Xem tổng quan</button>}>Khi gia sư đăng, chúng sẽ hiện ở đây.</KinEmptyState>
-                ) : <>{tableHead}<ul>{docs.map(lessonRow)}</ul></>}
-              </div>
-            </section>
+  const overview = (
+    <div className="space-y-10">
+      <section aria-labelledby="lop-info" data-lop-thong-tin>
+        <KinSectionHead id="lop-info" title="Thông tin lớp" />
+        <div className={`pt-4 ${GOC} leading-6 text-[var(--kin-chu-chinh)]`}>
+          {giaSu && <p>{giaSu}</p>}
+          {course.category && <p className="text-[var(--kin-chu-mo)]">Môn: {course.category}</p>}
+          {isEnrolled && work.items && <p className="mt-3 text-[var(--kin-chu-mo)]">Bài cần làm: {needCount}<br />Bài chờ chấm: {waitCount}</p>}
+          {/* CỜ TIỀN = không: chỉ là chữ dẫn sang trang phiếu học phí, không hiện số tiền ở đây. */}
+          {isEnrolled && <Link href="/student/hoc-phi" data-lop-hoc-phi className="mt-3 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Phiếu học phí của bạn →</Link>}
+        </div>
+      </section>
+      <section aria-label="Tài liệu và bản ghi" data-materials-tab className="space-y-8">
+        <div>
+          <KinSectionHead title="Bản ghi các buổi học" aside={typeof recs === "object" && recs ? `${recs.recordings.length} bản ghi` : undefined} />
+          {!isEnrolled ? (
+            <KinEmptyState title="Bản ghi dành cho học sinh của lớp">Vào lớp bằng mã mời của gia sư để xem bản ghi các buổi học.</KinEmptyState>
+          ) : recs === null ? (
+            <p role="status" className={`py-6 ${GOC} text-[var(--kin-chu-mo)]`}>Đang tải bản ghi…</p>
+          ) : recs === "loi" ? (
+            <div className="pt-4"><ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} /></div>
+          ) : recs.recordings.length === 0 ? (
+            <KinEmptyState title="Chưa có bản ghi nào">Khi gia sư dán link bản ghi sau buổi học, nó sẽ hiện ở đây.</KinEmptyState>
           ) : (
-            <section aria-label="Bài tập của lớp">
-              <KinSectionHead title="Bài tập" />
-              {quizzes.length === 0 ? (
-                <KinEmptyState title="Lớp chưa có bài tập" action={<button type="button" onClick={() => setTab("tong-quan")} className={kinButtonClass("secondary")}>Xem tổng quan</button>}>
-                  Khi gia sư đăng, chúng sẽ hiện ở đây.
-                </KinEmptyState>
-              ) : <>{tableHead}<ul>{quizzes.map(lessonRow)}</ul></>}
-            </section>
+            <RecordingMonths months={groupRecordingsByMonth(groupRecordingsBySession(recs.recordings.map(r => ({ ...r, createdAt: new Date(r.createdAt) })), recs.sessions))} />
           )}
+          <KinCallout title="Mở ở dịch vụ bên ngoài" className="mt-4">KiN chỉ lưu liên kết bản ghi do gia sư chia sẻ. KiN không có dịch vụ phát trực tiếp hay ghi hình tích hợp, và không biết bạn đã mở bản ghi hay chưa.</KinCallout>
+        </div>
+        {(() => {
+          const mats = allLessons.flatMap(l => parseMaterials(l.documents).map(m => ({ lesson: l, m })));
+          return mats.length > 0 && (
+            <div>
+              <KinSectionHead title="Tài liệu đính kèm bài" aside={`${mats.length} tệp`} />
+              <ul>
+                {mats.map(({ lesson, m }, i) => {
+                  const plan = planDocumentPreview(m.url);
+                  if (plan.mode === "none") return null;
+                  return (
+                    <li key={`${lesson.id}-${i}`} data-material-row className={`flex items-start justify-between gap-3 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] ${GOC}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[var(--kin-chu-chinh)] break-words">{m.name}</p>
+                        <p className="mt-1 text-[var(--kin-chu-mo)] break-words">Bài: {lesson.title}</p>
+                      </div>
+                      <a href={viewerHref(m.name, m.url)} target="_blank" rel="noopener noreferrer" aria-label={`Mở ${m.name}`} className={kinButtonClass("secondary")}>Mở ↗</a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })()}
+        <div>
+          <KinSectionHead title="Bài giảng và bản ghi bài" aside={`${docs.length} bài`} />
+          {docs.length === 0 ? (
+            <KinEmptyState title="Chưa có bài giảng hay tài liệu bài" action={<button type="button" onClick={() => setTab("noi-dung")} className={kinButtonClass("secondary")}>Xem nội dung lớp</button>}>Khi gia sư đăng, chúng sẽ hiện ở đây.</KinEmptyState>
+          ) : <>{tableHead}<ul>{docs.map(lessonRow)}</ul></>}
+        </div>
+      </section>
+      <section aria-labelledby="lop-bai-tap" data-lop-bai-tap>
+        <KinSectionHead id="lop-bai-tap" title="Bài tập của lớp" aside={`${quizzes.length} bài`} />
+        {quizzes.length === 0 ? (
+          <KinEmptyState title="Lớp chưa có bài tập" action={<button type="button" onClick={() => setTab("noi-dung")} className={kinButtonClass("secondary")}>Xem nội dung lớp</button>}>
+            Khi gia sư đăng, chúng sẽ hiện ở đây.
+          </KinEmptyState>
+        ) : <>{tableHead}<ul>{quizzes.map(lessonRow)}</ul></>}
+      </section>
+    </div>
+  );
+
+  const contentTab = sections.length === 0 || ids.length === 0 ? (
+    <KinEmptyState title="Lớp chưa có bài học nào">Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.</KinEmptyState>
+  ) : (
+    <CourseOutline variant="page" idPrefix="lop" sections={outlineSections} completedIds={completedIds} nextId={outlineNext} watching={isEnrolled ? watching : undefined}
+      hrefFor={id => `/student/bai-giang/${id}`}
+      heading={<p data-noi-dung-tom-tat className={`${GOC} font-medium text-[var(--kin-chu-chinh)]`}>{summary}</p>} />
+  );
+
+  return wrap(<>
+    {head(course.name, sub || undefined)}
+    {/* Máy tính: [tab + nội dung | thẻ tiến độ, rồi lịch + các lớp]. Điện thoại: thẻ tiến độ → tab → nội dung → lịch → các lớp. */}
+    {/* LOI-07 (nợ P3 LOI-03): hàng 1 = đúng cao thẻ tiến độ, hàng 2 nhận phần còn lại (cột trái span 2 hàng cao hơn cột phải thì phần thừa KHÔNG chia đều
+        vào hàng 1 — trước đây để trống ~100px giữa thẻ tiến độ và lịch ở 1600). Cột phải không có gì thì không vẽ <aside> rỗng. */}
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] lg:grid-rows-[auto_1fr] gap-x-8 gap-y-8 items-start">
+      <div className="min-w-0 lg:col-start-2 lg:row-start-1">{hero}</div>
+      <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+        <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
+        <div role="tabpanel" id="lop-panel" aria-labelledby={`lop-tab-${tab}`} className="pt-6">
+          {tab === "noi-dung" ? contentTab : overview}
         </div>
       </div>
-
-      <aside aria-label="Thông tin lớp" className="min-w-0">
-        {classes.length >= 2 && (
-          <section aria-labelledby="lop-cua-ban" data-my-classes className="mb-8">
-            <KinSectionHead id="lop-cua-ban" title="Các lớp của bạn" aside={`${classes.length} lớp`} />
-            <ul>
-              {classes.map(c => (
-                <li key={c.id}>
-                  <Link href={`/student/hoc-tap?course=${c.id}`} aria-current={c.id === courseId ? "page" : undefined}
-                    className={`flex items-center justify-between gap-3 min-h-11 px-[var(--kin-kc-6)] py-[var(--kin-kc-5)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors ${c.id === courseId ? "bg-[var(--kin-nen-nhan)] font-medium text-[var(--kin-chu-chinh)]" : "text-[var(--kin-chu-chinh)]"}`}>
-                    <span className="min-w-0 break-words">{c.name}</span>
-                    {c.id === courseId && <span className="flex-shrink-0 text-[var(--kin-chu-mo)]">Đang xem</span>}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        {/* LOI-01: khối Tự học chỉ hiện khi phần Tiếng Anh tự học đang mở (src/lib/features.ts). */}
-        {featureOn("TIENG_ANH") && (
-        <section aria-labelledby="lop-tu-hoc" data-self-study>
-          <KinSectionHead id="lop-tu-hoc" title="Tự học" />
-          <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lộ trình Tiếng Anh IELTS, từ vựng, đọc, nghe, viết và thi thử — không cần vào lớp.</p>
-          <Link href="/student/tieng-anh" className={`${kinButtonClass("secondary")} mt-4`}>Mở Tiếng Anh tự học</Link>
-        </section>
-        )}
-
-        <PendingJoinBlock className="mt-8" />
-        <JoinAnotherClass className="mt-8" />
-        {isEnrolled && (
-          <section aria-labelledby="lop-lich" data-course-sessions className="mt-8">
+      {(showSessions || showMyClasses) && <aside aria-label="Lịch và các lớp của bạn" data-lop-aside className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">
+        {showSessions && (
+          <section aria-labelledby="lop-lich" data-course-sessions>
             <KinSectionHead id="lop-lich" title="Buổi học sắp tới" />
-            {work.events === null && !work.eventsError ? (
-              <p role="status" className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang tải lịch…</p>
-            ) : work.eventsError ? (
-              <div className="pt-4"><ErrorStrip message="Không tải được lịch của lớp." onRetry={work.load} /></div>
-            ) : nextSessions.length === 0 ? (
-              <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp chưa có buổi học nào trong 90 ngày tới. Khi gia sư thêm khung giờ hoặc buổi học, chúng sẽ hiện ở đây.</p>
+            {sessionsState === "dang-tai" ? (
+              <p role="status" className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Đang tải lịch…</p>
+            ) : sessionsState === "loi" ? (
+              <div className="pt-4" data-course-sessions-loi><ErrorStrip message="Không tải được lịch của lớp." onRetry={work.load} /></div>
+            ) : sessionsState === "trong" ? (
+              <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Lớp chưa có buổi học nào trong 90 ngày tới. Khi gia sư thêm khung giờ hoặc buổi học, chúng sẽ hiện ở đây.</p>
             ) : (
               <ul>
                 {nextSessions.map(e => {
                   const cancelled = e.topic.startsWith("[ĐÃ HUỶ]");
                   const topic = e.topic.replace(/^\[[^\]]+\]\s*/, "");
-                  const sub = topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "";
+                  const subT = topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "";
                   const place = placeLabel(e.mode, e.location);
                   return (
-                    <li key={e.id} data-course-session className="py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
+                    <li key={e.id} data-course-session className={`py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] ${GOC}`}>
                       <p className="text-[var(--kin-chu-chinh)]">{dayTitle(e.isoDate)} · <span className="tabular-nums">{e.endTime ? `${e.time}–${e.endTime}` : e.time}</span></p>
-                      <p className="mt-1 text-[var(--kin-chu-mo)]">{[sub, place].filter(Boolean).join(" · ") || "Buổi học theo lịch tuần"}</p>
+                      <p className="mt-1 text-[var(--kin-chu-mo)]">{[subT, place].filter(Boolean).join(" · ") || "Buổi học theo lịch tuần"}</p>
                       {cancelled && <p className="mt-2"><KinStatus tone="loi">Buổi học đã huỷ</KinStatus></p>}
                       {!cancelled && e.joinUrl && <a href={e.joinUrl} target="_blank" rel="noopener noreferrer" data-course-session-join className={`${kinButtonClass("secondary")} mt-3`}>Mở link học online</a>}
                     </li>
@@ -409,38 +392,33 @@ function Content() {
             )}
           </section>
         )}
-        <section aria-labelledby="lop-info" className="mt-8">
-          <KinSectionHead id="lop-info" title="Thông tin lớp" />
-          <div className="pt-4 text-[length:var(--kin-co-goc)] leading-6 text-[var(--kin-chu-chinh)]">
-            <p>Gia sư: {course.instructor}</p>
-            {course.category && <p className="text-[var(--kin-chu-mo)]">Môn: {course.category}</p>}
-            {isEnrolled && work.items && <p className="mt-3 text-[var(--kin-chu-mo)]">Bài cần làm: {needCount}<br />Bài chờ chấm: {waitCount}</p>}
-          </div>
-        </section>
-        <KinCallout className="mt-8">Tiến độ tính theo số bài bạn đã đánh dấu hoàn thành trong lớp.</KinCallout>
-      </aside>
+        {showMyClasses && (
+          <section aria-labelledby="lop-cua-ban" data-my-classes>
+            <KinSectionHead id="lop-cua-ban" title="Các lớp của bạn" aside={`${classes.length} lớp`} />
+            <ul>
+              {classes.map(c => (
+                <li key={c.id}>
+                  <Link href={`/student/hoc-tap?course=${c.id}`} aria-current={c.id === courseId ? "page" : undefined}
+                    className={`flex items-center justify-between gap-3 min-h-11 px-[var(--kin-kc-6)] py-[var(--kin-kc-5)] border-b border-[var(--kin-vien-nhat)] ${GOC} hover:bg-[var(--kin-nen-re-chuot)] transition-colors ${c.id === courseId ? "bg-[var(--kin-nen-nhan)] font-medium text-[var(--kin-chu-chinh)]" : "text-[var(--kin-chu-chinh)]"}`}>
+                    <span className="min-w-0 break-words">{c.name}</span>
+                    {c.id === courseId && <span className="flex-shrink-0 text-[var(--kin-chu-mo)]">Đang xem</span>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </aside>}
     </div>
   </>);
 }
 
-/** Lối duy nhất vào "Nhập mã lớp" từ Lớp của tôi khi đã có lớp (mục này không còn ở bảng Khác). Màn trống của học sinh mới có nút riêng. */
-function JoinAnotherClass({ className = "" }: { className?: string }) {
-  return (
-    <section aria-labelledby="lop-join" className={className}>
-      <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
-      <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nhập mã mời do gia sư cung cấp, hoặc xem các lớp miễn phí đang mở.</p>
-      <div className="flex flex-wrap gap-3 mt-4">
-        <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp</Link>
-        <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>
-      </div>
-    </section>
-  );
-}
-
-/** Dựng lại Content theo ID lớp: đổi lớp là một "trang" mới, không mang state của lớp trước sang. */
+/** Không ?course= ⇒ thư viện lớp. Có ?course= ⇒ trang lớp, dựng lại theo ID lớp: đổi lớp là một "trang" mới, không mang state của lớp trước sang. */
 function PerCourse() {
-  const course = useSearchParams().get("course") ?? "";
-  return <Content key={course} />;
+  const searchParams = useSearchParams();
+  const course = searchParams.get("course") ?? ""; // giữ đúng chữ này: t-links.ts:102 khoá việc trang đọc ?course=
+  if (!course) return <ThuVienLop />;
+  return <Content key={course} courseId={course} />;
 }
 
 export default function LopCuaToi() {

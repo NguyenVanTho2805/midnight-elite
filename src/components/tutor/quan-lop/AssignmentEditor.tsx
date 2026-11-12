@@ -7,6 +7,7 @@ import { useKinConfirm } from "@/components/kin/useConfirm";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { DropZone } from "@/components/DropZone";
 import { checkLinkForSlot } from "@/lib/mediaLink";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 function fmtDue(d: string | null): string {
   if (!d) return "";
@@ -71,10 +72,9 @@ function QuestionRow({ q, qi, onChange, onRemove }: {
       </div>
       {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-32 rounded-lg border border-gray-200 ml-[52px]" />}
       <div className="flex items-center gap-2 pl-[52px]">
-        <select className={inpSm + " w-28"} value={q.type} onChange={e => setType(e.target.value as "MC" | "ESSAY")}>
-          <option value="MC">Trắc nghiệm</option>
-          <option value="ESSAY">Tự luận</option>
-        </select>
+        {/* LOI-02 (2.G): KinSelect thay <select> gốc (panel bài học). */}
+        <KinSelect className="w-40 flex-shrink-0" aria-label={`Loại câu ${qi + 1}`} value={q.type} onChange={v => setType(v as "MC" | "ESSAY")}
+          options={[{ value: "MC", label: "Trắc nghiệm" }, { value: "ESSAY", label: "Tự luận" }]} />
         <input type="number" min={0.25} step={0.25} className={inpSm + " w-16"} value={q.points} title="Điểm"
           onChange={e => onChange({ points: e.target.value })} />
       </div>

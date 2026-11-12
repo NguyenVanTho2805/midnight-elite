@@ -7,6 +7,7 @@ import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, copyText, useNotify } from "@/components/tutor/shared";
 import { PRONOUNS, RECRUIT_FIELD_MAX, composeRecruitPost, ensureSafetyLine, facebookChannel, facebookShareUrl, profileLink, type Pronoun } from "@/lib/funnel";
 import { openZalo } from "@/lib/zaloShare";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Draft {
   tutorId: string; name: string; pronoun: Pronoun; subjects: string[]; profilePublic: boolean; profileLocked: boolean; profileHidden?: boolean;
@@ -135,9 +136,9 @@ export default function BaiDangClient() {
 
             <div className="grid sm:grid-cols-3 gap-3">
               <label className="text-sm block">Xưng hô
-                <select value={pronoun} onChange={e => setPronoun(e.target.value as Pronoun)} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+                <KinSelect value={pronoun} onChange={v => setPronoun(v as Pronoun)} className="block mt-1">
                   {PRONOUNS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                </KinSelect>
               </label>
               <label className="text-sm block sm:col-span-1">Giờ còn trống
                 <input value={slots} maxLength={RECRUIT_FIELD_MAX} onChange={e => setSlots(e.target.value)} placeholder="T3, T5 19h–20h30" className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />

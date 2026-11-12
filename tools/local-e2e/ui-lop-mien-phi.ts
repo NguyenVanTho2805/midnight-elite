@@ -2,7 +2,7 @@
 // Hành trình gia sư: tạo lớp miễn phí (3 cách vào) → thấy lớp trong /lop-cua-toi/lop + /api/tutor/lop → thấy MÃ LỚP có sẵn (khối "Cách học sinh vào lớp"), không sinh hai mã.
 // Hành trình học sinh: từ vỏ học sinh có lối tới lớp miễn phí (menu Khác + màn Lớp của tôi trống) → /khoa-hoc?gia=free thấy lớp.
 import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done, api, BASE } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import type { Page } from "playwright";
 
@@ -12,8 +12,8 @@ async function wizard(p: Page, name: string, policyLabel: string) {
   await p.getByText("Miễn phí", { exact: true }).first().click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await p.getByRole("button", { name: "Tiếp tục" }).click();

@@ -1,12 +1,21 @@
 // BU-06 — Tìm gia sư kiểu sàn (/giang-vien) và hồ sơ (/mentor/[id]) trên trình duyệt thật, hai cỡ 1600×900 và 390×844. Có chụp ảnh.
+// LOI-05 (11/11/2026): kỳ vọng BỐ CỤC theo thiết kế mới (docs/kin/phong-ban/dac-ta/LOI-05.md mục 4): thẻ [data-the-gia-su], lưới 3 cột (1600) / 1 cột (390),
+//   hàng lọc ngang (Môn · Khu vực · Hình thức) thay cột lọc trái, nút "Lọc (n)" + tờ "Lọc gia sư" ở 390, hồ sơ một trang cuộn (không tab, ?tab= cũ bỏ qua),
+//   không khối bìa giả. Bỏ khỏi bài vì giao diện không còn: hộp gợi ý, ô Sắp xếp, lọc giá, chip Môn, tab Chỉ số (API sắp xếp vẫn kiểm qua fetch; tham số cũ phải bị bỏ qua).
+//   GIỮ mọi ca an toàn/quyền/không lộ: ẩn/khoá không hiện, HTML không PII, video chỉ youtube-nocookie sau khi bấm, tên miền giả bị loại, giá chỉ khi tự bật,
+//   không in giá lớp, vào lớp miễn phí theo vai (khách → đăng nhập, học sinh, gia sư không nút), Gửi yêu cầu không cần đăng nhập.
+//   Cờ NEXT_PUBLIC_KIN_MO_TIM_GIA_SU: đặt CÙNG giá trị cho máy chủ dev và bài này. Cờ tắt: phần danh sách thay bằng kiểm /giang-vien 307; phần hồ sơ chạy như nhau.
 // Cần Postgres + Next dev (xem tools/local-e2e/README.md); bài này KHÔNG tự bật máy chủ. API danh sách/gợi ý do stu-code làm: bài chạy được khi route mới đã có.
 // Quy ước đo: nút ≥ 44px trong phạm vi trang (loại lớp phủ dev của Next, KinToast, vỏ trang), không tràn ngang, không pageerror.
 // Lọc có chủ đích: console.error của React 19 về <script> chủ đề ở src/app/layout.tsx ("Encountered a script tag") — lỗi có sẵn trên main, không thuộc BU-06.
 // Không dùng goto 'networkidle' (trang có kết nối nền): domcontentloaded rồi chờ bộ chọn. So URL bằng pathname+search. Không khẳng định 404 của nhóm (guest) (trả 200).
 import { BASE, mkUser, mkTutor, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
 import { vnDateKeyOf } from "@/lib/classSessions";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
+
+const SAN = featureOn("TIM_GIA_SU");
 
 const FREE_TAG = "Miễn phí";
 // Ảnh PNG 1×1 (hợp lệ cho isValidCover) và một mã video YouTube giả hợp lệ về định dạng (11 ký tự).
@@ -21,7 +30,7 @@ void SHOTS;
 async function measure(page: Page) {
   await page.addStyleTag({ content: "nextjs-portal, [data-nextjs-toast], [data-agentation-root] { display: none !important; }" });
   return page.evaluate(`(() => {
-    var root = document.querySelector("[data-tim-gia-su],[data-ho-so]") || document.body;
+    var root = document.querySelector("[data-san-gia-su],[data-ho-so]") || document.body;
     var vis = function (e) { var r = e.getBoundingClientRect(); var st = getComputedStyle(e); return r.width > 0 && r.height > 0 && st.visibility !== "hidden" && st.display !== "none"; };
     var sel = 'a,button,select,input:not([type=hidden]),[role=tab],[role=option]';
     var small = Array.prototype.slice.call(root.querySelectorAll(sel))
@@ -34,7 +43,7 @@ async function measure(page: Page) {
 // Số cột thật của lưới = số giá trị left khác nhau của các thẻ cùng hàng đầu.
 async function gridColumns(page: Page) {
   return page.evaluate(`(() => {
-    var cards = Array.prototype.slice.call(document.querySelectorAll("[data-tutor-card]"));
+    var cards = Array.prototype.slice.call(document.querySelectorAll("[data-the-gia-su]"));
     if (!cards.length) return 0;
     var top = cards[0].getBoundingClientRect().top;
     var lefts = {};
@@ -63,7 +72,7 @@ async function gridColumns(page: Page) {
   await prisma.user.update({ where: { id: T3.id }, data: { subjects: ["Toán 9"], city: "TP. Hồ Chí Minh", preferences: teaching({ district: "Quận 3", mode: "online", price: 80000, showPrice: true }) } });
   await prisma.user.update({ where: { id: LOCKED.id }, data: { subjects: ["Toán 9"], profileLockedAt: new Date() } });
   await prisma.user.update({ where: { id: HIDDEN.id }, data: { subjects: ["Toán 9"], preferences: { profile: { hidden: true } } } });
-  // 26 gia sư phụ để qua trang 2 (24/trang): đủ hai hàng ở 4 cột.
+  // 26 gia sư phụ để qua trang 2 (24/trang): đủ nhiều hàng ở 3 cột.
   for (let i = 1; i <= 26; i++) {
     const f = await mkTutor(`Gia sư phụ ${String(i).padStart(2, "0")}`);
     await prisma.user.update({ where: { id: f.id }, data: { subjects: [i % 2 ? "Hoá học" : "Tiếng Anh"], city: i % 3 ? "Hà Nội" : "Đà Nẵng", preferences: teaching({ mode: i % 2 ? "online" : "offline", price: 200000 + i * 1000, showPrice: i % 4 === 0 }) } });
@@ -87,125 +96,114 @@ async function gridColumns(page: Page) {
   const settle = (p: Page) => p.waitForFunction(`!document.querySelector('div[hidden][id^="S:"]')`, undefined, { timeout: 60000 }).catch(() => undefined);
   const goto = async (p: Page, url: string, ready: string) => { await p.goto(`${BASE}${url}`, { waitUntil: "domcontentloaded", timeout: 120000 }); await p.locator(ready).first().waitFor({ timeout: 90000 }); await settle(p); };
 
-  // ───────────────────────── Danh sách
+
+  const CARD = "[data-the-gia-su]";
+  const card = (p: Page, name: string | RegExp) => p.locator(CARD, { has: p.locator("[data-ten-gia-su]", { hasText: name }) });
+  // ───────────────────────── Danh sách (cờ BẬT)
+  if (SAN) {
   for (const [label, w, h] of [["1600", 1600, 900], ["390", 390, 844]] as const) {
     section(`Tìm gia sư — ${label}px`);
     const ctx = await ctxFor(null, { width: w, height: h });
     const page = await ctx.newPage(); watch(page);
-    await goto(page, "/giang-vien", "[data-tutor-card]");
-    await page.locator("[data-tutor-grid-loading]").waitFor({ state: "detached", timeout: 60000 }).catch(() => undefined);
-    check("tiêu đề Tìm gia sư + dòng kết quả 'gia sư phù hợp'", await page.getByRole("heading", { name: "Tìm gia sư" }).isVisible() && /gia sư phù hợp/.test(await page.getByRole("status").first().innerText().catch(() => "") || await page.locator("[role=status]").allInnerTexts().then(a => a.join(" "))));
+    await goto(page, "/giang-vien", CARD);
+    await page.locator("[data-luoi-cho]").waitFor({ state: "detached", timeout: 60000 }).catch(() => undefined);
+    check("tiêu đề Tìm gia sư + dòng đếm 'N gia sư' (role=status)", await page.getByRole("heading", { level: 1, name: "Tìm gia sư" }).isVisible() && /\d+ gia sư/.test(await page.locator("[data-san-gia-su-client] > [role=status]").innerText().catch(() => "")));
     const cols = await gridColumns(page);
-    check(`lưới ${w === 1600 ? 4 : 2} cột thật (đo vị trí thẻ)`, cols === (w === 1600 ? 4 : 2), cols);
-    const left = page.locator("[data-loc-trai]");
-    check(w === 1600 ? "có cột lọc bên trái" : "KHÔNG có cột lọc bên trái ở điện thoại", (await left.isVisible()) === (w === 1600));
+    check(`lưới ${w === 1600 ? 3 : 1} cột thật (đo vị trí thẻ)`, cols === (w === 1600 ? 3 : 1), cols);
+    check("không cột lọc bên trái: hàng lọc nằm TRÊN lưới", ((await page.locator("[data-hang-loc]").boundingBox())?.y ?? 1e9) < ((await page.locator("[data-luoi-gia-su]").boundingBox())?.y ?? 0));
 
     // Thẻ Cô Lan: đủ dòng; gia sư không giá không in dòng giá; không có ★
-    const lan = page.locator("[data-tutor-card]", { hasText: "Cô Lan" });
+    const lan = card(page, "Cô Lan");
     await lan.first().waitFor({ timeout: 60000 });
     const lanText = await lan.first().innerText();
-    check("thẻ có tên, môn, '150.000đ / buổi · giá tham khảo'", lanText.includes("Cô Lan") && lanText.includes("Toán 9") && /150\.000đ \/ buổi/.test(lanText) && lanText.includes("giá tham khảo"), lanText);
-    check("thẻ có 'N buổi đã dạy', 'học sinh đang dạy', 'Hoạt động gần đây', khu vực", /1 buổi đã dạy/.test(lanText) && /học sinh đang dạy/.test(lanText) && lanText.includes("Hoạt động gần đây") && lanText.includes("Cầu Giấy"), lanText);
+    check("thẻ có tên, môn, '150.000đ / buổi · giá tham khảo, tự khai'", lanText.includes("Cô Lan") && lanText.includes("Toán 9") && lanText.includes("150.000đ / buổi · giá tham khảo, tự khai"), lanText);
+    check("thẻ có khu vực 'Cầu Giấy'; số đếm/'Hoạt động gần đây' KHÔNG ở thẻ (chỉ ở hồ sơ, theo đặc tả)", lanText.includes("Cầu Giấy") && !/buổi đã dạy|học sinh đang|Hoạt động gần đây/.test(lanText), lanText);
     // Thầy Khang không nằm trang 1 (24 thẻ/trang, còn 26 gia sư phụ) ⇒ tìm theo tên rồi trả về danh sách đầy đủ.
-    await goto(page, "/giang-vien?q=Khang", "[data-tutor-card]");
-    const khang = page.locator("[data-tutor-card]", { hasText: "Thầy Khang" });
-    check("gia sư không khai giá: thẻ không in dòng giá, không in 'Liên hệ'", (await khang.count()) === 1 && (await khang.locator("[data-tutor-price]").count()) === 0 && !/Liên hệ/.test(await khang.innerText()), { cards: await khang.count(), price: await khang.locator("[data-tutor-price]").count(), text: (await khang.first().innerText().catch(() => "")).slice(0, 200) });
-    await goto(page, "/giang-vien", "[data-tutor-card]");
-    check("khách không thấy gia sư bị khoá / ẩn", (await page.locator("[data-tutor-card]", { hasText: /Cô Bị Khoá|Cô Ẩn Hồ Sơ/ }).count()) === 0);
-    check("thẻ là MỘT liên kết aria-label 'Xem hồ sơ …' tới /mentor/<id>", (await page.getByRole("link", { name: "Xem hồ sơ Cô Lan" }).getAttribute("href")) === `/mentor/${T.id}`);
+    await goto(page, "/giang-vien?q=Khang", CARD);
+    await eventually("?q=Khang: chỉ còn thẻ Thầy Khang", async () => (await page.locator(CARD).count()) === 1);
+    const khang = card(page, "Thầy Khang");
+    check("gia sư không khai giá: thẻ không in dòng giá, không 'tự khai', không 'Liên hệ'", (await khang.count()) === 1 && (await khang.locator('[data-dong-the="gia"]').count()) === 0 && !/Liên hệ|tự khai|đ \/ buổi/.test(await khang.innerText()), { cards: await khang.count(), text: (await khang.first().innerText().catch(() => "")).slice(0, 200) });
+    await goto(page, "/giang-vien?q=C%C3%B4", CARD);
+    await eventually("?q=Cô: có thẻ Cô Lan", async () => (await card(page, "Cô Lan").count()) === 1);
+    check("khách không thấy gia sư bị khoá / ẩn (kể cả khi tìm đúng tên)", (await page.locator(CARD, { hasText: /Cô Bị Khoá|Cô Ẩn Hồ Sơ/ }).count()) === 0);
+    check("nút 'Xem hồ sơ' aria-label 'Xem hồ sơ …' → /mentor/<id>; tên cũng là liên kết cùng đích", (await page.getByRole("link", { name: "Xem hồ sơ Cô Lan" }).getAttribute("href")) === `/mentor/${T.id}` && (await card(page, "Cô Lan").locator("[data-ten-gia-su] a").getAttribute("href")) === `/mentor/${T.id}`);
 
-    // Sắp xếp "Giá tăng": thẻ đầu có giá thấp nhất
-    const sort = page.getByRole("combobox", { name: "Sắp xếp" }).filter({ visible: true });
-    await sort.selectOption("price_asc");
-    await page.waitForURL(u => rel(u.toString()).includes("sort=price_asc"), { timeout: 30000 });
-    await eventually("Giá tăng: thẻ đầu là Thầy Giá Thấp (80.000đ)", async () => /Thầy Giá Thấp/.test(await page.locator("[data-tutor-card]").first().innerText()));
-    check("Giá tăng: gia sư không giá xuống cuối", !(await page.locator("[data-tutor-card]").last().locator("[data-tutor-price]").count()));
-    await sort.selectOption("relevant");
-    await page.waitForURL(u => !rel(u.toString()).includes("sort="), { timeout: 30000 });
+    // Sắp xếp: giao diện không còn ô Sắp xếp (đặc tả 1.5), API vẫn nhận sort.
+    check("giao diện không còn ô 'Sắp xếp'", (await page.getByRole("combobox", { name: "Sắp xếp" }).count()) === 0);
+    { const r = await fetch(`${BASE}/api/tutors?sort=price_asc`); const j = await r.json() as { items: { name: string }[] };
+      check("API vẫn nhận sort=price_asc: người đầu là Thầy Giá Thấp (80.000đ)", r.status === 200 && j.items[0]?.name === "Thầy Giá Thấp", j.items.slice(0, 3).map(x => x.name)); }
+    // Tham số cũ (giá) bị bỏ qua: link cũ mở danh sách đầy đủ hơn, không lỗi.
+    await goto(page, "/giang-vien?q=Khang&priceMin=100000&priceMax=100000000&sort=price_asc", CARD);
+    await eventually("tham số cũ priceMin/priceMax bị bỏ qua: Thầy Khang (không giá) vẫn hiện", async () => (await card(page, "Thầy Khang").count()) === 1);
 
     // Xem thêm: nối trang
-    const before = await page.locator("[data-tutor-card]").count();
+    await goto(page, "/giang-vien", CARD);
+    await eventually("trang 1 đủ 24 thẻ", async () => (await page.locator(CARD).count()) === 24);
+    const before = await page.locator(CARD).count();
     const more = page.getByRole("button", { name: "Xem thêm gia sư" });
     await more.waitFor({ timeout: 30000 });
     await more.click();
-    await eventually("Xem thêm nối thêm thẻ (không thay)", async () => (await page.locator("[data-tutor-card]").count()) > before);
-    check("số thẻ sau khi nối = tổng, không trùng", await page.evaluate(`(() => { var l = Array.prototype.map.call(document.querySelectorAll("[data-tutor-card] a"), function (a) { return a.getAttribute("href"); }); return new Set(l).size === l.length; })()`));
+    await eventually("Xem thêm nối thêm thẻ (không thay)", async () => (await page.locator(CARD).count()) > before);
+    check("số thẻ sau khi nối không trùng", await page.evaluate(`(() => { var l = Array.prototype.map.call(document.querySelectorAll("[data-the-gia-su]"), function (a) { return a.getAttribute("data-the-gia-su"); }); return l.length > 24 && new Set(l).size === l.length; })()`));
 
-    // Gợi ý + chọn môn ⇒ lưới lọc ⇒ URL
-    const box = page.getByRole("combobox", { name: /Tìm gia sư/ });
-    await box.fill("hoa");
-    const opts = page.locator('[role="option"]'); // KHÔNG dùng getByRole("option"): nó cũng đếm <option> của ô chọn native trong bộ lọc
-    await opts.first().waitFor({ timeout: 30000 });
-    check("hộp gợi ý hiện, ≤ 8 dòng", (await opts.count()) >= 1 && (await opts.count()) <= 8, await opts.count());
-    await page.getByRole("option", { name: /Hoá học/ }).first().click();
-    await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
-    await eventually("lọc theo môn: mọi thẻ đều Hoá học", async () => { const t = await page.locator("[data-tutor-card]").allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
+    if (w === 1600) {
+      section("1600px — hàng lọc ngang: chọn Môn");
+      await kinSelect(page.getByRole("combobox", { name: "Môn" }).first(), { label: "Hoá học" });
+      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
+      await eventually("lọc theo môn: mọi thẻ đều Hoá học", async () => { const t = await page.locator(CARD).allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
+      check("URL có subject=Hoá học", decodeURIComponent(rel(page.url()).replace(/\+/g, " ")).includes("subject=Hoá học"), rel(page.url()));
+    } else {
+      section("390px — nút 'Lọc (n)' + tờ trượt bộ lọc");
+      const opener = page.getByRole("button", { name: /^Lọc \(\d+\)/ });
+      check("nút 'Lọc (0)' khi chưa lọc", /\(0\)/.test(await opener.innerText()), await opener.innerText());
+      await opener.click();
+      const dlg = page.getByRole("dialog", { name: "Lọc gia sư" });
+      await dlg.waitFor({ timeout: 15000 });
+      await kinSelect(dlg.getByRole("combobox", { name: "Môn" }).first(), { label: "Hoá học" });
+      await dlg.getByRole("button", { name: "Xem kết quả" }).click();
+      await dlg.waitFor({ state: "detached", timeout: 15000 });
+      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
+      await eventually("lọc theo môn từ tờ trượt: mọi thẻ đều Hoá học", async () => { const t = await page.locator(CARD).allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
+    }
 
     // F5 giữ bộ lọc
     const urlBefore = rel(page.url());
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
-    check("F5 giữ bộ lọc (URL và kết quả)", rel(page.url()) === urlBefore && (await page.locator("[data-tutor-card]").allInnerTexts()).every(x => x.includes("Hoá học")));
+    await page.locator(CARD).first().waitFor({ timeout: 60000 });
+    await eventually("F5 giữ bộ lọc (URL và kết quả)", async () => rel(page.url()) === urlBefore && (await page.locator(CARD).allInnerTexts()).every(x => x.includes("Hoá học")));
 
     if (w === 390) {
-      section("390px — tờ trượt bộ lọc");
-      const opener = page.getByRole("button", { name: /^Bộ lọc \(\d+\)/ });
-      check("nút 'Bộ lọc (1)' đếm môn đang bật", /\(1\)/.test(await opener.innerText()), await opener.innerText());
+      const opener = page.getByRole("button", { name: /^Lọc \(\d+\)/ });
+      check("nút 'Lọc (1)' đếm môn đang bật", /\(1\)/.test(await opener.innerText()), await opener.innerText());
       await opener.click();
-      const dlg = page.getByRole("dialog", { name: "Bộ lọc gia sư" });
+      const dlg = page.getByRole("dialog", { name: "Lọc gia sư" });
       await dlg.waitFor({ timeout: 15000 });
       check("tờ trượt là dialog aria-modal, khoá cuộn nền", (await dlg.getAttribute("aria-modal")) === "true" && (await page.evaluate("document.body.style.overflow")) === "hidden");
       await shot(page, "tim-gia-su-390-to-loc");
       await page.keyboard.press("Escape");
       await dlg.waitFor({ state: "detached", timeout: 15000 });
-      check("Esc đóng và trả tiêu điểm về nút Bộ lọc", await page.evaluate(`document.activeElement && /Bộ lọc/.test(document.activeElement.textContent || "")`) as boolean);
+      let focusBack = false;
+      for (let i = 0; i < 30 && !focusBack; i++) { focusBack = (await page.evaluate(`!!(document.activeElement && /^Lọc \\(/.test((document.activeElement.textContent || "").trim()))`)) as boolean; if (!focusBack) await page.waitForTimeout(100); }
+      check("Esc đóng và trả tiêu điểm về nút Lọc", focusBack);
       await opener.click();
       await dlg.waitFor({ timeout: 15000 });
       await dlg.getByRole("button", { name: "Xóa lọc" }).click();
-      const apply = dlg.getByRole("button", { name: /^Xem (\d[\d.]*|gia sư)/ });
-      await eventually("'Xem N gia sư' hiện tổng", async () => /Xem [\d.]+ gia sư/.test(await apply.innerText()));
-      await apply.click();
+      await dlg.getByRole("button", { name: "Xem kết quả" }).click();
       await dlg.waitFor({ state: "detached", timeout: 15000 });
       await page.waitForURL(u => !/subject=/.test(rel(u.toString())), { timeout: 30000 });
       check("áp bộ lọc từ tờ trượt đổi URL (đã bỏ môn)", !/subject=/.test(rel(page.url())), rel(page.url()));
     } else {
-      // 1600: lọc ở cột trái, lọc giá, nhãn tự khai
-      section("1600px — cột lọc trái");
-      await page.goto(`${BASE}/giang-vien?priceMin=100000&priceMax=100000000`, { waitUntil: "domcontentloaded" });
-      await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
-      check("lọc giá: gia sư không công khai giá bị loại, Thầy Khang không còn", (await page.locator("[data-tutor-card]", { hasText: "Thầy Khang" }).count()) === 0);
-      check("nhãn 'tự khai' xuất hiện ở cột lọc", /do gia sư tự khai/.test(await left.innerText()));
-
-      // 07/11: Môn học là dải nút role=radio (ChipPicker) thay ô thả xuống: bấm chip lọc đúng, bấm lại chip đang chọn ⇒ "Tất cả môn".
-      section("1600px — chip Môn học (radiogroup)");
-      await page.goto(`${BASE}/giang-vien`, { waitUntil: "domcontentloaded" });
-      await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
-      await settle(page);
-      const monGroup = left.getByRole("radiogroup", { name: "Môn học" });
-      await monGroup.waitFor({ timeout: 30000 });
-      check("Môn học là radiogroup, KHÔNG còn <select> Môn học trong cột lọc", (await left.locator("select[id$='mon']").count()) === 0 && (await monGroup.getByRole("radio").count()) >= 3, await monGroup.getByRole("radio").count());
-      check("mặc định chip 'Tất cả môn' đang chọn", (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "true");
-      const chipHoa = monGroup.getByRole("radio", { name: /^Hoá học/ });
-      await chipHoa.click();
-      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
-      await eventually("bấm chip Hoá học: mọi thẻ đều Hoá học", async () => { const t = await page.locator("[data-tutor-card]").allInnerTexts(); return t.length > 0 && t.every(x => x.includes("Hoá học")); });
-      check("chip Hoá học aria-checked=true, 'Tất cả môn' = false", (await monGroup.getByRole("radio", { name: /^Hoá học/ }).getAttribute("aria-checked")) === "true" && (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "false");
-      check("URL có subject=Hoá học", decodeURIComponent(rel(page.url()).replace(/\+/g, " ")).includes("subject=Hoá học"), rel(page.url()));
-      await monGroup.getByRole("radio", { name: /^Hoá học/ }).click(); // bấm lại ⇒ về Tất cả môn
+      const xoa = page.locator("[data-hang-loc]").getByRole("button", { name: "Xóa lọc" });
+      check("1600: 'Xóa lọc' hiện khi có lọc", await xoa.isVisible());
+      await xoa.click();
       await page.waitForURL(u => !/subject=/.test(rel(u.toString())), { timeout: 30000 });
-      await eventually("bấm lại chip: về 'Tất cả môn' (có thẻ không phải Hoá học)", async () => { const t = await page.locator("[data-tutor-card]").allInnerTexts(); return t.some(x => !x.includes("Hoá học")); });
-      check("sau bấm lại: 'Tất cả môn' aria-checked=true", (await monGroup.getByRole("radio", { name: "Tất cả môn" }).getAttribute("aria-checked")) === "true");
-      await monGroup.getByRole("radio", { name: /^Hoá học/ }).click();
-      await page.waitForURL(u => /subject=/.test(rel(u.toString())), { timeout: 30000 });
-      await monGroup.getByRole("radio", { name: "Tất cả môn" }).click(); // bấm thẳng 'Tất cả môn' cũng bỏ lọc
-      await page.waitForURL(u => !/subject=/.test(rel(u.toString())), { timeout: 30000 });
-      check("bấm 'Tất cả môn' bỏ lọc môn", !/subject=/.test(rel(page.url())), rel(page.url()));
-      await shot(page, "tim-gia-su-1600-chip-mon");
+      await eventually("Xóa lọc: về danh sách đầy đủ (có thẻ không phải Hoá học)", async () => (await page.locator(CARD).allInnerTexts()).some(x => !x.includes("Hoá học")));
+      check("chân trang ghi 'do gia sư tự khai; KiN chưa xác minh'", /do gia sư tự khai; KiN chưa xác minh/.test(await page.locator("[data-chan-san]").innerText()));
     }
 
     // Ảnh + đo
     await page.goto(`${BASE}/giang-vien`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
+    await page.locator(CARD).first().waitFor({ timeout: 60000 }); await settle(page);
     const m = await measure(page);
     check(`nút/ô bấm trong trang ≥ 44px (${label})`, m.small.length === 0, m.small);
     check(`không tràn ngang (${label})`, !m.overflow);
@@ -215,41 +213,49 @@ async function gridColumns(page: Page) {
   }
 
   // ───────────────────────── Ba trạng thái của danh sách
-  section("Ba trạng thái: lỗi + Thử lại, rỗng + Xóa bộ lọc, đang tải");
+  section("Ba trạng thái (1600): lỗi + Thử lại, rỗng + Xóa lọc, đang tải");
   {
     const ctx = await ctxFor(null, { width: 1600, height: 900 });
     const page = await ctx.newPage(); watch(page);
     let fail = true;
     await page.route("**/api/tutors?**", r => (fail ? r.abort() : r.continue()));
     await page.goto(`${BASE}/giang-vien`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    const alert = page.getByRole("alert").filter({ hasText: "Không tải được danh sách gia sư" });
+    const alert = page.getByRole("alert").filter({ hasText: "Chưa tải được danh sách gia sư" });
     await alert.waitFor({ timeout: 60000 });
-    check("lỗi: role=alert + nút Thử lại", await page.getByRole("button", { name: "Thử lại" }).isVisible());
+    check("lỗi: role=alert + nút Thử lại", await alert.getByRole("button", { name: "Thử lại" }).isVisible());
     fail = false;
-    await page.getByRole("button", { name: "Thử lại" }).click();
-    await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
-    check("bấm Thử lại thì có dữ liệu", (await page.locator("[data-tutor-card]").count()) > 0);
+    await alert.getByRole("button", { name: "Thử lại" }).click();
+    await page.locator(CARD).first().waitFor({ timeout: 60000 });
+    check("bấm Thử lại thì có dữ liệu", (await page.locator(CARD).count()) > 0);
     await page.unroute("**/api/tutors?**");
 
     await page.goto(`${BASE}/giang-vien?q=zzzkhongcogiasunaoten`, { waitUntil: "domcontentloaded" });
-    await page.getByText("Chưa có gia sư phù hợp").waitFor({ timeout: 60000 });
-    check("rỗng: nêu bộ lọc đang bật + nút Xóa bộ lọc", /zzzkhongcogiasunaoten/.test(await page.locator("[data-kin-empty]").innerText()) && await page.getByRole("button", { name: "Xóa bộ lọc" }).filter({ visible: true }).first().isVisible());
-    await page.locator("[data-kin-empty]").getByRole("button", { name: "Xóa bộ lọc" }).click();
-    await page.locator("[data-tutor-card]").first().waitFor({ timeout: 60000 });
-    check("Xóa bộ lọc đưa danh sách về đầy đủ", !/q=/.test(rel(page.url())));
+    await page.getByText("Không có gia sư khớp bộ lọc").waitFor({ timeout: 60000 });
+    check("rỗng: nêu bộ lọc đang bật + nút Xóa lọc", /zzzkhongcogiasunaoten/.test(await page.locator("[data-kin-empty]").innerText()) && await page.locator("[data-kin-empty]").getByRole("button", { name: "Xóa lọc" }).isVisible());
+    await page.locator("[data-kin-empty]").getByRole("button", { name: "Xóa lọc" }).click();
+    await page.locator(CARD).first().waitFor({ timeout: 60000 });
+    check("Xóa lọc đưa danh sách về đầy đủ", !/q=/.test(rel(page.url())));
 
     // đang tải: làm chậm API
     await page.route("**/api/tutors?**", async r => { await new Promise(res => setTimeout(res, 2500)); await r.continue(); });
     await page.goto(`${BASE}/giang-vien?subject=Hoá%20học`, { waitUntil: "domcontentloaded" });
-    check("đang tải: thấy khung chờ aria-busy", await page.locator("[data-tutor-grid-loading][aria-busy=true]").first().waitFor({ timeout: 30000 }).then(() => true, () => false));
+    check("đang tải: thấy khung chờ aria-busy cùng dáng thẻ", await page.locator("[data-luoi-cho][aria-busy=true] [data-the-gia-su-cho]").first().waitFor({ timeout: 30000 }).then(() => true, () => false));
     await page.unroute("**/api/tutors?**");
     await ctx.close();
   }
+  } else {
+    section("Cờ TẮT — sàn /giang-vien bị chặn (hồ sơ vẫn mở, kiểm ở dưới)");
+    for (const path of ["/giang-vien", "/giang-vien?subject=To%C3%A1n%209"]) {
+      const r = await fetch(`${BASE}${path}`, { redirect: "manual" });
+      check(`${path} → 307`, r.status === 307, [r.status, r.headers.get("location")]);
+    }
+  }
 
-  // ───────────────────────── Hồ sơ
+  // ───────────────────────── Hồ sơ (không phụ thuộc cờ)
   for (const [label, w, h] of [["1600", 1600, 900], ["390", 390, 844]] as const) {
     section(`Hồ sơ gia sư — ${label}px (khách)`);
     const ctx = await ctxFor(null, { width: w, height: h });
+    await ctx.route("https://i.ytimg.com/**", r => r.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(COVER.split(",")[1], "base64") }));
     const page = await ctx.newPage(); watch(page);
     await goto(page, `/mentor/${T.id}`, "[data-ho-so-dau]");
     check("ảnh bìa hiện", await page.locator("[data-cover] img").isVisible());
@@ -274,31 +280,27 @@ async function gridColumns(page: Page) {
     const req = page.getByRole("link", { name: "Gửi yêu cầu" }).filter({ visible: true });
     check("'Gửi yêu cầu' → /mentor/<id>/yeu-cau (một nút nhìn thấy)", (await req.count()) === 1 && (await req.getAttribute("href")) === `/mentor/${T.id}/yeu-cau`);
     check("không còn nút 'Đăng ký học với …'", (await page.getByText(/Đăng ký học với/).count()) === 0);
-    check("giá tham khảo + câu 'tự khai/thỏa thuận trực tiếp'", (await page.locator("[data-gia-tham-khao]").filter({ visible: true }).count()) === 1 && /Thỏa thuận trực tiếp/.test(await page.locator("[data-gia-tham-khao]").first().innerText()));
+    check("giá tham khảo + câu 'tự khai/thỏa thuận trực tiếp'", (await page.locator("[data-gia-tham-khao]").filter({ visible: true }).count()) === 1 && /Thỏa thuận trực tiếp/.test(await page.locator("[data-gia-tham-khao]").first().innerText()) && /tự khai/.test(await page.locator("[data-gia-tham-khao]").first().innerText()));
     check("không in giá lớp (500.000)", !(await page.locator("body").innerText()).includes("500.000"));
 
-    // Ba tab: đổi nội dung và URL
-    for (const [name, key, marker] of [["Lớp đang mở", "lop", "[data-tab-lop]"], ["Chỉ số", "chi-so", "[data-tab-chi-so]"], ["Giới thiệu", "gioi-thieu", "[data-tab-gioi-thieu]"]] as const) {
-      await page.getByRole("tab", { name }).click();
-      await page.waitForURL(u => rel(u.toString()).includes(`tab=${key}`), { timeout: 30000 });
-      await page.locator(marker).first().waitFor({ timeout: 30000 }); await settle(page);
-      check(`tab ${name}: URL ?tab=${key} và nội dung đổi`, rel(page.url()).includes(`tab=${key}`));
-      if (key === "lop") await shot(page, `ho-so-gia-su-lop-${label}`);
+    // Một trang cuộn: không tab; ?tab= cũ được chấp nhận và bỏ qua (link cũ không chết).
+    check("không có tab; có 'Giới thiệu' và 'Lớp đang mở' trên cùng một trang", (await page.getByRole("tab").count()) === 0 && (await page.locator("[data-gioi-thieu-ho-so]").count()) === 1 && (await page.locator("[data-lop-dang-mo]").count()) === 1);
+    for (const key of ["lop", "chi-so", "gioi-thieu", "bay-ba"]) {
+      await goto(page, `/mentor/${T.id}?tab=${key}`, "[data-lop-dang-mo]");
+      check(`?tab=${key} cũ: hồ sơ mở bình thường, không tab`, (await page.locator("[data-ho-so]").count()) === 1 && (await page.getByRole("tab").count()) === 0);
     }
-    await page.goto(`${BASE}/mentor/${T.id}?tab=lop`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-tab-lop]").first().waitFor({ timeout: 60000 }); await settle(page);
-    check("tab 'Lớp đang mở': thấy lớp miễn phí và nhãn 'Miễn phí'", await page.locator('[data-class-row]', { hasText: "Tin học miễn phí" }).getByText("Miễn phí", { exact: true }).isVisible());
+    check("'Lớp đang mở': thấy lớp miễn phí và nhãn 'Miễn phí'", await page.locator('[data-class-row]', { hasText: "Tin học miễn phí" }).getByText("Miễn phí", { exact: true }).isVisible());
     check("lớp có học phí: chỉ 'Xem lớp', không nút Vào lớp", (await page.locator("[data-class-row]", { hasText: "Toán 9 có học phí" }).getByRole("button").count()) === 0);
-    await page.goto(`${BASE}/mentor/${T.id}?tab=chi-so`, { waitUntil: "domcontentloaded" });
-    await page.locator("[data-tab-chi-so]").first().waitFor({ timeout: 60000 }); await settle(page);
-    check("tab 'Chỉ số' không có ★", !(await page.locator("[data-ho-so]").innerText()).includes("★"));
-    check("Chỉ số: nhãn 'Có dạy trong 30 ngày qua' và chân 'Không hiển thị thông tin học sinh'", /Có dạy trong 30 ngày qua/.test(await page.locator("[data-tab-chi-so]").innerText()) && /Không hiển thị thông tin học sinh/.test(await page.locator("[data-tab-chi-so]").innerText()));
-    check("giá trị tab lạ ⇒ tab Giới thiệu", await (async () => { await page.goto(`${BASE}/mentor/${T.id}?tab=bay-ba`, { waitUntil: "domcontentloaded" }); return page.locator("[data-tab-gioi-thieu]").waitFor({ timeout: 60000 }).then(() => true, () => false); })());
+    check("hồ sơ không có ★", !(await page.locator("[data-ho-so]").innerText()).includes("★"));
+    check("số đếm sổ lớp kèm 'theo sổ lớp do gia sư ghi'", /theo sổ lớp do gia sư ghi/.test(await page.locator("[data-so-dem-so-lop]").innerText()));
+    await shot(page, `ho-so-gia-su-lop-${label}`);
 
-    // Thứ tự ở 390: hai nút liên hệ nằm TRƯỚC thanh tab
+    // Thứ tự ở 390: hai nút liên hệ nằm TRƯỚC phần Giới thiệu
     if (w === 390) {
-      const reqY = (await req.boundingBox())?.y ?? 0, tabY = (await page.getByRole("tab", { name: "Giới thiệu" }).boundingBox())?.y ?? 0;
-      check("390: hàng hai nút (Zalo · Gửi yêu cầu) nằm trước thanh tab", reqY > 0 && reqY < tabY, { reqY, tabY });
+      await page.goto(`${BASE}/mentor/${T.id}`, { waitUntil: "domcontentloaded" });
+      await page.locator("[data-ho-so-dau]").first().waitFor({ timeout: 60000 }); await settle(page);
+      const reqY = (await req.boundingBox())?.y ?? 0, gtY = (await page.locator("[data-gioi-thieu-ho-so]").boundingBox())?.y ?? 0;
+      check("390: hàng hai nút (Zalo · Gửi yêu cầu) nằm trước phần Giới thiệu", reqY > 0 && reqY < gtY, { reqY, gtY });
       const nz = await nutZalo.boundingBox(), nr = await req.boundingBox();
       check("390: hai nút ngang hàng", !!nz && !!nr && Math.abs(nz.y - nr.y) < 4, { nz, nr });
     }
@@ -327,7 +329,7 @@ async function gridColumns(page: Page) {
     const page = await ctx.newPage(); watch(page);
     await goto(page, `/mentor/${T2.id}`, "[data-ho-so-dau]");
     check("không có 'Nhắn Zalo'; 'Gửi yêu cầu' còn", (await page.getByRole("link", { name: "Nhắn Zalo" }).count()) === 0 && (await page.getByRole("link", { name: "Gửi yêu cầu" }).filter({ visible: true }).count()) === 1);
-    check("không bìa: khối nền nhạt (không ảnh giả); không video", (await page.locator("[data-cover]").count()) === 0 && (await page.locator("[data-cover-empty]").count()) === 1 && (await page.locator("[data-intro-video]").count()) === 0);
+    check("không bìa: KHÔNG có khối bìa (cũng không khối giả); không video", (await page.locator("[data-cover],[data-cover-empty]").count()) === 0 && (await page.locator("[data-intro-video]").count()) === 0);
     await ctx.close();
   }
 
@@ -341,6 +343,7 @@ async function gridColumns(page: Page) {
       texts.push((await page.locator("[data-ho-so-khong-thay]").innerText()).trim());
     }
     check("ba nguyên nhân hiện đúng một nội dung 'Không tìm thấy gia sư'", texts.every(t => t === texts[0]) && texts[0].includes("Không tìm thấy gia sư"), texts);
+    check("không lộ lý do (không 'khoá' / 'ẩn bởi' / 'chưa duyệt')", !/khoá|bị khóa|chưa duyệt|bị cấm/i.test(texts[0]), texts[0]);
     await ctx.close();
   }
 
@@ -362,12 +365,12 @@ async function gridColumns(page: Page) {
   {
     const ctx = await ctxFor(S, { width: 390, height: 844 });
     const page = await ctx.newPage(); watch(page);
-    await goto(page, `/mentor/${T.id}?tab=lop`, "[data-tab-lop]");
+    await goto(page, `/mentor/${T.id}?tab=lop`, "[data-lop-dang-mo]");
     const row = page.locator("[data-class-row]", { hasText: "Tin học miễn phí" });
     await Promise.all([page.waitForURL(u => u.pathname === "/student/hoc-tap", { timeout: 60000 }), row.getByRole("button", { name: /Vào lớp miễn phí/ }).click()]);
     check("lớp open: vào ngay → /student/hoc-tap, đúng 1 Enrollment", (await prisma.enrollment.count({ where: { courseId: cFree.id, userId: S.id } })) === 1);
 
-    await goto(page, `/mentor/${T.id}?tab=lop`, "[data-tab-lop]");
+    await goto(page, `/mentor/${T.id}?tab=lop`, "[data-lop-dang-mo]");
     const row2 = page.locator("[data-class-row]", { hasText: "Văn xin vào lớp" });
     await Promise.all([page.waitForURL(u => u.pathname === "/student/nhap-ma-lop", { timeout: 60000 }), row2.getByRole("button", { name: /Xin vào lớp miễn phí/ }).click()]);
     const send = page.getByRole("button", { name: "Gửi yêu cầu vào lớp" });

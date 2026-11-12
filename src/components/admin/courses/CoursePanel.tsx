@@ -8,6 +8,7 @@ import { KinButton, KinStatus, KIN_FIELD, KIN_LABEL } from "@/components/kin";
 import { SidePanel } from "@/components/admin/panel/SidePanel";
 import { formatPrice } from "./CourseTable";
 import type { CatalogRow } from "./CourseFilters";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export type CoursePatch = Partial<Pick<CatalogRow, "name" | "adminName" | "category" | "status" | "classStatus" | "capacity">> & { instructor?: string };
 
@@ -111,9 +112,9 @@ export function CoursePanel({ row, categories, isTeacher, hrefFor, onClose, onSa
         <div><label htmlFor="cp-admin" className={`${KIN_LABEL} mb-2`}>Tên nội bộ</label>
           <input id="cp-admin" className={KIN_FIELD} value={adminName} onChange={e => setAdminName(e.target.value)} /></div>
         <div><label htmlFor="cp-cat" className={`${KIN_LABEL} mb-2`}>Kỳ thi</label>
-          <select id="cp-cat" className={`${KIN_FIELD} bg-[var(--kin-nen-trang)]`} value={category} onChange={e => setCategory(e.target.value)}>
+          <KinSelect id="cp-cat" value={category} onChange={v => setCategory(v)}>
             {catOptions.map(c => <option key={c} value={c}>{c}</option>)}
-          </select></div>
+          </KinSelect></div>
         <div><label htmlFor="cp-ins" className={`${KIN_LABEL} mb-2`}>Gia sư hiển thị</label>
           <input id="cp-ins" className={KIN_FIELD} value={instructor} onChange={e => setInstructor(e.target.value)} /></div>
 

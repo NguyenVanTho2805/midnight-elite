@@ -9,6 +9,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { callApi } from "@/components/tutor/shared";
 import { AUDIT_ACTION_OPTIONS, type AuditRowView } from "@/lib/adminOps";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Payload { rows: AuditRowView[]; hasMore: boolean; page: number }
 /** Nhóm lọc (ánh xạ tiền tố hành động nằm phía máy chủ, adminOps.ts — ở đây chỉ gửi khoá). */
@@ -65,10 +66,10 @@ function Content() {
         </nav>
         <form onSubmit={e => { e.preventDefault(); setPage(1); void load(); }} className="grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 items-end" aria-label="Lọc nhật ký">
           <label className={KIN_LABEL}>Loại việc
-            <select value={action} onChange={e => { setAction(e.target.value); setPage(1); }} className={`${KIN_FIELD} mt-2`}>
+            <KinSelect value={action} onChange={v => { setAction(v); setPage(1); }} className="mt-2">
               <option value="">Tất cả</option>
               {AUDIT_ACTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            </KinSelect>
           </label>
           <label className={KIN_LABEL}>Từ ngày<input type="date" value={from} onChange={e => { setFrom(e.target.value); setPage(1); }} className={`${KIN_FIELD} mt-2`} /></label>
           <label className={KIN_LABEL}>Đến ngày<input type="date" value={to} onChange={e => { setTo(e.target.value); setPage(1); }} className={`${KIN_FIELD} mt-2`} /></label>

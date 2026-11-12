@@ -5,6 +5,7 @@
 // (đề thi được giao, thi thử sắp tới) nằm ở cột phải. "Kết quả gần đây" chỉ hiện 5 bài mới nhất kèm nút "Xem thêm" khi nhiều hơn.
 // KHÔNG có dữ liệu thật nên BỎ khỏi Figma: "Chuẩn bị cho buổi học" (danh sách tích), "Học trực tuyến · Buổi 3/5", số trang ảnh đã nộp, số câu của bài tự luận.
 // Dữ liệu: /api/student/viec-cua-toi ({ items }) + /api/schedule (buổi thi); tải lại khi cửa sổ lấy lại focus.
+// LOI-03 (11/11/2026): ngay dưới tiêu đề là phiếu "Hôm nay có lớp" (components/student/HomNayCoLop, GET /api/student/hom-nay) — full-width ở mọi cỡ màn.
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -19,6 +20,8 @@ import { choCham, chuaNop, examTarget, nextExam, NextSession, TaskRow, todayLine
 import { dmOfKey } from "@/components/student/shared";
 import { useAuth } from "@/contexts/AuthContext";
 import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
+import HomNayCoLop from "@/components/student/HomNayCoLop";
+import { asideState } from "@/lib/studentLop";
 
 const RESULT_LIMIT = 5; // "Kết quả gần đây": 5 bài mới nhất, còn lại sau nút "Xem thêm"
 const ASSIGN_LIMIT = 3; // "Đề thi được giao": 3 đề đầu (đã sắp theo hạn), còn lại sau nút "Xem thêm"
@@ -57,6 +60,13 @@ export default function ViecCuaToi() {
   const nothing = items !== null && list.length === 0;
 
   const sessionBlock = next && <NextSession item={next} />;
+  // LOI-03 (vòng test 2): phiếu "Hôm nay có lớp" (Lesson.scheduledAt) đang có bài mà khung buổi học rỗng ⇒ KHÔNG vẽ "3 ngày tới chưa có buổi học" (hai khối nói ngược nhau);
+  // bỏ hẳn cột aside, khối đề thi lên hàng 1 cột phải. Phiếu rỗng / lỗi ⇒ như cũ.
+  // LOI-07 (nợ P3 LOI-03): null = phiếu CHƯA tải xong. Đang tải ≠ rỗng: chưa biết thì giữ chỗ bằng khung xương, KHÔNG vẽ "3 ngày tới chưa có buổi học"
+  // (bản cũ mặc định false nên khối trống chớp lên rồi biến mất khi phiếu có bài). Logic thuần: asideState (src/lib/studentLop.ts).
+  const [homNayHas, setHomNayHas] = useState<boolean | null>(null);
+  const aside = asideState(!!sessionBlock, homNayHas);
+  const showAside = aside !== "an";
   const examBlock = exam && (
     <KinPanel data-exam-card>
       <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Kiểm tra sắp mở</p>
@@ -102,6 +112,9 @@ export default function ViecCuaToi() {
         <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} self-start flex-shrink-0 max-md:hidden`}>Xem lịch tuần</Link>
       </header>
 
+      {/* LOI-03 mục 4.4: phiếu "Hôm nay có lớp" (bài có ngày học hôm nay + 7 ngày tới). Không có bài hẹn thì không vẽ gì. */}
+      <HomNayCoLop onHasItems={setHomNayHas} />
+
       {tutorPending && (
         <div role="status" data-tutor-pending className="mb-6">
           <KinPanel variant="canh-bao"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</p><p className="mt-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">KiN sẽ báo khi xong.</p></KinPanel>
@@ -118,13 +131,17 @@ export default function ViecCuaToi() {
       ) : (
         <div className="mt-2 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
           {/* Điện thoại: buổi học lên đầu; máy tính: cột phải. */}
-          <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
-            {sessionBlock || (
-              <KinEmptyState title="3 ngày tới chưa có buổi học">
-                Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
-              </KinEmptyState>
-            )}
-          </aside>
+          {showAside && (
+            <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
+              {aside === "buoi-hoc" ? sessionBlock : aside === "dang-tai" ? (
+                <div role="status" aria-busy="true" aria-label="Đang tải buổi học tiếp theo" data-aside-dang-tai className="h-[112px] rounded kin-skel kin-skel--soft" />
+              ) : (
+                <KinEmptyState title="3 ngày tới chưa có buổi học">
+                  Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
+                </KinEmptyState>
+              )}
+            </aside>
+          )}
 
           <div className="lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0">
             <section aria-labelledby="vc-todo">
@@ -188,7 +205,7 @@ export default function ViecCuaToi() {
               </section>
             )}
           </div>
-          <div className="lg:col-start-2 lg:row-start-2 min-w-0">
+          <div className={`lg:col-start-2 ${showAside ? "lg:row-start-2" : "lg:row-start-1"} min-w-0`}>
             {assignBlock}
             {exam && <div className="mt-8">{examBlock}</div>}
             {moreExamBlock}

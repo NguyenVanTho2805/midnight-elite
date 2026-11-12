@@ -2,7 +2,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEFAULT_HOME_CONTENT as DEF, HOME_LIMITS, validateHomeContent, type HomeContent } from "@/lib/siteContent";
-import { CLAIM_BLOCKLIST, checkClaims, checkHomeClaims, checkHomeCounts, countChars, diffHomeContent, hrefNeedsManualCheck, limitFor, textFields } from "@/lib/homeContentGuard";
+import { CLAIM_BLOCKLIST, checkClaims, checkHomeClaims, checkHomeCounts, checkHomeHiddenLinks, countChars, diffHomeContent, hiddenHrefWarning, hrefFields, hrefNeedsManualCheck, limitFor, textFields } from "@/lib/homeContentGuard";
+import { FEATURES, type FeatureEnv } from "@/lib/features";
 import { check, section, done } from "./h";
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -86,5 +87,22 @@ section("5. diffHomeContent: chỉ tên trường");
 
 section("6. Đường dẫn cần mở thử");
 check("gợi ý sẵn không nhắc; đường lạ nhắc; https không nhắc", !hrefNeedsManualCheck("/khoa-hoc") && !hrefNeedsManualCheck("/dang-ky?vai=gia-su") && hrefNeedsManualCheck("/trang-la") && !hrefNeedsManualCheck("https://zalo.me/g/abc"));
+
+section("7. LOI-07: liên kết tự nhập trỏ vào phần đang tạm đóng → CẢNH BÁO, không chặn lưu");
+// Ca phá cố ý (đã chạy, rồi hoàn lại): hiddenHrefWarning bỏ `ownPath` → ca "địa chỉ tuyệt đối về KiN" đỏ; luôn trả null → 3 ca đầu đỏ;
+// checkHomeHiddenLinks bỏ cta.secondary khỏi hrefFields → ca "đủ 4 loại ô" đỏ.
+{
+  const OFF: FeatureEnv = {}, ALL: FeatureEnv = Object.fromEntries(FEATURES.map(k => [k, "1"])) as FeatureEnv;
+  const HID = ["/tin-tuc", "/tin-tuc/bai-1?x=1", "/cong-dong", "/giang-vien", "/diem-chuan#a", "/bang-xep-hang"];
+  check("đường vào phần ẩn ⇒ có câu cảnh báo (giọng KiN, nói 'vẫn lưu được', không tên phần)", HID.every(h => { const w = hiddenHrefWarning(h, OFF); return !!w && /tạm đóng/.test(w) && /Vẫn lưu được/.test(w) && !/TIN_TUC|CONG_DONG|Tin tức|Cộng đồng/.test(w); }), HID.map(h => hiddenHrefWarning(h, OFF)));
+  check("địa chỉ tuyệt đối về chính KiN cũng bị nhắc (có/không www)", !!hiddenHrefWarning("https://midnightelite-edu.com/tin-tuc", OFF) && !!hiddenHrefWarning("https://www.midnightelite-edu.com/cong-dong?tab=1", OFF));
+  check("đường đang mở / địa chỉ ngoài / rỗng ⇒ null", ["/khoa-hoc", "/thi-thu", "/dang-ky", "/cong-dong/t1", "https://zalo.me/g/abc", "https://midnightelite-edu.com.evil.vn/tin-tuc", "", "   "].every(h => hiddenHrefWarning(h, OFF) === null));
+  check("bật đủ 9 cờ ⇒ không nhắc nữa", HID.every(h => hiddenHrefWarning(h, ALL) === null));
+  const c = good();
+  c.exams[0].href = "/tin-tuc"; c.findTutor.buttonHref = "/giang-vien"; c.cta.primary.href = "/dang-ky"; c.cta.secondary.href = "/cong-dong";
+  const w = checkHomeHiddenLinks(c, OFF).map(i => i.path);
+  check("đủ 4 loại ô đường dẫn (ô kỳ thi, nút Tìm gia sư, 2 nút CTA) được quét; chỉ ô trỏ vào phần ẩn bị nhắc", hrefFields(c).length === c.exams.length + 3 && w.join() === "exams[0].href,findTutor.buttonHref,cta.secondary.href", w);
+  check("KHÔNG chặn lưu: nội dung có liên kết vào phần ẩn vẫn qua validateHomeContent + checkHomeClaims", validateHomeContent(c).ok && checkHomeClaims(c).length === 0, issuePaths(c));
+}
 
 done();

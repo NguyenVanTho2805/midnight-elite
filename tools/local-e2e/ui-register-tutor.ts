@@ -6,7 +6,7 @@
 //   Giữ: họ tên, số điện thoại (Zalo — quản trị liên hệ xác minh), giới thiệu ≥ 30 ký tự + môn dạy (để duyệt), email, mật khẩu.
 // Học viên giữ nguyên các ô cũ.
 import { BASE, mkSuper, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect } from "./ui";
 import type { Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -52,7 +52,7 @@ import { prisma } from "@/lib/prisma";
   for (const t of ["SĐT phụ huynh", "Tỉnh / Thành phố", "Tên trường", "Trường / nơi học"]) {
     check(`gia sư KHÔNG còn ô '${t}'`, (await label(p, t).count()) === 0);
   }
-  check("không còn ô chọn tỉnh/thành, ô trường, ô SĐT phụ huynh trong form (đếm ô nhập)", (await p.locator("form select").count()) === 0 && (await p.locator('form input[type="tel"]').count()) === 1 && (await p.locator('form input[type="text"]').count()) === 1);
+  check("không còn ô chọn tỉnh/thành, ô trường, ô SĐT phụ huynh trong form (đếm ô nhập)", (await p.locator('form select, form [role="combobox"]').count()) === 0 && (await p.locator('form input[type="tel"]').count()) === 1 && (await p.locator('form input[type="text"]').count()) === 1);
   check("có câu giải thích số điện thoại dùng để làm gì và không hiện công khai", await p.getByText(/Quản trị KiN dùng số này để liên hệ xác minh/).isVisible() && await p.getByText(/không hiện công khai/).isVisible());
   check("còn lời nhắc hồ sơ chờ admin duyệt", await p.getByText(/chờ admin duyệt/).isVisible());
   await shot(p, "register-ui-gia-su");
@@ -104,7 +104,7 @@ import { prisma } from "@/lib/prisma";
   await s.getByPlaceholder("Nguyễn Văn A").fill("Minh Anh");
   const tels = s.locator('form input[type="tel"]');
   await tels.nth(0).fill("0901 234 567"); await tels.nth(1).fill("0987 654 321");
-  await s.locator("form select").selectOption({ index: 1 });
+  await kinSelect(s.locator('form [role="combobox"]'), { index: 1 });
   await s.getByPlaceholder("THPT Chu Văn An").fill("THPT Chu Văn An");
   await s.getByRole("button", { name: /Tiếp theo/ }).click();
   await s.getByPlaceholder("ten@gmail.com").fill(stuEmail);

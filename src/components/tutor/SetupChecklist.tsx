@@ -1,5 +1,5 @@
-// HV-10 — banner "Bắt đầu với KiN" + checklist 8 bước ở Hộp việc. Mỗi bước tự tick theo dữ liệu THẬT (buildSetupChecklist), không có ô tick tay.
-// Đóng được (lưu ở trình duyệt này). Khi cả 8 bước xong thì không hiện nữa. Trạng thái luôn có chữ ("Đã xong" / "Chưa làm"), không chỉ màu.
+// HV-10 — banner "Bắt đầu với KiN" + checklist 8 bước (7 khi lịch ẩn — LOI-02) ở Hộp việc. Mỗi bước tự tick theo dữ liệu THẬT (buildSetupChecklist), không có ô tick tay.
+// Đóng được (lưu ở trình duyệt này). Khi xong mọi bước thì không hiện nữa. Trạng thái luôn có chữ ("Đã xong" / "Chưa làm"), không chỉ màu.
 "use client";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";

@@ -1,7 +1,7 @@
 // Wizard tạo lớp 3 bước (LO-03) + Thêm học sinh trong chi tiết lớp (LO-09) + tổng hợp link báo cáo cả lớp (LO-13), trình duyệt thật.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-tao-lop-wizard.ts
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -43,16 +43,16 @@ import { prisma } from "@/lib/prisma";
   check("lối thoát duy nhất là liên kết chữ 'Lớp này học buổi lẻ, không lặp hằng tuần'", await p.locator("[data-one-off]").isVisible() && (await p.locator("[data-one-off]").innerText()).includes("Lớp này học buổi lẻ"));
   check("bước 2 hiện nhãn 'Bắt buộc' và câu rỗng 'Lớp chưa có lịch học'", await p.locator("[data-wizard-schedule]").getByText("Bắt buộc").isVisible() && await p.locator("[data-empty-hint]").isVisible());
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await p.getByLabel("Buổi đầu từ ngày").fill("2026-10-26");
-  await p.getByLabel("Xem trước số tuần").selectOption("4");
+  await kinSelect(p.getByLabel("Xem trước số tuần"), "4");
   check("thứ Ba × 4 tuần từ 26/10 → có câu giải thích 4 buổi ra từ lịch tuần; tóm tắt 'Thứ Ba 19:00–20:30'", await p.getByText(/có 4 buổi\. Buổi học sinh ra từ lịch tuần/).isVisible() && (await p.locator("[data-wizard-slot]").first().innerText()).includes("Thứ Ba 19:00–20:30"));
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   check("thêm khung thứ hai (cùng giờ, cùng ngày) → có 2 khung trong tóm tắt", await p.locator("[data-wizard-slot]").count() === 2);
@@ -114,9 +114,11 @@ import { prisma } from "@/lib/prisma";
   await o.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-buoi-le/, { timeout: 90000 });
   const le = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp buổi lẻ" } });
   check("DB: lớp buổi lẻ được tạo, 0 khung giờ", (await prisma.classSchedule.count({ where: { courseId: le.id } })) === 0);
-  await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "networkidle", timeout: 120000 });
-  await o.locator("[data-gt-chua-co-lich]").waitFor({ timeout: 90000 });
-  check("GS-LOP-GON: đầu Giáo trình nhắc 'Lớp chưa có lịch học' + liên kết 'Đặt lịch học' → tab Lịch học", await o.locator("[data-gt-chua-co-lich]").isVisible() && (await o.getByRole("link", { name: "Đặt lịch học" }).getAttribute("href")) === `/lop-cua-toi/quan-lop/${le.id}/lich-hoc`);
+  // LOI-02: tab Giáo trình đã bỏ — …/giao-trinh 307 về gốc lớp (tab "Bài học"); dòng nhắc "Lớp chưa có lịch học" của Giáo trình không còn với chủ lớp (tab Lịch học bỏ khỏi dải).
+  await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await o.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${le.id}`, { timeout: 90000 });
+  await o.getByText("Lớp chưa có bài học").first().waitFor({ timeout: 90000 });
+  check("LOI-02: lớp mới mở vào 'Bài học' rỗng ('Lớp chưa có bài học' + 'Tạo chương đầu tiên'), không còn dòng nhắc đặt lịch", await o.getByRole("button", { name: "Tạo chương đầu tiên" }).isVisible() && (await o.locator("[data-gt-chua-co-lich]").count()) === 0);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");
   const cNew = await mkCourse(T.id, { name: "Lớp trống" });

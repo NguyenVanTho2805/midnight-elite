@@ -16,12 +16,15 @@ import {
   buildCatalogQuery, catalogChips, filterCatalog, isFiltered, priceView, safeTagColor, seatLabel, seatTone, sortCatalog,
   DEFAULT_FILTERS, type CatalogFilters, type PublicCard,
 } from "@/lib/courseCatalogPublic";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const CONTROL = "min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] text-[length:var(--kin-co-goc)] px-[var(--kin-kc-6)]";
 const FALLBACK_GRADIENT = "linear-gradient(135deg, var(--kin-nhan-nen), var(--kin-nhan-nen-re))";
 
-function CourseCard({ course, following, onToggleFollow, isEnrolled, isPendingConsent, isSuspended }: {
+function CourseCard({ course, following, onToggleFollow, isEnrolled, isPendingConsent, isSuspended, canFollow }: {
   course: PublicCard; following: boolean; onToggleFollow: () => void; isEnrolled: boolean; isPendingConsent: boolean; isSuspended: boolean;
+  /** LOI-07: chỉ khách (bấm → đăng nhập) và học sinh có nút theo dõi. Gia sư / quản trị: API /api/followed-courses/<lớp> trả 403 (requireStudentRole) ⇒ không vẽ nút. */
+  canFollow: boolean;
 }) {
   const p = priceView(course.price, course.originalPrice);
   const tagColor = safeTagColor(course.tagColor) ?? "var(--kin-tt-chu-loi)";
@@ -75,7 +78,7 @@ function CourseCard({ course, following, onToggleFollow, isEnrolled, isPendingCo
           {isEnrolled ? (
             <Link href={`/student/hoc-tap?course=${encodeURIComponent(course.slug)}`}
               className={`relative z-10 ${kinButtonClass("secondary")}`}>Đang học · Vào học</Link>
-          ) : (isPendingConsent || isSuspended) ? null : (   // chờ phụ huynh đồng ý: KHÔNG có nút theo dõi (xem dòng trạng thái phía trên)
+          ) : (isPendingConsent || isSuspended || !canFollow) ? null : (   // chờ phụ huynh đồng ý / vai không phải học sinh: KHÔNG có nút theo dõi
             <span className="relative z-10 -mr-2 -mb-2">
               <KinBookmark on={following} onToggle={onToggleFollow} labelOn="Bỏ theo dõi lớp" labelOff="Theo dõi lớp"
                 className="min-w-[var(--kin-cham-toi-thieu)] min-h-[var(--kin-cham-toi-thieu)] flex items-center justify-center" />
@@ -93,6 +96,8 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
   const { items: followedItems, loading: followedLoading, isFollowing, follow, unfollow } = useFollowedCourses();
   const { enrolledIds, pendingConsentIds, suspendedIds } = useEnrollments();
   const [f, setF] = useState<CatalogFilters>(initial);
+  // LOI-07: "Theo dõi lớp" là việc của học sinh (API chỉ nhận vai học sinh, src/app/api/followed-courses/[courseId]/route.ts). Khách vẫn thấy nút để được dẫn sang đăng nhập.
+  const canFollow = !user || user.role === "student";
 
   // Không đặt window.history.replaceState trong hàm cập nhật của setF: Next vá replaceState để cập nhật Router, mà hàm cập nhật chạy lúc React đang dựng
   // CourseCatalog → React báo "Cannot update a component (Router) while rendering a different component". Tính bộ lọc mới từ `f` rồi mới ghi URL.
@@ -108,7 +113,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
   const filtered = isFiltered(f);
 
   function toggle(slug: string) {
-    if (pendingConsentIds.has(slug) || suspendedIds.has(slug)) return;   // lớp đang chờ phụ huynh đồng ý: không có gì để theo dõi (thẻ cũng không hiện nút)
+    if (pendingConsentIds.has(slug) || suspendedIds.has(slug) || !canFollow) return;   // lớp đang chờ phụ huynh đồng ý / vai không theo dõi được: thẻ cũng không hiện nút
     if (!user) {
       const back = `${window.location.pathname}${window.location.search}`;
       router.push(`/dang-nhap?redirect=${encodeURIComponent(back)}`);
@@ -137,7 +142,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
             );
           })}
           {/* Điều hướng B6/HS-9 (08/11/2026): MỘT lối vào duy nhất tới "Lớp đang theo dõi" (trang /khoa-hoc-da-luu) — Navbar không hiện với người đã đăng nhập nên trước đây không còn chỗ nào bấm tới. */}
-          {user && !followedLoading && (
+          {user && canFollow && !followedLoading && (
             <Link href="/khoa-hoc-da-luu" data-followed-chip
               className="flex-shrink-0 inline-flex items-center min-h-[var(--kin-cham-toi-thieu)] rounded-[var(--kin-bo-tron)] border px-[var(--kin-kc-7)] text-[length:var(--kin-co-goc)] font-medium whitespace-nowrap"
               style={{ background: "var(--kin-nen-trang)", color: "var(--kin-nhan-link)", borderColor: "var(--kin-vien-o-nhap)" }}>
@@ -147,16 +152,16 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
         </div>
 
         <div className="flex flex-wrap items-center gap-[var(--kin-kc-5)]">
-          <select aria-label="Giá" value={f.fee} onChange={e => apply({ fee: e.target.value as CatalogFilters["fee"] })} className={CONTROL}>
+          <KinSelect className="w-44" aria-label="Giá" value={f.fee} onChange={v => apply({ fee: v as CatalogFilters["fee"] })}>
             <option value="">Mọi mức giá</option>
             <option value="free">Miễn phí</option>
             <option value="paid">Có phí</option>
-          </select>
-          <select aria-label="Sắp xếp" value={f.sort} onChange={e => apply({ sort: e.target.value as CatalogFilters["sort"] })} className={CONTROL}>
+          </KinSelect>
+          <KinSelect className="w-52" aria-label="Sắp xếp" value={f.sort} onChange={v => apply({ sort: v as CatalogFilters["sort"] })}>
             <option value="moi">Thứ tự mặc định</option>
             <option value="gia-tang">Giá thấp → cao</option>
             <option value="gia-giam">Giá cao → thấp</option>
-          </select>
+          </KinSelect>
           <label className="inline-flex min-h-[var(--kin-cham-toi-thieu)] items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
             <input type="checkbox" checked={f.seat} onChange={e => apply({ seat: e.target.checked })} className="h-5 w-5" />
             Chỉ lớp còn chỗ
@@ -188,7 +193,7 @@ export default function CourseCatalog({ cards, categories, initial }: { cards: P
       ) : (
         <div data-course-grid className="grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-[var(--kin-kc-7)]">
           {shown.map(c => (
-            <CourseCard key={c.slug} course={c} following={isFollowing(c.slug)} onToggleFollow={() => toggle(c.slug)} isEnrolled={enrolledIds.has(c.slug)} isPendingConsent={pendingConsentIds.has(c.slug)} isSuspended={suspendedIds.has(c.slug)} />
+            <CourseCard key={c.slug} course={c} following={isFollowing(c.slug)} onToggleFollow={() => toggle(c.slug)} isEnrolled={enrolledIds.has(c.slug)} isPendingConsent={pendingConsentIds.has(c.slug)} isSuspended={suspendedIds.has(c.slug)} canFollow={canFollow} />
           ))}
         </div>
       )}

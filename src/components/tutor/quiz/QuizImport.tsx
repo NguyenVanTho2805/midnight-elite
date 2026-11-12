@@ -28,6 +28,7 @@ import { answerText } from "./QuizEditor";
 import { fileProblem, IMPORT_ACCEPT, NEW_QUIZ_HREF, qfetch, quizHref, DE_THI_ROOT, sizeText, type QuizQ } from "./quizClient";
 import { cellText, parseQuizSheet, SHEET_MAX_BYTES, type SheetRowError } from "@/lib/quizSheetImport";
 import { plainPreview } from "@/lib/mathtype/formulaImg";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Step = "chon-tep" | "ra-soat";
 interface Cand { key: string; q: QuizQuestionInput; confirmed: boolean }
@@ -266,14 +267,14 @@ export default function QuizImport() {
               <KinSectionHead id="qi-dest" title="Lưu vào đâu" />
               <div><label htmlFor="qi-title" className={`${KIN_LABEL} mb-2`}>Tên quiz nháp</label><input id="qi-title" className={KIN_FIELD} value={title} maxLength={150} onChange={e => setTitle(e.target.value)} disabled={!!targetId} /></div>
               <div><label htmlFor="qi-course" className={`${KIN_LABEL} mb-2`}>Lớp (chọn sau cũng được)</label>
-                <select id="qi-course" className={KIN_FIELD} value={courseId} onChange={e => setCourseId(e.target.value)} disabled={!!targetId}>
+                <KinSelect id="qi-course" value={courseId} onChange={v => setCourseId(v)} disabled={!!targetId}>
                   <option value="">Chưa chọn lớp</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select></div>
+                </KinSelect></div>
               {targets.length > 0 && (
                 <div><label htmlFor="qi-target" className={`${KIN_LABEL} mb-2`}>Hoặc thêm vào quiz nháp đã có</label>
-                  <select id="qi-target" className={KIN_FIELD} value={targetId} onChange={e => setTargetId(e.target.value)}>
+                  <KinSelect id="qi-target" value={targetId} onChange={v => setTargetId(v)}>
                     <option value="">Tạo quiz nháp mới</option>{targets.map(t => <option key={t.id} value={t.id}>{t.title} · {t.questions} câu</option>)}
-                  </select></div>
+                  </KinSelect></div>
               )}
             </section>
 
@@ -392,9 +393,9 @@ export default function QuizImport() {
               <div><label htmlFor="qi-title2" className={`${KIN_LABEL} mb-2`}>Tên quiz nháp</label><input id="qi-title2" className={KIN_FIELD} value={title} maxLength={150} disabled={!!targetId} onChange={e => setTitle(e.target.value)} /></div>
               {targets.length > 0 && (
                 <div><label htmlFor="qi-target2" className={`${KIN_LABEL} mb-2`}>Lưu vào</label>
-                  <select id="qi-target2" className={KIN_FIELD} value={targetId} onChange={e => setTargetId(e.target.value)}>
+                  <KinSelect id="qi-target2" value={targetId} onChange={v => setTargetId(v)}>
                     <option value="">Quiz nháp mới</option>{targets.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                  </select></div>
+                  </KinSelect></div>
               )}
             </div>
             {saveErr && <p role="alert" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{saveErr}</p>}

@@ -138,6 +138,25 @@ export function blockedRouteFeature(pathname: string, viewer: FeatureViewer, env
   return r ? r.feature : null;
 }
 
+// LOI-07 (11/11/2026, nợ P3 của LOI-01): thông báo / liên kết cũ trỏ vào phần đang ẩn → bị chuyển về trang đầu mà không biết vì sao. Chốt chặn (hostRouting.decideRoute,
+// trang /cong-dong/<id>) gắn `?tam-dong=<CỜ>` lên trang đích; một component dùng chung (src/components/kin/PausedNotice.tsx, cắm ở layout gốc) đọc dấu bằng
+// `pausedNoticeFrom` rồi hiện MỘT dòng "Phần này đang tạm đóng." đóng được. Dấu chỉ là chữ hiển thị: không quyết quyền, không đổi mã 307 + no-store.
+/** Tên tham số dấu "vừa bị chuyển ra khỏi phần đang tạm đóng". */
+export const PAUSED_PARAM = "tam-dong";
+
+/** Chuỗi search gắn lên trang đích khi chặn phần `k`: "?tam-dong=CONG_DONG". */
+export const pausedSearch = (k: FeatureKey): string => `?${PAUSED_PARAM}=${k}`;
+
+/** Đọc dấu từ `search` ("?a=1&tam-dong=TIN_TUC", không "?" cũng được). Chỉ nhận ĐÚNG tên một cờ trong FEATURES mà cờ đó đang TẮT (phần đã mở lại thì không nhắc nữa);
+ *  thiếu / rỗng / rác / chữ thường / tên lạ → null. Nhiều giá trị: chỉ xét giá trị đầu. */
+export function pausedNoticeFrom(search: string | null | undefined, env: FeatureEnv = readFeatureEnv()): FeatureKey | null {
+  if (typeof search !== "string" || !search) return null;
+  let v: string | null;
+  try { v = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get(PAUSED_PARAM); } catch { return null; }
+  const k = (FEATURES as readonly string[]).includes(v ?? "") ? (v as FeatureKey) : null;
+  return k && !featureOn(k, env) ? k : null;
+}
+
 /** Đường này CÓ THỂ bị chặn với một vai nào đó (để proxy biết khi nào cần giải mã phiên). Không phụ thuộc vai. */
 export function mayBlockRoute(pathname: string, env: FeatureEnv = readFeatureEnv()): boolean {
   const p = pathOf(pathname);

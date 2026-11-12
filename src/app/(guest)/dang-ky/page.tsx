@@ -12,6 +12,7 @@ import { KinInput } from "@/components/kin/Input";
 import { SignupCodeForm } from "@/components/guest/SignupCodeForm";
 import { useFieldValidation } from "@/components/kin/useFieldValidation";
 import { email as emailRule, matches, minLength, phoneVn, required, type FieldRule } from "@/lib/fieldRules";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // Danh sách 34 tỉnh/thành sau sáp nhập (2025)
 const PROVINCES = [
@@ -315,14 +316,10 @@ export default function DangKyPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="dk-city" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Tỉnh / Thành phố *</label>
-                  <select id="dk-city" value={s1.city}
-                    onChange={e => setS1(p => ({ ...p, city: e.target.value }))}
-                    {...selectBind("city", s1.city)}
-                    className="notion-input w-full text-sm min-h-[var(--kin-cham-toi-thieu)]"
-                    style={{ color: s1.city ? "var(--kin-chu-chinh)" : "var(--kin-chu-mo)" }}>
+                  <KinSelect id="dk-city" value={s1.city} onChange={v => setS1(p => ({ ...p, city: v }))} {...selectBind("city", s1.city)}>
                     <option value="">Chọn tỉnh / thành phố</option>
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  </KinSelect>
                   <FieldError id="dk-city-err" msg={fv1.bind("city", s1.city).error} />
                 </div>
                 <KinInput type="text" label="Tên trường *" placeholder="THPT Chu Văn An" value={s1.school}

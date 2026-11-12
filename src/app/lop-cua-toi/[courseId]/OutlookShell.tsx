@@ -15,6 +15,7 @@ import { useState } from "react";
 import Link from "next/link";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import { contentHref } from "@/lib/tutorRoutes";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Role = "tutor" | "student";
 
@@ -134,17 +135,11 @@ export default function OutlookShell({ courseId, courseName, category, role, vie
 
         {/* Mobile: dropdown */}
         <div className="sm:hidden mb-3">
-          <select value={active} onChange={e => setActive(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-sm"
-            style={{
-              background: "var(--kin-nen-bang)",
-              color:      "var(--kin-chu-chinh)",
-              border:     "1px solid var(--kin-vien-thuong)",
-            }}>
+          <KinSelect aria-label="Mục của lớp" value={active} onChange={v => setActive(v)}>
             {items.map(it => (
               <option key={it.key} value={it.key}>{it.icon} {it.label}</option>
             ))}
-          </select>
+          </KinSelect>
         </div>
 
         <div className="flex gap-4">

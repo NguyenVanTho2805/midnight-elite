@@ -8,6 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { toArticleSlug, titleError, slugError, contentError } from "@/lib/articleValidate";
 import { AdminToast, useAdminToast } from "@/components/AdminToast";
 import { cleanArticleSource, draftFromPaste, SOURCE_NAME_MAX, COVER_URL_MAX } from "@/lib/articleSource";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -337,12 +338,11 @@ function ArticleDrawer({ open, editId, initialForm, onClose, onSaved }: {
               <label className="block text-xs font-medium text-gray-600 mb-1.5">
                 Danh mục <span className="text-red-500">*</span>
               </label>
-              <select className={INP + " bg-[var(--kin-nen-trang)]"} value={form.category}
-                onChange={e => set("category", e.target.value)}>
+              <KinSelect aria-label="Danh mục" value={form.category} onChange={v => set("category", v)}>
                 {CATEGORIES.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
-              </select>
+              </KinSelect>
               {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category}</p>}
             </div>
             <div>
@@ -590,20 +590,18 @@ function PageInner() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Danh mục</label>
-            <select value={catFilter} onChange={e => setCat(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
+            <KinSelect aria-label="Lọc theo danh mục" value={catFilter} onChange={v => setCat(v)}>
               <option value="">Tất cả danh mục</option>
               {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
+            </KinSelect>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái</label>
-            <select value={statusFilter} onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none bg-[var(--kin-nen-trang)] focus:border-blue-400">
+            <KinSelect aria-label="Lọc theo trạng thái" value={statusFilter} onChange={v => setStatus(v)}>
               <option value="">Tất cả</option>
               <option value="published">Đã xuất bản</option>
               <option value="draft">Nháp</option>
-            </select>
+            </KinSelect>
           </div>
           <div className="flex items-end gap-2">
             <button onClick={() => { setSearch(""); setCat(""); setStatus(""); }}

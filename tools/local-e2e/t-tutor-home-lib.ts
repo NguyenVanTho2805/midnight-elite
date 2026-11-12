@@ -10,16 +10,32 @@ const NOW = new Date("2026-10-14T03:30:00Z"); // 10:30 giờ VN, thứ Tư 14/10
 const ZERO: SetupCounts = { payoutAccount: false, classes: 0, students: 0, schedules: 0, attendanceRecords: 0, invoices: 0, parentLinks: 0, taughtSessions: 0 };
 
 section("HV-10 checklist thiết lập 8 bước, tự tick theo dữ liệu thật");
-const c0 = buildSetupChecklist(ZERO);
+const LICH = { lichOpen: true };
+const c0 = buildSetupChecklist(ZERO, LICH);
 check("chưa có gì: 8 bước, 0 xong, không bước nào tick", c0.total === 8 && c0.doneCount === 0 && !c0.allDone && c0.steps.every(s => !s.done), c0);
 check("8 bước đúng thứ tự: tài khoản, lớp, học sinh, lịch, điểm danh, phiếu, phụ huynh, chốt buổi", c0.steps.map(s => s.key).join() === "tai-khoan,lop,hoc-sinh,lich,diem-danh,phieu,phu-huynh,chot-buoi");
 check("mọi bước có liên kết nội bộ (không đường chết) và câu gợi ý", c0.steps.every(s => s.href.startsWith("/") && s.hint.length > 5));
-const c1 = buildSetupChecklist({ ...ZERO, payoutAccount: true, classes: 2 });
+const c1 = buildSetupChecklist({ ...ZERO, payoutAccount: true, classes: 2 }, LICH);
 check("có tài khoản + 2 lớp → chỉ hai bước đó tick", c1.doneCount === 2 && c1.steps.filter(s => s.done).map(s => s.key).join() === "tai-khoan,lop", c1.steps.map(s => [s.key, s.done]));
-const one = (k: keyof SetupCounts) => buildSetupChecklist({ ...ZERO, [k]: k === "payoutAccount" ? true : 1 } as SetupCounts).steps.filter(s => s.done).map(s => s.key).join();
+const one = (k: keyof SetupCounts) => buildSetupChecklist({ ...ZERO, [k]: k === "payoutAccount" ? true : 1 } as SetupCounts, LICH).steps.filter(s => s.done).map(s => s.key).join();
 check("mỗi số đếm chỉ làm đúng MỘT bước tick (không tick lẫn)", ([["payoutAccount", "tai-khoan"], ["classes", "lop"], ["students", "hoc-sinh"], ["schedules", "lich"], ["attendanceRecords", "diem-danh"], ["invoices", "phieu"], ["parentLinks", "phu-huynh"], ["taughtSessions", "chot-buoi"]] as const).every(([k, s]) => one(k) === s));
-const all = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 1, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 });
+const all = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 1, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, LICH);
 check("đủ cả 8 → allDone (banner sẽ không hiện nữa)", all.allDone && all.doneCount === 8);
+section("LOI-02 F: lịch ẩn (cờ tắt) ⇒ bỏ bước \"Đặt lịch học\"");
+const off = buildSetupChecklist(ZERO, { lichOpen: false });
+check("cờ tắt: 7 bước, không có bước lich", off.total === 7 && !off.steps.some(s => s.key === "lich"), off.steps.map(s => s.key));
+const offAll = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 0, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, { lichOpen: false });
+check("cờ tắt: không có khung giờ nào vẫn allDone 7/7 (không kẹt banner vì lịch)", offAll.allDone && offAll.doneCount === 7);
+check("cờ bật mà thiếu khung giờ ⇒ KHÔNG allDone (ca phá: bước lich vẫn đếm)", !buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 0, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, LICH).allDone);
+{
+  const prev = process.env.NEXT_PUBLIC_KIN_MO_LICH;
+  delete process.env.NEXT_PUBLIC_KIN_MO_LICH;
+  const dflt = buildSetupChecklist(ZERO);
+  process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
+  const on = buildSetupChecklist(ZERO);
+  if (prev === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = prev;
+  check("mặc định (không đặt cờ) đọc isLichOpen ⇒ 7 bước; cờ \"1\" ⇒ 8 bước", dflt.total === 7 && on.total === 8, { dflt: dflt.total, on: on.total });
+}
 const ovNoSetup = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [] });
 check("không truyền số đếm → setup = null (không bịa tiến độ)", ovNoSetup.setup === null);
 

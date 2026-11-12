@@ -1,7 +1,7 @@
 // Trang "Học sinh" của gia sư (Figma 299:113083): /lop-cua-toi/hoc-sinh. Quyền theo chủ lớp, không lộ học sinh người khác,
 // tab Đang học / Đã nghỉ, tìm + lọc lớp, trạng thái tải/lỗi/rỗng, 390px, mục thanh bên.
 import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinPick } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -34,7 +34,19 @@ import { prisma } from "@/lib/prisma";
   await pg.getByRole("heading", { name: "Học sinh", level: 1 }).waitFor({ timeout: 90000 });
   const rail = pg.getByRole("navigation", { name: "Module của gia sư" });
   await pg.getByRole("list", { name: "Danh sách học sinh" }).waitFor({ timeout: 60000 });
-  check("mục 'Học sinh' trên thanh bên đang sáng (aria-current) và là mục duy nhất sáng", await rail.getByRole("link", { name: /^Học sinh/ }).getAttribute("aria-current") === "page" && await rail.locator("[aria-current=page]").count() === 1);
+  // LOI-07: thanh máy tính dựng cả bản hẹp (.kin-rail-items) lẫn bản rộng có nhóm (.kin-rail-groups — nhóm "Khác" của thanh rộng cũng có "Học sinh"); CSS chỉ hiện một
+  // bản theo data-kin-rail (kin-motion.css:228-235). Bản ẩn mang aria-current nhưng không vào cây trợ năng ⇒ đếm mục ĐANG HIỆN (như ui-tutor-shell :55).
+  check("mục 'Học sinh' trên thanh bên đang sáng (aria-current) và là mục duy nhất sáng (đang hiện)", await rail.getByRole("link", { name: /^Học sinh/ }).getAttribute("aria-current") === "page" && await rail.locator("[aria-current=page]:visible").count() === 1,
+    { visible: await rail.locator("[aria-current=page]:visible").count(), all: await rail.locator("[aria-current=page]").count() });
+  {
+    // Đối chứng ở thanh RỘNG 272px (bản có nhóm hiện, bản hẹp ẩn): vẫn đúng MỘT mục đang hiện mang aria-current, đúng mục "Học sinh".
+    const wp = await (await ctxFor(T, { width: 1280, height: 800, rail: "rong" })).newPage(); watch(wp);
+    await wp.goto(`${BASE}/lop-cua-toi/hoc-sinh`, { waitUntil: "networkidle", timeout: 120000 });
+    await wp.getByRole("heading", { name: "Học sinh", level: 1 }).waitFor({ timeout: 90000 });
+    const lit = await wp.getByRole("navigation", { name: "Module của gia sư" }).locator("[aria-current=page]:visible").evaluateAll(els => els.map(e => e.getAttribute("href")));
+    check("thanh rộng: đúng một mục đang hiện mang aria-current, trỏ /lop-cua-toi/hoc-sinh", lit.length === 1 && lit[0] === "/lop-cua-toi/hoc-sinh", lit);
+    await wp.close();
+  }
   check("dòng phụ: 2 học sinh đang học (Bảo, Hà — Hà ở hai lớp vẫn tính một em)", await pg.getByText(/^2 học sinh đang học/).isVisible());
   check("tab 'Đang học · 2' và 'Đã nghỉ · 1'", await pg.getByRole("tab", { name: "Đang học · 2" }).isVisible() && await pg.getByRole("tab", { name: "Đã nghỉ · 1" }).isVisible());
   const rows = pg.locator("[data-hoc-sinh]");
@@ -43,9 +55,9 @@ import { prisma } from "@/lib/prisma";
   check("'Mở lớp' dẫn tới trang lớp của chính cô", await rows.filter({ hasText: "Trần Gia Bảo" }).getByRole("link", { name: /Mở lớp/ }).getAttribute("href") === `/lop-cua-toi/${c1.id}`);
   check("'Thêm học sinh' → wizard /lop-cua-toi/hoc-sinh/them (23/10: tạo hồ sơ có hộp đồng ý; lối mã mời vẫn ở trang Lớp), 'Nhập danh sách' → /lop-cua-toi/hoc-sinh/nhap", await pg.getByRole("link", { name: "Thêm học sinh" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/them" && await pg.getByRole("link", { name: "Nhập danh sách" }).getAttribute("href") === "/lop-cua-toi/hoc-sinh/nhap");
   await shot(pg, "tutor-students");
-  await pg.getByRole("combobox", { name: "Lớp" }).selectOption(c2.id);
+  await kinPick(pg.getByRole("combobox", { name: "Lớp" }), "Văn 8"); // LOI-02: KinSelect (mở rồi chọn), không còn <select>
   check("lọc lớp Văn 8: còn đúng 1 dòng (Hà)", await rows.count() === 1 && await rows.first().getByText("Đỗ Hà").isVisible());
-  await pg.getByRole("combobox", { name: "Lớp" }).selectOption("");
+  await kinPick(pg.getByRole("combobox", { name: "Lớp" }), "Tất cả lớp");
   await pg.getByLabel("Tìm học sinh").fill("gia bảo");
   check("tìm 'gia bảo': 1 dòng", await rows.count() === 1);
   await pg.getByLabel("Tìm học sinh").fill("không có ai tên này");

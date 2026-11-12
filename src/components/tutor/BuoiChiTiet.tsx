@@ -23,6 +23,7 @@ import { JOIN_SOURCE_LABEL, KIND_LABEL, MODE_LABEL, NOTE_MAX, buildSessionShareM
 import { openZalo } from "@/lib/zaloShare";
 import type { SessionDetail } from "@/lib/sessionBookServer";
 import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const dmy = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}/${k.slice(0, 4)}`;
@@ -215,10 +216,10 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
             <div className="pt-4 grid sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="bu-mode" className={KIN_LABEL}>Hình thức buổi này</label>
-                <select id="bu-mode" value={form.mode} onChange={e => setForm(f => (f ? { ...f, mode: e.target.value as Form["mode"] } : f))} className={`${KIN_FIELD} mt-2`}>
+                <KinSelect id="bu-mode" value={form.mode} onChange={v => setForm(f => (f ? { ...f, mode: v as Form["mode"] } : f))} className="mt-2">
                   <option value="">Theo khung giờ của lớp{detail.mode && !detail.session?.mode ? ` (${MODE_LABEL[detail.mode]})` : ""}</option>
                   <option value="online">Online</option><option value="offline">Offline</option>
-                </select>
+                </KinSelect>
               </div>
               <div>
                 <label htmlFor="bu-loc" className={KIN_LABEL}>Địa chỉ học offline</label>

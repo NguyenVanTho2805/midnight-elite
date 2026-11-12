@@ -38,6 +38,7 @@ import StudentPicker from "@/components/tutor/StudentPicker";
 import { jfetch } from "@/components/tutor/studentUi";
 import { FREE_CLASS_TAG, type JoinPolicy } from "@/lib/joinRequest";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const FIELD = KIN_FIELD;
 const LABEL = KIN_LABEL;
@@ -363,9 +364,9 @@ export default function TaoLop() {
                       <input type="date" value={firstDate} onChange={e => setFirstDate(e.target.value)} className={`${FIELD} mt-2`} />
                     </label>
                     <label className={LABEL}>Xem trước số tuần
-                      <select value={weeks} onChange={e => setWeeks(Number(e.target.value))} className={`${FIELD} mt-2`}>
+                      <KinSelect value={String(weeks)} onChange={v => setWeeks(Number(v))} className="mt-2">
                         {Array.from({ length: WIZARD_WEEKS_MAX - WIZARD_WEEKS_MIN + 1 }, (_, i) => WIZARD_WEEKS_MIN + i).map(w => <option key={w} value={w}>{w} tuần</option>)}
-                      </select>
+                      </KinSelect>
                     </label>
                   </div>
                   <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" data-wizard-preview>

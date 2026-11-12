@@ -2,7 +2,7 @@
 // báo lỗi nguồn + ảnh bìa đúng ô, lưu, mở lại để sửa (không còn ô dán), xoá nguồn. Công khai: bài hiện như bài báo — ảnh bìa, "Nguồn: …" có link an toàn;
 // ảnh bìa hết hạn thì bỏ khung ảnh mà bài vẫn đọc được; bài không nguồn không có dòng "Nguồn"; 390px không tràn ngang.
 import { BASE, api, mkSuper, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll, shot, ADMIN, type Page } from "./ui";
+import { launch, ctxFor, closeAll, shot, ADMIN, type Page, kinSelectValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 const PAD = "Nội dung bổ sung cho đủ độ dài tối thiểu của bài viết (ADM-002: nội dung ≥ 100 ký tự). ".repeat(2);
 
@@ -43,7 +43,7 @@ const FB = "🎓 THÔNG BÁO: Điểm chuẩn ĐH Mẫu 2026\n\nTrường vừa 
   await eventually("điền tiêu đề = dòng đầu của bài dán", async () => (await title.inputValue()) === "🎓 THÔNG BÁO: Điểm chuẩn ĐH Mẫu 2026", 8000);
   check("slug tự sinh từ tiêu đề (bỏ biểu tượng và dấu)", (await ap.locator("input[placeholder='vd-dgnl-hsa-2026']").inputValue()) === "thong-bao-diem-chuan-dh-mau-2026", await ap.locator("input[placeholder='vd-dgnl-hsa-2026']").inputValue());
   check("nội dung = phần còn lại (không lặp tiêu đề), tóm tắt = nội dung dồn một dòng", (await ap.locator("textarea[placeholder^='Viết nội dung']").inputValue()).startsWith("Trường vừa công bố điểm chuẩn năm 2026.") && (await ap.locator("textarea[placeholder^='Mô tả ngắn']").inputValue()).startsWith("Trường vừa công bố điểm chuẩn năm 2026. Ngành Công nghệ thông tin: 27,5 điểm."));
-  check("danh mục tự chuyển sang 'Tuyển sinh'", (await ap.locator("select").first().inputValue()) === "tuyen-sinh");
+  check("danh mục tự chuyển sang 'Tuyển sinh'", (await kinSelectValue(ap.locator('[role="combobox"]').first())) === "tuyen-sinh");
   check("có dòng báo 'Đã điền vào form bên dưới…' (role=status) và CHƯA có bài nào trong DB", /Đã điền vào form/.test(await ap.locator("[data-fb-msg]").innerText()) && (await prisma.article.count()) === 0);
   await shot(ap, "tin-tuc-dan-nhanh");
 

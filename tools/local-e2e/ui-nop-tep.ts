@@ -234,6 +234,33 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
     await pT.locator('[data-nop-tep-ds="het-han"]').waitFor({ timeout: 30000 });
     check("hết hạn phía gia sư: đúng câu, không nút tải tệp học sinh", (await pT.locator('[data-nop-tep-ds="het-han"]').textContent())?.trim() === EXPIRED_TEXT);
     await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() + 59 * 86_400_000) } });
+
+    // LOI-02 mục 2.E: chấm TRƯỚC, đính SAU. Ép /dinh-kem trả 500 ⇒ điểm vẫn lưu (DB), một dòng báo riêng; tệp nháp không bị gắn.
+    section("LOI-02 E: đính tệp trả bài lỗi (500) ⇒ điểm GIỮ, báo riêng");
+    await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
+    await pT.getByText("BT nộp tệp").first().click();
+    const tBox2 = pT.locator('[data-nop-tep="tutor_return"]');
+    await tBox2.waitFor({ timeout: 30000 });
+    await pT.route("**/api/media/nop-bai/dinh-kem", r => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Máy chủ đang bận." }) }));
+    const goCount = () => pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra] [data-nop-tep-go]').count(); // tệp ĐÃ trả (có "Gỡ tệp")
+    await tBox2.locator("[data-nop-tep-tep-tra]").waitFor({ timeout: 30000 }); // đã trả 1 tệp ở ca trước — chờ danh sách tải xong rồi mới đếm
+    const returned0 = await goCount();
+    await tBox2.locator("[data-nop-tep-input]").setInputFiles(f("nhan-xet-2.docx", docx("tra2")));
+    await tBox2.locator('[data-nop-tep-hang][data-trang-thai="san-sang"]').waitFor({ timeout: 30000 });
+    await pT.locator("#bt-score").fill("7");
+    await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
+    await pT.locator("[data-tra-bai-loi]").waitFor({ timeout: 30000 });
+    check("dòng báo riêng: 'Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm.' (role=status)",
+      (await pT.locator("[data-tra-bai-loi]").innerText()).trim() === "Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm." && (await pT.locator("[data-tra-bai-loi]").getAttribute("role")) === "status");
+    check("điểm vẫn lưu trong DB (7) dù đính kèm lỗi", (await prisma.assignmentSubmission.findUnique({ where: { id: subs[0].id } }))?.score === 7);
+    check("tệp mới KHÔNG thành tệp đã trả (đính kèm thất bại)", (await goCount()) === returned0, { truoc: returned0, sau: await goCount() });
+    await shot(pT, "nop-tep-1280-gia-su-dinh-loi");
+    await pT.unroute("**/api/media/nop-bai/dinh-kem");
+    await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
+    // dinh-kem gắn bộ mới THAY bộ trả bài cũ (#155) ⇒ sau Gửi lại, tệp đã trả là nhan-xet-2.
+    await eventually("bấm Gửi lại ⇒ đính được (tệp đã trả = nhan-xet-2), dòng lỗi biến mất", async () => (await pT.locator("[data-tra-bai-loi]").count()) === 0 && (await goCount()) === 1
+      && /nhan-xet-2/.test((await pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra]').innerText().catch(() => "")) ?? ""), 30000);
+    await prisma.assignmentSubmission.update({ where: { id: subs[0].id }, data: { score: 9 } });
   } else {
     const { api } = await import("./h");
     await api("PATCH", `/api/assignments/${A.id}/submissions/${subs[0].id}/grade`, { as: T, body: { score: 9, comment: "Em làm tốt, xem tệp đính kèm." } });

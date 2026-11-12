@@ -4,7 +4,7 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkUser, wipe, check, section, eventually, done } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import type { Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { SPAM_HINT } from "@/lib/verifyCodeCopy";
@@ -43,7 +43,7 @@ async function fillAccount(p: Page, role: "student" | "tutor", email: string) {
   } else {
     const tels = p.locator('form input[type="tel"]');
     await tels.nth(0).fill("0901 234 567"); await tels.nth(1).fill("0987 654 321");
-    await p.locator("form select").selectOption({ index: 1 });
+    await kinSelect(p.locator('form [role="combobox"]'), { index: 1 });
     await p.getByPlaceholder("THPT Chu Văn An").fill("THPT Chu Văn An");
   }
   await p.getByRole("button", { name: /Tiếp theo/ }).click();

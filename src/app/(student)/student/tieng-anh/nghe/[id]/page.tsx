@@ -9,6 +9,7 @@ import { KinButton } from "@/components/kin";
 import { api, Card, ErrorLine, INK, PageHead, Progress, Skeleton } from "@/components/english/ui";
 import { canSpeak, speak, stopSpeaking } from "@/components/english/speech";
 import { nowMs, secondsSince } from "@/components/english/clock";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { checkDictation, splitWords, type DictationResult } from "@/lib/english/dictation";
 
 interface TextData { id: string; title: string; sentences: string[]; audioUrl: string | null }
@@ -139,11 +140,10 @@ export default function Dictation() {
   return (
     <div className="space-y-4">
       <PageHead title={`Chép chính tả: ${t.title}`} sub="Nghe → gõ lại đúng những gì nghe được → kiểm tra → nói theo 3 lần.">
-        <label className="text-sm flex items-center gap-2" style={{ color: INK.phu }}>Tốc độ
-          <select value={speed} onChange={e => setSpeed(Number(e.target.value))} className="min-h-11 px-2 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }}>
-            {SPEEDS.map(s => <option key={s} value={s}>{s}×</option>)}
-          </select>
-        </label>
+        <div className="text-sm flex items-center gap-2" style={{ color: INK.phu }}><span id="nghe-toc-do">Tốc độ</span>
+          <KinSelect className="w-28" aria-labelledby="nghe-toc-do" value={String(speed)} onChange={v => setSpeed(Number(v))}
+            options={SPEEDS.map(s => ({ value: String(s), label: `${s}×` }))} />
+        </div>
       </PageHead>
       <Progress value={(i / sentences.length) * 100} label={`Câu ${i + 1} / ${sentences.length}`} />
       {err && <ErrorLine message={err} />}

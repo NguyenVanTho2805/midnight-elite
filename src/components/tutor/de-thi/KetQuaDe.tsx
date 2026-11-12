@@ -6,7 +6,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { KinPage, KinPageHeader, KinPageSkeleton, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KinPage, KinPageHeader, KinPageSkeleton, KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
@@ -19,6 +19,7 @@ import {
   CHON_LABEL, deThiDetailHref, deThiListHref, deThiSubHref, fetchBangDiem, fetchKetQua, fmtDur, fmtNum, fmtPct, variantCodeOf, xuatXlsxHref,
   type BangDiemRow, type Chon, type KetQua,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const ratio = (n: number | null | undefined): number | null => (n == null || !Number.isFinite(n) ? null : Math.min(1, Math.max(0, n))); // tỉ lệ 0–1
 const dmyHm = (iso: string | null): string => {
@@ -103,9 +104,9 @@ function BangDiem({ id }: { id: string }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 w-full sm:w-64">
           <label htmlFor="kq-chon" className={`${KIN_LABEL} mb-2`}>Tính điểm theo</label>
-          <select id="kq-chon" className={KIN_FIELD} value={chon} onChange={e => pick(e.target.value as Chon)}>
+          <KinSelect id="kq-chon" value={chon} onChange={v => pick(v as Chon)}>
             {(Object.keys(CHON_LABEL) as Chon[]).map(c => <option key={c} value={c}>{CHON_LABEL[c]}</option>)}
-          </select>
+          </KinSelect>
         </div>
         <a href={xuatXlsxHref(id, chon)} download className={kinButtonClass("secondary")} data-ket-qua-xlsx>Xuất Excel</a>
       </div>

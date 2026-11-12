@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { api, Card, ErrorLine, INK, LEVEL_TEXT, LinkButton, PageHead, Pill, Skeleton, Stat } from "@/components/english/ui";
 
 interface Today {
@@ -125,11 +126,10 @@ export default function EnglishToday() {
             <label className="text-sm" style={{ color: INK.chinh }}>Ngày thi
               <input type="date" value={form.examDate} onChange={e => setForm(f => ({ ...f, examDate: e.target.value }))} className="mt-1 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }} />
             </label>
-            <label className="text-sm" style={{ color: INK.chinh }}>Band mục tiêu
-              <select value={form.targetBand} onChange={e => setForm(f => ({ ...f, targetBand: e.target.value }))} className="mt-1 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }}>
-                {["5.0", "5.5", "6.0", "6.5", "7.0", "7.5"].map(b => <option key={b}>{b}</option>)}
-              </select>
-            </label>
+            <div className="text-sm" style={{ color: INK.chinh }}><span id="ta-band">Band mục tiêu</span>
+              <KinSelect className="mt-1" aria-labelledby="ta-band" value={form.targetBand} onChange={v => setForm(f => ({ ...f, targetBand: v }))}
+                options={["5.0", "5.5", "6.0", "6.5", "7.0", "7.5"].map(b => ({ value: b, label: b }))} />
+            </div>
             <label className="text-sm" style={{ color: INK.chinh }}>Từ mới mỗi ngày
               <input type="number" min={0} max={50} value={form.dailyNew} onChange={e => setForm(f => ({ ...f, dailyNew: e.target.value }))} className="mt-1 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }} />
             </label>

@@ -6,11 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton, KinCallout, KinPanel, KinSkeleton, KinStateCard, KinTabs, KinToast, type ToastTone } from "@/components/kin";
 import { KIN_PAGE, KinPageHeader } from "@/components/kin/PageLayout";
 import { HOME_LIMITS, validateHomeContent, type HomeContent, type HomeIconKey } from "@/lib/siteContent";
-import { checkHomeClaims, checkHomeCounts, diffHomeContent, hrefNeedsManualCheck, HREF_SUGGESTIONS, limitFor } from "@/lib/homeContentGuard";
+import { checkHomeClaims, checkHomeCounts, diffHomeContent, hiddenHrefWarning, hrefNeedsManualCheck, HREF_SUGGESTIONS, limitFor } from "@/lib/homeContentGuard";
 import { MAIN_HOST } from "@/lib/hostRouting";
 import { BlockCard, Field, fieldId } from "./BlockCard";
 import IconPicker from "./IconPicker";
 import PreviewFrame from "./PreviewFrame";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Loaded { content: HomeContent; defaults: HomeContent; isDefault: boolean; updatedAt: string | null; updatedBy: { name: string } | null }
 interface Toast { tone: ToastTone; title: string; detail?: string; action?: { label: string; run: () => void }; keep?: boolean }
@@ -206,7 +207,7 @@ export default function HomeEditor() {
   const linkFields = (basePath: string, v: { label: string; href: string }, set: (p: Partial<{ label: string; href: string }>) => void, name: string) => (
     <div className="grid sm:grid-cols-2 gap-3">
       <Field path={`${basePath}.label`} label={`Chữ ${name}`} value={v.label} onChange={x => set({ label: x })} limit={lim(`${basePath}.label`)} error={err(`${basePath}.label`)} />
-      <Field path={`${basePath}.href`} label={`Đường dẫn ${name}`} value={v.href} onChange={x => set({ href: x })} limit={null} error={err(`${basePath}.href`)} list="home-href-list" help={hrefHelp(v.href)} />
+      <Field path={`${basePath}.href`} label={`Đường dẫn ${name}`} value={v.href} onChange={x => set({ href: x })} limit={null} error={err(`${basePath}.href`)} list="home-href-list" help={hrefHelp(v.href)} warn={hiddenHrefWarning(v.href)} />
     </div>
   );
 
@@ -292,15 +293,14 @@ export default function HomeEditor() {
                   <legend className="px-1 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Ô {i + 1}</legend>
                   <Field path={`exams[${i}].label`} label="Chữ hiển thị" value={ex.label} onChange={v => edit(d => { d.exams[i].label = v; })} limit={lim(`exams[${i}].label`)} error={err(`exams[${i}].label`)} />
                   <Field path={`exams[${i}].desc`} label="Mô tả ngắn" value={ex.desc} onChange={v => edit(d => { d.exams[i].desc = v; })} limit={lim(`exams[${i}].desc`)} error={err(`exams[${i}].desc`)} />
-                  <Field path={`exams[${i}].href`} label="Đường dẫn" value={ex.href} onChange={v => edit(d => { d.exams[i].href = v; })} limit={null} error={err(`exams[${i}].href`)} list="home-href-list" help={hrefHelp(ex.href)} />
+                  <Field path={`exams[${i}].href`} label="Đường dẫn" value={ex.href} onChange={v => edit(d => { d.exams[i].href = v; })} limit={null} error={err(`exams[${i}].href`)} list="home-href-list" help={hrefHelp(ex.href)} warn={hiddenHrefWarning(ex.href)} />
                   {categories && categories.length > 0 && (
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor={`cat-${i}`} className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Lấy đường dẫn từ danh mục</label>
-                      <select id={`cat-${i}`} data-cat-pick={i} value="" onChange={e => { const c = e.target.value; if (c) edit(d => { d.exams[i].href = "/khoa-hoc?category=" + encodeURIComponent(c); }); }}
-                        className="w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+                      <KinSelect id={`cat-${i}`} data-cat-pick={i} value="" onChange={v => { const c = v; if (c) edit(d => { d.exams[i].href = "/khoa-hoc?category=" + encodeURIComponent(c); }); }}>
                         <option value="">Chọn danh mục…</option>
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      </KinSelect>
                     </div>
                   )}
                   <div className="flex gap-3">
@@ -362,7 +362,7 @@ export default function HomeEditor() {
               <Field path="findTutor.desc" label="Mô tả" multiline rows={3} value={draft.findTutor.desc} onChange={v => edit(d => { d.findTutor.desc = v; })} limit={lim("findTutor.desc")} error={err("findTutor.desc")} />
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field path="findTutor.buttonLabel" label="Chữ trên nút" value={draft.findTutor.buttonLabel} onChange={v => edit(d => { d.findTutor.buttonLabel = v; })} limit={lim("findTutor.buttonLabel")} error={err("findTutor.buttonLabel")} />
-                <Field path="findTutor.buttonHref" label="Đường dẫn của nút" value={draft.findTutor.buttonHref} onChange={v => edit(d => { d.findTutor.buttonHref = v; })} limit={null} error={err("findTutor.buttonHref")} list="home-href-list" help={hrefHelp(draft.findTutor.buttonHref)} />
+                <Field path="findTutor.buttonHref" label="Đường dẫn của nút" value={draft.findTutor.buttonHref} onChange={v => edit(d => { d.findTutor.buttonHref = v; })} limit={null} error={err("findTutor.buttonHref")} list="home-href-list" help={hrefHelp(draft.findTutor.buttonHref)} warn={hiddenHrefWarning(draft.findTutor.buttonHref)} />
               </div>
               <Field path="findTutor.parentNote" label="Dòng ghi chú cho phụ huynh" multiline rows={2} value={draft.findTutor.parentNote} onChange={v => edit(d => { d.findTutor.parentNote = v; })} limit={lim("findTutor.parentNote")} error={err("findTutor.parentNote")} />
             </BlockCard>
