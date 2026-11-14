@@ -117,7 +117,7 @@ const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
     await pg.goto(`${BASE}${base}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.getByText("Thông tin cơ bản").first().waitFor({ timeout: 120000 });
     const cn = pg.locator('nav[aria-label^="Mục của"]:visible');
-    check(`${tag}: 5 mục con Thông tin · Học phí · Đồng giảng · Cộng đồng · Bản ghi`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(["Thông tin", "Học phí", "Đồng giảng", "Cộng đồng", "Bản ghi"]), await cn.getByRole("link").allInnerTexts());
+    check(`${tag}: 6 mục con Thông tin · Học phí · Đồng giảng · Cộng đồng · Bản ghi · Học online (DG-HOC-ONLINE thêm mục cuối)`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(["Thông tin", "Học phí", "Đồng giảng", "Cộng đồng", "Bản ghi", "Học online"]), await cn.getByRole("link").allInnerTexts());
     await cn.getByRole("link", { name: "Học phí" }).click();
     await pg.waitForURL(/muc=hoc-phi/, { timeout: 120000 });
     await pg.getByText("Học phí và đối soát").first().waitFor({ timeout: 120000 });

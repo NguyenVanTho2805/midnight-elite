@@ -19,7 +19,7 @@ export const classBase = (courseId: string): string => `${CLASS_BASE}/${/^\.{1,2
 
 /** Mục con (?muc=) của tab Học sinh (…/hoc-vien) và tab Cài đặt (…?tab=cai-dat). Mục đầu là mặc định. */
 export const MUC_HOC_SINH = ["danh-ba", "xin-vao", "ma-moi", "them"] as const;
-export const MUC_CAI_DAT = ["thong-tin", "hoc-phi", "dong-giang", "cong-dong", "ban-ghi"] as const;
+export const MUC_CAI_DAT = ["thong-tin", "hoc-phi", "dong-giang", "cong-dong", "ban-ghi", "hoc-online"] as const; // DG-HOC-ONLINE thêm "hoc-online" (cuối, không đổi thứ tự cũ)
 export type MucHocSinh = (typeof MUC_HOC_SINH)[number];
 export type MucCaiDat = (typeof MUC_CAI_DAT)[number];
 export const DEFAULT_MUC_HOC_SINH: MucHocSinh = MUC_HOC_SINH[0];

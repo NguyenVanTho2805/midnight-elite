@@ -68,6 +68,13 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
 ];
+/** DG-HOC-ONLINE: tác vụ gọi TỪ NGOÀI (cron-job.org, mỗi 15 phút) — không nằm trong vercel.json nên tách khỏi CRON_JOBS (t-adm-003-lib so CRON_JOBS ↔ vercel.json hai chiều).
+ *  Trang Triển khai vẫn theo dõi: quá 1 giờ chưa thấy gọi ⇒ "Chậm so với lịch". Hướng dẫn đăng ký: docs/kin/van-hanh/cron-nhac-buoi-hoc.md. */
+export const EXTERNAL_CRON_JOBS: readonly CronJobDef[] = [
+  { key: "nhac-buoi-hoc", label: "Email nhắc học sinh trước giờ học", path: "/api/cron/nhac-buoi-hoc", schedule: "Mỗi 15 phút (cron-job.org)", maxGapHours: 1 },
+];
+/** Mọi tác vụ được trang Triển khai theo dõi. */
+export const MONITORED_CRON_JOBS: readonly CronJobDef[] = [...CRON_JOBS, ...EXTERNAL_CRON_JOBS];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 
 export type CronTone = "xong" | "cho" | "mo";
@@ -131,7 +138,7 @@ const ACTION_LABEL: Record<string, string> = {
   "exam_history.export": "Xuất lịch sử làm đề (CSV)", "quiz_deadline.set": "Đặt hạn nộp đề", "quiz_deadline.clear": "Bỏ hạn nộp đề",
   "attendance_session.close": "Chốt buổi học", "attendance_session.reopen": "Mở lại buổi đã chốt", "attendance_session.create_extra": "Thêm buổi lẻ / dạy bù", "attendance_session.notes": "Ghi chú buổi học",
   "session_score.update": "Sửa điểm theo buổi", "session_package.create": "Tạo gói buổi học", "session_package.cancel": "Huỷ gói buổi học",
-  "course.calendar": "Sửa lịch lớp", "course.add_students": "Thêm học viên vào lớp (gia sư)", "class.zalo_group": "Đặt nhóm Zalo của lớp", "class_schedule.import": "Nhập lịch lớp từ tệp",
+  "course.calendar": "Sửa lịch lớp", "course.owner_assign": "Giao lớp cho gia sư khác làm chủ lớp", "course.online_settings": "Sửa link học online và nhắc trước giờ học", "course.add_students": "Thêm học viên vào lớp (gia sư)", "class.zalo_group": "Đặt nhóm Zalo của lớp", "class_schedule.import": "Nhập lịch lớp từ tệp",
   "course_fee.set_rate": "Đặt mức phí lớp", "course_fee.set_student_rate": "Đặt mức phí riêng cho học viên", "course_fee.extra_add": "Thêm khoản thu phát sinh", "course_fee.extra_remove": "Gỡ khoản thu phát sinh",
   "monthly_course_fee.upsert": "Ghi học phí tháng của lớp", "student_discount.set": "Đặt mức giảm cho học viên",
   "invoice.send": "Gửi phiếu học phí", "invoice.set_amount": "Sửa số tiền phiếu", "invoice.set_due_date": "Đổi hạn phiếu", "invoice.attach_charges": "Gắn khoản thu vào phiếu",
