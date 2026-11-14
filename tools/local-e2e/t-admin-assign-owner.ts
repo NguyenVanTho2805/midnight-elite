@@ -24,6 +24,9 @@ async function main() {
   check("5b. nextInstructor: trống / trùng tên chủ cũ ⇒ tên chủ mới; tên khác do quản trị đặt ⇒ giữ (null); trùng tên mới ⇒ null",
     nextInstructor("", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("  Cô A ", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("Ban Toán KiN", "Cô A", "Thầy B") === null
     && nextInstructor("Cô A", null, "Thầy B") === null && nextInstructor("Thầy B", "Cô A", "Thầy B") === null);
+  check("5d. Q5: tên giữ chỗ 'GV' / 'kin' / 'Giáo viên.' ⇒ đổi theo chủ mới; 'Ban Toán KiN', 'GV Toán' ⇒ giữ",
+    nextInstructor("GV", "Cô A", "Thầy B") === "Thầy B" && nextInstructor(" kin ", null, "Thầy B") === "Thầy B" && nextInstructor("Giáo viên.", null, "Thầy B") === "Thầy B"
+    && nextInstructor("Ban Toán KiN", null, "Thầy B") === null && nextInstructor("GV Toán", null, "Thầy B") === null);
   check("5c. examsToMoveWhere: chỉ đề của chủ cũ, gắn lớp hoặc là mã con; không có đề gốc ⇒ chỉ lọc theo lớp",
     JSON.stringify(examsToMoveWhere("c1", "u1", ["e1"])) === JSON.stringify({ ownerId: "u1", OR: [{ courseId: "c1" }, { variantOfId: { in: ["e1"] } }] })
     && JSON.stringify(examsToMoveWhere("c1", null, [])) === JSON.stringify({ ownerId: null, OR: [{ courseId: "c1" }] }));
@@ -78,6 +81,7 @@ async function main() {
 
   section("TIỀN: còn phiếu mở / khoản chưa vào phiếu ⇒ 409, không đổi gì");
   const inv = await mkCourse(t1.id, { name: "Lớp Còn Phiếu" });
+  await prisma.course.update({ where: { id: inv.id }, data: { instructor: "Ban Toán KiN" } }); // tên thật do quản trị đặt (Q5: "GV" giờ là tên giữ chỗ, sẽ đổi)
   const s2 = await mkUser({ name: "Học sinh Phiếu" });
   await prisma.enrollment.create({ data: { userId: s2.id, courseId: inv.id, status: "active" } });
   await prisma.tuitionInvoice.create({ data: { code: "KINTEST1", tutorId: t1.id, studentId: s2.id, yearMonth: "2026-11", amountDue: 500000, status: "sent" } });
@@ -116,7 +120,7 @@ async function main() {
 
   section("tên công khai, thông báo gia sư cũ, đề của lớp");
   check("34. Course.instructor = tên chủ cũ ⇒ đổi thành tên gia sư mới", (await prisma.course.findUnique({ where: { id: free.id } }))?.instructor === t2.name && ok.json?.instructorUpdated === true);
-  check("35. lớp có tên công khai do quản trị đặt ('GV') ⇒ giữ nguyên", (await prisma.course.findUnique({ where: { id: inv.id } }))?.instructor === "GV" && rPaid.json?.instructorUpdated === false);
+  check("35. lớp có tên công khai do quản trị đặt ('Ban Toán KiN') ⇒ giữ nguyên", (await prisma.course.findUnique({ where: { id: inv.id } }))?.instructor === "Ban Toán KiN" && rPaid.json?.instructorUpdated === false);
   const oldNoti = await prisma.notification.findMany({ where: { userId: t1.id, type: "course_owner_removed" } });
   check("36. gia sư cũ nhận thông báo 'đã được giao cho gia sư khác' (2 lớp đã giao đi), không tên người mới, không số tiền",
     oldNoti.length === 2 && oldNoti.some(n => n.message.includes("Lớp Giao Được")) && oldNoti.every(n => n.message.includes("gia sư khác") && !n.message.includes(t2.name) && !n.message.includes(t3.name) && !looksLikeMoney(`${n.title} ${n.message}`)), oldNoti);

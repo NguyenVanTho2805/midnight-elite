@@ -67,6 +67,11 @@ export interface UserPreferences {
   profile?: TutorProfilePrefs;
   /** LI-03: bộ lọc hiển thị Lịch dạy — ẩn buổi đã huỷ, và lớp đang lọc (vắng = tất cả lớp, hiện cả buổi huỷ). */
   calendar?: CalendarPrefs;
+  /**
+   * Q3 chủ chốt (14/11/2026): lúc gia sư tích ô cam kết bản quyền lần đầu (ISO, đặt ở MÁY CHỦ). Có mặt ⇒ ô tải tệp ở mọi máy
+   * đã tích sẵn (gia sư vẫn bỏ tích được ⇒ xoá khoá). Bản vá chỉ nhận `copyrightPledge: true | null`, không nhận thời điểm từ client.
+   */
+  copyrightPledgedAt?: string;
 }
 
 /** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
@@ -138,6 +143,7 @@ export function readPreferences(raw: unknown): UserPreferences {
   const profile = readProfilePrefs(raw.profile);
   if (profile) out.profile = profile;
   if (isObj(raw.calendar)) { const c = readCalendarPrefs(raw.calendar); if (c.hideCancelled || c.courseId) out.calendar = c; }
+  if (typeof raw.copyrightPledgedAt === "string" && !Number.isNaN(Date.parse(raw.copyrightPledgedAt))) out.copyrightPledgedAt = new Date(raw.copyrightPledgedAt).toISOString();
   return out;
 }
 
@@ -148,7 +154,7 @@ export type PatchResult = { ok: true; value: UserPreferences } | { ok: false; er
  * `null` xoá khoá về mặc định. Khoá lạ hoặc sai kiểu → từ chối cả bản vá (không ghi dở).
  * "lich"/"hoc-phi" trong `modules` được bỏ qua (luôn bật), module lạ thì từ chối.
  */
-export function applyPreferencesPatch(current: UserPreferences, patch: unknown): PatchResult {
+export function applyPreferencesPatch(current: UserPreferences, patch: unknown, now?: Date): PatchResult {
   if (!isObj(patch)) return { ok: false, error: "Dữ liệu không hợp lệ" };
   const next: UserPreferences = { ...current };
   for (const [k, v] of Object.entries(patch)) {
@@ -217,6 +223,12 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
         if (c.value.hideCancelled || c.value.courseId) next.calendar = c.value; else delete next.calendar;
         break;
       }
+      case "copyrightPledge":
+        // Q3: true = đã cam kết (giữ thời điểm lần đầu nếu đã có); null / false = bỏ cam kết.
+        if (v === null || v === false) { delete next.copyrightPledgedAt; break; }
+        if (v !== true) return { ok: false, error: "copyrightPledge chỉ nhận true hoặc null" };
+        if (!next.copyrightPledgedAt) next.copyrightPledgedAt = (now ?? new Date()).toISOString();
+        break;
       default:
         return { ok: false, error: `Không có tuỳ chọn "${k.slice(0, 40)}"` };
     }

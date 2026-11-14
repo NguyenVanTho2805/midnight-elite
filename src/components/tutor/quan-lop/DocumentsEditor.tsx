@@ -12,6 +12,7 @@ import { MAX_DOCUMENTS_PER_LESSON, formatMegabytes } from "@/lib/mediaStorage";
 import type { GtConfig } from "@/lib/giaoTrinh";
 import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLenTep";
 import { OThaTep, type OThaTrangThai } from "@/components/tutor/upload/OThaTep";
+import { useCamKetBanQuyen } from "@/components/tutor/upload/useCamKetBanQuyen";
 
 export interface DocItem { name: string; url: string; type?: string }
 
@@ -41,7 +42,6 @@ function DocBadge({ type }: { type: string }) {
   );
 }
 
-const PLEDGE_KEY = "kin.gt.cam-ket"; // cùng khoá với ô tải của màn Giáo trình: tích một lần mỗi phiên
 const KIN_FILE_RE = /^\/api\/media\/[A-Za-z0-9_-]+\/file$/;
 
 type Cfg = { state: "loading" } | { state: "error" } | { state: "ok"; document: GtConfig["document"] };
@@ -63,12 +63,9 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   const latest = useRef(value);
   useEffect(() => { latest.current = value; }, [value]);
   const [problem, setProblem] = useState<string | null>(null);
-  const [pledge, setPledge] = useState(false);
+  const [pledge, setPledgeSaved] = useCamKetBanQuyen();
   const [cfg, setCfg] = useState<Cfg>({ state: "loading" });
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } }, []);
-  const setPledgeSaved = (v: boolean) => { setPledge(v); try { sessionStorage.setItem(PLEDGE_KEY, v ? "1" : "0"); } catch { /* bỏ qua */ } };
 
   // Một lần cho cả ngăn: kho tệp bật hay tắt (chỉ đọc khối document, không đọc video).
   const loadCfg = useCallback(() => {

@@ -17,6 +17,7 @@ import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent }
 import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
 import type { MediaSlot } from "@/lib/mediaLink";
 import { KinButton } from "@/components/kin/Button";
+import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinConfirm } from "@/components/kin/Confirm";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinFold, KinChevron } from "@/components/kin/Fold";
@@ -125,6 +126,8 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
   const prevSections = useRef<SectionDB[]>([]);
   // Mã tệp vừa tải lên trong phiên panel đang mở (để xoá nếu đóng không Lưu / bỏ khỏi danh sách), và có tệp đang lên không.
   const sessionUploads = useRef<string[]>([]);
+  // Q2 chủ chốt (14/11): "Lưu và thêm bài tập" — bài mới lưu xong panel KHÔNG đóng mà thành "Sửa bài học" để soạn bài tập ngay trên cùng màn.
+  const stayAfterAdd = useRef(false);
   const [uploadBusy, setUploadBusy] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gv = useGiaoVienLop(courseSlug);
@@ -446,13 +449,19 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, { ...common, ...(ls.status === "published" ? {} : { status: "draft" as const }) });
           addLessonLocal(panel.sectionId, panel.chapterId, lesson);
           discardUploads(ls.documentsRaw);
-          flash(`Đã thêm bài "${lesson.title}"`);
+          flash(stayAfterAdd.current ? `Đã lưu bài "${lesson.title}". Thêm bài tập ngay bên dưới.` : `Đã thêm bài "${lesson.title}"`);
           if (ls.status !== "published" && lessonStatusOf(lesson.status) !== "draft") {
             // Máy chủ cũ bỏ qua "draft": báo thật, panel thành "Sửa bài học" để cô thấy bài đang Đã đăng.
             const got = lessonStatusOf(lesson.status);
             setStatusNote("Đã lưu bài, chưa đặt được trạng thái Nháp — bài đang Đã đăng. Cô đổi sang Ẩn nếu chưa muốn học sinh thấy.");
             setOrigStatus(got); setLs(f => ({ ...f, status: got }));
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
+            return;
+          }
+          if (stayAfterAdd.current) {
+            setOrigStatus(lessonStatusOf(lesson.status));
+            setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
+            requestAnimationFrame(() => document.querySelector("[data-bai-tap-cua-bai]")?.scrollIntoView({ block: "start", behavior: "smooth" }));
             return;
           }
           setPanel({ type: "none" });
@@ -484,6 +493,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
     } catch (e) {
       setPanelErr(e instanceof Error ? e.message : "Chưa lưu được. Cô thử lại sau ít giây.");
     } finally {
+      stayAfterAdd.current = false;
       setSaving(false);
     }
   }
@@ -757,9 +767,19 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
             {panel.type === "edit-lesson" && ls.azotaUrls.some(u => u.trim()) && (
               <AzotaStatusTable lessonId={panel.lessonId} />
             )}
-            {panel.type === "edit-lesson" && (
-              <AssignmentEditor lessonId={panel.lessonId} />
-            )}
+            <div data-bai-tap-cua-bai className="scroll-mt-4">
+              {panel.type === "edit-lesson" ? (
+                <AssignmentEditor lessonId={panel.lessonId} />
+              ) : (
+                <div className="rounded-[var(--kin-bo-md)] border border-dashed border-[var(--kin-vien-thuong)] px-3 py-3">
+                  <p className="text-sm font-semibold text-[var(--kin-chu-chinh)]">Bài tập của bài</p>
+                  <p className="mt-1 text-xs text-[var(--kin-chu-mo)]">Bài tập gắn với bài, nên cần lưu bài trước. Bấm nút dưới: bài được lưu và màn này mở sẵn phần thêm bài tập.</p>
+                  <button type="button" data-luu-them-bai-tap disabled={saving || uploadBusy || !ls.title.trim()}
+                    onClick={() => { stayAfterAdd.current = true; void savePanel(); }}
+                    className={`mt-3 ${kinButtonClass("secondary")}`}>{saving ? "Đang lưu…" : "Lưu và thêm bài tập"}</button>
+                </div>
+              )}
+            </div>
             <div>
               <label htmlFor="ls-ghi-chu" className="block text-sm font-semibold text-[var(--kin-chu-chinh)] mb-2 pb-1 border-b border-[var(--kin-vien-nhat)]">
                 Ghi chú cho học viên

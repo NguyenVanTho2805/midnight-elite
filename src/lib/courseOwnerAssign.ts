@@ -23,11 +23,15 @@ export function isAssignableTutor(u: { role: string; adminRole: string | null; t
 
 export const ASSIGNABLE_TUTOR_WHERE = { role: "admin", adminRole: "teacher", tutorVerified: true, banned: false, deletedAt: null, NOT: { email: { startsWith: "deleted+" } } } as const;
 
-/** Thuần. Tên hiển thị mới cho Course.instructor, hoặc null = giữ nguyên. Đổi khi đang trống hoặc trùng tên chủ cũ (so sau khi cắt khoảng trắng). */
+/** Q5 chủ chốt (14/11): tên giữ chỗ (lớp trung tâm / lớp tạo bằng wizard để "KiN", "GV"…) — coi như chưa có tên, đổi theo chủ mới. So không phân biệt hoa thường, bỏ dấu chấm cuối. */
+export const PLACEHOLDER_INSTRUCTORS: readonly string[] = ["gv", "kin", "giáo viên", "gia sư", "giảng viên", "thầy cô", "đang cập nhật", "chưa có"];
+const isPlaceholderInstructor = (s: string) => PLACEHOLDER_INSTRUCTORS.includes(s.trim().replace(/\.+$/, "").toLowerCase());
+
+/** Thuần. Tên hiển thị mới cho Course.instructor, hoặc null = giữ nguyên. Đổi khi đang trống, là tên giữ chỗ (Q5), hoặc trùng tên chủ cũ (so sau khi cắt khoảng trắng). Tên thật khác do quản trị đặt (vd "Ban Toán KiN") ⇒ giữ. */
 export function nextInstructor(current: string | null | undefined, oldOwnerName: string | null, newOwnerName: string): string | null {
   const cur = (current ?? "").trim(), next = newOwnerName.trim();
   if (!next || cur === next) return null;
-  if (cur === "" || (oldOwnerName !== null && cur === oldOwnerName.trim())) return next;
+  if (cur === "" || isPlaceholderInstructor(cur) || (oldOwnerName !== null && cur === oldOwnerName.trim())) return next;
   return null;
 }
 

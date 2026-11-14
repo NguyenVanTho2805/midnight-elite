@@ -20,12 +20,12 @@ import { COPYRIGHT_PLEDGE_LABEL, COPYRIGHT_NOTICE } from "@/lib/classRecordings"
 import type { AddResult, GtTarget } from "./useGiaoTrinh";
 import { ChipTrangThai } from "./ChipTrangThai";
 import { KinSelect } from "@/components/kin/KinSelect";
+import { useCamKetBanQuyen } from "@/components/tutor/upload/useCamKetBanQuyen";
 
 /** Mục (kiểu) mà link sẽ thành; khớp nhãn kiểu trên hàng. */
 const SLOT_NAME: Record<MediaSlot, string> = { video: "Video", live: "Buổi live", azota: "Bài tập", document: "Tài liệu" };
 /** Dải nguồn NHẬN ĐƯỢC (bỏ Vimeo: video chỉ nhận link YouTube; Zoom ở đây là link buổi live). */
 const SOURCES = ["YouTube", "Google Drive", "Zoom (phòng học)", "Meet", "Azota", "Google Form", "PDF", "Word", "Excel", "PowerPoint", "Ảnh"];
-const PLEDGE_KEY = "kin.gt.cam-ket";
 
 export interface AddedInfo { lessonId: string; key: string; createdLesson: boolean }
 
@@ -50,7 +50,7 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
   const [text, setText] = useState("");
   const [attachTo, setAttachTo] = useState("");
   const [publishNow, setPublishNow] = useState(false);
-  const [pledge, setPledge] = useState(false);
+  const [pledge, setPledgeSaved] = useCamKetBanQuyen();
   const [drag, setDrag] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
@@ -60,9 +60,7 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
   const fileRef = useRef<HTMLInputElement>(null);
   const live = useRef(true);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { live.current = true; try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } return () => { live.current = false; }; }, []);
-  const setPledgeSaved = (v: boolean) => { setPledge(v); try { sessionStorage.setItem(PLEDGE_KEY, v ? "1" : "0"); } catch { /* bỏ qua */ } };
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
 
   // Mục được chọn để gắn thêm đã biến mất (xoá, hoàn tác) ⇒ coi như "Mục mới".
   const attach = attachTo && lessons.some(l => l.id === attachTo) ? attachTo : "";

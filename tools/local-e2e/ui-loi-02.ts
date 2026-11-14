@@ -362,6 +362,31 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await shot(pg, "loi-02-nhan-ban-nhap-1600");
   pg.off("request", onReq);
 
+  section("7c. Q2 (14/11): 'Lưu và thêm bài tập' — một màn: bài lưu xong, panel thành Sửa bài học, phần bài tập mở sẵn");
+  await pg.locator("[data-them-bai]").first().click();
+  const qn2 = pg.locator('[data-sua-nhanh="them"]');
+  await qn2.waitFor({ timeout: 10000 });
+  await qn2.getByLabel("Tên bài").fill("Bài có bài tập ngay");
+  await qn2.getByRole("button", { name: "Chi tiết…" }).click();
+  await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
+  await pg.waitForTimeout(450);
+  const lbt = pg.locator("[data-luu-them-bai-tap]");
+  const lbtBox = await lbt.boundingBox();
+  check("panel Thêm bài: có ô 'Bài tập của bài' + nút 'Lưu và thêm bài tập' ≥44px, chưa có trình soạn bài tập", (await lbt.count()) === 1 && (lbtBox?.height ?? 0) >= 43.5 && (await pg.locator("[data-bai-tap-tu-nop]").count()) === 0, lbtBox);
+  const nPost2 = posts.length;
+  pg.on("request", onReq);
+  await lbt.click();
+  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ timeout: 30000 });
+  await pg.locator("[data-bai-tap-cua-bai] [data-bai-tap-tu-nop]").waitFor({ timeout: 30000 });
+  pg.off("request", onReq);
+  const lq2 = await prisma.lesson.findFirst({ where: { title: "Bài có bài tập ngay" } });
+  check("…bấm ⇒ đúng 1 POST, bài có trong DB, panel ở lại thành 'Sửa bài học' với trình soạn bài tập của bài vừa lưu", !!lq2 && posts.length === nPost2 + 1
+    && (await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).count()) === 0, { lesson: lq2?.id, posts: posts.length - nPost2 });
+  await shot(pg, "loi-02-luu-them-bai-tap-1600");
+  await pg.getByRole("button", { name: "Đóng" }).first().click();
+  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 });
+  await lessonRow(pg, "Bài có bài tập ngay").waitFor({ timeout: 30000 });
+
   // ── 8. Lớp rỗng → Tạo chương đầu tiên → thêm bài ngay trong cây ─────────────────────────────────────
   section("8. Lớp rỗng: 'Lớp chưa có bài học' → 'Tạo chương đầu tiên' → + bài nhanh");
   await pg.goto(`${BASE}${base(E.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });

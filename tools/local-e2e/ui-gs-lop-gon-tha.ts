@@ -219,6 +219,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const pm = await cm.newPage(); watch(pm);
     await pm.route("**/api/media/upload/*", async r => { await sleep(2500); await r.continue(); });
     await openDrawer(pm);
+    // Q3 (14/11): ngữ cảnh mới = máy khác, không sessionStorage ⇒ ô cam kết vẫn tích sẵn (nhớ theo tài khoản từ mục 1).
+    await pm.waitForFunction(() => (document.querySelector("[data-tai-lieu-cam-ket]") as HTMLInputElement | null)?.checked === true, undefined, { timeout: 10000 }).catch(() => {});
+    check(`${W}px: Q3 — máy mới, ô cam kết bản quyền đã tích sẵn theo tài khoản`, await pm.locator("[data-tai-lieu-cam-ket]").isChecked());
     await pm.locator("[data-tai-lieu-cam-ket]").check();
     await drop(pm, [f("mot-cai-ten-tep-rat-dai-de-thu-xem-co-tran-ngang-hay-khong-tren-man-hinh-nho.pdf", "application/pdf", PDF), f("so-do.png", "image/png", PNG), f("bai-giang.mp4", "video/mp4", [0, 0, 0, 24])]);
     await pm.locator("[data-tai-lieu-tep]").first().waitFor({ timeout: 15000 });
