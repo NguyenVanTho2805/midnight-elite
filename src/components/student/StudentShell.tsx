@@ -99,7 +99,9 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" },
-    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
+    // DG (14/11/2026, vòng dạy thật): mọi mục của bảng "Khác" đang ẩn theo cờ ⇒ bảng chỉ còn "Trang chủ KiN" + "Đăng xuất", cả hai đã có sẵn (logo / mục Trang chủ,
+    // menu tên ở dải trên). Bỏ hẳn nút "Khác" thay vì để một nút mở bảng gần rỗng; bật lại bất kỳ cờ nào trong nhóm thì nút trở lại như cũ.
+    ...(MORE_GROUPS.length ? [{ key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true } satisfies ModuleItem] : []),
   ];
 
   // Thanh RỘNG (Figma "Điều hướng"): nhóm đầu = bốn module, các nhóm còn lại là chính danh sách của bảng "Khác".
@@ -143,7 +145,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
         {children}
       </div>
 
-      {moreOpen && <MorePanel id="khac-bang" groups={MORE_GROUPS} homeLink={{ label: "Trang chủ KiN", href: "/" }} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+      {moreOpen && MORE_GROUPS.length > 0 && <MorePanel id="khac-bang" groups={MORE_GROUPS} homeLink={{ label: "Trang chủ KiN", href: "/" }} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }
