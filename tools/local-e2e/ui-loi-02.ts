@@ -12,11 +12,13 @@
 import { BASE, mkTutor, mkUser, mkCourse, cookieFor, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
-const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
+// DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
+const TABS = ["Bài học", "Học sinh", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"];
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };
@@ -95,7 +97,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     await pg.waitForURL(u => u.pathname === base(A.id) && u.search === "", { timeout: 120000 });
     await lessonRow(pg, "Bài có Drive cũ").waitFor({ timeout: 120000 });
     const strip = pg.locator(`${STRIP}:visible`);
-    check(`${tag}: dải tab đúng 4 mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
+    check(`${tag}: dải tab đúng ${TABS.length} mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
     check(`${tag}: "Bài học" sáng (aria-current=page)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: không còn tab Giáo trình / Lịch học / Bài tập`, (await strip.getByRole("link", { name: /^(Giáo trình|Lịch học|Bài tập)$/ }).count()) === 0);
     check(`${tag}: thấy cây Chương · Bài (dòng tóm tắt + chương + bài)`, (await pg.locator("[data-bai-hoc-tong]").innerText()).includes("1 phần · 1 chương · 3 bài") && (await pg.getByText("Chương 1: Hàm số").count()) > 0);
