@@ -45,16 +45,16 @@ export default function GiaoChuLop({ courseId, courseName, onAssigned }: { cours
     if (!t) return;
     const ok = await ask({
       title: `Giao lớp cho ${t.name}?`,
-      message: `${t.name} sẽ thành chủ lớp "${courseName}": quản lý học sinh, lịch, điểm danh của lớp. ${state.owner ? `${state.owner.name} sẽ không còn thấy lớp này trong Lớp của tôi.` : ""}`,
+      message: `${t.name} sẽ thành chủ lớp "${courseName}": quản lý học sinh, lịch, bài học và đề của lớp. ${state.owner ? `${state.owner.name} sẽ không còn thấy lớp này trong Lớp của tôi.` : ""}`,
       confirmLabel: "Giao lớp", tone: "thuong",
     });
     if (!ok) return;
     setBusy(true); setMsg(null);
     try {
       const r = await fetch(url, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ tutorId: pick }) });
-      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      const d = (await r.json().catch(() => ({}))) as { error?: string; movedExams?: number };
       if (r.ok) {
-        setMsg({ ok: true, text: `Đã giao lớp cho ${t.name}.` });
+        setMsg({ ok: true, text: `Đã giao lớp cho ${t.name}.${d.movedExams ? ` ${d.movedExams} đề của lớp đã chuyển theo.` : ""}` });
         setPick("");
         await load();
         onAssigned?.();

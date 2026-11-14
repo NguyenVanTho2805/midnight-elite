@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const r = await assignCourseOwner(id, tutorId);
   if (!r.ok) return NextResponse.json({ error: r.error, code: r.code, ...(r.count !== undefined ? { count: r.count } : {}) }, { status: r.status, headers: NO_STORE });
 
-  await logAction(auth.userId, "course.owner_assign", "Course", id, { fromOwnerId: r.fromOwnerId, toOwnerId: tutorId, removedCoTeacher: r.removedCoTeacher, instructorUpdated: r.instructorUpdated });
+  await logAction(auth.userId, "course.owner_assign", "Course", id, { fromOwnerId: r.fromOwnerId, toOwnerId: tutorId, removedCoTeacher: r.removedCoTeacher, instructorUpdated: r.instructorUpdated, movedExams: r.movedExams });
   const c = await prisma.course.findUnique({ where: { id }, select: { name: true } });
   await notify(tutorId, {
     type: "course_owner_assigned",
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     message: `Bạn được giao lớp "${c?.name ?? id}". Lớp đã có trong Lớp của tôi.`,
     link: classBase(id),
   });
-  // Gia sư cũ: báo lớp đã chuyển đi — không nêu tên người nhận, không số tiền. Đề (Exam.ownerId) của lớp giữ nguyên chủ cũ.
+  // Gia sư cũ: báo lớp đã chuyển đi — không nêu tên người nhận, không số tiền. Đề của lớp (của chủ cũ) đã sang chủ mới trong cùng giao dịch.
   if (r.fromOwnerId) {
     await notify(r.fromOwnerId, {
       type: "course_owner_removed",
@@ -66,5 +66,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       link: "/lop-cua-toi/lop",
     });
   }
-  return NextResponse.json({ ok: true, ownerId: tutorId, removedCoTeacher: r.removedCoTeacher, instructorUpdated: r.instructorUpdated }, { headers: NO_STORE });
+  return NextResponse.json({ ok: true, ownerId: tutorId, removedCoTeacher: r.removedCoTeacher, instructorUpdated: r.instructorUpdated, movedExams: r.movedExams }, { headers: NO_STORE });
 }

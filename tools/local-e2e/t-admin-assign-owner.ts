@@ -2,7 +2,7 @@
 // Phần đầu là ca THUẦN (pickOwnerBlocker, isAssignableTutor) — ca phá cố ý: đổi `> 0` thành `> 1` trong pickOwnerBlocker ⇒ ca 2/3 đỏ.
 // Chạy: TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/t-admin-assign-owner.ts
 import { prisma } from "@/lib/prisma";
-import { isAssignableTutor, nextInstructor, pickOwnerBlocker } from "@/lib/courseOwnerAssign";
+import { examsToMoveWhere, isAssignableTutor, nextInstructor, pickOwnerBlocker } from "@/lib/courseOwnerAssign";
 import { looksLikeMoney } from "@/lib/lessonReminder";
 import { api, check, done, mkCourse, mkSuper, mkTutor, mkUser, section, wipe, type TUser } from "./h";
 
@@ -24,6 +24,9 @@ async function main() {
   check("5b. nextInstructor: trống / trùng tên chủ cũ ⇒ tên chủ mới; tên khác do quản trị đặt ⇒ giữ (null); trùng tên mới ⇒ null",
     nextInstructor("", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("  Cô A ", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("Ban Toán KiN", "Cô A", "Thầy B") === null
     && nextInstructor("Cô A", null, "Thầy B") === null && nextInstructor("Thầy B", "Cô A", "Thầy B") === null);
+  check("5c. examsToMoveWhere: chỉ đề của chủ cũ, gắn lớp hoặc là mã con; không có đề gốc ⇒ chỉ lọc theo lớp",
+    JSON.stringify(examsToMoveWhere("c1", "u1", ["e1"])) === JSON.stringify({ ownerId: "u1", OR: [{ courseId: "c1" }, { variantOfId: { in: ["e1"] } }] })
+    && JSON.stringify(examsToMoveWhere("c1", null, [])) === JSON.stringify({ ownerId: null, OR: [{ courseId: "c1" }] }));
 
   await wipe();
   const sup = await mkSuper("Quản trị Một");
@@ -40,7 +43,11 @@ async function main() {
   await prisma.enrollment.create({ data: { userId: student.id, courseId: free.id, status: "active" } });
   await prisma.courseTeacher.create({ data: { courseId: free.id, userId: t2.id, role: "co_teacher", status: "active", invitedBy: t1.id } });
   await prisma.course.update({ where: { id: free.id }, data: { instructor: t1.name } }); // tên công khai = tên chủ cũ ⇒ đổi theo chủ mới
-  const exam = await prisma.exam.create({ data: { id: `exam-giao-${Date.now()}`, code: `DE-GIAO-${Date.now() % 100000}`, title: "Đề kiểm tra lớp giao", category: "toan", date: "2026-12-01", time: "19:00", duration: "30", questions: 0, status: "available", createdAt: new Date().toISOString(), totalPoints: 10, ownerId: t1.id, courseId: free.id } as never });
+  const mkExam = (suffix: string, extra: Record<string, unknown>) => prisma.exam.create({ data: { id: `exam-giao-${suffix}-${Date.now()}`, code: `DE-GIAO-${suffix}-${Date.now() % 100000}`, title: `Đề ${suffix}`, category: "toan", date: "2026-12-01", time: "19:00", duration: "30", questions: 0, status: "available", createdAt: new Date().toISOString(), totalPoints: 10, ...extra } as never });
+  const exam = await mkExam("lop", { ownerId: t1.id, courseId: free.id });
+  const variant = await mkExam("ma2", { ownerId: t1.id, courseId: null, variantOfId: exam.id, variantNo: 2 }); // mã đề con không gắn courseId vẫn đi theo đề gốc
+  const coExam = await mkExam("dong-giang", { ownerId: t3.id, courseId: free.id }); // đề của người khác gắn vào lớp ⇒ không đổi chủ
+  const otherExam = await mkExam("lop-khac", { ownerId: t1.id, courseId: null }); // đề riêng của chủ cũ, không gắn lớp ⇒ không đổi chủ
 
   section("quyền");
   check("6. khách ⇒ 401", (await api("POST", path(free.id), { body: { tutorId: t3.id } })).status === 401);
@@ -113,11 +120,14 @@ async function main() {
   const oldNoti = await prisma.notification.findMany({ where: { userId: t1.id, type: "course_owner_removed" } });
   check("36. gia sư cũ nhận thông báo 'đã được giao cho gia sư khác' (2 lớp đã giao đi), không tên người mới, không số tiền",
     oldNoti.length === 2 && oldNoti.some(n => n.message.includes("Lớp Giao Được")) && oldNoti.every(n => n.message.includes("gia sư khác") && !n.message.includes(t2.name) && !n.message.includes(t3.name) && !looksLikeMoney(`${n.title} ${n.message}`)), oldNoti);
-  check("37. đề gắn lớp GIỮ chủ đề cũ, vẫn gắn lớp (không tự đổi Exam.ownerId)", JSON.stringify(await prisma.exam.findUnique({ where: { id: exam.id }, select: { ownerId: true, courseId: true } })) === JSON.stringify({ ownerId: t1.id, courseId: free.id }));
-  // Ghi nhận (không tính đạt/đỏ): chủ lớp mới có thấy đề của lớp trong danh sách quản lý đề không — API đề lọc theo Exam.ownerId.
-  const newSees = (await api("GET", "/api/exams", { as: t2 })).text.includes(exam.id);
-  const newEdit = (await api("PUT", `/api/exams/${exam.id}`, { as: t2, body: { title: "Thử sửa" } })).status;
-  console.log(`  · GHI NHẬN: chủ lớp mới thấy đề của lớp trong /api/exams = ${newSees}; PUT sửa đề = ${newEdit}`);
+  const own = async (id: string) => (await prisma.exam.findUnique({ where: { id }, select: { ownerId: true } }))?.ownerId;
+  check("37. đề gắn lớp CHUYỂN sang chủ mới, vẫn gắn lớp", JSON.stringify(await prisma.exam.findUnique({ where: { id: exam.id }, select: { ownerId: true, courseId: true } })) === JSON.stringify({ ownerId: t2.id, courseId: free.id }));
+  check("38. mã đề con của đề lớp cũng chuyển theo", (await own(variant.id)) === t2.id);
+  check("39. đề của người khác gắn vào lớp GIỮ chủ cũ", (await own(coExam.id)) === t3.id);
+  check("40. đề riêng của chủ cũ không gắn lớp GIỮ chủ cũ", (await own(otherExam.id)) === t1.id);
+  check("41. phản hồi + nhật ký ghi movedExams = 2", ok.json?.movedExams === 2 && JSON.stringify(logs[0]?.metadata ?? {}).includes('"movedExams":2'), ok.json);
+  check("42. chủ lớp mới thấy và sửa được đề của lớp", (await api("GET", "/api/exams", { as: t2 })).text.includes(exam.id) && (await api("PUT", `/api/exams/${exam.id}`, { as: t2, body: { title: "Đề lớp (chủ mới sửa)" } })).status === 200);
+  check("43. chủ cũ không còn sửa được đề của lớp", (await api("PUT", `/api/exams/${exam.id}`, { as: t1, body: { title: "Chủ cũ thử sửa" } })).status === 403);
 
   section("lớp chưa có chủ (của trung tâm) ⇒ giao được, không cần kiểm tiền");
   const center = await mkCourse(null, { name: "Lớp Trung Tâm" });

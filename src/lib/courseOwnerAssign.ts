@@ -42,8 +42,18 @@ export async function countOwnerMoney(courseId: string, oldOwnerId: string, db: 
   return { openInvoices, uninvoicedFees };
 }
 
+/** Thuần (Q1 chủ chốt 14/11: "chuyển đề theo lớp"). Điều kiện chọn đề sẽ chuyển chủ cùng lớp:
+ *  đề gắn lớp này (courseId) HOẶC mã đề con của các đề đó, và đang thuộc chủ lớp cũ (null ⇒ đề không chủ).
+ *  Đề của đồng giảng / người khác gắn vào lớp KHÔNG đổi chủ — đề vẫn của tác giả. */
+export function examsToMoveWhere(courseId: string, fromOwnerId: string | null, rootIds: string[]) {
+  return {
+    ownerId: fromOwnerId,
+    OR: [{ courseId }, ...(rootIds.length ? [{ variantOfId: { in: rootIds } }] : [])],
+  };
+}
+
 export type AssignResult =
-  | { ok: true; fromOwnerId: string | null; removedCoTeacher: boolean; instructorUpdated: boolean }
+  | { ok: true; fromOwnerId: string | null; removedCoTeacher: boolean; instructorUpdated: boolean; movedExams: number }
   | { ok: false; status: 400 | 404 | 409; code: string; error: string; count?: number };
 
 /** Giao lớp. Đếm tiền TRONG giao dịch cùng lúc đổi chủ (đổi chủ có điều kiện ownerId cũ ⇒ hai quản trị bấm cùng lúc: người sau nhận 409). */
@@ -72,7 +82,10 @@ export async function assignCourseOwner(courseId: string, tutorId: string): Prom
       if (upd.count === 0) throw new Stop({ ok: false, status: 409, code: "changed", error: "Chủ lớp vừa được đổi bởi người khác. Tải lại trang rồi thử lại." });
       // Gia sư mới đang là đồng giảng / giáo viên bộ môn của chính lớp này ⇒ gỡ hàng đó (chủ lớp không đồng thời là đồng giảng).
       const del = await tx.courseTeacher.deleteMany({ where: { courseId, userId: tutorId } });
-      return { ok: true as const, fromOwnerId: from, removedCoTeacher: del.count > 0, instructorUpdated: newInstructor !== null };
+      // Q1 (14/11): đề của lớp đi theo lớp — chủ lớp mới sửa / chấm / xem điểm được, chủ cũ hết quyền với đề của lớp đã giao đi.
+      const roots = await tx.exam.findMany({ where: { courseId, ownerId: from }, select: { id: true } });
+      const moved = await tx.exam.updateMany({ where: examsToMoveWhere(courseId, from, roots.map(r => r.id)), data: { ownerId: tutorId } });
+      return { ok: true as const, fromOwnerId: from, removedCoTeacher: del.count > 0, instructorUpdated: newInstructor !== null, movedExams: moved.count };
     });
   } catch (e) {
     if (e instanceof Stop) return e.r;
