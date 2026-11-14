@@ -20,6 +20,7 @@ import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/m
 import { checkLinkForSlot, type MediaSlot } from "@/lib/mediaLink";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
+import GiaoChuLop from "@/components/admin/courses/GiaoChuLop";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TabId = "cai-dat" | "chuong-bai" | "lich-hoc" | "hoc-vien";
@@ -2240,6 +2241,8 @@ export default function KhoaHocDetailPage() {
       </div>
 
       <div className="p-5 flex-1 min-h-0 overflow-y-auto">
+        {/* DG-GIAO-LOP: quản trị trung tâm giao lớp cho gia sư khác làm chủ lớp (gia sư không thấy khối này; API cũng chặn 403). */}
+        {activeTab === "cai-dat" && (user?.adminRole === "admin_super" || user?.adminRole === "admin_content") && <GiaoChuLop courseId={course.id} courseName={course.name} />}
         {activeTab === "cai-dat"    && <TabCaiDat courseSlug={courseSlug} course={course} />}
         {activeTab === "chuong-bai" && <TabChuongBai courseSlug={courseSlug} initialSections={course.sections} />}
         {activeTab === "lich-hoc"   && <TabLichHoc courseId={course.id} />}
