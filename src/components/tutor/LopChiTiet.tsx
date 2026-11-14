@@ -81,7 +81,10 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const lichHref = d.isTeacher !== false ? `${classBase(d.courseId)}/lich-hoc` : manage("?tab=lich-hoc");
   // DG (14/11/2026): tab Học phí ẩn khi cờ HOC_PHI tắt (mặc định) — mở ?tab=hoc-phi thì về tab đầu.
   const feeOn = featureOn("HOC_PHI");
-  const [tab, setTab] = useState<LopTab>((d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab)) || (!feeOn && d.initialTab === "hoc-phi") ? "diem-danh" : d.initialTab);
+  // P2-2 (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — kể cả với đồng giảng. Tab mặc định khi đó là "Học sinh".
+  const ddOn = featureOn("DIEM_DANH");
+  const firstTab: LopTab = ddOn ? "diem-danh" : "hoc-sinh";
+  const [tab, setTab] = useState<LopTab>((d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab)) || (!feeOn && d.initialTab === "hoc-phi") || (!ddOn && d.initialTab === "diem-danh") ? firstTab : d.initialTab);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [addBusy, setAddBusy] = useState(false);
@@ -98,7 +101,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const mgr = canManageRole(d.viewRole);
   const n = d.studentCount ?? d.students.length;
   const tabs: KinTabItem<LopTab>[] = [
-    { key: "diem-danh", label: mgr ? "Buổi học & điểm danh" : "Buổi tôi dạy" },
+    ...(ddOn ? [{ key: "diem-danh", label: mgr ? "Buổi học & điểm danh" : "Buổi tôi dạy" }] as KinTabItem<LopTab>[] : []),
     { key: "hoc-sinh", label: mgr && d.pending.length > 0 ? `Học sinh · ${n} · ${d.pending.length} chờ` : `Học sinh · ${n}` },
     { key: "giao-vien", label: "Giáo viên" },
     ...(mgr ? [{ key: "ma-moi", label: "Mã mời" }, ...(feeOn ? [{ key: "hoc-phi", label: "Học phí" }] : []), { key: "cong-dong", label: "Cộng đồng lớp" }] as KinTabItem<LopTab>[] : []),
@@ -164,7 +167,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
         tabId={k => `lop-tab-${k}`} panelId={k => `lop-panel-${k}`} />
 
       <div role="tabpanel" id={`lop-panel-${tab}`} aria-labelledby={`lop-tab-${tab}`} className="pt-6">
-        {tab === "diem-danh" && (
+        {ddOn && tab === "diem-danh" && (
           <div className={KIN_TWO_COL}>
             <div className="min-w-0">
               <Suspense fallback={null}><DiemDanhPanel courseId={d.courseId} embedded limited={!mgr} /></Suspense>
