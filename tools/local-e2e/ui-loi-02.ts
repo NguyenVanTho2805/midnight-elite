@@ -177,6 +177,15 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     && (await pg.locator("[data-o-tha]").evaluate(e => e.getBoundingClientRect().height >= 159.5))
     && (await pg.getByRole("button", { name: "Chọn tệp từ máy" }).evaluate(e => e.getBoundingClientRect().height >= 43.5)));
   check("ô chọn tệp cho chọn nhiều tệp, không nhận video", (await pg.locator("[data-o-tha-input]").getAttribute("multiple")) !== null && !/mp4|video/i.test((await pg.locator("[data-o-tha-input]").getAttribute("accept")) ?? ""));
+  // DG (14/11/2026, vòng dạy thật): thả tệp khi CHƯA tích cam kết ⇒ câu báo nằm NGAY TRÊN ô thả (trước: dưới đoạn pháp lý dài, gia sư không thấy), không gọi init.
+  if (!(await pg.locator("[data-tai-lieu-cam-ket]").isChecked())) {
+    const nInit = net.init;
+    await drop(pg, [{ name: "chua-cam-ket.pdf", type: "application/pdf", bytes: PDF }]);
+    const msg = pg.locator("[data-tai-lieu] [data-loi]");
+    await msg.waitFor({ timeout: 10000 });
+    const above = await pg.evaluate(() => { const m = document.querySelector("[data-tai-lieu] [data-loi]"), z = document.querySelector("[data-o-tha]"); return !!m && !!z && m.getBoundingClientRect().bottom <= z.getBoundingClientRect().top + 1; });
+    check("chưa tích cam kết: thả tệp ⇒ báo 'Hãy tích ô cam kết…' ngay trên ô thả, không gọi init", /tích ô cam kết/.test(await msg.innerText()) && above && net.init === nInit, { above });
+  }
   await pg.locator("[data-tai-lieu-cam-ket]").check();
   await pg.route("**/api/media/upload/*", async r => { await sleep(1800); await r.continue(); });
   await drop(pg, [{ name: "de-cuong.pdf", type: "application/pdf", bytes: PDF }, { name: "phieu-bai-tap.pdf", type: "application/pdf", bytes: PDF }]);
@@ -389,6 +398,18 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const tiny = await pm.evaluate(`[...document.querySelectorAll("[data-tai-lieu] button, [data-ngay-hoc] button, #ls-trang-thai")].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5).map(e => (e.textContent||"").trim().slice(0,16) + ":" + Math.round(e.getBoundingClientRect().height))`) as string[];
   check("390: nút trong panel ≥ 44px", tiny.length === 0, tiny);
   check("390: nút Lưu / Huỷ dính đầu panel", await pm.getByRole("button", { name: /^Lưu$/ }).first().isVisible());
+  // DG (14/11/2026, vòng dạy thật): khối "Bài tập tự nộp" trong panel — nút ≥ 44px (trước: "+ Thêm bài tập" 16px, "Lưu bài tập" 28px) và
+  // không còn hứa "tab Giáo trình (sắp có)" (tab đã bỏ ở LOI-02); chỉ đúng chỗ thả tệp đề là ô Tài liệu của bài.
+  {
+    const bt = pm.locator("[data-bai-tap-tu-nop]");
+    await bt.scrollIntoViewIfNeeded();
+    await bt.getByRole("button", { name: "+ Thêm bài tập" }).click();
+    await bt.getByPlaceholder("Tiêu đề bài tập *").waitFor({ timeout: 30000 });
+    const small = await bt.evaluate(el => [...el.querySelectorAll("button")].filter(b => (b as HTMLElement).offsetParent && b.getBoundingClientRect().height < 43.5).map(b => `${(b.textContent || "").trim().slice(0, 16)}:${Math.round(b.getBoundingClientRect().height)}`));
+    const hint = await bt.locator("[data-tai-lieu-dong]").innerText();
+    check("390: Bài tập tự nộp — mọi nút ≥ 44px; chữ chỉ ô Tài liệu, không 'tab Giáo trình' / 'sắp có'", small.length === 0 && /ô Tài liệu/.test(hint) && !/Giáo trình|sắp có/.test(hint), { small, hint });
+    await bt.getByRole("button", { name: "Huỷ", exact: true }).click();
+  }
   await pm.screenshot({ path: `${SHOTS}/loi-02-panel-390.png` });
   await pm.locator("[data-o-tha]").scrollIntoViewIfNeeded();
   await pm.screenshot({ path: `${SHOTS}/loi-02-panel-o-tha-390.png` });

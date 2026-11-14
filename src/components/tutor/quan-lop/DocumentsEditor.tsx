@@ -168,13 +168,15 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
         </div>
       )}
 
+      {/* DG (14/11/2026, vòng dạy thật): câu báo (chưa tích cam kết, quá số tệp) đứng NGAY TRÊN ô thả — trước đây nằm dưới đoạn pháp lý dài, gia sư thả tệp
+          xong không thấy gì xảy ra. */}
+      {problem && <p role="status" data-loi className="mb-2 text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {/* Ô thả: đang kiểm / lỗi kiểm / kho tắt / không phải chủ lớp / sẵn sàng (+ kéo vào). */}
       <OThaTep state={zone} onFiles={onFiles} onRetry={loadCfg} accept={accept} pledge={pledge} onPledgeChange={setPledgeSaved}
         hint={ready && d ? `${d.exts.map(x => x.toUpperCase()).join(", ")} · tối đa ${formatMegabytes(d.maxBytes)} mỗi tệp · tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài` : undefined} />
 
       {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
       <p data-copyright-notice className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
-      {problem && <p role="status" data-loi className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && up.queue.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}
