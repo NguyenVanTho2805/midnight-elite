@@ -17,6 +17,8 @@ import { KinStatus } from "@/components/kin/Status";
 import { KinProgressRing } from "@/components/kin/ProgressRing";
 import { WorkSkeleton } from "@/components/student/shared";
 import { featureOn } from "@/lib/features";
+
+const FREE_ON = featureOn("TIM_GIA_SU");
 import { demLoc, hocTiepLabel, locLop, LOP_LOC_KEYS, LOP_LOC_LABEL, LOP_TRANG_THAI_LABEL, type LopLoc, type ThuVienResp, type ThuVienRow } from "@/lib/studentLop";
 
 const GOC = "text-[length:var(--kin-co-goc)]";
@@ -65,10 +67,11 @@ export function JoinAnotherClass({ className = "" }: { className?: string }) {
   return (
     <section aria-labelledby="lop-join" className={className}>
       <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
-      <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Nhập mã mời do gia sư cung cấp, hoặc xem các lớp miễn phí đang mở.</p>
+      {/* DG (14/11/2026): "Tìm lớp miễn phí" (khám phá sàn) đi cùng cờ TIM_GIA_SU như mục "Lớp miễn phí" ở bảng Khác (StudentShell). */}
+      <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>{FREE_ON ? "Nhập mã mời do gia sư cung cấp, hoặc xem các lớp miễn phí đang mở." : "Nhập mã mời do gia sư cung cấp."}</p>
       <div className="flex flex-wrap gap-3 mt-4">
         <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp</Link>
-        <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>
+        {FREE_ON && <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>}
       </div>
     </section>
   );
@@ -198,8 +201,8 @@ export default function ThuVienLop() {
   } else if (rows.length === 0) {
     body = (
       <>
-        <KinEmptyState title="Bạn chưa vào lớp nào" action={<span className="flex flex-wrap gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link><Link href="/khoa-hoc?gia=free" data-lop-mien-phi className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link></span>}>
-          Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây. Chưa có mã thì xem các lớp miễn phí đang mở.
+        <KinEmptyState title="Bạn chưa vào lớp nào" action={<span className="flex flex-wrap gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>{FREE_ON && <Link href="/khoa-hoc?gia=free" data-lop-mien-phi className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link>}</span>}>
+          Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp, bài tập và buổi học sẽ hiện ở đây.{FREE_ON ? " Chưa có mã thì xem các lớp miễn phí đang mở." : ""}
         </KinEmptyState>
         <div className="max-w-[560px]"><PendingJoinBlock className="pt-8" /></div>
       </>
