@@ -76,7 +76,7 @@ check("phá: id lạ vẫn được mã hoá", WEIRD.every(id => { const d = cla
 
 section("mục con (?muc=)");
 check("Học sinh: danh-ba · xin-vao · ma-moi · them; mặc định danh-ba", MUC_HOC_SINH.join() === "danh-ba,xin-vao,ma-moi,them" && mucHocSinhOf(undefined) === "danh-ba" && mucHocSinhOf("rac") === "danh-ba" && mucHocSinhOf("ma-moi") === "ma-moi");
-check("Cài đặt: thong-tin · hoc-phi · dong-giang · cong-dong · ban-ghi; mặc định thong-tin", MUC_CAI_DAT.join() === "thong-tin,hoc-phi,dong-giang,cong-dong,ban-ghi" && mucCaiDatOf(null) === "thong-tin" && mucCaiDatOf("hoc-phi") === "hoc-phi");
+check("Cài đặt: thong-tin · hoc-phi · dong-giang · cong-dong · ban-ghi · hoc-online (DG-HOC-ONLINE); mặc định thong-tin", MUC_CAI_DAT.join() === "thong-tin,hoc-phi,dong-giang,cong-dong,ban-ghi,hoc-online" && mucCaiDatOf(null) === "thong-tin" && mucCaiDatOf("hoc-phi") === "hoc-phi");
 check("phá: muc là mảng / số / __proto__ → mặc định", mucHocSinhOf(["ma-moi"]) === "danh-ba" && mucCaiDatOf(5) === "thong-tin" && mucCaiDatOf("__proto__") === "thong-tin" && mucCaiDatOf("constructor") === "thong-tin");
 
 section("coverImageOf — chỉ ảnh https đã lọc (thẻ lớp)");

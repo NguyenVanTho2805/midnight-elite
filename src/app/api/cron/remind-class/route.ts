@@ -7,7 +7,7 @@ import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
-import { isOffScheduleKind, KIND_LABEL } from "@/lib/sessionBook";
+import { effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl } from "@/lib/sessionBook";
 import { sendUnmarkedDaily, type UnmarkedDailyResult } from "@/lib/unmarkedDailyServer";
 
 const BATCH_SIZE  = 20;
@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
   // buổi huỷ / dời đi thì không nhắc; buổi dời tới thì nhắc theo giờ mới. Báo nghỉ khoá theo ngày GỐC (định danh buổi).
   const tomorrowKey = vnDateKeyOf(tomorrow);
   const sel = {
-    id: true, dayOfWeek: true, startTime: true, endTime: true, note: true,
-    course: { select: { id: true, name: true } },
+    id: true, dayOfWeek: true, startTime: true, endTime: true, note: true, joinUrl: true, mode: true,
+    course: { select: { id: true, name: true, classJoinUrl: true } },
   } as const;
   const changes = await prisma.classSessionChange.findMany({ where: { OR: [{ dateKey: tomorrowKey }, { newDateKey: tomorrowKey }] } });
   const movedInIds = [...new Set(changes.filter(c => c.kind === "move" && c.newDateKey === tomorrowKey).map(c => c.scheduleId))];
@@ -68,12 +68,27 @@ export async function GET(req: NextRequest) {
   // Không có báo nghỉ để loại trừ: báo nghỉ khoá theo (khung giờ tuần, ngày gốc).
   const extraTomorrow = await prisma.attendanceSession.findMany({
     where: { date: new Date(`${tomorrowKey}T00:00:00Z`), kind: { in: ["extra", "makeup", "adhoc"] }, startTime: { not: null } },
-    select: { kind: true, startTime: true, endTime: true, course: { select: { id: true, name: true } } },
+    select: { kind: true, startTime: true, endTime: true, joinUrl: true, mode: true, course: { select: { id: true, name: true, classJoinUrl: true } } },
   });
-  type Job = { courseId: string; courseName: string; note: string | null; startTime: string; endTime: string; absent: { scheduleId: string; dateKey: string } | null };
+  // DG-HOC-ONLINE: chèn link học online vào thư nếu buổi có (riêng buổi > khung giờ > chung lớp, như Lịch); buổi học trực tiếp thì không chèn.
+  // Bản ghi buổi theo lịch tuần (link / hình thức riêng buổi) khoá theo ngày HIỆU LỰC = ngày mai.
+  const tomorrowSessions = todays.length === 0 ? [] : await prisma.attendanceSession.findMany({
+    where: { date: new Date(`${tomorrowKey}T00:00:00Z`), courseId: { in: [...new Set(todays.map(t => t.sched.course.id))] } },
+    select: { courseId: true, joinUrl: true, mode: true },
+  });
+  const tomorrowSessionOf = new Map(tomorrowSessions.map(x => [x.courseId, x]));
+  const joinOfRegular = (t: (typeof todays)[number]): string | null => {
+    const sess = tomorrowSessionOf.get(t.sched.course.id);
+    if (effectiveMode({ sessionMode: sess?.mode, scheduleMode: t.sched.mode }) === "offline") return null;
+    return resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: t.sched.joinUrl, classUrl: t.sched.course.classJoinUrl })?.url ?? null;
+  };
+  type Job = { courseId: string; courseName: string; note: string | null; startTime: string; endTime: string; joinUrl: string | null; absent: { scheduleId: string; dateKey: string } | null };
   const jobs: Job[] = [
-    ...todays.map(t => ({ courseId: t.sched.course.id, courseName: t.sched.course.name, note: t.sched.note, startTime: t.startTime, endTime: t.endTime, absent: { scheduleId: t.sched.id, dateKey: t.identityKey } })),
-    ...extraTomorrow.map(x => ({ courseId: x.course.id, courseName: x.course.name, note: isOffScheduleKind(x.kind) ? KIND_LABEL[x.kind] : null, startTime: x.startTime!, endTime: x.endTime ?? x.startTime!, absent: null })),
+    ...todays.map(t => ({ courseId: t.sched.course.id, courseName: t.sched.course.name, note: t.sched.note, startTime: t.startTime, endTime: t.endTime, joinUrl: joinOfRegular(t), absent: { scheduleId: t.sched.id, dateKey: t.identityKey } })),
+    ...extraTomorrow.map(x => ({
+      courseId: x.course.id, courseName: x.course.name, note: isOffScheduleKind(x.kind) ? KIND_LABEL[x.kind] : null, startTime: x.startTime!, endTime: x.endTime ?? x.startTime!,
+      joinUrl: effectiveMode({ sessionMode: x.mode }) === "offline" ? null : resolveJoinUrl({ sessionUrl: x.joinUrl, classUrl: x.course.classJoinUrl })?.url ?? null, absent: null,
+    })),
   ];
 
   if (jobs.length === 0) {
@@ -84,7 +99,7 @@ export async function GET(req: NextRequest) {
   let totalSent = 0;
   const log: string[] = [];
 
-  for (const { courseId, courseName, note, startTime, endTime, absent: absentOf } of jobs) {
+  for (const { courseId, courseName, note, startTime, endTime, joinUrl, absent: absentOf } of jobs) {
     // Chỉ em đang học (trước đây lấy cả em đang chờ phụ huynh xác nhận / tạm dừng) và bỏ em đã báo
     // nghỉ buổi này — đặc tả TT-201: "đã báo nghỉ thì không gửi".
     const [enrollments, absent] = await Promise.all([
@@ -103,7 +118,7 @@ export async function GET(req: NextRequest) {
       const batch   = students.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(s =>
-          sendClassReminderEmail(s.email, s.name, courseName, dayLabel, startTime, endTime, note, courseId)
+          sendClassReminderEmail(s.email, s.name, courseName, dayLabel, startTime, endTime, note, courseId, joinUrl)
         )
       );
       totalSent += results.filter(r => r.status === "fulfilled").length;

@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { SPAM_HINT, NOT_SPAM_HINT } from "@/lib/verifyCodeCopy";
+import { AUTO_NOTE, NO_LINK_TEXT, type LessonReminderMail } from "@/lib/lessonReminder";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM    = `KiN <${process.env.GMAIL_USER}>`;
@@ -360,7 +361,9 @@ export async function sendClassReminderEmail(
   endTime: string,
   note: string | null,
   courseId: string,
+  joinUrl: string | null = null, // DG-HOC-ONLINE: link học online hiệu lực của buổi (riêng buổi > khung giờ > chung lớp); null = không chèn
 ) {
+  const safeJoin = joinUrl && /^https?:\/\//i.test(joinUrl) ? joinUrl.replace(/"/g, "%22").replace(/</g, "%3C").replace(/>/g, "%3E") : null;
   await getTransport().sendMail({
     from: FROM,
     to,
@@ -401,6 +404,7 @@ export async function sendClassReminderEmail(
           </div>
         </div>
         ${note ? `<p style="color:#787671;font-size:13px;margin:14px 0 0">${note}</p>` : ""}
+        ${safeJoin ? `<p style="color:#787671;font-size:13px;margin:14px 0 0">Link học online: <a href="${safeJoin}" style="color:#0068FF;word-break:break-all">${safeJoin}</a></p>` : ""}
       </div>
       <div style="text-align:center">
         <a href="${APP_URL}/student/hoc-tap?course=${courseId}" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px">
@@ -413,6 +417,32 @@ export async function sendClassReminderEmail(
 </body>
 </html>`,
   });
+}
+
+// ─── DG-HOC-ONLINE: nhắc TRƯỚC giờ học (gia sư chọn 15 phút / 1 giờ / 1 ngày, xem /api/cron/nhac-buoi-hoc) ──────
+// Nội dung dựng ở buildLessonReminderEmail (src/lib/lessonReminder.ts, thuần, có test): tên lớp, ngày giờ, link học — không số tiền.
+const escHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+export function lessonReminderHtml(v: LessonReminderMail["view"]): string {
+  const btn = (href: string, label: string) =>
+    `<a href="${escHtml(href)}" style="display:inline-block;background:#0068FF;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 28px;border-radius:10px">${escHtml(label)}</a>`;
+  return `<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:520px;margin:40px auto;padding:0 16px">
+    <div style="background:#ffffff;border-radius:16px;padding:32px 28px;border:1px solid #e5e3df">
+      <p style="color:#a4a097;font-size:12px;font-weight:700;margin:0 0 8px">KiN · NHẮC GIỜ HỌC</p>
+      <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 12px">${escHtml(v.courseName)}</h1>
+      <p style="color:#1a1a1a;font-size:15px;margin:0 0 6px">Buổi học ${escHtml(v.soon)}.</p>
+      <p style="color:#1a1a1a;font-size:15px;font-weight:700;margin:0 0 20px">${escHtml(v.when)} (giờ Việt Nam)</p>
+      ${v.joinUrl ? `<div style="margin:0 0 12px">${btn(v.joinUrl, "Vào học online")}</div><p style="color:#787671;font-size:12px;margin:0 0 20px;word-break:break-all">${escHtml(v.joinUrl)}</p>` : `<p style="color:#787671;font-size:13px;margin:0 0 20px">${escHtml(NO_LINK_TEXT)}</p>`}
+      <p style="margin:0"><a href="${escHtml(v.classUrl)}" style="color:#0068FF;font-size:13px">Mở lớp trên KiN</a></p>
+    </div>
+    <p style="text-align:center;color:#a4a097;font-size:12px;margin:20px 0">${escHtml(AUTO_NOTE)} © 2026 KiN</p>
+  </div>
+</body></html>`;
+}
+export async function sendLessonReminderEmail(to: string, mail: LessonReminderMail) {
+  await getTransport().sendMail({ from: FROM, to, subject: mail.subject, text: mail.text, html: lessonReminderHtml(mail.view) });
 }
 
 // ─── ENROLLMENT (kích hoạt khoá học) ──────────────────────────────────────────
