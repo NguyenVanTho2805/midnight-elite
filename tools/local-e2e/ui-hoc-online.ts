@@ -32,6 +32,15 @@ import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
     const box = p.locator("[data-hoc-online]");
     await box.waitFor({ timeout: 120000 });
     check(`${tag}: mục "Học online" có trong dải mục Cài đặt và đang chọn`, (await p.getByRole("link", { name: "Học online" }).count()) >= 1);
+    const chipIn = async () => p.evaluate(() => {
+      const nav = document.querySelector("[data-muc-nav]"), el = document.querySelector('[data-muc="hoc-online"]');
+      if (!nav || !el) return false;
+      const a = nav.getBoundingClientRect(), b = el.getBoundingClientRect();
+      return b.left >= a.left - 1 && b.right <= a.right + 1 && el.getAttribute("aria-current") === "page";
+    });
+    let inView = false;
+    for (let i = 0; i < 30 && !(inView = await chipIn()); i++) await p.waitForTimeout(100);
+    check(`${tag}: mục đang chọn "Học online" hiện trọn trong dải mục (tự cuộn ngang), trang không bị cuộn dọc`, inView && (await p.evaluate(() => window.scrollY)) === 0);
     const input = p.locator("#hoc-online-link");
     const combo = p.locator("#hoc-online-nhac");
     if (tag === "1600") {

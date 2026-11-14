@@ -2,7 +2,7 @@
 // Phần đầu là ca THUẦN (pickOwnerBlocker, isAssignableTutor) — ca phá cố ý: đổi `> 0` thành `> 1` trong pickOwnerBlocker ⇒ ca 2/3 đỏ.
 // Chạy: TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/t-admin-assign-owner.ts
 import { prisma } from "@/lib/prisma";
-import { isAssignableTutor, pickOwnerBlocker } from "@/lib/courseOwnerAssign";
+import { isAssignableTutor, nextInstructor, pickOwnerBlocker } from "@/lib/courseOwnerAssign";
 import { looksLikeMoney } from "@/lib/lessonReminder";
 import { api, check, done, mkCourse, mkSuper, mkTutor, mkUser, section, wipe, type TUser } from "./h";
 
@@ -21,6 +21,10 @@ async function main() {
     && !isAssignableTutor({ ...base, deletedAt: new Date() }) && !isAssignableTutor({ ...base, email: "deleted+x@invalid" })
     && !isAssignableTutor({ ...base, role: "student", adminRole: null }) && !isAssignableTutor({ ...base, adminRole: "admin_super" }) && !isAssignableTutor(null));
 
+  check("5b. nextInstructor: trống / trùng tên chủ cũ ⇒ tên chủ mới; tên khác do quản trị đặt ⇒ giữ (null); trùng tên mới ⇒ null",
+    nextInstructor("", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("  Cô A ", "Cô A", "Thầy B") === "Thầy B" && nextInstructor("Ban Toán KiN", "Cô A", "Thầy B") === null
+    && nextInstructor("Cô A", null, "Thầy B") === null && nextInstructor("Thầy B", "Cô A", "Thầy B") === null);
+
   await wipe();
   const sup = await mkSuper("Quản trị Một");
   const content = await mkUser({ name: "Quản trị Nội dung", role: "admin", adminRole: "admin_content" });
@@ -35,6 +39,8 @@ async function main() {
   const free = await mkCourse(t1.id, { name: "Lớp Giao Được" });
   await prisma.enrollment.create({ data: { userId: student.id, courseId: free.id, status: "active" } });
   await prisma.courseTeacher.create({ data: { courseId: free.id, userId: t2.id, role: "co_teacher", status: "active", invitedBy: t1.id } });
+  await prisma.course.update({ where: { id: free.id }, data: { instructor: t1.name } }); // tên công khai = tên chủ cũ ⇒ đổi theo chủ mới
+  const exam = await prisma.exam.create({ data: { id: `exam-giao-${Date.now()}`, code: `DE-GIAO-${Date.now() % 100000}`, title: "Đề kiểm tra lớp giao", category: "toan", date: "2026-12-01", time: "19:00", duration: "30", questions: 0, status: "available", createdAt: new Date().toISOString(), totalPoints: 10, ownerId: t1.id, courseId: free.id } as never });
 
   section("quyền");
   check("6. khách ⇒ 401", (await api("POST", path(free.id), { body: { tutorId: t3.id } })).status === 401);
@@ -100,6 +106,18 @@ async function main() {
   check("30. gia sư cũ mở trang quản lý lớp ⇒ không có quyền", pOld.text.includes("Bạn không có quyền với lớp này") || pOld.status === 403, pOld.status);
   check("31. gia sư mới (lớp giao từ phiếu đã tất toán) thấy lớp, gia sư cũ không", (await tutorSees(t3, inv.id)) && !(await tutorSees(t1, inv.id)));
   check("32. giao lại cho người đang là chủ ⇒ 400, không thêm nhật ký", (await api("POST", path(free.id), { as: sup, body: { tutorId: t2.id } })).status === 400 && (await prisma.auditLog.count({ where: { action: "course.owner_assign", resourceId: free.id } })) === 1);
+
+  section("tên công khai, thông báo gia sư cũ, đề của lớp");
+  check("34. Course.instructor = tên chủ cũ ⇒ đổi thành tên gia sư mới", (await prisma.course.findUnique({ where: { id: free.id } }))?.instructor === t2.name && ok.json?.instructorUpdated === true);
+  check("35. lớp có tên công khai do quản trị đặt ('GV') ⇒ giữ nguyên", (await prisma.course.findUnique({ where: { id: inv.id } }))?.instructor === "GV" && rPaid.json?.instructorUpdated === false);
+  const oldNoti = await prisma.notification.findMany({ where: { userId: t1.id, type: "course_owner_removed" } });
+  check("36. gia sư cũ nhận thông báo 'đã được giao cho gia sư khác' (2 lớp đã giao đi), không tên người mới, không số tiền",
+    oldNoti.length === 2 && oldNoti.some(n => n.message.includes("Lớp Giao Được")) && oldNoti.every(n => n.message.includes("gia sư khác") && !n.message.includes(t2.name) && !n.message.includes(t3.name) && !looksLikeMoney(`${n.title} ${n.message}`)), oldNoti);
+  check("37. đề gắn lớp GIỮ chủ đề cũ, vẫn gắn lớp (không tự đổi Exam.ownerId)", JSON.stringify(await prisma.exam.findUnique({ where: { id: exam.id }, select: { ownerId: true, courseId: true } })) === JSON.stringify({ ownerId: t1.id, courseId: free.id }));
+  // Ghi nhận (không tính đạt/đỏ): chủ lớp mới có thấy đề của lớp trong danh sách quản lý đề không — API đề lọc theo Exam.ownerId.
+  const newSees = (await api("GET", "/api/exams", { as: t2 })).text.includes(exam.id);
+  const newEdit = (await api("PUT", `/api/exams/${exam.id}`, { as: t2, body: { title: "Thử sửa" } })).status;
+  console.log(`  · GHI NHẬN: chủ lớp mới thấy đề của lớp trong /api/exams = ${newSees}; PUT sửa đề = ${newEdit}`);
 
   section("lớp chưa có chủ (của trung tâm) ⇒ giao được, không cần kiểm tiền");
   const center = await mkCourse(null, { name: "Lớp Trung Tâm" });

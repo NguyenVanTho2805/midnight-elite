@@ -41,5 +41,5 @@ Vì vậy đường dẫn này **không** có trong `vercel.json`. Nếu sau nà
 - Tối đa 200 thư mỗi lần gọi; phần còn lại đi ở lần gọi sau (nếu buổi vẫn trong cửa sổ).
 
 ## Lưu ý
-- Thư nhắc 07:00 hằng ngày (`/api/cron/remind-class`, Vercel Cron) vẫn chạy như cũ và nay có thêm dòng link học online. Lớp chọn "1 ngày" sẽ nhận cả thư 07:00 và thư trước 1 ngày; muốn ít thư hơn thì chọn 1 giờ hoặc 15 phút.
+- Thư nhắc 07:00 hằng ngày (`/api/cron/remind-class`, Vercel Cron) vẫn chạy như cũ và nay có thêm dòng link học online. Lớp chọn "1 ngày" thì thư 07:00 BỎ QUA lớp đó (học sinh chỉ nhận thư trước 24 giờ), nên nếu cron-job.org ngừng gọi thì lớp "1 ngày" không còn thư nhắc nào — theo dõi dòng "Email nhắc học sinh trước giờ học" ở trang Triển khai.
 - Đổi `CRON_SECRET` trên Vercel thì phải sửa header ở cron-job.org ngay, nếu không mọi lần gọi trả 401.

@@ -23,6 +23,14 @@ export function isAssignableTutor(u: { role: string; adminRole: string | null; t
 
 export const ASSIGNABLE_TUTOR_WHERE = { role: "admin", adminRole: "teacher", tutorVerified: true, banned: false, deletedAt: null, NOT: { email: { startsWith: "deleted+" } } } as const;
 
+/** Thuần. Tên hiển thị mới cho Course.instructor, hoặc null = giữ nguyên. Đổi khi đang trống hoặc trùng tên chủ cũ (so sau khi cắt khoảng trắng). */
+export function nextInstructor(current: string | null | undefined, oldOwnerName: string | null, newOwnerName: string): string | null {
+  const cur = (current ?? "").trim(), next = newOwnerName.trim();
+  if (!next || cur === next) return null;
+  if (cur === "" || (oldOwnerName !== null && cur === oldOwnerName.trim())) return next;
+  return null;
+}
+
 /** Đọc DB — chỉ ĐỌC bảng tiền. */
 export async function countOwnerMoney(courseId: string, oldOwnerId: string, db: Pick<typeof prisma, "enrollment" | "tuitionInvoice" | "feeCharge"> = prisma): Promise<OwnerMoneyCounts> {
   const students = await db.enrollment.findMany({ where: { courseId }, select: { userId: true } });
@@ -35,14 +43,14 @@ export async function countOwnerMoney(courseId: string, oldOwnerId: string, db: 
 }
 
 export type AssignResult =
-  | { ok: true; fromOwnerId: string | null; removedCoTeacher: boolean }
+  | { ok: true; fromOwnerId: string | null; removedCoTeacher: boolean; instructorUpdated: boolean }
   | { ok: false; status: 400 | 404 | 409; code: string; error: string; count?: number };
 
 /** Giao lớp. Đếm tiền TRONG giao dịch cùng lúc đổi chủ (đổi chủ có điều kiện ownerId cũ ⇒ hai quản trị bấm cùng lúc: người sau nhận 409). */
 export async function assignCourseOwner(courseId: string, tutorId: string): Promise<AssignResult> {
   const [course, tutor] = await Promise.all([
-    prisma.course.findUnique({ where: { id: courseId }, select: { id: true, ownerId: true } }),
-    prisma.user.findUnique({ where: { id: tutorId }, select: { role: true, adminRole: true, tutorVerified: true, banned: true, deletedAt: true, email: true } }),
+    prisma.course.findUnique({ where: { id: courseId }, select: { id: true, ownerId: true, instructor: true, owner: { select: { name: true } } } }),
+    prisma.user.findUnique({ where: { id: tutorId }, select: { role: true, adminRole: true, tutorVerified: true, banned: true, deletedAt: true, email: true, name: true } }),
   ]);
   if (!course) return { ok: false, status: 404, code: "no_course", error: "Không tìm thấy lớp" };
   if (!isAssignableTutor(tutor)) return { ok: false, status: 400, code: "not_tutor", error: "Chỉ giao được cho gia sư đã duyệt hồ sơ, tài khoản đang hoạt động" };
@@ -55,11 +63,16 @@ export async function assignCourseOwner(courseId: string, tutorId: string): Prom
         const b = pickOwnerBlocker(await countOwnerMoney(courseId, from, tx));
         if (b) throw new Stop({ ok: false, status: 409, code: b.code, error: b.error, count: b.count });
       }
-      const upd = await tx.course.updateMany({ where: { id: courseId, ownerId: from }, data: { ownerId: tutorId } });
+      // Tên gia sư hiển thị công khai (Course.instructor) theo chủ mới CHỈ khi đang trống hoặc đang đúng tên chủ cũ; quản trị đã đặt tên khác thì giữ.
+      const newInstructor = nextInstructor(course.instructor, course.owner?.name ?? null, tutor!.name);
+      const upd = await tx.course.updateMany({
+        where: { id: courseId, ownerId: from, instructor: course.instructor },
+        data: { ownerId: tutorId, ...(newInstructor !== null ? { instructor: newInstructor } : {}) },
+      });
       if (upd.count === 0) throw new Stop({ ok: false, status: 409, code: "changed", error: "Chủ lớp vừa được đổi bởi người khác. Tải lại trang rồi thử lại." });
       // Gia sư mới đang là đồng giảng / giáo viên bộ môn của chính lớp này ⇒ gỡ hàng đó (chủ lớp không đồng thời là đồng giảng).
       const del = await tx.courseTeacher.deleteMany({ where: { courseId, userId: tutorId } });
-      return { ok: true as const, fromOwnerId: from, removedCoTeacher: del.count > 0 };
+      return { ok: true as const, fromOwnerId: from, removedCoTeacher: del.count > 0, instructorUpdated: newInstructor !== null };
     });
   } catch (e) {
     if (e instanceof Stop) return e.r;

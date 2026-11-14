@@ -134,11 +134,23 @@ async function main() {
   const G = await mkCourse(tutor.id, { name: "Địa Không Link" });
   await prisma.classSchedule.create({ data: { courseId: G.id, dayOfWeek: dayOfWeekOfKey(tomorrow), startTime: "18:00", endTime: "19:00" } });
   const gOk = await enroll(G.id, "active", "Em Không Link");
+  // Lớp chọn nhắc trước 1 ngày ⇒ thư 07:00 bỏ qua (đã có thư 24 giờ trước); lớp chọn 1 giờ ⇒ vẫn nhận thư 07:00.
+  const H = await mkCourse(tutor.id, { name: "Tin Nhắc Một Ngày" });
+  await prisma.course.update({ where: { id: H.id }, data: { classJoinUrl: MEET, reminderLeadMinutes: 1440 } });
+  await prisma.classSchedule.create({ data: { courseId: H.id, dayOfWeek: dayOfWeekOfKey(tomorrow), startTime: "17:00", endTime: "18:00" } });
+  const hOk = await enroll(H.id, "active", "Em Một Ngày");
+  const K = await mkCourse(tutor.id, { name: "GDCD Nhắc Một Giờ" });
+  await prisma.course.update({ where: { id: K.id }, data: { reminderLeadMinutes: 60 } });
+  await prisma.classSchedule.create({ data: { courseId: K.id, dayOfWeek: dayOfWeekOfKey(tomorrow), startTime: "16:00", endTime: "17:00" } });
+  const kOk = await enroll(K.id, "active", "Em Một Giờ");
   const rc = await api("GET", "/api/cron/remind-class", { headers: AUTH });
   check("22. remind-class ⇒ 200", rc.status === 200, rc.json);
   const mF = to(fOk.email)[0], mG = to(gOk.email)[0];
   check("23. thư ngày mai của lớp có link ⇒ có link Meet", !!mF && (mF.html ?? "").includes(MEET), mF?.subject);
   check("24. lớp không có link ⇒ thư không có dòng link", !!mG && !(mG.html ?? "").includes("Link học online"), mG?.subject);
+
+  check("25. lớp nhắc trước 1 ngày ⇒ thư 07:00 KHÔNG gửi (tránh hai thư cho một buổi)", to(hOk.email).length === 0);
+  check("26. lớp nhắc trước 1 giờ ⇒ thư 07:00 vẫn gửi", to(kOk.email).length === 1);
 
   await done();
 }

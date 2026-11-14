@@ -83,13 +83,20 @@ export async function GET(req: NextRequest) {
     return resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: t.sched.joinUrl, classUrl: t.sched.course.classJoinUrl })?.url ?? null;
   };
   type Job = { courseId: string; courseName: string; note: string | null; startTime: string; endTime: string; joinUrl: string | null; absent: { scheduleId: string; dateKey: string } | null };
-  const jobs: Job[] = [
+  const allJobs: Job[] = [
     ...todays.map(t => ({ courseId: t.sched.course.id, courseName: t.sched.course.name, note: t.sched.note, startTime: t.startTime, endTime: t.endTime, joinUrl: joinOfRegular(t), absent: { scheduleId: t.sched.id, dateKey: t.identityKey } })),
     ...extraTomorrow.map(x => ({
       courseId: x.course.id, courseName: x.course.name, note: isOffScheduleKind(x.kind) ? KIND_LABEL[x.kind] : null, startTime: x.startTime!, endTime: x.endTime ?? x.startTime!,
       joinUrl: effectiveMode({ sessionMode: x.mode }) === "offline" ? null : resolveJoinUrl({ sessionUrl: x.joinUrl, classUrl: x.course.classJoinUrl })?.url ?? null, absent: null,
     })),
   ];
+
+  // DG-HOC-ONLINE: lớp đã chọn "nhắc trước 1 ngày" (Course.reminderLeadMinutes = 1440) nhận thư từ /api/cron/nhac-buoi-hoc đúng 24 giờ trước buổi;
+  // bỏ lớp đó ở đây để học sinh không nhận hai thư cho cùng một buổi. Lớp chọn 15 phút / 1 giờ / tắt vẫn nhận thư 07:00 như cũ.
+  const dayAheadIds = allJobs.length === 0 ? new Set<string>() : new Set((await prisma.course.findMany({
+    where: { id: { in: [...new Set(allJobs.map(j => j.courseId))] }, reminderLeadMinutes: 1440 }, select: { id: true },
+  })).map(c => c.id));
+  const jobs = allJobs.filter(j => !dayAheadIds.has(j.courseId));
 
   if (jobs.length === 0) {
     const unmarked = await runUnmarked();
