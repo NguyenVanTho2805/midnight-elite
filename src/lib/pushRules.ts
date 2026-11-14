@@ -125,9 +125,15 @@ export interface PushPayload { title: string; body: string; url: string }
  * Chữ gửi đi cho một loại — hàm của `type`; ngoại lệ DUY NHẤT là `opts.count` (chỉ unmarked_daily): số buổi chưa điểm danh hôm qua.
  * `count` không hợp lệ (không phải số nguyên 1–999) hoặc dùng cho loại khác thì bị bỏ qua — chữ vẫn là chữ gốc của loại.
  */
-export function pushPayload(type: PushType, opts: { count?: number } = {}): PushPayload {
+/** DG (14/11/2026): khi Hộp việc đang ẩn (cờ HOP_VIEC tắt, mặc định), "/lop-cua-toi" chuyển về thư viện Lớp — tin không được hứa "mở Hộp việc".
+ *  Hai loại trỏ Hộp việc (báo nghỉ sát giờ, buổi chưa điểm danh) đổi sang danh sách lớp, nơi gia sư mở đúng lớp để xử lý. */
+export const HOP_VIEC_OFF_TEXT = { body: "Bấm để mở danh sách lớp.", url: "/lop-cua-toi/lop" } as const;
+const HOP_VIEC_TYPES: readonly PushType[] = ["absence_late", "unmarked_daily"];
+
+export function pushPayload(type: PushType, opts: { count?: number; env?: FeatureEnv } = {}): PushPayload {
   const d = PUSH_DEFS[type];
   const title = type === "unmarked_daily" && isUnmarkedCount(opts.count) ? `Hôm qua có ${opts.count} buổi chưa điểm danh` : d.title;
+  if (HOP_VIEC_TYPES.includes(type) && !featureOn("HOP_VIEC", opts.env)) return { title, body: HOP_VIEC_OFF_TEXT.body, url: HOP_VIEC_OFF_TEXT.url };
   return { title, body: d.body, url: d.url };
 }
 

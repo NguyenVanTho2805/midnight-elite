@@ -6,6 +6,7 @@
 // Server component — không bắt client load thêm, PH mở mạng chậm cũng
 // thấy ngay.
 import { KinPanel } from "@/components/kin/Panel";
+import { featureOn } from "@/lib/features";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { isValidPortalToken } from "@/lib/parentPortal";
@@ -125,6 +126,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
       : feeBreakdown
         ? { label: `Học phí tháng ${m}`, value: formatVnd(feeBreakdown.finalAmount), sub: "Tạm tính theo số buổi đã học" }
         : { label: `Học phí tháng ${m}`, value: "Chưa có", sub: "Gia sư chưa gửi phiếu" };
+  const feeOn = featureOn("HOC_PHI");
   const stats: { label: string; value: string; sub: string }[] = [
     {
       label: "Chuyên cần",
@@ -141,7 +143,8 @@ export default async function SoCuaConPage({ params }: PageProps) {
       value: reports.length > 0 ? "Đã có" : "Chưa có",
       sub: reports.length > 0 ? `Mới nhất: tháng ${Number(reports[0].yearMonth.slice(5, 7))}/${reports[0].yearMonth.slice(0, 4)}` : "Gia sư chưa gửi báo cáo",
     },
-    feeTile,
+    // P2-4b (14/11/2026): ô học phí chỉ khi cờ HOC_PHI mở — chỉ ẩn hiển thị, cách tính không đổi.
+    ...(feeOn ? [feeTile] : []),
   ];
 
   const hasFeeBlock = invoices.length > 0 || !!feeBreakdown;
@@ -179,7 +182,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
           </div>
         ) : (
           <>
-            <dl className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8" aria-label="Tóm tắt tháng này">
+            <dl className={`grid grid-cols-2 ${feeOn ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-3 lg:gap-4 mb-8`} aria-label="Tóm tắt tháng này">
               {stats.map(st => (
                 <KinPanel key={st.label} className="!p-4">
                   <dt className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>{st.label}</dt>
@@ -189,7 +192,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
               ))}
             </dl>
 
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+            <div className={`grid gap-8 ${feeOn ? "lg:grid-cols-[minmax(0,1fr)_340px]" : ""} lg:items-start`}>
               <div className="space-y-8 min-w-0">
                 <ParentSection id="h-bao-cao" title="Báo cáo tháng">
                   {reports.length > 0 ? (
@@ -237,7 +240,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                 {/* HP-31: mục "Gói buổi trả trước" đã ẩn theo quyết định của chủ 25/10/2026; SessionPackages và loadPartyPackages vẫn còn, chỉ không gắn vào trang. */}
               </div>
 
-              <KinPanel as="aside" className="space-y-6 lg:sticky lg:top-4" aria-label="Học phí">
+              {feeOn && <KinPanel as="aside" className="space-y-6 lg:sticky lg:top-4" aria-label="Học phí" data-so-hoc-phi>
                 {invoices.length > 0 && (
                   <section aria-labelledby="h-phieu">
                     <h2 id="h-phieu" className="text-sm font-semibold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Phiếu học phí</h2>
@@ -288,7 +291,7 @@ export default async function SoCuaConPage({ params }: PageProps) {
                     <p className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Gia sư chưa gửi phiếu học phí. Khi có phiếu, anh/chị sẽ thấy số tiền và cách chuyển khoản ở đây.</p>
                   </section>
                 )}
-              </KinPanel>
+              </KinPanel>}
             </div>
           </>
         )}

@@ -232,6 +232,46 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await ctx.close();
   }
 
+  section("P2-2: đồng giảng — DIEM_DANH tắt ⇒ không tab điểm danh, tab mặc định Học sinh");
+  {
+    const CO = await mkTutor("Cô Đồng Giảng DG");
+    await prisma.courseTeacher.create({ data: { courseId: A.id, userId: CO.id, role: "co_teacher", status: "active", subjects: [], invitedBy: T.id, respondedAt: new Date() } });
+    for (const w of [1280, 390]) {
+      const ctx = await ctxFor(CO, { width: w, height: 900 });
+      const p = await ctx.newPage(); watch(p);
+      for (const q of ["", "?tab=diem-danh"]) {
+        await p.goto(`${BASE}/lop-cua-toi/${A.id}${q}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+        const tl = p.getByRole("tablist", { name: "Nội dung của lớp" });
+        await tl.waitFor({ timeout: 120000 });
+        const tabs = (await tl.getByRole("tab").allInnerTexts()).map(t => t.trim());
+        const sel = (await tl.locator('[role=tab][aria-selected="true"]').innerText()).trim();
+        check(`${w}px ${q || "(gốc)"}: không tab 'Buổi tôi dạy' / điểm danh, tab đang mở là Học sinh, không khối điểm danh`, !tabs.some(t => /Buổi|điểm danh/i.test(t)) && /^Học sinh/.test(sel) && await p.locator("#lop-panel-diem-danh").count() === 0, { tabs, sel });
+      }
+      check(`${w}px: không tràn ngang`, await p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"));
+      await shot(p, `dg-dong-giang-lop-${w}`);
+      await ctx.close();
+    }
+  }
+
+  section("P2-4b: Sổ của con — HOC_PHI tắt ⇒ không ô / khối học phí, không số tiền");
+  {
+    const tokP = "b7".repeat(16);
+    await prisma.parentLink.create({ data: { parentId: (await mkUser({ name: "Chị Mai" })).id, studentId: S.id, status: "verified", verifiedAt: new Date(), portalToken: tokP } });
+    await prisma.tuitionInvoice.create({ data: { code: "KINDG0001", tutorId: T.id, studentId: S.id, yearMonth: "2026-11", amountDue: 1_200_000, status: "sent", sentAt: new Date() } });
+    for (const w of [1280, 390]) {
+      const ctx = await ctxFor(null, { width: w, height: 900 });
+      const p = await ctx.newPage(); watch(p);
+      await p.goto(`${BASE}/so-cua-con/${tokP}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+      await p.getByLabel("Tóm tắt tháng này").waitFor({ timeout: 120000 });
+      const body = await p.locator("body").innerText();
+      check(`${w}px: không 'Học phí' / 'Phiếu học phí' / số tiền đ; không khối [data-so-hoc-phi]; tóm tắt còn 3 ô`, !/Học phí|Phiếu học phí|\d[\d.]*\s*đ\b|₫/.test(body) && await p.locator("[data-so-hoc-phi]").count() === 0
+        && await p.getByLabel("Tóm tắt tháng này").locator("dt").count() === 3, body.match(/.{0,30}(Học phí|đ\b).{0,30}/g));
+      check(`${w}px: không tràn ngang`, await p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"));
+      await shot(p, `dg-so-cua-con-${w}`);
+      await ctx.close();
+    }
+  }
+
   check("không lỗi console / trang lạ", errors.length === 0, errors.slice(0, 5));
   await closeAll();
   await done();
