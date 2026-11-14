@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { SPAM_HINT, NOT_SPAM_HINT } from "@/lib/verifyCodeCopy";
-import { AUTO_NOTE, NO_LINK_TEXT, httpsJoinUrl, type LessonReminderMail } from "@/lib/lessonReminder";
+import { AUTO_NOTE, NO_LINK_TEXT, RESCHEDULED_TEXT, httpsJoinUrl, type LessonReminderMail } from "@/lib/lessonReminder";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM    = `KiN <${process.env.GMAIL_USER}>`;
@@ -431,7 +431,8 @@ export function lessonReminderHtml(v: LessonReminderMail["view"]): string {
 <body style="margin:0;padding:0;background:#f6f5f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:520px;margin:40px auto;padding:0 16px">
     <div style="background:#ffffff;border-radius:16px;padding:32px 28px;border:1px solid #e5e3df">
-      <p style="color:#a4a097;font-size:12px;font-weight:700;margin:0 0 8px">KiN · NHẮC GIỜ HỌC</p>
+      <p style="color:#a4a097;font-size:12px;font-weight:700;margin:0 0 8px">${v.rescheduled ? "KiN · ĐỔI GIỜ HỌC" : "KiN · NHẮC GIỜ HỌC"}</p>
+      ${v.rescheduled ? `<p style="color:#1a1a1a;font-size:14px;font-weight:700;margin:0 0 12px">${escHtml(RESCHEDULED_TEXT)}</p>` : ""}
       <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 12px">${escHtml(v.courseName)}</h1>
       <p style="color:#1a1a1a;font-size:15px;margin:0 0 6px">Buổi học ${escHtml(v.soon)}.</p>
       <p style="color:#1a1a1a;font-size:15px;font-weight:700;margin:0 0 20px">${escHtml(v.when)} (giờ Việt Nam)</p>

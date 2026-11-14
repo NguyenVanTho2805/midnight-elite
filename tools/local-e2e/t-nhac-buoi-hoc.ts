@@ -118,6 +118,24 @@ async function main() {
   const r3 = await api("GET", "/api/cron/nhac-buoi-hoc", { headers: AUTH });
   check("20. lượt 3 gửi đúng 1 thư cho em mới", r3.json?.sent === 1 && to(aNew.email).length === 1 && to(aOk.email).length === 1, r3.json);
 
+  section("dời giờ buổi đã nhắc ⇒ gửi lại thư 'Đổi giờ học' đúng một lần (14/11)");
+  const cSess = await prisma.attendanceSession.findFirstOrThrow({ where: { courseId: C.id } });
+  const cNewAt = new Date(Date.now() + 13 * 60_000);
+  const cNewM = vnMinutesOfDay(cNewAt);
+  await prisma.attendanceSession.update({ where: { id: cSess.id }, data: { startTime: hmOf(cNewM), endTime: hmOf(Math.min(cNewM + 45, 23 * 60 + 59)) } });
+  const rMovedDry = await api("GET", "/api/cron/nhac-buoi-hoc?dryRun=1", { headers: AUTH });
+  check("20a. dryRun thấy 1 thư dời giờ, chưa gửi gì", rMovedDry.json?.rescheduled === 1 && to(cOk.email).length === 1, rMovedDry.json);
+  const rMoved = await api("GET", "/api/cron/nhac-buoi-hoc", { headers: AUTH });
+  const cMails = to(cOk.email);
+  check("20b. gửi đúng 1 thư dời giờ cho em lớp C, lớp khác không bị nhắc lại", rMoved.json?.sent === 1 && rMoved.json?.rescheduled === 1 && cMails.length === 2 && to(aOk.email).length === 1, rMoved.json);
+  const mMoved = cMails[1];
+  check("20c. thư dời giờ ghi 'Đổi giờ học' + giờ mới, giữ link riêng buổi", !!mMoved && mMoved.subject.startsWith("Đổi giờ học") && mMoved.subject.includes(hmOf(cNewM)) && (mMoved.text ?? "").includes("đã đổi giờ") && (mMoved.text ?? "").includes(ZOOM) && (mMoved.html ?? "").includes("ĐỔI GIỜ HỌC"), mMoved);
+  const cLog = await prisma.classLessonReminderLog.findMany({ where: { courseId: C.id } });
+  check("20d. bảng chống trùng vẫn 1 dòng cho em đó, mang giờ mới", cLog.length === 1 && vnMinutesOfDay(cLog[0].startAt) === cNewM, cLog);
+  const rMoved2 = await api("GET", "/api/cron/nhac-buoi-hoc", { headers: AUTH });
+  check("20e. chạy lại sau khi dời ⇒ không gửi thêm", rMoved2.json?.sent === 0 && rMoved2.json?.rescheduled === 0 && to(cOk.email).length === 2, rMoved2.json);
+  check("20f. thư dời giờ không có số tiền", !looksLikeMoney(mMoved?.subject ?? "") && !looksLikeMoney(mMoved?.text ?? ""));
+
   section("tắt nhắc giữa chừng ⇒ dừng");
   await prisma.course.update({ where: { id: A.id }, data: { reminderLeadMinutes: null } });
   await enroll(A.id, "active", "Em Vào Sau Khi Tắt");

@@ -50,6 +50,14 @@ export function featureOn(k: FeatureKey, env: FeatureEnv = readFeatureEnv()): bo
   return env?.[k] === "1";
 }
 
+/** DG (14/11/2026): đề KHÔNG gắn lớp + cờ THI_THU_CONG_KHAI tắt. Điều kiện đủ (chủ đề không phải gia sư) ở lib/publicExamGate.ts.
+ *  Khi đóng: link trực tiếp /student/thi-thu/<mã đề> không mở lượt mới; em chưa làm lần nào thì như không có đề. */
+export function publicExamClosed(courseId: string | null | undefined, env: FeatureEnv = readFeatureEnv()): boolean {
+  return !courseId && !featureOn("THI_THU_CONG_KHAI", env);
+}
+export const PUBLIC_EXAM_CLOSED_MESSAGE = "Phần thi thử công khai đang tạm đóng. Đề được giao trong lớp vẫn làm bình thường.";
+export const PUBLIC_EXAM_CLOSED_CODE = "public_exam_closed";
+
 /** Người xem, đủ để quyết chốt chặn: khách, học sinh (kể cả gia sư chờ duyệt), gia sư (admin + teacher), quản trị cấp 1 / nội dung. */
 export type FeatureViewer = "guest" | "student" | "tutor" | "admin";
 

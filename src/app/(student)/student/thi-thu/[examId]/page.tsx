@@ -66,6 +66,15 @@ function ExamRoomPage() {
   const wrap = (children: React.ReactNode, narrow = true) => <div className="px-4 py-6"><div className={narrow ? "max-w-[480px] mx-auto" : ""}>{children}</div></div>;
 
   if (phase === "loading") return <div className="max-w-lg mx-auto flex justify-center py-20" role="status" aria-label="Đang tải phòng thi"><KinLoader size={44} /></div>;
+  if (d.publicClosed) {
+    return wrap(
+      <div data-thi-thu-dong className="text-center py-14 space-y-4">
+        <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Phần thi thử công khai đang tạm đóng</p>
+        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Đề được giao trong lớp vẫn làm bình thường ở Việc của tôi.</p>
+        <div className="flex flex-col items-center gap-2"><ExitLink /></div>
+      </div>,
+    );
+  }
   if (phase === "error" || !exam) {
     return wrap(
       <div className="text-center py-14 space-y-4">

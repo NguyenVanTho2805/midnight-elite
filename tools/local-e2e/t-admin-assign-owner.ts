@@ -139,6 +139,26 @@ async function main() {
   check("33. 200, ownerId = gia sư, nhật ký fromOwnerId null", rc.status === 200 && (await prisma.course.findUnique({ where: { id: center.id } }))?.ownerId === t3.id
     && JSON.stringify((await prisma.auditLog.findFirst({ where: { resourceId: center.id } }))?.metadata ?? {}).includes('"fromOwnerId":null'), rc.json);
 
+  section("hai quản trị giao CÙNG MỘT lớp cùng lúc (14/11) — không lỗi 500, chủ lớp và đề của lớp luôn khớp nhau");
+  const sup2 = await mkSuper("Quản trị Hai");
+  for (let round = 1; round <= 3; round++) {
+    const race = await mkCourse(t1.id, { name: `Lớp Đua ${round}` });
+    const raceExam = await prisma.exam.create({ data: { id: `dua-${round}`, code: `dua-${round}`, title: "Đề đua", category: "Toán", date: "01/01/2030", time: "08:00", duration: "15 phút", questions: 1, status: "available", createdAt: "2026-11-14", ownerId: t1.id, courseId: race.id } });
+    const [ra, rb] = await Promise.all([
+      api("POST", path(race.id), { as: sup, body: { tutorId: t2.id } }),
+      api("POST", path(race.id), { as: sup2, body: { tutorId: t3.id } }),
+    ]);
+    const st = [ra.status, rb.status];
+    const wins = st.filter(x => x === 200).length;
+    const after = await prisma.course.findUnique({ where: { id: race.id }, select: { ownerId: true } });
+    const exOwner = (await prisma.exam.findUnique({ where: { id: raceExam.id }, select: { ownerId: true } }))?.ownerId;
+    const logsN = await prisma.auditLog.count({ where: { resourceId: race.id } });
+    check(`44.${round}a. chỉ 200 / 409 (không 500), ít nhất một người thành công`, st.every(x => x === 200 || x === 409) && wins >= 1, st);
+    check(`44.${round}b. người thua nhận 409 'changed' kèm lời nhắn tải lại`, [ra, rb].filter(r => r.status === 409).every(r => r.json?.code === "changed" && /Tải lại/.test(r.json?.error ?? "")), [ra.json, rb.json]);
+    check(`44.${round}c. chủ lớp cuối là một trong hai gia sư, và đề của lớp đi theo đúng chủ đó`, (after?.ownerId === t2.id || after?.ownerId === t3.id) && exOwner === after?.ownerId, { after, exOwner });
+    check(`44.${round}d. số dòng nhật ký = số lần giao thành công`, logsN === wins, { logsN, wins });
+  }
+
   await done();
 }
 main().catch(async e => { console.error(e); await prisma.$disconnect(); process.exit(1); });

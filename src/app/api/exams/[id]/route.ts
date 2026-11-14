@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
+import { PUBLIC_EXAM_CLOSED_CODE, PUBLIC_EXAM_CLOSED_MESSAGE } from "@/lib/features";
+import { closedPublicExam } from "@/lib/publicExamGate";
 import { PERMISSIONS } from "@/lib/permissions";
 import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 import { rootIdOf } from "@/lib/examVariantRoute";
@@ -27,6 +29,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // QZ-04: bản nháp chưa phát hành chỉ quản trị / gia sư thấy; học sinh gõ đúng địa chỉ cũng nhận 404 (không lộ tên bản nháp).
     // BU-04 rà soát: gia sư cũng là role "admin" (adminRole teacher) nên chỉ kiểm role là để gia sư B đọc được nháp của gia sư A (id là slug theo tên, đoán được) → thêm ownsResource.
     if (exam.isDraft && !(isStaff && ownsResource(session, exam.ownerId))) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // DG (14/11/2026): thi thử công khai đang đóng (cờ THI_THU_CONG_KHAI) — em chưa từng làm đề này thì như không có đề (link trực tiếp cũ không mở được).
+    // Em đã làm (có lượt hoặc có điểm) vẫn mở được để xem lại điểm của mình. Đề gắn lớp không bị ảnh hưởng.
+    if (!isStaff && await closedPublicExam(exam)) {
+      const variants = await prisma.exam.findMany({ where: { variantOfId: exam.id }, select: { id: true } });
+      const ids = [exam.id, ...variants.map(v => v.id)];
+      const [tried, scored] = await Promise.all([
+        prisma.examAttempt.count({ where: { userId: session.userId, examId: { in: ids } } }),
+        prisma.examResult.count({ where: { userId: session.userId, examId: { in: ids } } }),
+      ]);
+      if (tried + scored === 0) return NextResponse.json({ error: PUBLIC_EXAM_CLOSED_MESSAGE, code: PUBLIC_EXAM_CLOSED_CODE }, { status: 404 });
+    }
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     const { _count, variantNo, variantOfId, blueprintId, ...rest } = exam;
     return NextResponse.json({

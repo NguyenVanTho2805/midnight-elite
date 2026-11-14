@@ -89,5 +89,16 @@ check("36. httpsJoinUrl: https giữ, http / javascript: / rác / rỗng → nul
   check("38. HTML thư (kể cả nhận view có link http) không chèn link http, không nút 'Vào học online'", !h.includes("http://meet") && !h.includes("Vào học online"));
 }
 
+{
+  // Dời giờ (14/11/2026): thư gửi lại ghi rõ đổi giờ; thư thường không có dòng này.
+  const base = { courseName: "Toán 8", startAt: vn("2026-11-14T19:30:00"), endAt: null, joinUrl: "https://meet.google.com/abc", leadMinutes: 60 as const, classUrl: "https://kin.vn/a" };
+  const moved = buildLessonReminderEmail({ ...base, rescheduled: true });
+  const normal = buildLessonReminderEmail(base);
+  check("39. thư dời giờ: tiêu đề 'Đổi giờ học', có giờ mới 19:30, dòng 'đã đổi giờ'", moved.subject === "Đổi giờ học: Toán 8 (19:30)" && moved.text.startsWith("Buổi học đã đổi giờ"), moved);
+  check("40. thư thường không mang chữ đổi giờ", normal.subject.startsWith("Sắp tới giờ học") && !normal.text.includes("đổi giờ") && !normal.view.rescheduled);
+  const h = lessonReminderHtml(moved.view);
+  check("41. HTML thư dời giờ có nhãn ĐỔI GIỜ HỌC, HTML thường không", h.includes("ĐỔI GIỜ HỌC") && !lessonReminderHtml(normal.view).includes("ĐỔI GIỜ HỌC"));
+}
+
 console.log(`\n${pass} pass / ${fail} fail`);
 process.exit(fail ? 1 : 0);

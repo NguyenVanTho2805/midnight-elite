@@ -25,7 +25,14 @@ import { prisma } from "@/lib/prisma";
   async function openLessonPanel(pg: any, url: string) {
     await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
     await pg.getByRole("button", { name: /Chương bài/ }).first().click({ timeout: 60000 }).catch(() => {});
-    await pg.getByRole("button", { name: /\+ Thêm bài học/ }).first().click({ timeout: 60000 });
+    // Trang quản trị: nút "+ Thêm bài học" mở thẳng ngăn. Trang gia sư (GS-LOP-GON): "+ Thêm bài" cuối chương mở dòng thêm nhanh, "Chi tiết…" mới mở ngăn.
+    const tutorAdd = pg.locator("[data-them-bai]").first();
+    const adminAdd = pg.getByRole("button", { name: /\+ Thêm bài học/ }).first();
+    await Promise.race([tutorAdd.waitFor({ timeout: 60000 }), adminAdd.waitFor({ timeout: 60000 })]);
+    if (await tutorAdd.isVisible().catch(() => false)) {
+      await tutorAdd.click();
+      await pg.getByRole("button", { name: /^Chi tiết…$/ }).first().click({ timeout: 30000 });
+    } else await adminAdd.click();
     await pg.getByText("Tài liệu đính kèm").first().waitFor({ timeout: 60000 });
   }
   const docInputs = (pg: any) => pg.locator('input[type="file"]').evaluateAll((els: Element[]) => els.map(e => e.getAttribute("accept") ?? ""));
@@ -59,10 +66,11 @@ import { prisma } from "@/lib/prisma";
   const ct = await ctxFor(T, { width: 1280, height: 900 });
   const pt = await ct.newPage(); watch(pt);
   await openLessonPanel(pt, `${BASE}/lop-cua-toi/quan-lop/${course.id}?tab=chuong-bai`);
-  await pt.locator('[data-tai-lieu-khung="san-sang"], [data-tai-lieu-khung="tat"]').first().waitFor({ timeout: 30000 });
+  // Khung thả nay là ô dùng chung OThaTep (thuộc tính data-o-tha; trước đây data-tai-lieu-khung). Chờ qua bước "dang-kiem".
+  await pt.locator('[data-tai-lieu] [data-o-tha]:not([data-o-tha="dang-kiem"])').first().waitFor({ timeout: 30000 });
   // Ô tải VIDEO (VideoUploadBox, BU-02, có từ trước ở ô video của bài) là tính năng khác, cùng ngăn: chỉ đo input NẰM TRONG khung tài liệu ([data-tai-lieu]).
   const files2 = await pt.locator('[data-tai-lieu] input[type="file"]').evaluateAll((els: Element[]) => els.map(e => e.getAttribute("accept") ?? ""));
-  check("gia sư: ngăn mở được, CÓ khung thả tài liệu (input[type=file] nhận pdf/doc… trong [data-tai-lieu]), KHÔNG còn dòng 'sắp có', KHÔNG đường video file trong khung tài liệu", files2.length === 0 ? (await pt.locator("[data-tai-lieu-khung]").count()) >= 1 : (files2.some(a => /\.pdf/.test(a) && /\.docx/.test(a)) && !files2.some(a => /mp4|video|mov|webm/i.test(a)) && (await pt.locator("[data-tai-lieu-dong]").count()) === 0), files2);
+  check("gia sư: ngăn mở được, CÓ khung thả tài liệu (input[type=file] nhận pdf/doc… trong [data-tai-lieu]), KHÔNG còn dòng 'sắp có', KHÔNG đường video file trong khung tài liệu", files2.length === 0 ? (await pt.locator("[data-tai-lieu] [data-o-tha]").count()) >= 1 : (files2.some(a => /\.pdf/.test(a) && /\.docx/.test(a)) && !files2.some(a => /mp4|video|mov|webm/i.test(a)) && (await pt.locator("[data-tai-lieu-dong]").count()) === 0), files2);
   await ct.close();
 
   section("Bài tập: không nút đính kèm tệp đề bài");

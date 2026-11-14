@@ -79,12 +79,14 @@ export interface LessonReminderInput {
   /** Trang lớp trên KiN (đường dẫn tuyệt đối). */
   classUrl: string;
   leadMinutes: LeadMinutes;
+  /** Đã nhắc buổi này ở giờ cũ, nay buổi bị dời: thư ghi rõ "đổi giờ". */
+  rescheduled?: boolean;
 }
 /** Phần chữ của thư (đã tính sẵn) — HTML dựng ở src/lib/email.ts (lessonReminderHtml), nơi duy nhất được viết màu cứng cho thư. */
 export interface LessonReminderMail {
   subject: string;
   text: string;
-  view: { courseName: string; soon: string; when: string; joinUrl: string | null; classUrl: string };
+  view: { courseName: string; soon: string; when: string; joinUrl: string | null; classUrl: string; rescheduled?: boolean };
 }
 
 /** P2-1 (14/11/2026): link vào học chỉ được chèn vào thư khi đúng https (link cũ trong DB có thể là http — lọt vào thư là lộ phiên học qua mạng không mã hoá).
@@ -103,10 +105,11 @@ export function buildLessonReminderEmail(i: LessonReminderInput): LessonReminder
   const end = i.endAt && i.endAt.getTime() > i.startAt.getTime() ? hmOf(vnMinutesOfDay(i.endAt)) : null;
   const when = `${wd}, ${d}/${m}/${y} lúc ${start}${end ? `–${end}` : ""}`;
   const soon = i.leadMinutes === 1440 ? "ngày mai" : `sau ${LEAD_LABEL[i.leadMinutes]} nữa`;
-  const subject = `Sắp tới giờ học: ${i.courseName} (${start})`;
+  const subject = i.rescheduled ? `Đổi giờ học: ${i.courseName} (${start})` : `Sắp tới giờ học: ${i.courseName} (${start})`;
   const joinUrl = httpsJoinUrl(i.joinUrl);
   const linkLine = joinUrl ? `Link vào học: ${joinUrl}` : NO_LINK_TEXT;
   const text = [
+    ...(i.rescheduled ? [RESCHEDULED_TEXT] : []),
     `Lớp "${i.courseName}" có buổi học ${soon}.`,
     `Thời gian: ${when} (giờ Việt Nam).`,
     linkLine,
@@ -114,8 +117,9 @@ export function buildLessonReminderEmail(i: LessonReminderInput): LessonReminder
     "",
     AUTO_NOTE,
   ].join("\n");
-  return { subject, text, view: { courseName: i.courseName, soon, when, joinUrl, classUrl: i.classUrl } };
+  return { subject, text, view: { courseName: i.courseName, soon, when, joinUrl, classUrl: i.classUrl, ...(i.rescheduled ? { rescheduled: true } : {}) } };
 }
+export const RESCHEDULED_TEXT = "Buổi học đã đổi giờ. Giờ mới ở bên dưới, thư nhắc trước đó không còn đúng.";
 export const NO_LINK_TEXT = "Buổi này chưa có link học online. Xem chi tiết trong lớp trên KiN.";
 export const AUTO_NOTE = "Thư này gửi tự động vì gia sư của lớp đã bật nhắc trước giờ học.";
 
