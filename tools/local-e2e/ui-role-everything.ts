@@ -19,6 +19,7 @@ import { blockedRouteFeature, featureOn } from "@/lib/features";
 import type { BrowserContext, Page } from "playwright";
 
 const ROLE = (process.env.ROLE ?? "student") as "student" | "guest";
+const THI_THU = featureOn("THI_THU_CONG_KHAI");
 if (ROLE !== "student" && ROLE !== "guest") throw new Error("ROLE phải là student hoặc guest");
 const EMPTY = process.env.WORLD === "empty" && ROLE === "student";   // học sinh MỚI TINH chưa vào lớp nào
 const PORT = Number(process.env.PORT ?? 3100);
@@ -386,16 +387,18 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     // xong chỉ còn nút Back của trình duyệt (trang không có liên kết nào).
     for (const [what, examId] of [["màn kết quả (đã thi)", w.E1.id], ["màn chuẩn bị vào thi", w.E2.id]] as const) {
       const r = await open(p, `${MAIN}/student/thi-thu/${examId}`);
-      const EXIT = 'a[href="/thi-thu"]:visible, a[href="/student/thi-thu"]:visible';   // Điều hướng A6d (#135): ResultView trỏ thẳng /thi-thu; vẫn nhận bí danh cũ
+      // DG (14/11/2026): danh sách thi thử công khai ẩn (cờ THI_THU_CONG_KHAI) ⇒ lối ra là "← Về Việc của tôi" (đề được giao nằm ở đó).
+      const EXIT = THI_THU ? 'a[href="/thi-thu"]:visible, a[href="/student/thi-thu"]:visible' : 'a[href="/student/viec-cua-toi"]:visible';
+      const EXIT_TO = THI_THU ? "/thi-thu" : "/student/viec-cua-toi";   // Điều hướng A6d (#135): ResultView trỏ thẳng /thi-thu; vẫn nhận bí danh cũ
       const exit = await p.locator(EXIT).count();
       check(`phòng thi — ${what}: không có thanh module (đúng thiết kế) nhưng có lối "← Về danh sách đề thi"`, !r.shell && exit > 0, { shell: r.shell, exit });
       if (exit > 0) {
         await p.locator(EXIT).first().click();
         // /student/thi-thu chỉ là bí danh chuyển hướng phía máy chủ (→ /thi-thu) và đây là chuyển trang PHÍA TRÌNH DUYỆT: `waitForLoadState` trả về ngay vì tài liệu đã nạp xong,
         // còn `settle` thấy URL đứng yên ~0,7 giây thì dừng — mà chuyển hướng mất ~1 giây ⇒ đỏ giả (đo riêng 3/3 lần đều tới /thi-thu sau ~1,1 giây). Đợi đích thật trước.
-        await p.waitForURL(u => u.pathname === "/thi-thu", { timeout: 20000 }).catch(() => {});
+        await p.waitForURL(u => u.pathname === EXIT_TO, { timeout: 20000 }).catch(() => {});
         await settle(p);
-        check(`bấm lối đó → danh sách đề thi, trong khung học sinh`, new URL(p.url()).pathname === "/thi-thu" && (await p.evaluate(SHELL_OF).catch(() => "")) === SHELL_STUDENT, p.url());
+        check(`bấm lối đó → ${EXIT_TO}, trong khung học sinh`, new URL(p.url()).pathname === EXIT_TO && (await p.evaluate(SHELL_OF).catch(() => "")) === SHELL_STUDENT, p.url());
       }
     }
     check("đã thực sự nhìn thấy khung học sinh ở nhiều trang (bài rà không rỗng)", final.filter(v => v.shell === SHELL_STUDENT).length >= 20, [...new Set(visited.map(v => v.shell))]);
@@ -423,7 +426,9 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       const r = await open(p, MAIN + path);
       touched.add(path);
       const toMoney = TUTOR_MONEY.test(path);
-      const want = toMoney ? "/student/hoc-phi" : "/lop-cua-toi";
+      // DG (14/11/2026): trang thuộc phần đang ẩn (học phí, doanh thu, tổng quan, báo cáo tháng, bài đăng…) bị proxy 307 với MỌI vai về trang đầu học sinh, kèm ?tam-dong=.
+      const dgBlocked = blockedRouteFeature(path, "student") !== null;
+      const want = dgBlocked ? "/student/viec-cua-toi" : toMoney ? "/student/hoc-phi" : "/lop-cua-toi";
       check(`học sinh mở trang của gia sư ${path} → về ${want} (${toMoney ? "Học phí của chính mình" : "danh sách lớp của mình"}), trong khung học sinh`, r.final.origin === MAIN_ORIGIN && norm(r.final.pathname) === want && r.shell === SHELL_STUDENT, [abs(r.final), r.shell]);
     }
   } else {
@@ -493,7 +498,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       const cta = await p.locator('a[href="/student/nhap-ma-lop"]:visible').count();
       check("bài trả phí khi CHƯA vào lớp → 'dành cho học sinh của lớp', không còn nói 'mua khóa học', có lối 'Nhập mã mời'", /dành cho học sinh của lớp/i.test(r.text) && !/mua khóa học/i.test(r.text) && cta > 0, r.text.replace(/\s+/g, " ").slice(0, 220));
     }
-    if (!EMPTY) {
+    if (!EMPTY && featureOn("HOC_PHI")) {   // DG: trang Học phí chỉ mở khi cờ HOC_PHI bật (tắt: 307 — đã kiểm ở ui-don-gian)
       const fee = await open(p, MAIN + "/student/hoc-phi");
       check("trang Học phí chỉ có phiếu của chính học sinh (có phiếu của mình, không có số tiền / tên của người khác)", /1\.200\.000/.test(fee.text) && !fee.text.includes(OTHER_S.student), fee.text.slice(0, 200));
     }

@@ -10,6 +10,7 @@ import type { HomeContent } from "@/lib/siteContent";
 import { HOME_ICONS } from "./homeIcons";
 import { ContentLink, FindTutorFoot, FindTutorHead } from "./HomeBlockParts";
 import HomeHeroContact from "./HomeHeroContact";
+import { isLinkHidden } from "@/lib/features";
 
 const btnOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-trang)] text-[var(--kin-nhan-nen)] font-semibold transition-opacity hover:opacity-90";
 const btnGhostOnNavy = "inline-flex items-center justify-center h-12 px-6 rounded-[var(--kin-bo-md)] border border-white/30 text-white font-semibold transition-colors hover:bg-white/10";
@@ -36,7 +37,8 @@ export default function HomeSections({ content: c, stats, slots }: { content: Ho
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-3">
           <ContentLink href={c.cta.primary.href} className={`${btnOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.primary.label}</ContentLink>
-          <ContentLink href={c.cta.secondary.href} className={`${btnGhostOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.secondary.label}</ContentLink>
+          {/* DG (14/11/2026): nút dẫn vào phần đang ẩn (vd "Thi thử ĐGNL ngay" → /thi-thu, cờ THI_THU_CONG_KHAI) không vẽ; chữ quản trị đã lưu giữ nguyên. */}
+          {!isLinkHidden(c.cta.secondary.href) && <ContentLink href={c.cta.secondary.href} className={`${btnGhostOnNavy} text-[length:var(--kin-co-small)]`}>{c.cta.secondary.label}</ContentLink>}
         </div>
       </div>
     </section>
@@ -66,7 +68,7 @@ export default function HomeSections({ content: c, stats, slots }: { content: Ho
           </p>
           <div className="flex flex-wrap gap-3 pt-3">
             <Link href="/khoa-hoc" className={`${btnOnNavy} text-[length:var(--kin-co-body)]`}>Xem lớp học</Link>
-            <Link href="/thi-thu" className={`${btnGhostOnNavy} text-[length:var(--kin-co-body)]`}>Thi thử miễn phí</Link>
+            {!isLinkHidden("/thi-thu") && <Link href="/thi-thu" className={`${btnGhostOnNavy} text-[length:var(--kin-co-body)]`}>Thi thử miễn phí</Link>}
           </div>
         </div>
 
@@ -77,7 +79,7 @@ export default function HomeSections({ content: c, stats, slots }: { content: Ho
         <div className="min-w-0 flex flex-col gap-3 lg:col-start-2 lg:row-start-1">
           <p className="text-[length:var(--kin-co-caption)] font-semibold tracking-[0.09em] text-white/65">ĐANG MỞ LUYỆN THI</p>
           <div className="grid grid-cols-2 gap-[10px]">
-            {c.exams.map((e, i) => (
+            {c.exams.filter(e => !isLinkHidden(e.href)).map((e, i) => (
               <ContentLink
                 key={`${i}-${e.label}`}
                 href={e.href}

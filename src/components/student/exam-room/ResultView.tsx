@@ -6,6 +6,7 @@ import { KinButton, KinCopyButton } from "@/components/kin";
 import type { ExamAttemptHistoryItem } from "@/lib/api";
 import { submittedNotice } from "@/lib/quizRoom";
 import type { ExamMode } from "@/lib/examRoomApi";
+import { isLinkHidden } from "@/lib/features";
 
 export interface ResultViewProps {
   examTitle: string; mode: ExamMode | null; hasQuestions: boolean;
@@ -94,7 +95,10 @@ export default function ResultView(p: ResultViewProps) {
           </ul>
         </section>
       )}
-      <Link href="/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
+      {/* DG: danh sách thi thử công khai ẩn (cờ THI_THU_CONG_KHAI) ⇒ quay về Việc của tôi (nơi có đề được giao). */}
+      {isLinkHidden("/thi-thu")
+        ? <Link href="/student/viec-cua-toi" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về Việc của tôi</Link>
+        : <Link href="/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>}
     </div>
   );
 }

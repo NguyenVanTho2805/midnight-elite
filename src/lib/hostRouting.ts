@@ -24,10 +24,13 @@
 // 11/11/2026 (LOI-01, chủ: "xây web dùng trước mắt đáp ứng nhu cầu dạy học"): route của các phần đang ẨN (src/lib/features.ts — tìm gia sư, bảng tin cộng đồng, tin tức,
 //   thư viện chung, Tiếng Anh tự học, xếp hạng, điểm chuẩn) → 307 về trang đầu theo vai (khách → "/", học sinh → Việc của tôi, gia sư → Hộp việc, quản trị → /admin ở
 //   tên miền admin). Bỏ tham số (LOI-07: chỉ gắn dấu ?tam-dong=<CỜ> cho dòng nhắc ở trang đích). Bật lại một phần bằng NEXT_PUBLIC_KIN_MO_<TÊN>=1. Các đường đó cần giải mã phiên (đích theo vai) — needsSession trả true.
-import { landingPath } from "@/lib/landing";
+import { landingPath, TUTOR_HOME_NO_INBOX } from "@/lib/landing";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { toTutorPath } from "@/lib/tutorRoutes";
-import { blockedRouteFeature, mayBlockRoute, pausedSearch, type FeatureViewer } from "@/lib/features";
+import { blockedRouteFeature, featureOn, mayBlockRoute, pausedSearch, type FeatureViewer } from "@/lib/features";
+
+/** DG: gốc vỏ gia sư (Hộp việc). Hộp việc ẩn ⇒ gia sư mở đúng đường này bị 307 sang thư viện Lớp; cần giải mã phiên để biết là gia sư. */
+const TUTOR_ROOT = "/lop-cua-toi";
 
 export const ADMIN_HOST = "admin.midnightelite-edu.com";
 export const MAIN_HOST = ADMIN_HOST.replace(/^admin\./, "");
@@ -54,7 +57,7 @@ export const isPwaFile = (p: string) => p === "/sw.js" || p === "/manifest.webma
 /** Có cần giải mã phiên để quyết định không? Chỉ vài đường dẫn cần, các đường còn lại (trang khách, API, tệp tĩnh) không tốn gì. */
 export function needsSession(host: string, pathname: string): boolean {
   if (isAdminHost(host)) return !(pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname) || isPwaFile(pathname));
-  return isAdminPath(pathname) || AUTH_PAGES.includes(pathname) || mayBlockRoute(pathname);
+  return isAdminPath(pathname) || AUTH_PAGES.includes(pathname) || mayBlockRoute(pathname) || (pathname === TUTOR_ROOT && !featureOn("HOP_VIEC"));
 }
 
 /** Vai theo nghĩa của chốt chặn tính năng (src/lib/features.ts). Phiên lạ (role khác) → khách: đóng khi lạ. */
@@ -76,8 +79,15 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     if (session?.role === "student" && (pathname === "/" || isAdminPath(pathname))) return { kind: "redirect", status: 307, host: "main", pathname: landingPath("student", undefined), search: "" };
     // "/" → dashboard admin.
     if (pathname === "/") return { kind: "rewrite", pathname: "/admin" };
-    // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts) — cho qua nguyên trạng.
-    if (isAdminPath(pathname)) return { kind: "next" };
+    // DG (14/11/2026): trang quản trị của phần đang ẨN (doanh thu, gói Pro, phễu gia sư, số đo, lịch sử đánh giá, chữ trang chủ — quy tắc `route: ["admin"]` ở
+    // src/lib/features.ts) → 307 về Hôm nay, kèm dấu ?tam-dong=. Chỉ trang; API /api/admin/* đi nhánh đầu hàm, không đổi.
+    if (isAdminPath(pathname)) {
+      const blocked = session ? blockedRouteFeature(pathname, "admin") : null;
+      // Chỉ khi ĐÃ có phiên ở tên miền admin: người chưa đăng nhập vẫn tới cửa đăng nhập như cũ (giữ ?redirect=), không chuyển hướng thêm vòng nào.
+      if (blocked && session && pathname !== "/admin") return { kind: "redirect", status: 307, pathname: "/admin", search: pausedSearch(blocked) };
+      // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts) — cho qua nguyên trạng.
+      return { kind: "next" };
+    }
     // Mọi đường còn lại là trang công khai / học viên / gia sư (/khoa-hoc, /quen-mat-khau, /dang-ky, liên kết trong thư…): tên miền admin không phục vụ chúng,
     // nhưng người bấm nút chắc chắn muốn tới ĐÓ — đưa sang tên miền chính, đúng đường dẫn + tham số (không đẩy về dashboard rồi về đăng nhập như trước).
     return { kind: "redirect", status: 307, host: "main", pathname, search };
@@ -89,7 +99,7 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
       // BU-00 bước 3: gia sư KHÔNG còn làm việc trong /admin/*. Trang đề thi / quản lớp có bí danh dưới /lop-cua-toi (src/lib/tutorRoutes.ts) → 307 sang đó,
       // giữ tham số (link cũ trong thông báo, bookmark vẫn tới). Đường không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
       const alias = toTutorPath(pathname);
-      return alias ? { kind: "redirect", status: 307, pathname: alias, search } : { kind: "redirect", status: 307, pathname: "/lop-cua-toi" };
+      return alias ? { kind: "redirect", status: 307, pathname: alias, search } : { kind: "redirect", status: 307, pathname: landingPath("admin", "teacher") };
     }
     // Chặn hẳn đường cũ /admin/..., ép sang tên miền admin. GIỮ NGUYÊN toàn bộ đường dẫn (kể cả /admin) — tên miền admin chỉ phục vụ /admin/*, nên bỏ tiền tố
     // sẽ rơi vào nhánh "đường lạ" và liên kết / bookmark cũ không bao giờ tới đúng trang.
@@ -102,6 +112,9 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     if (pathname === "/dang-nhap") return { kind: "redirect", status: 307, pathname: safeRedirect(new URLSearchParams(search).get("redirect")) ?? home };
     return { kind: "redirect", status: 307, pathname: home };
   }
+
+  // DG (14/11/2026): Hộp việc ẩn (cờ HOP_VIEC) ⇒ gia sư mở gốc /lop-cua-toi → 307 sang thư viện Lớp (bỏ tham số, như các chốt khác). Học sinh / quản trị không đổi.
+  if (pathname === TUTOR_ROOT && isTeacher(session) && !featureOn("HOP_VIEC")) return { kind: "redirect", status: 307, pathname: TUTOR_HOME_NO_INBOX };
 
   // LOI-01: phần đang ẩn → trang đầu theo vai. Quản trị đi thẳng sang tên miền admin (ở tên miền chính /admin lại bị đẩy sang đó — bớt một vòng).
   // LOI-07: bỏ tham số cũ, CHỈ gắn dấu `?tam-dong=<CỜ>` (features.pausedSearch) để trang đích nói một dòng "Phần này đang tạm đóng." — vẫn 307 + no-store như cũ.

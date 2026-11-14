@@ -7,6 +7,7 @@ import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
 import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
 import { readProfilePrefs, type TutorProfilePrefs } from "@/lib/tutorVisibility";
 import { patchCalendarPrefs, readCalendarPrefs, type CalendarPrefs } from "@/lib/sessionBook";
+import { featureOn, isLinkHidden, type FeatureEnv } from "@/lib/features";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -232,9 +233,25 @@ export function visibleTutorModules(prefs: UserPreferences): TutorModuleDef[] {
   return TUTOR_MODULES.filter(m => m.always || on.has(m.key));
 }
 
-/** Module `key` có đang hiện trên thanh bên không (cùng quy tắc mặc định với `visibleTutorModules`: chưa chọn gì = đủ module). */
-export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"]): boolean {
-  return visibleTutorModules(prefs).some(m => m.key === key);
+/**
+ * Module có được phép hiện theo CỜ tính năng (src/lib/features.ts) không — tách khỏi lựa chọn của gia sư (`visibleTutorModules` chỉ nói gia sư đã bật gì).
+ * LOI-01: Lịch ẩn theo cờ LICH. DG (14/11/2026): Hộp việc theo cờ HOP_VIEC, Học phí theo cờ HOC_PHI (mặc định cả hai ẨN). Module khác luôn được phép.
+ */
+export function tutorModuleAllowed(key: TutorModuleDef["key"], env?: FeatureEnv): boolean {
+  if (key === "lich") return !isLinkHidden("/lop-cua-toi/lich", env);
+  if (key === "hop-viec") return featureOn("HOP_VIEC", env);
+  if (key === "hoc-phi") return featureOn("HOC_PHI", env);
+  return true;
+}
+
+/** Module thật sự hiện trên thanh bên: lựa chọn của gia sư ∩ cờ tính năng. */
+export function shownTutorModules(prefs: UserPreferences, env?: FeatureEnv): TutorModuleDef[] {
+  return visibleTutorModules(prefs).filter(m => tutorModuleAllowed(m.key, env));
+}
+
+/** Module `key` có đang hiện trên thanh bên không (cùng quy tắc mặc định với `visibleTutorModules`: chưa chọn gì = đủ module; DG: và cờ tính năng cho phép). */
+export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"], env?: FeatureEnv): boolean {
+  return shownTutorModules(prefs, env).some(m => m.key === key);
 }
 
 export function reminderChannels(prefs: UserPreferences): { parent: boolean; student: boolean } {

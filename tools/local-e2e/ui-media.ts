@@ -65,7 +65,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
 
     // Tài liệu: xem thử + tải về, chặn link nguy hiểm
     const rows = p.locator("li", { hasText: "Định lý Vi-ét.pdf" });
-    check("tab Tài liệu: hàng tài liệu có nút 'Xem thử' và 'Tải về'", (await rows.getByRole("link", { name: /Xem thử/ }).count()) === 1 && (await rows.getByRole("link", { name: /Tải về/ }).count()) === 1);
+    check("khối Tài liệu: hàng tài liệu có nút 'Xem thử' và 'Tải về'", (await rows.getByRole("link", { name: /Xem thử/ }).count()) === 1 && (await rows.getByRole("link", { name: /Tải về/ }).count()) === 1);
     check("nút Xem thử trỏ trang /xem-tai-lieu và cao ≥ 44px", ((await rows.getByRole("link", { name: /Xem thử/ }).getAttribute("href")) ?? "").startsWith("/xem-tai-lieu?url=") && ((await rows.getByRole("link", { name: /Xem thử/ }).boundingBox())?.height ?? 0) >= 44);
     check("tài liệu Drive: có Xem thử, KHÔNG có Tải về (không tải thẳng được)", (await p.locator("li", { hasText: "Bản ghi Drive" }).getByRole("link", { name: /Tải về/ }).count()) === 0 && (await p.locator("li", { hasText: "Bản ghi Drive" }).getByRole("link", { name: /Xem thử/ }).count()) === 1);
     const bad = p.locator("li", { hasText: "Link nguy hiểm" });
@@ -75,7 +75,8 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     await shot(p, `media-student-documents-${label}`);
 
     // Ghi chú theo mốc
-    await p.getByRole("button", { name: /Ghi chú/ }).click();
+    // DG (14/11/2026): trang bài một cột — khối Ghi chú luôn hiện dưới Bài tập (không còn nút tab), chỉ cần cuộn tới.
+    await p.locator('[data-lesson-section="ghi-chu"]').scrollIntoViewIfNeeded();
     await p.getByText("Lưu ý từ gia sư").waitFor({ timeout: 30000 });
     check("ghi chú: hiện lưu ý của gia sư", await p.getByText("Xem kỹ phần 2").isVisible());
     const area = p.getByRole("textbox").first();
@@ -131,7 +132,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
       await shot(p, `media-student-upload-${label}`);
       // Ghim mốc trên video thật
       await v.evaluate((e: HTMLVideoElement) => { e.currentTime = 2; });
-      await p.getByRole("button", { name: /Ghi chú/ }).click();
+      await p.locator('[data-lesson-section="ghi-chu"]').scrollIntoViewIfNeeded(); // DG: một cột, không còn nút tab Ghi chú
       await p.getByRole("button", { name: "Ghim mốc đang xem" }).click();
       await eventually("Ghim mốc → thêm dòng [0:02] vào ghi chú và hiện nút mốc", async () => /\[0:02\]/.test(await p.getByRole("textbox").first().inputValue()) && (await p.getByRole("list", { name: "Các mốc đã ghim" }).getByRole("button").count()) >= 1);
       // người chưa ghi danh mở thẳng: chặn

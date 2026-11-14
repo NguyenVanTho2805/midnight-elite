@@ -184,7 +184,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const info = p.getByRole("region", { name: "Thông tin lớp" });
     await info.waitFor({ timeout: 30000 });
     const infoText = await info.innerText();
-    check("Tổng quan: 'Phiếu học phí của bạn →' → /student/hoc-phi, khối không có chữ số tiền / 'đ'", (await info.getByRole("link", { name: "Phiếu học phí của bạn →" }).getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)|\bđ\b/.test(infoText), infoText);
+    // DG (14/11/2026): lối "Phiếu học phí của bạn →" chỉ khi cờ HOC_PHI mở; tắt (mặc định) thì không có liên kết đó. Khối vẫn không có số tiền.
+    if (featureOn("HOC_PHI")) check("Tổng quan: 'Phiếu học phí của bạn →' → /student/hoc-phi, khối không có chữ số tiền / 'đ'", (await info.getByRole("link", { name: "Phiếu học phí của bạn →" }).getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)|\bđ\b/.test(infoText), infoText);
+    else check("DG: HOC_PHI tắt → Tổng quan KHÔNG có 'Phiếu học phí của bạn →', không chữ số tiền / 'đ'", (await info.getByRole("link", { name: "Phiếu học phí của bạn →" }).count()) === 0 && !/\d\s*(đ|₫|VND)|\bđ\b/.test(infoText), infoText);
     check("Tổng quan: có 'Tài liệu & bản ghi' (data-materials-tab) và 'Bài tập của lớp'; KHÔNG có 'Đánh giá'", await p.locator("[data-materials-tab]").isVisible() && await p.getByRole("heading", { name: "Bài tập của lớp" }).isVisible() && (await p.getByText("Đánh giá").count()) === 0);
     {
       // LOI-07 (4): cột trái (Tổng quan, cao) span 2 hàng; trước đây phần thừa chia cả vào hàng 1 ⇒ hở ~100px giữa thẻ tiến độ và cột phải.
@@ -210,7 +212,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await p.locator(`[data-outline-lesson="${L(3)}"]`).click();
     await p.waitForURL(u => u.pathname === `/student/bai-giang/${L(3)}`, { timeout: 90000 });
     await p.getByRole("heading", { level: 1, name: "Bài 3: Hệ thức Vi-ét" }).waitFor({ timeout: 120000 });
-    await p.getByRole("button", { name: "Bài tập", exact: true }).first().click();
+    await p.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded(); // DG: trang bài một cột, không còn nút tab Bài tập
     const card = p.locator(`[data-bai-tap-the="${HW.id}"]`);
     const zone = card.locator("[data-nop-tep-vung-tha]");
     await zone.waitFor({ timeout: 60000 });
@@ -234,7 +236,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     storeOn = false;
     await p.reload({ waitUntil: "domcontentloaded" });
     await p.getByRole("heading", { level: 1, name: "Bài 3: Hệ thức Vi-ét" }).waitFor({ timeout: 120000 });
-    await p.getByRole("button", { name: "Bài tập", exact: true }).first().click();
+    await p.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded(); // DG: trang bài một cột, không còn nút tab Bài tập
     const off = p.locator("[data-nop-tep-chua-bat]");
     await off.waitFor({ timeout: 60000 });
     check("kho chưa bật: tiêu đề 'Kho tệp chưa bật' + câu cũ 'Tính năng nộp tệp chưa bật. Bạn vẫn nộp được bằng link Azota.' (role=status)", (await off.getAttribute("role")) === "status" && /Kho tệp chưa bật/.test(await off.innerText()) && /Tính năng nộp tệp chưa bật\. Bạn vẫn nộp được bằng link Azota\./.test(await off.innerText()));

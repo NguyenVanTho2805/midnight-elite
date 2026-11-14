@@ -18,10 +18,12 @@ import TakingRoom from "@/components/student/exam-room/TakingRoom";
 import { answersOpenLabel } from "@/components/student/exam-room/roomLogic";
 import { useRoomPage } from "@/components/student/exam-room/useRoomPage";
 import { useRoomSession } from "@/components/student/exam-room/useRoomSession";
+import { isLinkHidden } from "@/lib/features";
 
-const ExitLink = () => (
-  <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
-);
+// DG (14/11/2026): danh sách thi thử công khai ẩn (cờ THI_THU_CONG_KHAI) ⇒ lối ra là Việc của tôi (đề được giao nằm ở đó), không vào trang đã chặn.
+const ExitLink = () => isLinkHidden("/student/thi-thu")
+  ? <Link href="/student/viec-cua-toi" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về Việc của tôi</Link>
+  : <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>;
 
 export default function ExamEntryPage() {
   return (

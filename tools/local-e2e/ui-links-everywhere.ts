@@ -17,6 +17,7 @@ import { mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done, cookieF
 import { prisma } from "@/lib/prisma";
 import { toTutorPath } from "@/lib/tutorRoutes";
 import { blockedRouteFeature, type FeatureViewer } from "@/lib/features";
+import { landingPath } from "@/lib/landing";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -52,7 +53,9 @@ const PAGE_REDIRECTS: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop
 // LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai — có chủ đích. Cờ đọc ở tiến trình bài: chạy với CÙNG biến
 // NEXT_PUBLIC_KIN_MO_* như máy chủ dev. Quản trị: tên miền admin "/admin"; đi qua tên miền chính không có phiên thì là khách → "/".
 const LOI_VIEWER: Record<Scenario["role"], FeatureViewer> = { guest: "guest", student: "student", tutor: "tutor", super: "admin", content: "admin" };
-const LOI_HOME: Record<FeatureViewer, string[]> = { guest: ["/"], student: ["/student/viec-cua-toi"], tutor: ["/lop-cua-toi"], admin: ["/admin", "/"] };
+// DG (14/11/2026): trang đầu gia sư theo cờ HOP_VIEC (landingPath: tắt ⇒ /lop-cua-toi/lop).
+const TUTOR_HOME = landingPath("admin", "teacher");
+const LOI_HOME: Record<FeatureViewer, string[]> = { guest: ["/"], student: ["/student/viec-cua-toi"], tutor: [TUTOR_HOME], admin: ["/admin", "/"] };
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
   const viewer = LOI_VIEWER[sc.role];
   if (blockedRouteFeature(reqPath, viewer)) return LOI_HOME[viewer].includes(finPath);
@@ -61,7 +64,7 @@ function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boole
   // Gia sư mở đường cũ /admin/...: proxy 307 sang bí danh (src/lib/tutorRoutes.ts), không có bí danh → Hộp việc (BU-00 bước 3).
   if (sc.role === "tutor" && /^\/admin(\/|$)/.test(reqPath)) {
     const alias = toTutorPath(reqPath)?.split("?")[0] ?? null;
-    return finPath === (alias ?? "/lop-cua-toi") || (alias !== null && PAGE_REDIRECTS[alias] === finPath);
+    return finPath === (alias ?? TUTOR_HOME) || (alias !== null && PAGE_REDIRECTS[alias] === finPath);
   }
   // GS-LOP-GON (PR #154): trang lớp cũ /lop-cua-toi/<id> của CHỦ lớp là 307 có chủ đích (legacyClassTarget ở src/lib/tutorClassRoutes.ts, kiểm ở t-lop-gon) sang tab đầu
   // "Bài học" (LOI-02: gốc lớp /lop-cua-toi/quan-lop/<id>, trước là …/giao-trinh) của dải tab mới; đồng giảng / học sinh vẫn ở trang này nên không vào nhánh này.
@@ -75,8 +78,10 @@ function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boole
   // /ban-do là bản đồ cho MỌI người, có mục "Gia sư" (Lịch / Lớp / Học phí): quản trị không có vỏ gia sư nên các trang này đưa họ về danh sách lớp /lop-cua-toi.
   if ((sc.role === "super" || sc.role === "content") && /^\/lop-cua-toi\/(lich|lop|hoc-phi)$/.test(reqPath)) return finPath === "/lop-cua-toi";
   if ((sc.role === "student" || sc.role === "tutor") && ["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) {
-    return finPath === (sc.role === "student" ? "/student/viec-cua-toi" : "/lop-cua-toi");
+    return finPath === (sc.role === "student" ? "/student/viec-cua-toi" : TUTOR_HOME);
   }
+  // DG: gia sư mở gốc /lop-cua-toi khi Hộp việc ẩn → 307 sang thư viện Lớp (hostRouting, TUTOR_ROOT).
+  if (sc.role === "tutor" && reqPath === "/lop-cua-toi" && TUTOR_HOME !== "/lop-cua-toi") return finPath === TUTOR_HOME;
   return false;
 }
 

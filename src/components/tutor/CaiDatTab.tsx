@@ -31,13 +31,16 @@ function OpenPage({ title, href, note, action }: { title: string; href: string; 
 export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
   const base = `${classBase(d.courseId)}?tab=cai-dat`;
   const mucHref = (m: MucCaiDat) => (m === "thong-tin" ? base : `${base}&muc=${m}`);
+  // DG (14/11/2026): mục "Học phí" ẩn khi cờ HOC_PHI tắt (mặc định); mở thẳng ?muc=hoc-phi thì hiện mục đầu (Thông tin). Không đụng LopHocPhi / LopPhiKhac (TIỀN).
+  const mucs = MUC_CAI_DAT.filter(m => m !== "hoc-phi" || featureOn("HOC_PHI"));
+  const muc: MucCaiDat = mucs.includes(d.muc) ? d.muc : "thong-tin";
   return (
     <div data-cai-dat-tab className="min-w-0 max-w-5xl">
-      <MucNav label="Mục của Cài đặt" items={MUC_CAI_DAT.map(m => ({ key: m, label: LABEL[m], href: mucHref(m), active: d.muc === m }))} />
+      <MucNav label="Mục của Cài đặt" items={mucs.map(m => ({ key: m, label: LABEL[m], href: mucHref(m), active: muc === m }))} />
 
-      {d.muc === "thong-tin" && <QuanLopCourse courseId={d.courseId} view="cai-dat" />}
+      {muc === "thong-tin" && <QuanLopCourse courseId={d.courseId} view="cai-dat" />}
 
-      {d.muc === "hoc-phi" && (
+      {muc === "hoc-phi" && (
         <div className="space-y-[var(--kin-cach-muc)]">
           <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} />
           <LopPhiKhac courseId={d.courseId} />
@@ -45,9 +48,9 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
         </div>
       )}
 
-      {d.muc === "dong-giang" && <GiaoVienLop courseId={d.courseId} viewRole="owner" />}
+      {muc === "dong-giang" && <GiaoVienLop courseId={d.courseId} viewRole="owner" />}
 
-      {d.muc === "cong-dong" && (
+      {muc === "cong-dong" && (
         <div className="space-y-[var(--kin-cach-muc)]">
           {/* LOI-01 (rà soát): bảng tin chung ẩn thì hỏi đáp của lớp mở ở /cong-dong?scope=<mã lớp> (chỉ thành viên lớp và gia sư). */}
           {!featureOn("CONG_DONG") && (
@@ -59,7 +62,7 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
         </div>
       )}
 
-      {d.muc === "ban-ghi" && (
+      {muc === "ban-ghi" && (
         <OpenPage title="Bản ghi của lớp" href={`/lop-cua-toi/${encodeURIComponent(d.courseId)}/ban-ghi`} action="Mở bản ghi của lớp"
           note="Dán link bản ghi sau buổi học, gắn vào đúng buổi, và xem em nào đã xem video bài giảng của lớp." />
       )}

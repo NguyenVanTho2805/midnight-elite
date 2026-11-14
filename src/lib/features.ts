@@ -6,7 +6,16 @@
 // Bật lại một phần: đặt `NEXT_PUBLIC_KIN_MO_<TÊN>=1` (vd NEXT_PUBLIC_KIN_MO_LICH=1) rồi dựng lại — biến NEXT_PUBLIC_ được nhúng lúc dựng ở mã máy khách.
 // Một nguồn duy nhất cho menu, trang chủ, sitemap và chốt chặn route: thêm đường dẫn ở `PATH_RULES`, đừng viết danh sách riêng ở chỗ khác.
 // Test: tools/local-e2e/t-features-lib.ts.
-export const FEATURES = ["TIM_GIA_SU", "CONG_DONG", "LICH", "TIN_TUC", "THU_VIEN", "TIENG_ANH", "XEP_HANG", "COIN", "DIEM_CHUAN"] as const;
+//
+// DG (14/11/2026, chủ: "đơn giản hoá, chỉ giữ tính năng dạy học" — ẨN BẰNG CỜ, KHÔNG XOÁ MÃ, không đổi dữ liệu): thêm tám phần, cũng mặc định ẨN:
+//   HOC_PHI (học phí: module gia sư, phiếu của học sinh, bảng học phí lớp, mục Học phí ở Cài đặt lớp, dòng học phí ở Hộp việc, tin đẩy học phí),
+//   KINH_DOANH (doanh thu, gói KiN Pro — quản trị và gia sư), DIEM_DANH (tab Điểm danh của lớp), SO_DIEM (sổ điểm + báo cáo tháng),
+//   NHAC_HOC (Nhắc học của học sinh), HOP_VIEC (Hộp việc + Tổng quan của gia sư: trang đầu gia sư thành thư viện Lớp),
+//   THI_THU_CONG_KHAI (danh sách thi thử công khai /thi-thu; đề được giao trong lớp /student/thi-thu/<mã đề> KHÔNG chặn),
+//   VAN_HANH_PHU (quản trị: phễu gia sư, số đo sản phẩm, lịch sử đánh giá, chữ trang chủ).
+//   Chỉ HIỂN THỊ + lối vào + chốt 307: không đụng logic tính tiền, API học phí, webhook, schema.
+export const FEATURES = ["TIM_GIA_SU", "CONG_DONG", "LICH", "TIN_TUC", "THU_VIEN", "TIENG_ANH", "XEP_HANG", "COIN", "DIEM_CHUAN",
+  "HOC_PHI", "KINH_DOANH", "DIEM_DANH", "SO_DIEM", "NHAC_HOC", "HOP_VIEC", "THI_THU_CONG_KHAI", "VAN_HANH_PHU"] as const;
 export type FeatureKey = (typeof FEATURES)[number];
 export type FeatureEnv = Partial<Record<FeatureKey, string | undefined>>;
 
@@ -25,6 +34,14 @@ export function readFeatureEnv(): FeatureEnv {
     XEP_HANG: process.env.NEXT_PUBLIC_KIN_MO_XEP_HANG,
     COIN: process.env.NEXT_PUBLIC_KIN_MO_COIN,
     DIEM_CHUAN: process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN,
+    HOC_PHI: process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI,
+    KINH_DOANH: process.env.NEXT_PUBLIC_KIN_MO_KINH_DOANH,
+    DIEM_DANH: process.env.NEXT_PUBLIC_KIN_MO_DIEM_DANH,
+    SO_DIEM: process.env.NEXT_PUBLIC_KIN_MO_SO_DIEM,
+    NHAC_HOC: process.env.NEXT_PUBLIC_KIN_MO_NHAC_HOC,
+    HOP_VIEC: process.env.NEXT_PUBLIC_KIN_MO_HOP_VIEC,
+    THI_THU_CONG_KHAI: process.env.NEXT_PUBLIC_KIN_MO_THI_THU_CONG_KHAI,
+    VAN_HANH_PHU: process.env.NEXT_PUBLIC_KIN_MO_VAN_HANH_PHU,
   };
 }
 
@@ -39,6 +56,8 @@ export type FeatureViewer = "guest" | "student" | "tutor" | "admin";
 interface PathRule {
   feature: FeatureKey;
   path: string;
+  /** DG: đường có đoạn động (mã lớp) — khớp theo biểu thức thay cho `path`/`sub`. `path` khi đó chỉ để đọc. */
+  re?: RegExp;
   /** Khớp cả trang con (`path/…`). Không có = chỉ khớp đúng `path`. */
   sub?: boolean;
   /** Chốt chặn route (307) khi phần đang ẩn. Không có = chỉ gỡ lối vào (menu, liên kết), route vẫn chạy. Mảng = chỉ chặn với những vai này. */
@@ -87,6 +106,38 @@ const PATH_RULES: readonly PathRule[] = [
   { feature: "DIEM_CHUAN", path: "/tra-cuu", sub: true, route: true },
   { feature: "DIEM_CHUAN", path: "/student/tra-cuu", sub: true, route: true },
   { feature: "DIEM_CHUAN", path: "/admin/diem-chuan", sub: true },
+  // ── DG (14/11/2026): tám phần mới. Trang gia sư / học sinh: chặn route (307 về trang đầu theo vai). Trang quản trị: chặn với vai quản trị — chốt ở nhánh
+  //    tên miền admin của hostRouting.decideRoute (307 về /admin?tam-dong=…). Chỉ trang; API giữ nguyên.
+  // 10. Học phí. Chỉ TRANG; API /api/tutor/invoices…, webhook SePay, invoiceServer không đổi (TIỀN).
+  { feature: "HOC_PHI", path: "/lop-cua-toi/hoc-phi", sub: true, route: true },
+  { feature: "HOC_PHI", path: "/student/hoc-phi", sub: true, route: true },
+  { feature: "HOC_PHI", path: "/lop-cua-toi/<lớp>/bang-hoc-phi", re: /^\/lop-cua-toi\/[^/]+\/bang-hoc-phi(?:\/.*)?$/, route: true },
+  // 11. Kinh doanh: doanh thu, gói KiN Pro.
+  { feature: "KINH_DOANH", path: "/lop-cua-toi/doanh-thu", sub: true, route: true },
+  { feature: "KINH_DOANH", path: "/lop-cua-toi/goi", sub: true, route: true },
+  { feature: "KINH_DOANH", path: "/admin/doanh-thu", sub: true, route: ["admin"] },
+  { feature: "KINH_DOANH", path: "/admin/goi-pro", sub: true, route: ["admin"] },
+  // 12. Điểm danh: trang Điểm danh của lớp (kể cả bản in). Dữ liệu điểm danh, chốt buổi giữ nguyên.
+  { feature: "DIEM_DANH", path: "/lop-cua-toi/quan-lop/<lớp>/diem-danh", re: /^\/lop-cua-toi\/quan-lop\/[^/]+\/diem-danh(?:\/.*)?$/, route: true },
+  // 13. Sổ điểm + báo cáo tháng.
+  { feature: "SO_DIEM", path: "/lop-cua-toi/so-diem", sub: true, route: true },
+  { feature: "SO_DIEM", path: "/lop-cua-toi/bao-cao-thang", sub: true, route: true },
+  // 14. Nhắc học của học sinh.
+  { feature: "NHAC_HOC", path: "/student/nhac-hoc", sub: true, route: true },
+  // 15. Hộp việc: /lop-cua-toi là gốc của cả vỏ gia sư nên KHÔNG là quy tắc đường (liên kết logo vẫn sống) — trang tự chuyển sang thư viện Lớp (landingPath).
+  //     Tổng quan (bản thay Hộp việc khi gia sư tự tắt module) đi cùng cờ này.
+  { feature: "HOP_VIEC", path: "/lop-cua-toi/tong-quan", sub: true, route: true },
+  // 16. Thi thử công khai: CHỈ danh sách /thi-thu (và bí danh /student/thi-thu). Phòng thi /student/thi-thu/<mã đề> (đề giao qua lớp, Việc của tôi) KHÔNG khớp.
+  { feature: "THI_THU_CONG_KHAI", path: "/thi-thu", route: true },
+  { feature: "THI_THU_CONG_KHAI", path: "/student/thi-thu", route: true },
+  // 17. Vận hành phụ (quản trị).
+  { feature: "VAN_HANH_PHU", path: "/admin/pheu", sub: true, route: ["admin"] },
+  { feature: "VAN_HANH_PHU", path: "/admin/so-do", sub: true, route: ["admin"] },
+  { feature: "VAN_HANH_PHU", path: "/admin/danh-gia", sub: true, route: ["admin"] },
+  { feature: "VAN_HANH_PHU", path: "/admin/trang-chu", sub: true, route: ["admin"] },
+  // TIM_GIA_SU (DG): hai trang gia sư của sàn — bài đăng tìm học sinh, yêu cầu tìm gia sư.
+  { feature: "TIM_GIA_SU", path: "/lop-cua-toi/bai-dang", sub: true, route: true },
+  { feature: "TIM_GIA_SU", path: "/lop-cua-toi/yeu-cau", sub: true, route: true },
 ];
 
 /** Bỏ ?tham số và #neo, bỏ "/" cuối (trừ gốc). Địa chỉ ngoài (https://, tel:, mailto:) không thuộc quy tắc nào. */
@@ -96,7 +147,7 @@ function pathOf(href: string): string | null {
   return p.length > 1 ? p.replace(/\/+$/, "") : p;
 }
 
-const matches = (r: PathRule, p: string) => p === r.path || (!!r.sub && p.startsWith(r.path + "/"));
+const matches = (r: PathRule, p: string) => r.re ? r.re.test(p) : p === r.path || (!!r.sub && p.startsWith(r.path + "/"));
 
 /** Phần (đang ẨN) mà liên kết `href` dẫn vào; null = liên kết hiện bình thường. Dùng cho menu, chân trang, bản đồ, sitemap. */
 export function hiddenLinkFeature(href: string, env: FeatureEnv = readFeatureEnv()): FeatureKey | null {

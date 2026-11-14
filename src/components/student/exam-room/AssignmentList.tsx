@@ -10,6 +10,7 @@ import { KinStatus, type StatusTone } from "@/components/kin/Status";
 import { examRoomApi, type AssignmentItem, type AssignmentState } from "@/lib/examRoomApi";
 import { daysLeftLabel, opensLabel, sortAssignments } from "@/lib/examRoomLib";
 import { ASSIGNMENT_ACTION, ASSIGNMENT_STATE_LABEL } from "./roomLogic";
+import { isLinkHidden } from "@/lib/features";
 
 const TONE: Record<AssignmentState, StatusTone> = { "dang-lam": "cho", "dang-mo": "xong", "chua-mo": "mo", "da-dong": "mo", "cho-cong-bo": "cho", "da-lam": "xong" };
 
@@ -56,7 +57,7 @@ export default function AssignmentList({ items, serverNow, limit, emptyLink = tr
   const list = limit ? items.slice(0, limit) : items;
   if (list.length === 0) {
     return (
-      <KinEmptyState title="Chưa có đề nào được giao" action={emptyLink ? <Link href="/thi-thu" className={kinButtonClass("secondary")}>Xem thi thử</Link> : undefined}>
+      <KinEmptyState title="Chưa có đề nào được giao" action={emptyLink && !isLinkHidden("/thi-thu") ? <Link href="/thi-thu" className={kinButtonClass("secondary")}>Xem thi thử</Link> : undefined}>
         Đề của lớp em đang học hoặc đề gia sư gửi đường dẫn sẽ hiện ở đây, kèm hạn làm bài.
       </KinEmptyState>
     );

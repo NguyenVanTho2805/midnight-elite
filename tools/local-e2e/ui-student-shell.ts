@@ -10,10 +10,12 @@ import { featureOn } from "@/lib/features";
 // LOI-01 (11/11/2026): Lịch học, Gia sư, Cộng đồng, Tin tức, Tiếng Anh tự học là phần ẨN mặc định (src/lib/features.ts). Bài đọc cờ ở tiến trình này — chạy với CÙNG biến
 // NEXT_PUBLIC_KIN_MO_* như máy chủ dev. Tắt hết: thanh còn Việc của tôi · Lớp của tôi (+ Khác), bảng Khác chỉ còn "Lớp miễn phí", điện thoại 3 ô. Bật đủ: như trước.
 const LICH = featureOn("LICH");
-const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(featureOn("CONG_DONG") ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
-const MORE_HIDDEN = ["Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"].filter(l => !MORE_EXPECT.includes(l));
+// DG (14/11/2026): "Lớp miễn phí" đi cùng cờ TIM_GIA_SU (lối khám phá sàn); "Nhắc học" theo cờ NHAC_HOC; "Xem lịch tuần" theo LICH; danh sách thi thử theo THI_THU_CONG_KHAI.
+const NHAC = featureOn("NHAC_HOC"), THI_THU = featureOn("THI_THU_CONG_KHAI");
+const MORE_EXPECT = [...(featureOn("TIM_GIA_SU") ? ["Lớp miễn phí", "Gia sư"] : []), ...(featureOn("CONG_DONG") ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
+const MORE_HIDDEN = ["Lớp miễn phí", "Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"].filter(l => !MORE_EXPECT.includes(l));
 // LOI-04 (11/11/2026): module "Nhắc học" luôn hiện (không theo cờ) ⇒ điện thoại: Việc của tôi · Nhắc học · Lớp của tôi · Khác = 4 ô khi LICH tắt, 5 ô khi bật.
-const MOBILE_CELLS = LICH ? 5 : 4;
+const MOBILE_CELLS = 3 + (LICH ? 1 : 0) + (NHAC ? 1 : 0);
 
 const H = 3_600_000, D = 24 * H;
 
@@ -58,8 +60,9 @@ const H = 3_600_000, D = 24 * H;
   // LOI-07: "HỌC SINH" có 2 bản trong thanh — <span aria-hidden> cạnh logo (chỉ thanh RỘNG 272px, display:none ở thanh hẹp) và <p sr-only> cho trình đọc màn hình
   // (ModuleRail.tsx:201, :205). Bài chạy thanh hẹp 79px ⇒ `.first()` rơi vào bản ẩn. Kiểm như ui-tutor-shell: có ít nhất một bản đang dựng (sr-only vẫn có hộp 1px).
   check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0)));
-  for (const m of ["Việc của tôi", "Nhắc học", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
-  check("LOI-04: module 'Nhắc học' → /student/nhac-hoc, đứng ngay sau 'Việc của tôi'", (await mod("Nhắc học").getAttribute("href")) === "/student/nhac-hoc"
+  for (const m of ["Việc của tôi", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  if (!NHAC) check("DG: Nhắc học đang ẩn → không có module 'Nhắc học' trên thanh", await mod("Nhắc học").count() === 0 && await rail().locator(":scope a[href='/student/nhac-hoc']").count() === 0);
+  if (NHAC) check("LOI-04: module 'Nhắc học' → /student/nhac-hoc, đứng ngay sau 'Việc của tôi'", (await mod("Nhắc học").getAttribute("href")) === "/student/nhac-hoc"
     && (await rail().evaluate(`(() => { const t = [...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent).map(e => e.getAttribute("href")); const i = t.indexOf("/student/viec-cua-toi"); return i >= 0 && t[i + 1] === "/student/nhac-hoc"; })()`)) === true);
   if (!LICH) check("LOI-01: Lịch đang ẩn → không có module 'Lịch học' trên thanh", await mod("Lịch học").count() === 0 && await rail().locator(":scope a[href='/student/lich-hoc']").count() === 0);
   check("BU-HS-TRANG-CHU: module 'Trang chủ' là liên kết tới '/', đứng ĐẦU thanh, KHÔNG có aria-current (vỏ không bao giờ hiện ở '/')",
@@ -103,7 +106,8 @@ const H = 3_600_000, D = 24 * H;
   check("nút 'Nộp bài' trỏ vào bài giảng chứa bài tập", (await send.getAttribute("href")) === `/student/bai-giang/${lid}`);
   check("bài đã nộp có nút 'Xem bài nộp' (không còn 'Nộp bài' ở đó)", await pg.getByRole("link", { name: "Xem bài nộp" }).count() === 1);
   check("cột phải: 'Kiểm tra sắp mở' (đề thi) và 'Buổi học' trống có lối sang Lịch học", await pg.getByText("Kiểm tra sắp mở").isVisible() && await pg.getByText("3 ngày tới chưa có buổi học").isVisible() && await pg.getByRole("link", { name: "Mở Lịch học" }).count() === 0);
-  check("nút 'Xem lịch tuần' ở góc phải → /student/lich-hoc", (await pg.getByRole("link", { name: "Xem lịch tuần" }).getAttribute("href")) === "/student/lich-hoc");
+  if (LICH) check("nút 'Xem lịch tuần' ở góc phải → /student/lich-hoc", (await pg.getByRole("link", { name: "Xem lịch tuần" }).getAttribute("href")) === "/student/lich-hoc");
+  else check("DG: Lịch ẩn → không nút 'Xem lịch tuần'", await pg.getByRole("link", { name: "Xem lịch tuần" }).count() === 0);
 
   section("Bố cục: một trang dọc, không còn hai khung");
   const lay = await pg.evaluate(`({ listbox: document.querySelectorAll('[role=listbox]').length, hOverflow: document.documentElement.scrollWidth - window.innerWidth })`) as any;
@@ -123,7 +127,7 @@ const H = 3_600_000, D = 24 * H;
   check("A6: bảng Khác không còn 'Nhập mã lớp'", await dlg.getByRole("link", { name: "Nhập mã lớp", exact: true }).count() === 0);
   if (MORE_EXPECT.includes("Cộng đồng") && MORE_EXPECT.includes("Tin tức"))
     check("A6: Cộng đồng → /cong-dong, Tin tức → /tin-tuc (không qua chuyển hướng)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("href")) === "/cong-dong" && (await dlg.getByRole("link", { name: "Tin tức", exact: true }).getAttribute("href")) === "/tin-tuc");
-  check(`bảng Khác đúng ${MORE_EXPECT.length} mục (bật đủ cờ: 5 mục, 2 nhóm — Khám phá có thêm Lớp miễn phí 08/11, Tự học)`, await dlg.getByRole("link").count() === MORE_EXPECT.length, await dlg.getByRole("link").count());
+  check(`bảng Khác đúng ${MORE_EXPECT.length} mục (bật đủ cờ: 5 mục, 2 nhóm — Khám phá có thêm Lớp miễn phí 08/11, Tự học; tắt hết: 0 mục, còn Đăng xuất)`, await dlg.getByRole("link").count() === MORE_EXPECT.length, await dlg.getByRole("link").count());
   check("BU-HS-TRANG-CHU: ở 1280 hàng 'Trang chủ KiN' của bảng Khác không hiện (máy tính đã có mục Trang chủ ở thanh bên)", await dlg.getByRole("link", { name: "Trang chủ KiN", exact: true }).count() === 0 && (await dlg.locator("[data-more-home]").count()) === 1 && !(await dlg.locator("[data-more-home]").isVisible()));
   check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Minh Anh").isVisible());
   await shot(pg, "student-shell-khac");
@@ -132,12 +136,14 @@ const H = 3_600_000, D = 24 * H;
   await mod("Khác").click();
   await pg.mouse.click(900, 400);
   check("bấm ra ngoài đóng bảng", await dlg.count() === 0);
-  await mod("Khác").click();
-  // Bật Tìm gia sư: đi "Gia sư" như trước. Ẩn: mục đầu tiên còn lại là "Lớp miễn phí" (/khoa-hoc?gia=free).
-  const pick = MORE_EXPECT.includes("Gia sư") ? { name: "Gia sư", url: /\/giang-vien/ } : { name: "Lớp miễn phí", url: /\/khoa-hoc/ };
-  await dlg.getByRole("link", { name: pick.name, exact: true }).click();
-  await pg.waitForURL(pick.url, { timeout: 60000 });
-  check(`chọn '${pick.name}' → sang trang và bảng tự đóng`, await dlg.count() === 0 && await mod("Khác").getAttribute("aria-current") === "page");
+  // Bật Tìm gia sư: đi "Gia sư" như trước. DG: tắt hết thì bảng không còn mục để chọn — bỏ bước này (đã kiểm 0 mục ở trên).
+  const pick = MORE_EXPECT.includes("Gia sư") ? { name: "Gia sư", url: /\/giang-vien/ } : MORE_EXPECT.length ? { name: MORE_EXPECT[0], url: /./ } : null;
+  if (pick) {
+    await mod("Khác").click();
+    await dlg.getByRole("link", { name: pick.name, exact: true }).click();
+    await pg.waitForURL(pick.url, { timeout: 60000 });
+    check(`chọn '${pick.name}' → sang trang và bảng tự đóng`, await dlg.count() === 0 && await mod("Khác").getAttribute("aria-current") === "page");
+  }
 
   if (LICH) {
     section("Chuyển module: Lịch");
@@ -159,7 +165,8 @@ const H = 3_600_000, D = 24 * H;
   section("Phòng thi không có vỏ");
   await pg.goto(`${BASE}/student/thi-thu`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await rail().waitFor({ timeout: 90000 });
-  check("danh sách thi thử CÓ vỏ", await rail().isVisible());
+  if (THI_THU) check("danh sách thi thử CÓ vỏ", await rail().isVisible());
+  else check("DG: danh sách thi thử công khai ẩn → /student/thi-thu về Việc của tôi (?tam-dong=THI_THU_CONG_KHAI), trong vỏ", /\/student\/viec-cua-toi\?tam-dong=THI_THU_CONG_KHAI/.test(pg.url()) && await rail().isVisible(), pg.url());
   await pg.goto(`${BASE}/student/thi-thu/${exam.id}`, { waitUntil: "networkidle", timeout: 120000 });
   check("phòng thi KHÔNG có thanh module (toàn màn hình)", await pg.getByRole("navigation", { name: railName }).count() === 0);
 

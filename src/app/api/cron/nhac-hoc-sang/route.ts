@@ -6,11 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { recordCronRun } from "@/lib/adminOpsServer";
 import { runMorningDigest, errName } from "@/lib/nhacHocServer";
+import { featureOn } from "@/lib/features";
 
 export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
   if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
   await recordCronRun("nhac-hoc-sang");
+  // DG (14/11/2026): Nhắc học đang ẩn (cờ NHAC_HOC, mặc định) ⇒ không gửi tóm tắt sáng dẫn vào một trang học sinh không mở được. Cron giữ nguyên.
+  if (!featureOn("NHAC_HOC")) return NextResponse.json({ skipped: "NHAC_HOC tắt" }, { headers: { "Cache-Control": "no-store" } });
   const dryRun = req.nextUrl.searchParams.get("dryRun") === "1";
   try {
     return NextResponse.json(await runMorningDigest(new Date(), { dryRun }), { headers: { "Cache-Control": "no-store" } });
