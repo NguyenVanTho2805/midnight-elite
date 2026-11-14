@@ -2,8 +2,8 @@
 // Ca phá cố ý (đã thử khi viết): đổi `sendAt > t - windowMinutes*60_000` thành `>=` ⇒ ca "đúng mép 20 phút trước" đỏ; bỏ `start <= t` ⇒ ca "buổi đã bắt đầu" đỏ;
 // thêm "http:" vào parseOnlineLink ⇒ ca "http bị từ chối" đỏ.
 import {
-  buildLessonReminderEmail, extraSessionKey, isReminderDue, LEAD_OPTIONS, leadOf, looksLikeMoney, MAX_EMAILS_PER_RUN, parseLeadMinutes, parseOnlineLink,
-  regularSessionKey, searchRangeKeys, WINDOW_MINUTES,
+  buildLessonReminderEmail, extraSessionKey, httpsJoinUrl, isReminderDue, LEAD_OPTIONS, leadOf, looksLikeMoney, MAX_EMAILS_PER_RUN, parseLeadMinutes, parseOnlineLink,
+  regularSessionKey, searchRangeKeys, WINDOW_MINUTES, NO_LINK_TEXT,
 } from "@/lib/lessonReminder";
 import { lessonReminderHtml } from "@/lib/email";
 
@@ -77,6 +77,17 @@ const noLink = buildLessonReminderEmail({ courseName: "A", startAt: start, endAt
 check("33. không có link ⇒ nói rõ chưa có link, không có nút Vào học online", noLink.text.includes("chưa có link") && !lessonReminderHtml(noLink.view).includes("Vào học online"));
 check("34. looksLikeMoney bắt được số tiền", ["Học phí 150.000đ", "còn 1.200.000 đồng", "500,000 VND", "2 triệu", "300 nghìn", "150000₫"].every(looksLikeMoney));
 check("35. looksLikeMoney KHÔNG bắt giờ / ngày / thứ", ["lúc 19:00 đến 20:30", "Thứ 2 đến Thứ 6", "14/11/2026 lúc 19:00", "sau 15 phút nữa", "Lớp 9 đề 2"].every(s => !looksLikeMoney(s)));
+
+console.log("▸ P2-1 (14/11/2026): link vào học trong thư chỉ nhận https");
+// Ca phá cố ý (đã chạy): đổi httpsJoinUrl về /^https?:/ ⇒ 36–38 đỏ.
+check("36. httpsJoinUrl: https giữ, http / javascript: / rác / rỗng → null", httpsJoinUrl("https://meet.google.com/abc-defg-hij") === "https://meet.google.com/abc-defg-hij"
+  && [null, undefined, "", "http://meet.google.com/abc-defg-hij", "HTTP://x.y", "javascript:alert(1)", "meet.google.com/abc", "ftp://x.y"].every(u => httpsJoinUrl(u) === null));
+{
+  const m = buildLessonReminderEmail({ courseName: "Toán 8", startAt: vn("2026-11-14T19:00:00"), endAt: null, joinUrl: "http://meet.google.com/khong-ma-hoa", leadMinutes: 60, classUrl: "https://kin.vn/student/hoc-tap?course=x" });
+  check("37. thư cron với link http: KHÔNG có link trong chữ thường lẫn view, ghi câu 'chưa có link'", !m.text.includes("http://meet") && m.view.joinUrl === null && m.text.includes(NO_LINK_TEXT), m.text);
+  const h = lessonReminderHtml({ courseName: "Toán 8", soon: "sau 1 giờ nữa", when: "x", joinUrl: "http://meet.google.com/khong-ma-hoa", classUrl: "https://kin.vn/a" });
+  check("38. HTML thư (kể cả nhận view có link http) không chèn link http, không nút 'Vào học online'", !h.includes("http://meet") && !h.includes("Vào học online"));
+}
 
 console.log(`\n${pass} pass / ${fail} fail`);
 process.exit(fail ? 1 : 0);

@@ -10,7 +10,7 @@ import { effectiveMode, isOffScheduleKind, resolveJoinUrl } from "@/lib/sessionB
 import { isAnonEmail } from "@/lib/accountDelete";
 import { sendLessonReminderEmail } from "@/lib/email";
 import {
-  extraSessionKey, isReminderDue, leadOf, looksLikeMoney, MAX_EMAILS_PER_RUN, regularSessionKey, searchRangeKeys, buildLessonReminderEmail, type LeadMinutes,
+  extraSessionKey, httpsJoinUrl, isReminderDue, leadOf, looksLikeMoney, MAX_EMAILS_PER_RUN, regularSessionKey, searchRangeKeys, buildLessonReminderEmail, type LeadMinutes,
 } from "@/lib/lessonReminder";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -63,7 +63,7 @@ export async function findDueLessons(now: Date): Promise<DueLesson[]> {
     const join = mode === "offline" ? null : resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: rule.joinUrl, classUrl: c.classJoinUrl });
     out.push({
       courseId: c.id, courseName: c.name, sessionKey: regularSessionKey(o.scheduleId, o.originalDateKey), startAt: o.startAt, endAt: o.endAt,
-      joinUrl: join?.url ?? null, lead, absence: { scheduleId: o.scheduleId, dateKey: o.originalDateKey },
+      joinUrl: httpsJoinUrl(join?.url), lead, absence: { scheduleId: o.scheduleId, dateKey: o.originalDateKey },
     });
   }
   for (const x of sessions) {
@@ -79,7 +79,7 @@ export async function findDueLessons(now: Date): Promise<DueLesson[]> {
     const join = mode === "offline" ? null : resolveJoinUrl({ sessionUrl: x.joinUrl, classUrl: c.classJoinUrl });
     out.push({
       courseId: c.id, courseName: c.name, sessionKey: extraSessionKey(x.id), startAt, endAt: e !== null && e > s ? instantOf(dk, e) : null,
-      joinUrl: join?.url ?? null, lead, absence: null,
+      joinUrl: httpsJoinUrl(join?.url), lead, absence: null,
     });
   }
   out.sort((a, b) => a.startAt.getTime() - b.startAt.getTime() || a.sessionKey.localeCompare(b.sessionKey));

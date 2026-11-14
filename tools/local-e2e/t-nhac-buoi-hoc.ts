@@ -152,6 +152,24 @@ async function main() {
   check("25. lớp nhắc trước 1 ngày ⇒ thư 07:00 KHÔNG gửi (tránh hai thư cho một buổi)", to(hOk.email).length === 0);
   check("26. lớp nhắc trước 1 giờ ⇒ thư 07:00 vẫn gửi", to(kOk.email).length === 1);
 
+  section("P2-1 (14/11/2026): link http cũ trong DB không lọt vào thư (cả nhac-buoi-hoc lẫn remind-class)");
+  // Ca phá cố ý đã chạy ở bài thuần t-nhac-buoi-hoc-lib (36–38): đổi httpsJoinUrl về /^https?:/ ⇒ đỏ.
+  const HTTP = "http://meet.google.com/kin-khong-ma-hoa";
+  const P = await mkCourse(tutor.id, { name: "Văn Link Cũ" });
+  await prisma.course.update({ where: { id: P.id }, data: { classJoinUrl: HTTP, reminderLeadMinutes: 60 } });
+  await slotIn(P.id, 55, { mode: "online" });
+  const pOk = await enroll(P.id, "active", "Em Link Cũ");
+  const rp = await api("GET", "/api/cron/nhac-buoi-hoc", { headers: AUTH });
+  const mP = to(pOk.email)[0];
+  check("27. nhac-buoi-hoc: lớp có link http ⇒ vẫn gửi thư nhưng KHÔNG có link http, không nút 'Vào học online'", rp.status === 200 && !!mP && !`${mP.html ?? ""} ${mP.text ?? ""}`.includes(HTTP) && !(mP.html ?? "").includes("Vào học online"), { st: rp.status, subj: mP?.subject });
+  const Q = await mkCourse(tutor.id, { name: "Sử Link Cũ Ngày Mai" });
+  await prisma.course.update({ where: { id: Q.id }, data: { classJoinUrl: HTTP } });
+  await prisma.classSchedule.create({ data: { courseId: Q.id, dayOfWeek: dayOfWeekOfKey(tomorrow), startTime: "15:00", endTime: "16:00" } });
+  const qOk = await enroll(Q.id, "active", "Em Sử Ngày Mai");
+  const rq = await api("GET", "/api/cron/remind-class", { headers: AUTH });
+  const mQ = to(qOk.email)[0];
+  check("28. remind-class 07:00: lớp có link http ⇒ thư KHÔNG chèn link http", rq.status === 200 && !!mQ && !`${mQ.html ?? ""} ${mQ.text ?? ""}`.includes(HTTP), { st: rq.status, n: to(qOk.email).length });
+
   await done();
 }
 main().catch(async e => { console.error(e); await prisma.$disconnect(); process.exit(1); });

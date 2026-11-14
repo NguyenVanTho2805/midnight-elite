@@ -87,6 +87,13 @@ export interface LessonReminderMail {
   view: { courseName: string; soon: string; when: string; joinUrl: string | null; classUrl: string };
 }
 
+/** P2-1 (14/11/2026): link vào học chỉ được chèn vào thư khi đúng https (link cũ trong DB có thể là http — lọt vào thư là lộ phiên học qua mạng không mã hoá).
+ *  Không đạt / không phân tích được ⇒ null = coi như không có link (thư ghi NO_LINK_TEXT). Dùng cho cả cron nhac-buoi-hoc lẫn remind-class 07:00. */
+export function httpsJoinUrl(u: string | null | undefined): string | null {
+  if (!u) return null;
+  try { return new URL(u.trim()).protocol === "https:" ? u.trim() : null; } catch { return null; }
+}
+
 /** Thư nhắc (tiêu đề + chữ thường + phần chữ cho HTML). Chỉ tên lớp, ngày, giờ, link: KHÔNG số tiền, không tên người. */
 export function buildLessonReminderEmail(i: LessonReminderInput): LessonReminderMail {
   const dk = vnDateKeyOf(i.startAt);
@@ -97,7 +104,8 @@ export function buildLessonReminderEmail(i: LessonReminderInput): LessonReminder
   const when = `${wd}, ${d}/${m}/${y} lúc ${start}${end ? `–${end}` : ""}`;
   const soon = i.leadMinutes === 1440 ? "ngày mai" : `sau ${LEAD_LABEL[i.leadMinutes]} nữa`;
   const subject = `Sắp tới giờ học: ${i.courseName} (${start})`;
-  const linkLine = i.joinUrl ? `Link vào học: ${i.joinUrl}` : NO_LINK_TEXT;
+  const joinUrl = httpsJoinUrl(i.joinUrl);
+  const linkLine = joinUrl ? `Link vào học: ${joinUrl}` : NO_LINK_TEXT;
   const text = [
     `Lớp "${i.courseName}" có buổi học ${soon}.`,
     `Thời gian: ${when} (giờ Việt Nam).`,
@@ -106,7 +114,7 @@ export function buildLessonReminderEmail(i: LessonReminderInput): LessonReminder
     "",
     AUTO_NOTE,
   ].join("\n");
-  return { subject, text, view: { courseName: i.courseName, soon, when, joinUrl: i.joinUrl, classUrl: i.classUrl } };
+  return { subject, text, view: { courseName: i.courseName, soon, when, joinUrl, classUrl: i.classUrl } };
 }
 export const NO_LINK_TEXT = "Buổi này chưa có link học online. Xem chi tiết trong lớp trên KiN.";
 export const AUTO_NOTE = "Thư này gửi tự động vì gia sư của lớp đã bật nhắc trước giờ học.";

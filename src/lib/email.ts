@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import { SPAM_HINT, NOT_SPAM_HINT } from "@/lib/verifyCodeCopy";
-import { AUTO_NOTE, NO_LINK_TEXT, type LessonReminderMail } from "@/lib/lessonReminder";
+import { AUTO_NOTE, NO_LINK_TEXT, httpsJoinUrl, type LessonReminderMail } from "@/lib/lessonReminder";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const FROM    = `KiN <${process.env.GMAIL_USER}>`;
@@ -363,7 +363,8 @@ export async function sendClassReminderEmail(
   courseId: string,
   joinUrl: string | null = null, // DG-HOC-ONLINE: link học online hiệu lực của buổi (riêng buổi > khung giờ > chung lớp); null = không chèn
 ) {
-  const safeJoin = joinUrl && /^https?:\/\//i.test(joinUrl) ? joinUrl.replace(/"/g, "%22").replace(/</g, "%3C").replace(/>/g, "%3E") : null;
+  const https = httpsJoinUrl(joinUrl); // P2-1: chỉ https
+  const safeJoin = https ? https.replace(/"/g, "%22").replace(/</g, "%3C").replace(/>/g, "%3E") : null;
   await getTransport().sendMail({
     from: FROM,
     to,
@@ -434,7 +435,7 @@ export function lessonReminderHtml(v: LessonReminderMail["view"]): string {
       <h1 style="color:#1a1a1a;font-size:20px;font-weight:800;margin:0 0 12px">${escHtml(v.courseName)}</h1>
       <p style="color:#1a1a1a;font-size:15px;margin:0 0 6px">Buổi học ${escHtml(v.soon)}.</p>
       <p style="color:#1a1a1a;font-size:15px;font-weight:700;margin:0 0 20px">${escHtml(v.when)} (giờ Việt Nam)</p>
-      ${v.joinUrl ? `<div style="margin:0 0 12px">${btn(v.joinUrl, "Vào học online")}</div><p style="color:#787671;font-size:12px;margin:0 0 20px;word-break:break-all">${escHtml(v.joinUrl)}</p>` : `<p style="color:#787671;font-size:13px;margin:0 0 20px">${escHtml(NO_LINK_TEXT)}</p>`}
+      ${httpsJoinUrl(v.joinUrl) ? `<div style="margin:0 0 12px">${btn(httpsJoinUrl(v.joinUrl)!, "Vào học online")}</div><p style="color:#787671;font-size:12px;margin:0 0 20px;word-break:break-all">${escHtml(httpsJoinUrl(v.joinUrl)!)}</p>` : `<p style="color:#787671;font-size:13px;margin:0 0 20px">${escHtml(NO_LINK_TEXT)}</p>`}
       <p style="margin:0"><a href="${escHtml(v.classUrl)}" style="color:#0068FF;font-size:13px">Mở lớp trên KiN</a></p>
     </div>
     <p style="text-align:center;color:#a4a097;font-size:12px;margin:20px 0">${escHtml(AUTO_NOTE)} © 2026 KiN</p>
