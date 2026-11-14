@@ -82,8 +82,9 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     // DG (14/11/2026): trang quản trị của phần đang ẨN (doanh thu, gói Pro, phễu gia sư, số đo, lịch sử đánh giá, chữ trang chủ — quy tắc `route: ["admin"]` ở
     // src/lib/features.ts) → 307 về Hôm nay, kèm dấu ?tam-dong=. Chỉ trang; API /api/admin/* đi nhánh đầu hàm, không đổi.
     if (isAdminPath(pathname)) {
-      const blocked = blockedRouteFeature(pathname, "admin");
-      if (blocked && pathname !== "/admin") return { kind: "redirect", status: 307, pathname: "/admin", search: pausedSearch(blocked) };
+      const blocked = session ? blockedRouteFeature(pathname, "admin") : null;
+      // Chỉ khi ĐÃ có phiên ở tên miền admin: người chưa đăng nhập vẫn tới cửa đăng nhập như cũ (giữ ?redirect=), không chuyển hướng thêm vòng nào.
+      if (blocked && session && pathname !== "/admin") return { kind: "redirect", status: 307, pathname: "/admin", search: pausedSearch(blocked) };
       // Mọi link nội bộ admin đều đã dùng tiền tố /admin (xem src/lib/adminNav.ts) — cho qua nguyên trạng.
       return { kind: "next" };
     }

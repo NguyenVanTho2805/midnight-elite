@@ -18,7 +18,7 @@ import { wipe, check, section, done, cookieFor } from "./h";
 import { seedTutorWorld, OTHER } from "./tutor-world";
 import { prisma } from "@/lib/prisma";
 import { toTutorPath } from "@/lib/tutorRoutes";
-import { blockedRouteFeature } from "@/lib/features";
+import { blockedRouteFeature, featureOn } from "@/lib/features";
 import type { BrowserContext, Page } from "playwright";
 
 const PORT = Number(process.env.PORT ?? 3100);
@@ -128,7 +128,8 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
 
 // Chuyển hướng CÓ CHỦ ĐÍCH cho gia sư: trang chủ / đăng nhập / đăng ký → Hộp việc; /admin/* → bí danh /lop-cua-toi/… (BU-00 bước 3, src/lib/tutorRoutes.ts),
 // không có bí danh (/admin, /admin/kiem-duyet, /admin/khoa-hoc/danh-muc…) → Hộp việc.
-const HOME = COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
+// DG (14/11/2026): cờ HOP_VIEC tắt (mặc định) ⇒ trang đầu của gia sư là thư viện Lớp /lop-cua-toi/lop (landingPath), kể cả chế độ gọn.
+const HOME = !featureOn("HOP_VIEC") ? "/lop-cua-toi/lop" : COMPACT ? "/lop-cua-toi/lich" : "/lop-cua-toi";   // trang đầu của gia sư sau đăng nhập
 const STUDENT_ALIASES: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop", "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu" };
 // GS-LOP-GON: mỗi tab của lớp có đường dẫn riêng. /lop-cua-toi/<lớp> và /lop-cua-toi/quan-lop/<lớp> (kể cả liên kết cũ ?tab=lich-hoc | ?tab=hoc-vien — so sánh ở đây đã bỏ phần ?query)
 // chuyển sang /lop-cua-toi/quan-lop/<lớp>/(giao-trinh | lich-hoc | hoc-vien). Đích LUÔN mang đúng mã lớp đã yêu cầu nên không thể "khớp nhầm" sang lớp khác.
@@ -152,7 +153,7 @@ function expected(reqPath: string, finPath: string): boolean {
   // LOI-07 (A2): "/" KHÔNG còn chuyển gia sư vào Hộp việc — từ 01/11/2026 (HOME-01) trang chủ mở được cho MỌI vai (src/lib/hostRouting.ts:21-23, :99:
   // "/" không nằm trong nhánh AUTH_PAGES), Navbar có nút «Vào trang của tôi» thay lối đó. Chỉ /dang-nhap và /dang-ky của người đã đăng nhập còn 307 vào trang đầu.
   if (["/dang-nhap", "/dang-ky"].includes(reqPath)) return finPath === HOME;
-  if (COMPACT && reqPath === "/lop-cua-toi") return finPath === HOME;            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
+  if ((COMPACT || !featureOn("HOP_VIEC")) && reqPath === "/lop-cua-toi") return finPath === HOME;  // DG: Hộp việc ẩn theo cờ → 307 sang thư viện Lớp            // Hộp việc đã tắt (modules: []) → màn đầu là Lịch (TT-203)
   return false;
 }
 // LOI-07 (A1): 404 CỐ Ý của chính thế giới thử. tutor-world.ts tạo bài nộp với `fileUrl: "x"` (không phải tệp thật) và BaiTap.tsx dựng nút «Mở bài nộp gốc ↗» bằng

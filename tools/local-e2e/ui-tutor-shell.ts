@@ -9,6 +9,12 @@ import { featureOn } from "@/lib/features";
 // Bài đọc cờ ở tiến trình này: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
 const LICH = featureOn("LICH"), CONG_DONG = featureOn("CONG_DONG");
 const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"];
+// DG (14/11/2026): bài này kiểm VỎ HỘP VIỆC đầy đủ (Hộp việc, Học phí trên thanh; Báo cáo tháng, Sổ điểm, Doanh thu, Bài đăng, Yêu cầu, Gói trong bảng Khác) — tất cả
+// nay thuộc cờ HOP_VIEC, HOC_PHI, SO_DIEM, KINH_DOANH, TIM_GIA_SU (mặc định ẨN). Vỏ gọn mặc định (không cờ) được kiểm ở ui-don-gian.ts. Chạy bài này với máy chủ dev
+// và tiến trình test cùng đặt NEXT_PUBLIC_KIN_MO_{HOP_VIEC,HOC_PHI,SO_DIEM,KINH_DOANH,TIM_GIA_SU}=1 để kiểm "bật lại là như cũ". Thiếu cờ → dừng, báo rõ (không đếm là đạt).
+const NEED = ["HOP_VIEC", "HOC_PHI", "SO_DIEM", "KINH_DOANH", "TIM_GIA_SU"] as const;
+const missing = NEED.filter(k => !featureOn(k));
+if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(k => `NEXT_PUBLIC_KIN_MO_${k}=1`).join(" ")} (vỏ mặc định kiểm ở ui-don-gian.ts).`); process.exit(2); }
 
 (async () => {
   await wipe();

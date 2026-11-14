@@ -779,16 +779,16 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
 
           {/* DG (14/11/2026, chủ: "trang bài một cột"): bỏ dải tab Tài liệu · Bài tập · Ghi chú — xếp dọc dưới video theo đúng thứ tự học: xem → đọc tài liệu → làm bài
               → ghi chú. Mỗi khối có tiêu đề chữ; nội dung từng khối giữ nguyên thành phần cũ (DocumentRows, TabBaiTap, StampedNotes). */}
-          <section aria-labelledby="bai-tai-lieu" data-lesson-section="tai-lieu" className="rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <section aria-labelledby="bai-tai-lieu" data-lesson-section="tai-lieu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu")}
             <DocumentRows materials={lesson.materials} />
           </section>
-          <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
+          <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
             ref={el => { if (el && wantBaiTap && params.lessonId === firstLessonId) { setWantBaiTap(false); requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); } }}>
             {sectionHead("bai-bai-tap", <Edit size={14} />, "Bài tập")}
             <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.type === "quiz" ? undefined : lesson.azotaUrl ?? undefined} azotaAbove={lesson.type === "quiz" && !!lesson.azotaUrl} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />
           </section>
-          <section aria-labelledby="bai-ghi-chu" data-lesson-section="ghi-chu" className="rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+          <section aria-labelledby="bai-ghi-chu" data-lesson-section="ghi-chu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {sectionHead("bai-ghi-chu", <StickyNote size={14} />, "Ghi chú")}
             <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />
           </section>

@@ -216,7 +216,7 @@ if (!featureOn("KINH_DOANH") && !featureOn("VAN_HANH_PHU")) {
   check("tên miền admin: /admin/goi-pro?x=1, /admin/pheu, /admin/so-do, /admin/danh-gia, /admin/trang-chu/xem-truoc → 307 về /admin (bỏ tham số cũ)", [["/admin/goi-pro", "KINH_DOANH"], ["/admin/pheu", "VAN_HANH_PHU"], ["/admin/so-do", "VAN_HANH_PHU"], ["/admin/danh-gia", "VAN_HANH_PHU"], ["/admin/trang-chu/xem-truoc", "VAN_HANH_PHU"]]
     .every(([p, k]) => eq(AD(p, sup, "?x=1"), { kind: "redirect", status: 307, pathname: "/admin", search: `?tam-dong=${k}` })));
   check("tên miền admin: API /api/admin/analytics, /admin, /admin/kiem-duyet, /admin/khoa-hoc vẫn next", ["/api/admin/analytics", "/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu", "/admin/nhat-ky"].every(p => eq(AD(p, sup), { kind: "next" })) && eq(AD("/admin", sup), { kind: "next" }));
-  check("tên miền admin: chưa đăng nhập mở /admin/doanh-thu → cũng 307 về /admin (trang đăng nhập ở đó)", eq(AD("/admin/doanh-thu", null), { kind: "redirect", status: 307, pathname: "/admin", search: "?tam-dong=KINH_DOANH" }));
+  check("tên miền admin: CHƯA đăng nhập mở /admin/doanh-thu → next (trang tự đưa tới cửa đăng nhập, giữ ?redirect= như cũ)", eq(AD("/admin/doanh-thu", null), { kind: "next" }));
 } else console.log("  (máy đang bật KINH_DOANH/VAN_HANH_PHU: bỏ qua ca tên miền admin)");
 if (!featureOn("HOP_VIEC")) {
   check("landingPath gia sư = thư viện Lớp /lop-cua-toi/lop khi Hộp việc ẩn; quản trị /admin; học sinh Việc của tôi", landingPath("admin", "teacher") === "/lop-cua-toi/lop" && landingPath("admin", "admin_super") === "/admin" && landingPath("student") === "/student/viec-cua-toi");
