@@ -96,8 +96,10 @@ section("7. LOI-07: liên kết tự nhập trỏ vào phần đang tạm đóng
   const HID = ["/tin-tuc", "/tin-tuc/bai-1?x=1", "/cong-dong", "/giang-vien", "/diem-chuan#a", "/bang-xep-hang"];
   check("đường vào phần ẩn ⇒ có câu cảnh báo (giọng KiN, nói 'vẫn lưu được', không tên phần)", HID.every(h => { const w = hiddenHrefWarning(h, OFF); return !!w && /tạm đóng/.test(w) && /Vẫn lưu được/.test(w) && !/TIN_TUC|CONG_DONG|Tin tức|Cộng đồng/.test(w); }), HID.map(h => hiddenHrefWarning(h, OFF)));
   check("địa chỉ tuyệt đối về chính KiN cũng bị nhắc (có/không www)", !!hiddenHrefWarning("https://midnightelite-edu.com/tin-tuc", OFF) && !!hiddenHrefWarning("https://www.midnightelite-edu.com/cong-dong?tab=1", OFF));
-  check("đường đang mở / địa chỉ ngoài / rỗng ⇒ null", ["/khoa-hoc", "/thi-thu", "/dang-ky", "/cong-dong/t1", "https://zalo.me/g/abc", "https://midnightelite-edu.com.evil.vn/tin-tuc", "", "   "].every(h => hiddenHrefWarning(h, OFF) === null));
-  check("bật đủ 9 cờ ⇒ không nhắc nữa", HID.every(h => hiddenHrefWarning(h, ALL) === null));
+  // DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — "/thi-thu" (nút CTA mặc định "Thi thử ĐGNL ngay") nay thuộc cờ THI_THU_CONG_KHAI nên ra khỏi danh sách "đang mở"; ca riêng ngay dưới.
+  check("DG: /thi-thu ⇒ có nhắc khi THI_THU_CONG_KHAI tắt; hết nhắc khi =1", !!hiddenHrefWarning("/thi-thu", OFF) && hiddenHrefWarning("/thi-thu", { THI_THU_CONG_KHAI: "1" }) === null);
+  check("đường đang mở / địa chỉ ngoài / rỗng ⇒ null", ["/khoa-hoc", "/khoa-hoc?gia=free", "/dang-ky", "/cong-dong/t1", "https://zalo.me/g/abc", "https://midnightelite-edu.com.evil.vn/tin-tuc", "", "   "].every(h => hiddenHrefWarning(h, OFF) === null));
+  check("bật đủ mọi cờ ⇒ không nhắc nữa", HID.every(h => hiddenHrefWarning(h, ALL) === null));
   const c = good();
   c.exams[0].href = "/tin-tuc"; c.findTutor.buttonHref = "/giang-vien"; c.cta.primary.href = "/dang-ky"; c.cta.secondary.href = "/cong-dong";
   const w = checkHomeHiddenLinks(c, OFF).map(i => i.path);

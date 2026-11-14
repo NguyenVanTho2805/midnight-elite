@@ -9,6 +9,7 @@
 //  • NC2-010/011: thêm parent_reported (phụ huynh bấm "Tôi đã chuyển") và unmarked_daily (07:00 "Hôm qua có N buổi chưa điểm danh"), cả hai mặc định TẮT.
 //    Số duy nhất được phép đưa vào chữ đẩy là N của unmarked_daily (một số nguyên 1–999, truyền qua `count`); không tên, không số tiền.
 import { ABSENCE_NOTICE_MINUTES, inQuietHours, vnMinutesOfDay } from "@/lib/classSessions";
+import { featureOn, type FeatureEnv } from "@/lib/features";
 
 export const PUSH_TYPES = ["absence_late", "bank_tx_pending", "invoice_paid", "parent_reported", "unmarked_daily"] as const;
 export type PushType = (typeof PUSH_TYPES)[number];
@@ -92,7 +93,16 @@ export function parsePushTypesPatch(raw: unknown): { ok: true; value: Partial<Pu
   return { ok: true, value };
 }
 
-export type PushSkip = "type-not-allowed" | "type-off" | "quiet-hours";
+/**
+ * DG (14/11/2026): loại tin thuộc phần HỌC PHÍ. Cờ HOC_PHI tắt (mặc định) ⇒ không ĐẨY ra điện thoại và không hiện công tắc ở Cài đặt.
+ * Chỉ chặn ở bước đẩy: thông báo trong ứng dụng, webhook SePay, invoiceServer, cách tính phiếu KHÔNG đổi (TIỀN).
+ */
+export const FEE_PUSH_TYPES: readonly PushType[] = ["bank_tx_pending", "invoice_paid", "parent_reported"];
+/** Loại tin đẩy đang được phép theo cờ tính năng (dùng ở Cài đặt và decidePush). */
+export const pushTypeAllowed = (t: PushType, env?: FeatureEnv): boolean => !FEE_PUSH_TYPES.includes(t) || featureOn("HOC_PHI", env);
+export const visiblePushTypes = (env?: FeatureEnv): PushType[] => PUSH_TYPES.filter(t => pushTypeAllowed(t, env));
+
+export type PushSkip = "type-not-allowed" | "type-off" | "quiet-hours" | "feature-off";
 export type PushDecision = { send: true } | { send: false; reason: PushSkip };
 
 /**
@@ -100,8 +110,9 @@ export type PushDecision = { send: true } | { send: false; reason: PushSkip };
  * `leadMinutes` chỉ có nghĩa với absence_late (còn bao nhiêu phút tới giờ học): dưới ngưỡng sát giờ (2 giờ) thì đẩy cả trong giờ yên lặng.
  * Thiếu `leadMinutes` thì KHÔNG coi là khẩn (mặc định tôn trọng giờ yên lặng).
  */
-export function decidePush(o: { type: string; types: PushTypes; now: Date; leadMinutes?: number }): PushDecision {
+export function decidePush(o: { type: string; types: PushTypes; now: Date; leadMinutes?: number; env?: FeatureEnv }): PushDecision {
   if (!isPushType(o.type)) return { send: false, reason: "type-not-allowed" };
+  if (!pushTypeAllowed(o.type, o.env)) return { send: false, reason: "feature-off" };
   if (!o.types[o.type]) return { send: false, reason: "type-off" };
   const urgent = o.type === "absence_late" && typeof o.leadMinutes === "number" && Number.isFinite(o.leadMinutes) && o.leadMinutes < ABSENCE_NOTICE_MINUTES;
   if (!urgent && inQuietHours(vnMinutesOfDay(o.now))) return { send: false, reason: "quiet-hours" };
@@ -114,9 +125,15 @@ export interface PushPayload { title: string; body: string; url: string }
  * Chữ gửi đi cho một loại — hàm của `type`; ngoại lệ DUY NHẤT là `opts.count` (chỉ unmarked_daily): số buổi chưa điểm danh hôm qua.
  * `count` không hợp lệ (không phải số nguyên 1–999) hoặc dùng cho loại khác thì bị bỏ qua — chữ vẫn là chữ gốc của loại.
  */
-export function pushPayload(type: PushType, opts: { count?: number } = {}): PushPayload {
+/** DG (14/11/2026): khi Hộp việc đang ẩn (cờ HOP_VIEC tắt, mặc định), "/lop-cua-toi" chuyển về thư viện Lớp — tin không được hứa "mở Hộp việc".
+ *  Hai loại trỏ Hộp việc (báo nghỉ sát giờ, buổi chưa điểm danh) đổi sang danh sách lớp, nơi gia sư mở đúng lớp để xử lý. */
+export const HOP_VIEC_OFF_TEXT = { body: "Bấm để mở danh sách lớp.", url: "/lop-cua-toi/lop" } as const;
+const HOP_VIEC_TYPES: readonly PushType[] = ["absence_late", "unmarked_daily"];
+
+export function pushPayload(type: PushType, opts: { count?: number; env?: FeatureEnv } = {}): PushPayload {
   const d = PUSH_DEFS[type];
   const title = type === "unmarked_daily" && isUnmarkedCount(opts.count) ? `Hôm qua có ${opts.count} buổi chưa điểm danh` : d.title;
+  if (HOP_VIEC_TYPES.includes(type) && !featureOn("HOP_VIEC", opts.env)) return { title, body: HOP_VIEC_OFF_TEXT.body, url: HOP_VIEC_OFF_TEXT.url };
   return { title, body: d.body, url: d.url };
 }
 

@@ -7,6 +7,7 @@ import { fetchFeed, fetchArticle } from "@/lib/english/voa";
 import { countWords } from "@/lib/english/text";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { recordCronRun } from "@/lib/adminOpsServer";
+import { featureOn } from "@/lib/features";
 
 export const maxDuration = 60;
 const MAX_NEW = 6;
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest) {
   const cronAuth = checkCronAuth(process.env.CRON_SECRET, req.headers.get("authorization"));
   if (!cronAuth.ok) return NextResponse.json({ error: cronAuth.error }, { status: cronAuth.status });
   await recordCronRun("english-voa"); // QT-03: dấu "lần gọi gần nhất" cho trang Triển khai và hạn mức
+  // DG (14/11/2026): Tiếng Anh tự học đang ẩn (cờ TIENG_ANH, mặc định) ⇒ không kéo bài mới. Cron trong vercel.json giữ nguyên; vẫn ghi dấu lần gọi để trang
+  // Triển khai không báo "chạy chậm". Bật lại NEXT_PUBLIC_KIN_MO_TIENG_ANH=1 là chạy như cũ.
+  if (!featureOn("TIENG_ANH")) return NextResponse.json({ skipped: "TIENG_ANH tắt" }, { headers: { "Cache-Control": "no-store" } });
   const feeds = (process.env.ENGLISH_VOA_FEEDS ?? "").split(",").map(s => s.trim()).filter(Boolean);
   if (!feeds.length) return NextResponse.json({ added: 0, message: "Chưa cấu hình ENGLISH_VOA_FEEDS" });
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireStudentRole } from "@/lib/studentOnly";
+import { PUBLIC_EXAM_CLOSED_CODE, PUBLIC_EXAM_CLOSED_MESSAGE } from "@/lib/features";
+import { closedPublicExam } from "@/lib/publicExamGate";
 import type { Prisma } from "@/generated/prisma/client";
 import { finalizeAttempt, parseDurationMinutes, shuffleArray, shuffleQuestionOrderBySections, computeSectionWindows, applyAttemptOrder, loadAnswerState } from "@/lib/examGrading";
 import { isEnrollmentActive } from "@/lib/enrollment";
@@ -58,6 +60,10 @@ export async function POST(
     let attempt = await findInProgressInGroup(session.userId, group.ids);
 
     // Gia sư đóng bài (active=false): không mở lượt MỚI. Lượt đang làm dở vẫn được tiếp tục.
+    // DG: thi thử công khai đang đóng (cờ THI_THU_CONG_KHAI) ⇒ không mở lượt MỚI qua link trực tiếp; lượt đang làm dở vẫn tiếp tục được.
+    if (!attempt && await closedPublicExam(exam)) {
+      return NextResponse.json({ error: PUBLIC_EXAM_CLOSED_MESSAGE, code: PUBLIC_EXAM_CLOSED_CODE }, { status: 403 });
+    }
     if (!attempt && !exam.active) {
       return NextResponse.json({ error: "Bài này đã đóng.", code: "closed" }, { status: 409 });
     }

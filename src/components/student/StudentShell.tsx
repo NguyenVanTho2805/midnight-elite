@@ -21,7 +21,7 @@ import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { useRail } from "@/components/kin/shell/railStore";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
-import { isLinkHidden, visibleLinks } from "@/lib/features";
+import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
@@ -46,7 +46,13 @@ const MORE_GROUPS_ALL: MoreGroup[] = [
     { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "lop", active: false },
   ] },
 ];
-const MORE_GROUPS: MoreGroup[] = MORE_GROUPS_ALL.map(g => ({ ...g, links: visibleLinks(g.links) })).filter(g => g.links.length > 0);
+// DG (14/11/2026): "Lớp miễn phí" (/khoa-hoc?gia=free — danh mục công khai, không phải quy tắc đường vì /khoa-hoc còn dùng) đi cùng cờ TIM_GIA_SU: cả hai là lối
+// "khám phá sàn" ngoài các lớp em đã vào; học sinh vào lớp bằng mã mời trong "Lớp của tôi".
+const MORE_GROUPS: MoreGroup[] = MORE_GROUPS_ALL
+  .map(g => ({ ...g, links: visibleLinks(g.links).filter(l => l.href !== "/khoa-hoc?gia=free" || featureOn("TIM_GIA_SU")) }))
+  .filter(g => g.links.length > 0);
+/** DG: lối tắt của "Lớp của tôi" — bỏ trang thuộc phần đang ẩn (Tiếng Anh tự học khi cờ TIENG_ANH tắt) để mục không sáng ở trang đã chặn. */
+const LOP_ALSO = ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"].filter(h => !isLinkHidden(h));
 // Chỉ các mục KHÔNG phải lối tắt mới làm nút "Khác" sáng (lối tắt `active: false` đã có module cha sáng).
 const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.filter(l => l.active !== false).flatMap(l => [l.href, ...(l.also ?? [])]));
 /** Phòng thi: /student/thi-thu/<mã đề> (không tính danh sách /student/thi-thu). */
@@ -86,13 +92,16 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     { key: "trang-chu", label: "Trang chủ", href: "/", icon: "nha", desktopOnly: true },
     // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
     { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
-    // LOI-04 (11/11/2026): "Nhắc học" — việc học sinh tự ghi + buổi học có hẹn ngày. LUÔN hiện (không theo cờ LICH); không desktopOnly ⇒ lên thanh dưới điện thoại.
-    { key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" },
+    // LOI-04 (11/11/2026): "Nhắc học" — việc học sinh tự ghi + buổi học có hẹn ngày. Không theo cờ LICH; không desktopOnly ⇒ lên thanh dưới điện thoại.
+    // DG (14/11/2026): theo cờ NHAC_HOC (mặc định ẩn); route /student/nhac-hoc chặn 307 ở proxy.
+    ...(isLinkHidden("/student/nhac-hoc") ? [] : [{ key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" } satisfies ModuleItem]),
     // LOI-01: "Lịch học" rời thanh khi phần Lịch đang ẩn; /student/lich-hoc vẫn chạy (Việc của tôi có "Xem lịch tuần", thông báo đổi lịch trỏ vào).
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
-    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"], icon: "lop" },
-    { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
+    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" },
+    // DG (14/11/2026, vòng dạy thật): mọi mục của bảng "Khác" đang ẩn theo cờ ⇒ bảng chỉ còn "Trang chủ KiN" + "Đăng xuất", cả hai đã có sẵn (logo / mục Trang chủ,
+    // menu tên ở dải trên). Bỏ hẳn nút "Khác" thay vì để một nút mở bảng gần rỗng; bật lại bất kỳ cờ nào trong nhóm thì nút trở lại như cũ.
+    ...(MORE_GROUPS.length ? [{ key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true } satisfies ModuleItem] : []),
   ];
 
   // Thanh RỘNG (Figma "Điều hướng"): nhóm đầu = bốn module, các nhóm còn lại là chính danh sách của bảng "Khác".
@@ -130,13 +139,13 @@ export default function StudentShell({ children, preview }: { children: ReactNod
             <CoinBalance />
             <NotificationBell />
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
-              links={[{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }]} />}
+              links={visibleLinks([{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }])} />}
           </div>
         </div>
         {children}
       </div>
 
-      {moreOpen && <MorePanel id="khac-bang" groups={MORE_GROUPS} homeLink={{ label: "Trang chủ KiN", href: "/" }} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+      {moreOpen && MORE_GROUPS.length > 0 && <MorePanel id="khac-bang" groups={MORE_GROUPS} homeLink={{ label: "Trang chủ KiN", href: "/" }} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }

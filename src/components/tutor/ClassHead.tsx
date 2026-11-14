@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { KinStatus } from "@/components/kin/Status";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
+import { kinButtonClass } from "@/components/kin/buttonClass";
 
 export interface ClassHeadProps {
   name: string;
@@ -13,15 +14,20 @@ export interface ClassHeadProps {
   /** Course.status = false (lớp đang ẩn khỏi trang công khai). */
   hidden: boolean;
   studentCount: number;
+  /** Q4 chủ chốt (14/11): chỉ chủ lớp — nút "Đề của lớp" mở ngân hàng đề lọc theo lớp này (?lop=), giao đề ngay từ đó. Đồng giảng không có nút. */
+  examsHref?: string | null;
 }
 
 const TONE: Record<string, "xong" | "cho" | "mo"> = { open: "xong", paused: "cho", closed: "mo" };
 
-export default function ClassHead({ name, category, status, hidden, studentCount }: ClassHeadProps) {
+export default function ClassHead({ name, category, status, hidden, studentCount, examsHref }: ClassHeadProps) {
   return (
     <header data-class-head className="pb-4 md:pb-5">
       <Link href="/lop-cua-toi/lop" className="inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] hover:underline">← Lớp học</Link>
-      <h1 className="mt-1 break-words text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">{name}</h1>
+      <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 break-words text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">{name}</h1>
+        {examsHref && <Link href={examsHref} data-de-cua-lop className={kinButtonClass("secondary")}>Đề của lớp</Link>}
+      </div>
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[length:var(--kin-co-goc)] leading-[var(--kin-dong-goc)] text-[var(--kin-chu-mo)]">
         {category && <span>{category}</span>}
         <span className="tabular-nums">{studentCount} học sinh</span>

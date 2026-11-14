@@ -123,7 +123,9 @@ async function mkAttempt(e: E, userId: string, o: { q1: boolean; q2: boolean; es
   check("công bố từng em C → ok", pC.status === 200 && pC.json.published.length === 1 && pC.json.published[0] === C.id, pC.json);
   const rc = await api("GET", `/api/exams/attempts/${C.id}/review`, { as: s3 });
   const ec = rc.json.questions.find((q: any) => q.type === "ESSAY");
-  check("sau công bố: C thấy score 5 (raw 2/4 → 5), held false, điểm + nhận xét tự luận, đáp án", rc.json.score === 5 && rc.json.held === false && ec.pointsAwarded === 2 && ec.teacherComment === "tốt" && rc.json.canSeeAnswers === true, { s: rc.json.score, h: rc.json.held, ec });
+  // Công bố chỉ mở ĐIỂM + nhận xét. Đáp án theo luật riêng (STU-001, examPolicy): đề công khai gia sư chưa cài ⇒ khoá tới khi em hết lượt / đề hết hạn.
+  // C mới dùng 1/2 lượt và đề tới 2030 mới hết hạn ⇒ CHƯA thấy đáp án (bài cũ chờ `true` từ trước khi có luật này).
+  check("sau công bố: C thấy score 5 (raw 2/4 → 5), held false, điểm + nhận xét tự luận; đáp án vẫn khoá theo luật đề công khai", rc.json.score === 5 && rc.json.held === false && ec.pointsAwarded === 2 && ec.teacherComment === "tốt" && rc.json.canSeeAnswers === false, { s: rc.json.score, h: rc.json.held, c: rc.json.canSeeAnswers, ec });
   check("sau công bố: C vào bảng xếp hạng đúng một lần, participants +1", (await prisma.examResult.count({ where: { examId: E1.exam.id, userId: s3.id } })) === 1 && (await prisma.exam.findUnique({ where: { id: E1.exam.id } }))?.participants === 1);
   const pC2 = await api("POST", `${base}/publish`, { as: T, body: { attemptIds: [C.id] } });
   check("công bố lại C: không đôi (published rỗng, alreadyPublished có C)", pC2.status === 200 && pC2.json.published.length === 0 && pC2.json.alreadyPublished[0] === C.id && (await prisma.examAttemptPublish.count({ where: { attemptId: C.id } })) === 1, pC2.json);

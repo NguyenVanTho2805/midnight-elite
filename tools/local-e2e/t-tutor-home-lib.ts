@@ -10,7 +10,9 @@ const NOW = new Date("2026-10-14T03:30:00Z"); // 10:30 giờ VN, thứ Tư 14/10
 const ZERO: SetupCounts = { payoutAccount: false, classes: 0, students: 0, schedules: 0, attendanceRecords: 0, invoices: 0, parentLinks: 0, taughtSessions: 0 };
 
 section("HV-10 checklist thiết lập 8 bước, tự tick theo dữ liệu thật");
-const LICH = { lichOpen: true };
+// DG (14/11/2026): hai bước học phí (tai-khoan, phieu) theo cờ HOC_PHI — các ca 8 bước dưới đây truyền tường minh hocPhiOpen: true; ca riêng ở cuối mục.
+const LICH = { lichOpen: true, hocPhiOpen: true };
+// Ca phá cố ý (đã chạy): bỏ điều kiện hocPhiOpen trong buildSetupChecklist → 4 đỏ ở mục DG (36/4).
 const c0 = buildSetupChecklist(ZERO, LICH);
 check("chưa có gì: 8 bước, 0 xong, không bước nào tick", c0.total === 8 && c0.doneCount === 0 && !c0.allDone && c0.steps.every(s => !s.done), c0);
 check("8 bước đúng thứ tự: tài khoản, lớp, học sinh, lịch, điểm danh, phiếu, phụ huynh, chốt buổi", c0.steps.map(s => s.key).join() === "tai-khoan,lop,hoc-sinh,lich,diem-danh,phieu,phu-huynh,chot-buoi");
@@ -22,19 +24,34 @@ check("mỗi số đếm chỉ làm đúng MỘT bước tick (không tick lẫn
 const all = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 1, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, LICH);
 check("đủ cả 8 → allDone (banner sẽ không hiện nữa)", all.allDone && all.doneCount === 8);
 section("LOI-02 F: lịch ẩn (cờ tắt) ⇒ bỏ bước \"Đặt lịch học\"");
-const off = buildSetupChecklist(ZERO, { lichOpen: false });
+const off = buildSetupChecklist(ZERO, { lichOpen: false, hocPhiOpen: true });
 check("cờ tắt: 7 bước, không có bước lich", off.total === 7 && !off.steps.some(s => s.key === "lich"), off.steps.map(s => s.key));
-const offAll = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 0, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, { lichOpen: false });
+const offAll = buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 0, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, { lichOpen: false, hocPhiOpen: true });
 check("cờ tắt: không có khung giờ nào vẫn allDone 7/7 (không kẹt banner vì lịch)", offAll.allDone && offAll.doneCount === 7);
 check("cờ bật mà thiếu khung giờ ⇒ KHÔNG allDone (ca phá: bước lich vẫn đếm)", !buildSetupChecklist({ payoutAccount: true, classes: 1, students: 3, schedules: 0, attendanceRecords: 4, invoices: 2, parentLinks: 1, taughtSessions: 2 }, LICH).allDone);
 {
   const prev = process.env.NEXT_PUBLIC_KIN_MO_LICH;
   delete process.env.NEXT_PUBLIC_KIN_MO_LICH;
-  const dflt = buildSetupChecklist(ZERO);
+  const dflt = buildSetupChecklist(ZERO, { hocPhiOpen: true });
   process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
-  const on = buildSetupChecklist(ZERO);
+  const on = buildSetupChecklist(ZERO, { hocPhiOpen: true });
   if (prev === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = prev;
   check("mặc định (không đặt cờ) đọc isLichOpen ⇒ 7 bước; cờ \"1\" ⇒ 8 bước", dflt.total === 7 && on.total === 8, { dflt: dflt.total, on: on.total });
+}
+section("DG: học phí ẩn (cờ HOC_PHI tắt) ⇒ bỏ hai bước \"Thêm tài khoản nhận học phí\", \"Lập phiếu học phí đầu tiên\"");
+{
+  const noFee = buildSetupChecklist(ZERO, { lichOpen: true, hocPhiOpen: false });
+  check("HOC_PHI tắt: 6 bước, không tai-khoan / phieu, thứ tự còn lại giữ nguyên", noFee.total === 6 && noFee.steps.map(s => s.key).join() === "lop,hoc-sinh,lich,diem-danh,phu-huynh,chot-buoi", noFee.steps.map(s => s.key));
+  const noFeeAll = buildSetupChecklist({ payoutAccount: false, classes: 1, students: 3, schedules: 1, attendanceRecords: 4, invoices: 0, parentLinks: 1, taughtSessions: 2 }, { lichOpen: true, hocPhiOpen: false });
+  check("HOC_PHI tắt: chưa có tài khoản / phiếu vẫn allDone (không kẹt banner vì học phí)", noFeeAll.allDone && noFeeAll.doneCount === 6);
+  check("không bước nào còn trỏ /lop-cua-toi/hoc-phi khi HOC_PHI tắt", !noFee.steps.some(s => s.href.startsWith("/lop-cua-toi/hoc-phi")));
+  const prev = process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI;
+  delete process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI;
+  const dflt = buildSetupChecklist(ZERO, { lichOpen: true });
+  process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI = "1";
+  const on = buildSetupChecklist(ZERO, { lichOpen: true });
+  if (prev === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI; else process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI = prev;
+  check("mặc định (không đặt cờ) ⇒ 6 bước; NEXT_PUBLIC_KIN_MO_HOC_PHI=1 ⇒ 8 bước", dflt.total === 6 && on.total === 8, { dflt: dflt.total, on: on.total });
 }
 const ovNoSetup = buildHopViecOverview({ now: NOW, invoices: [], classes: [], totalStudents: 0, occurrences: [] });
 check("không truyền số đếm → setup = null (không bịa tiến độ)", ovNoSetup.setup === null);

@@ -10,11 +10,16 @@ import webpush from "web-push";
 import {
   MAX_PUSH_DEVICES, PUSH_DEFS, PUSH_HOST_SUFFIXES, PUSH_TEST_TEXT, PUSH_TYPES, decidePush, deviceLabel, endpointFingerprint, isAllowedPushEndpoint, isFingerprint,
   isPushType, parsePushTypesPatch, parseSubscription, pushConfig, pushPayload, readPushPrefs, resolvePushTypes, serializePayload, type PushTypes,
+  FEE_PUSH_TYPES, visiblePushTypes,
 } from "@/lib/pushRules";
 import { isIosDevice, pushUiState, serverOffText, urlBase64ToUint8Array, type PushUiInput } from "@/lib/pushClient";
 import { applyPreferencesPatch, readPreferences } from "@/lib/userPreferences";
 import manifest from "@/app/manifest";
 import { check, section, done } from "./h";
+// DG (14/11/2026): ba loại tin học phí (bank_tx_pending, invoice_paid, parent_reported) chỉ đẩy khi cờ HOC_PHI mở (pushRules.pushTypeAllowed). Các ca cũ bên dưới
+// kiểm luật đẩy CỦA LOẠI TIN (giờ yên lặng, công tắc) nên chạy với HOC_PHI=1; mục "DG" ở cuối tệp xoá biến để kiểm mặc định ẩn.
+process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI = "1";
+// Ca phá cố ý (đã chạy): bỏ dòng `pushTypeAllowed` trong decidePush → ca "HOC_PHI tắt: ba loại tin học phí KHÔNG đẩy" đỏ (133/1).
 
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const src = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
@@ -73,7 +78,7 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   check("ban ngày báo nghỉ luôn đẩy dù lead nào", [10, 119, 120, 600, undefined].every(l => decidePush({ type: "absence_late", types: ALL_ON, now: day, leadMinutes: l }).send === true));
 
   section("Chữ gửi đi: dựng từ LOẠI, không tên em, không số tiền");
-  check("đúng chữ Figma G2 cho báo nghỉ và tiền chưa khớp", eq(pushPayload("absence_late"), { title: "Có 1 báo nghỉ sát giờ cần xử lý", body: "Bấm để mở Hộp việc.", url: "/lop-cua-toi" })
+  check("đúng chữ Figma G2 cho báo nghỉ và tiền chưa khớp", eq(pushPayload("absence_late", { env: { HOP_VIEC: "1" } }), { title: "Có 1 báo nghỉ sát giờ cần xử lý", body: "Bấm để mở Hộp việc.", url: "/lop-cua-toi" })
     && eq(pushPayload("bank_tx_pending"), { title: "Có khoản tiền vào chưa khớp phiếu", body: "Bấm để xem và gạch thủ công.", url: "/lop-cua-toi/hoc-phi?tab=doi-soat" }));
   check("pushPayload nhận loại + tuỳ chọn { count } (không có đường nào khác đưa tên em / số tiền vào chữ)", pushPayload.length <= 2);
   check("mọi loại: chỉ ba khoá title/body/url; url là đường dẫn cùng tên miền (bắt đầu '/', không '//')", PUSH_TYPES.every(t => eq(Object.keys(pushPayload(t)), ["title", "body", "url"]) && /^\/(?!\/)/.test(pushPayload(t).url)));
@@ -280,7 +285,12 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   check("hai loại mới MẶC ĐỊNH TẮT (và ba loại cũ giữ nguyên mặc định)", PUSH_DEFS.parent_reported.defaultOn === false && PUSH_DEFS.unmarked_daily.defaultOn === false && PUSH_DEFS.absence_late.defaultOn && PUSH_DEFS.bank_tx_pending.defaultOn && !PUSH_DEFS.invoice_paid.defaultOn);
   check("parent_reported: chữ 'Có phụ huynh báo đã chuyển khoản, cần đối soát'; đích /lop-cua-toi/hoc-phi; chữ không có chữ số", pushPayload("parent_reported").title === "Có phụ huynh báo đã chuyển khoản, cần đối soát" && pushPayload("parent_reported").url === "/lop-cua-toi/hoc-phi" && !/\d/.test(`${pushPayload("parent_reported").title} ${pushPayload("parent_reported").body}`));
   check("parent_reported: bỏ qua `count` (kể cả count lạ) — chữ vẫn là chữ gốc", eq(pushPayload("parent_reported", { count: 7 }), pushPayload("parent_reported")) && eq(pushPayload("absence_late", { count: 7 }), pushPayload("absence_late")));
-  check("unmarked_daily: có `count` hợp lệ → đúng MỘT dãy số là N; đích /lop-cua-toi", [1, 2, 9, 10, 999].every(n => { const t = pushPayload("unmarked_daily", { count: n }); const all = `${t.title} ${t.body} ${t.url}`; return t.title === `Hôm qua có ${n} buổi chưa điểm danh` && eq(all.match(/\d+/g), [String(n)]) && t.url === "/lop-cua-toi"; }));
+  check("unmarked_daily: có `count` hợp lệ → đúng MỘT dãy số là N; đích /lop-cua-toi", [1, 2, 9, 10, 999].every(n => { const t = pushPayload("unmarked_daily", { count: n, env: { HOP_VIEC: "1" } }); const all = `${t.title} ${t.body} ${t.url}`; return t.title === `Hôm qua có ${n} buổi chưa điểm danh` && eq(all.match(/\d+/g), [String(n)]) && t.url === "/lop-cua-toi"; }));
+  // DG (14/11/2026) P2-4a: Hộp việc ẩn (cờ HOP_VIEC tắt) ⇒ hai tin trỏ Hộp việc đổi chữ + đích sang danh sách lớp. Ca phá cố ý: bỏ nhánh HOP_VIEC trong pushPayload ⇒ đỏ.
+  check("DG: HOP_VIEC tắt ⇒ absence_late / unmarked_daily: 'Bấm để mở danh sách lớp.' → /lop-cua-toi/lop, không còn chữ 'Hộp việc'; tiêu đề + N giữ nguyên",
+    (["absence_late", "unmarked_daily"] as const).every(t => { const p = pushPayload(t, { count: 3, env: {} }); return p.body === "Bấm để mở danh sách lớp." && p.url === "/lop-cua-toi/lop" && !/Hộp việc/.test(`${p.title} ${p.body}`); })
+    && pushPayload("unmarked_daily", { count: 3, env: {} }).title === "Hôm qua có 3 buổi chưa điểm danh" && pushPayload("absence_late", { env: {} }).title === "Có 1 báo nghỉ sát giờ cần xử lý");
+  check("DG: HOP_VIEC tắt KHÔNG đổi các loại khác (đích học phí giữ nguyên)", eq(pushPayload("bank_tx_pending", { env: {} }), pushPayload("bank_tx_pending", { env: { HOP_VIEC: "1" } })));
   check("unmarked_daily: thiếu / sai `count` (0, âm, 1000, thập phân, NaN, chuỗi) → chữ gốc KHÔNG có số nào", [undefined, 0, -3, 1000, 2.5, NaN, Infinity, "3" as unknown as number].every(n => { const t = pushPayload("unmarked_daily", { count: n }); return t.title === PUSH_DEFS.unmarked_daily.title && !/\d/.test(`${t.title} ${t.body} ${t.url}`); }));
   check("unmarked_daily: serializePayload vẫn đúng ba khoá, < 300 byte", (() => { const j = serializePayload(pushPayload("unmarked_daily", { count: 12 })); return eq(Object.keys(JSON.parse(j)), ["title", "body", "url"]) && j.length < 300; })());
   const flip = (t: "parent_reported" | "unmarked_daily") => ({ ...resolvePushTypes(undefined), [t]: true });
@@ -289,6 +299,19 @@ const ALL_ON: PushTypes = { absence_late: true, bank_tx_pending: true, invoice_p
   check("unmarked_daily: đúng 07:00 và 07:05 giờ VN (giờ chạy cron) → ĐẨY; 06:59 → yên lặng", decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(7, 0) }).send === true && decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(7, 5) }).send === true && eq(decidePush({ type: "unmarked_daily", types: ALL_ON, now: vn(6, 59) }), { send: false, reason: "quiet-hours" }));
   check("công tắc mới nhận qua bản vá; tên lạ vẫn bị từ chối cả bản vá", eq(parsePushTypesPatch({ parent_reported: true, unmarked_daily: false }), { ok: true, value: { parent_reported: true, unmarked_daily: false } }) && !parsePushTypesPatch({ parent_reported: true, evil: true }).ok);
   check("quét tĩnh: notify() nhận { count } và chuyển cho pushToUser; pushServer chuyển count cho pushPayload", /opts\.count/.test(notifySrc) && /count: o\.count/.test(server));
+
+  section("DG (14/11/2026): tin đẩy học phí theo cờ HOC_PHI");
+  {
+    const day = new Date("2026-10-21T03:00:00Z"); // 10:00 giờ VN
+    const allOn = resolvePushTypes({ absence_late: true, bank_tx_pending: true, invoice_paid: true, parent_reported: true, unmarked_daily: true });
+    delete process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI;
+    check("HOC_PHI tắt (mặc định): ba loại tin học phí KHÔNG đẩy ('feature-off') dù gia sư bật và ban ngày", FEE_PUSH_TYPES.every(t => eq(decidePush({ type: t, types: allOn, now: day }), { send: false, reason: "feature-off" })));
+    check("HOC_PHI tắt: báo nghỉ sát giờ và nhắc điểm danh vẫn đẩy như cũ", decidePush({ type: "absence_late", types: allOn, now: day }).send && decidePush({ type: "unmarked_daily", types: allOn, now: day }).send);
+    check("HOC_PHI tắt: Cài đặt chỉ hiện 2 công tắc (báo nghỉ, nhắc điểm danh)", visiblePushTypes().join() === "absence_late,unmarked_daily");
+    check("env truyền tường minh thắng môi trường: { HOC_PHI: \"1\" } → đẩy bình thường", decidePush({ type: "bank_tx_pending", types: allOn, now: day, env: { HOC_PHI: "1" } }).send && visiblePushTypes({ HOC_PHI: "1" }).length === PUSH_TYPES.length);
+    process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI = "1";
+    check("HOC_PHI=1 → đủ 5 công tắc, tin học phí đẩy ban ngày", visiblePushTypes().length === 5 && FEE_PUSH_TYPES.every(t => decidePush({ type: t, types: allOn, now: day }).send));
+  }
 
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

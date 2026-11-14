@@ -12,11 +12,13 @@
 import { BASE, mkTutor, mkUser, mkCourse, cookieFor, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
-const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
+// DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
+const TABS = ["Bài học", "Học sinh", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"];
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };
@@ -95,7 +97,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     await pg.waitForURL(u => u.pathname === base(A.id) && u.search === "", { timeout: 120000 });
     await lessonRow(pg, "Bài có Drive cũ").waitFor({ timeout: 120000 });
     const strip = pg.locator(`${STRIP}:visible`);
-    check(`${tag}: dải tab đúng 4 mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
+    check(`${tag}: dải tab đúng ${TABS.length} mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
     check(`${tag}: "Bài học" sáng (aria-current=page)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: không còn tab Giáo trình / Lịch học / Bài tập`, (await strip.getByRole("link", { name: /^(Giáo trình|Lịch học|Bài tập)$/ }).count()) === 0);
     check(`${tag}: thấy cây Chương · Bài (dòng tóm tắt + chương + bài)`, (await pg.locator("[data-bai-hoc-tong]").innerText()).includes("1 phần · 1 chương · 3 bài") && (await pg.getByText("Chương 1: Hàm số").count()) > 0);
@@ -175,6 +177,15 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     && (await pg.locator("[data-o-tha]").evaluate(e => e.getBoundingClientRect().height >= 159.5))
     && (await pg.getByRole("button", { name: "Chọn tệp từ máy" }).evaluate(e => e.getBoundingClientRect().height >= 43.5)));
   check("ô chọn tệp cho chọn nhiều tệp, không nhận video", (await pg.locator("[data-o-tha-input]").getAttribute("multiple")) !== null && !/mp4|video/i.test((await pg.locator("[data-o-tha-input]").getAttribute("accept")) ?? ""));
+  // DG (14/11/2026, vòng dạy thật): thả tệp khi CHƯA tích cam kết ⇒ câu báo nằm NGAY TRÊN ô thả (trước: dưới đoạn pháp lý dài, gia sư không thấy), không gọi init.
+  if (!(await pg.locator("[data-tai-lieu-cam-ket]").isChecked())) {
+    const nInit = net.init;
+    await drop(pg, [{ name: "chua-cam-ket.pdf", type: "application/pdf", bytes: PDF }]);
+    const msg = pg.locator("[data-tai-lieu] [data-loi]");
+    await msg.waitFor({ timeout: 10000 });
+    const above = await pg.evaluate(() => { const m = document.querySelector("[data-tai-lieu] [data-loi]"), z = document.querySelector("[data-o-tha]"); return !!m && !!z && m.getBoundingClientRect().bottom <= z.getBoundingClientRect().top + 1; });
+    check("chưa tích cam kết: thả tệp ⇒ báo 'Hãy tích ô cam kết…' ngay trên ô thả, không gọi init", /tích ô cam kết/.test(await msg.innerText()) && above && net.init === nInit, { above });
+  }
   await pg.locator("[data-tai-lieu-cam-ket]").check();
   await pg.route("**/api/media/upload/*", async r => { await sleep(1800); await r.continue(); });
   await drop(pg, [{ name: "de-cuong.pdf", type: "application/pdf", bytes: PDF }, { name: "phieu-bai-tap.pdf", type: "application/pdf", bytes: PDF }]);
@@ -351,6 +362,31 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await shot(pg, "loi-02-nhan-ban-nhap-1600");
   pg.off("request", onReq);
 
+  section("7c. Q2 (14/11): 'Lưu và thêm bài tập' — một màn: bài lưu xong, panel thành Sửa bài học, phần bài tập mở sẵn");
+  await pg.locator("[data-them-bai]").first().click();
+  const qn2 = pg.locator('[data-sua-nhanh="them"]');
+  await qn2.waitFor({ timeout: 10000 });
+  await qn2.getByLabel("Tên bài").fill("Bài có bài tập ngay");
+  await qn2.getByRole("button", { name: "Chi tiết…" }).click();
+  await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
+  await pg.waitForTimeout(450);
+  const lbt = pg.locator("[data-luu-them-bai-tap]");
+  const lbtBox = await lbt.boundingBox();
+  check("panel Thêm bài: có ô 'Bài tập của bài' + nút 'Lưu và thêm bài tập' ≥44px, chưa có trình soạn bài tập", (await lbt.count()) === 1 && (lbtBox?.height ?? 0) >= 43.5 && (await pg.locator("[data-bai-tap-tu-nop]").count()) === 0, lbtBox);
+  const nPost2 = posts.length;
+  pg.on("request", onReq);
+  await lbt.click();
+  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ timeout: 30000 });
+  await pg.locator("[data-bai-tap-cua-bai] [data-bai-tap-tu-nop]").waitFor({ timeout: 30000 });
+  pg.off("request", onReq);
+  const lq2 = await prisma.lesson.findFirst({ where: { title: "Bài có bài tập ngay" } });
+  check("…bấm ⇒ đúng 1 POST, bài có trong DB, panel ở lại thành 'Sửa bài học' với trình soạn bài tập của bài vừa lưu", !!lq2 && posts.length === nPost2 + 1
+    && (await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).count()) === 0, { lesson: lq2?.id, posts: posts.length - nPost2 });
+  await shot(pg, "loi-02-luu-them-bai-tap-1600");
+  await pg.getByRole("button", { name: "Đóng" }).first().click();
+  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 });
+  await lessonRow(pg, "Bài có bài tập ngay").waitFor({ timeout: 30000 });
+
   // ── 8. Lớp rỗng → Tạo chương đầu tiên → thêm bài ngay trong cây ─────────────────────────────────────
   section("8. Lớp rỗng: 'Lớp chưa có bài học' → 'Tạo chương đầu tiên' → + bài nhanh");
   await pg.goto(`${BASE}${base(E.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });
@@ -387,6 +423,18 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const tiny = await pm.evaluate(`[...document.querySelectorAll("[data-tai-lieu] button, [data-ngay-hoc] button, #ls-trang-thai")].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5).map(e => (e.textContent||"").trim().slice(0,16) + ":" + Math.round(e.getBoundingClientRect().height))`) as string[];
   check("390: nút trong panel ≥ 44px", tiny.length === 0, tiny);
   check("390: nút Lưu / Huỷ dính đầu panel", await pm.getByRole("button", { name: /^Lưu$/ }).first().isVisible());
+  // DG (14/11/2026, vòng dạy thật): khối "Bài tập tự nộp" trong panel — nút ≥ 44px (trước: "+ Thêm bài tập" 16px, "Lưu bài tập" 28px) và
+  // không còn hứa "tab Giáo trình (sắp có)" (tab đã bỏ ở LOI-02); chỉ đúng chỗ thả tệp đề là ô Tài liệu của bài.
+  {
+    const bt = pm.locator("[data-bai-tap-tu-nop]");
+    await bt.scrollIntoViewIfNeeded();
+    await bt.getByRole("button", { name: "+ Thêm bài tập" }).click();
+    await bt.getByPlaceholder("Tiêu đề bài tập *").waitFor({ timeout: 30000 });
+    const small = await bt.evaluate(el => [...el.querySelectorAll("button")].filter(b => (b as HTMLElement).offsetParent && b.getBoundingClientRect().height < 43.5).map(b => `${(b.textContent || "").trim().slice(0, 16)}:${Math.round(b.getBoundingClientRect().height)}`));
+    const hint = await bt.locator("[data-tai-lieu-dong]").innerText();
+    check("390: Bài tập tự nộp — mọi nút ≥ 44px; chữ chỉ ô Tài liệu, không 'tab Giáo trình' / 'sắp có'", small.length === 0 && /ô Tài liệu/.test(hint) && !/Giáo trình|sắp có/.test(hint), { small, hint });
+    await bt.getByRole("button", { name: "Huỷ", exact: true }).click();
+  }
   await pm.screenshot({ path: `${SHOTS}/loi-02-panel-390.png` });
   await pm.locator("[data-o-tha]").scrollIntoViewIfNeeded();
   await pm.screenshot({ path: `${SHOTS}/loi-02-panel-o-tha-390.png` });

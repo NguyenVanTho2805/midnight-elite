@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { loadTutorDashboard } from "@/lib/tutorDashboard";
 import { KinMoney } from "@/components/kin/MoneyVisibility";
+import { featureOn, isLinkHidden } from "@/lib/features";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
 const vnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
@@ -15,7 +16,10 @@ export default async function TutorOverviewStats({ tutorId }: { tutorId: string 
     { key: "hoc-vien", label: "Học viên đang học", value: <>{String(d.totalStudents)}</>, sub: null as string | null, accent: "var(--kin-th-xanh-troi)", color: "var(--kin-chu-chinh)", href: null as string | null, wide: false },
     { key: "lop", label: "Lớp đang dạy", value: <>{`${d.openClasses}/${d.classes.length}`}</>, sub: "đang nhận học viên / tổng số lớp", accent: "var(--kin-th-xanh-link)", color: "var(--kin-chu-chinh)", href: null, wide: false },
     { key: "da-thu", label: "Đã thu tháng này", value: <KinMoney>{vnd(d.collectedThisMonth)}</KinMoney>, sub: "học phí vào tài khoản của bạn", accent: "var(--kin-tt-cham-xong)", color: "var(--kin-tt-chu-xong)", href: "/lop-cua-toi/doanh-thu", wide: true },
-  ];
+  ]
+    // DG (14/11/2026): thẻ tiền chỉ khi cờ HOC_PHI mở; trang Doanh thu ẩn (KINH_DOANH) thì thẻ không còn là liên kết.
+    .filter(s => s.key !== "da-thu" || featureOn("HOC_PHI"))
+    .map(s => (s.href && isLinkHidden(s.href) ? { ...s, href: null } : s));
   return (
     <dl data-hv-overview className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
       {stats.map(s => {

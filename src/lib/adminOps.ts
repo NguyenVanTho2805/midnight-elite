@@ -4,7 +4,7 @@
 //  • Nhật ký kiểm toán KHÔNG hiện tên, SĐT, ngày sinh của trẻ: người thực hiện chỉ hiện TÊN khi là nhân sự (role admin), còn lại chỉ hiện vai.
 //    Phần `metadata` của AuditLog không bao giờ được đưa ra giao diện (có thể chứa tên học sinh).
 //  • Không bịa số liệu: mục chưa có dữ liệu thật thì ghi "chưa có".
-import { COIN_VISIBLE, COIN_LOGIC_ON, hideCoin } from "@/lib/features";
+import { COIN_VISIBLE, COIN_LOGIC_ON, hideCoin, isLinkHidden, type FeatureEnv } from "@/lib/features";
 import { isTrialMode } from "@/lib/trialMode";
 import { isPlanEnforced } from "@/lib/planLimits";
 import { ROLE_PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
@@ -68,6 +68,13 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
 ];
+/** DG-HOC-ONLINE: tác vụ gọi TỪ NGOÀI (cron-job.org, mỗi 15 phút) — không nằm trong vercel.json nên tách khỏi CRON_JOBS (t-adm-003-lib so CRON_JOBS ↔ vercel.json hai chiều).
+ *  Trang Triển khai vẫn theo dõi: quá 1 giờ chưa thấy gọi ⇒ "Chậm so với lịch". Hướng dẫn đăng ký: docs/kin/van-hanh/cron-nhac-buoi-hoc.md. */
+export const EXTERNAL_CRON_JOBS: readonly CronJobDef[] = [
+  { key: "nhac-buoi-hoc", label: "Email nhắc học sinh trước giờ học", path: "/api/cron/nhac-buoi-hoc", schedule: "Mỗi 15 phút (cron-job.org)", maxGapHours: 1 },
+];
+/** Mọi tác vụ được trang Triển khai theo dõi. */
+export const MONITORED_CRON_JOBS: readonly CronJobDef[] = [...CRON_JOBS, ...EXTERNAL_CRON_JOBS];
 export const cronSettingKey = (job: string) => `cron.${job}.lastCall`;
 
 export type CronTone = "xong" | "cho" | "mo";
@@ -131,7 +138,7 @@ const ACTION_LABEL: Record<string, string> = {
   "exam_history.export": "Xuất lịch sử làm đề (CSV)", "quiz_deadline.set": "Đặt hạn nộp đề", "quiz_deadline.clear": "Bỏ hạn nộp đề",
   "attendance_session.close": "Chốt buổi học", "attendance_session.reopen": "Mở lại buổi đã chốt", "attendance_session.create_extra": "Thêm buổi lẻ / dạy bù", "attendance_session.notes": "Ghi chú buổi học",
   "session_score.update": "Sửa điểm theo buổi", "session_package.create": "Tạo gói buổi học", "session_package.cancel": "Huỷ gói buổi học",
-  "course.calendar": "Sửa lịch lớp", "course.add_students": "Thêm học viên vào lớp (gia sư)", "class.zalo_group": "Đặt nhóm Zalo của lớp", "class_schedule.import": "Nhập lịch lớp từ tệp",
+  "course.calendar": "Sửa lịch lớp", "course.owner_assign": "Giao lớp cho gia sư khác làm chủ lớp", "course.online_settings": "Sửa link học online và nhắc trước giờ học", "course.add_students": "Thêm học viên vào lớp (gia sư)", "class.zalo_group": "Đặt nhóm Zalo của lớp", "class_schedule.import": "Nhập lịch lớp từ tệp",
   "course_fee.set_rate": "Đặt mức phí lớp", "course_fee.set_student_rate": "Đặt mức phí riêng cho học viên", "course_fee.extra_add": "Thêm khoản thu phát sinh", "course_fee.extra_remove": "Gỡ khoản thu phát sinh",
   "monthly_course_fee.upsert": "Ghi học phí tháng của lớp", "student_discount.set": "Đặt mức giảm cho học viên",
   "invoice.send": "Gửi phiếu học phí", "invoice.set_amount": "Sửa số tiền phiếu", "invoice.set_due_date": "Đổi hạn phiếu", "invoice.attach_charges": "Gắn khoản thu vào phiếu",
@@ -246,9 +253,9 @@ export interface TodayItem { key: string; group: TodayGroupKey; label: string; c
 const queueHref = (kind: string) => `/admin/kiem-duyet?loai=${kind}`;
 /**
  * Chỉ giữ việc có số > 0, kèm NHÓM. Việc nặng (chờ lâu) đứng trước nhờ thứ tự cố định. Mọi loại hàng chờ dẫn tới `/admin/kiem-duyet?loai=<kind>`.
- * Chỉ SỐ LƯỢNG yêu cầu: không tổng tiền, không số dư.
+ * Chỉ SỐ LƯỢNG yêu cầu: không tổng tiền, không số dư. `env`: cờ tính năng (để test); bỏ trống = đọc môi trường.
  */
-export function buildTodayList(c: TodayCounts): TodayItem[] {
+export function buildTodayList(c: TodayCounts, env?: FeatureEnv): TodayItem[] {
   const rows: (TodayItem | null)[] = [
     { key: "gia-su", group: "duyet", label: "Hồ sơ gia sư chờ duyệt", count: c.tutorsPending, href: queueHref("gia-su"), hint: "Mở hàng chờ để duyệt hoặc từ chối" },
     { key: "bai-viet", group: "duyet", label: "Bài viết bị báo cáo", count: c.threadReports, href: queueHref("bai-viet"), hint: "Gỡ bài hoặc giữ lại" },
@@ -263,7 +270,9 @@ export function buildTodayList(c: TodayCounts): TodayItem[] {
     c.scheduledArticles == null ? null : { key: "bai-hen-gio", group: "theo-doi", label: "Bài viết hẹn giờ sắp lên", count: c.scheduledArticles, href: "/admin/tin-tuc", hint: "Học sinh được báo khi bài lên" },
     c.cronSlow == null ? null : { key: "cron-cham", group: "he-thong", label: "Tác vụ định kỳ chạy chậm", count: c.cronSlow, href: "/admin/trien-khai", hint: "Xem lần gọi gần nhất ở màn Triển khai" },
   ];
-  return rows.filter((r): r is TodayItem => !!r && r.count > 0);
+  // DG (14/11/2026): dòng dẫn tới trang của phần đang ẨN (src/lib/features.ts) bị bỏ — "Yêu cầu gói Pro chờ kích hoạt" (/admin/goi-pro, cờ KINH_DOANH),
+  // "Bài viết hẹn giờ sắp lên" (/admin/tin-tuc, cờ TIN_TUC). Dòng đã ẩn cũng không vào tổng việc chờ của Hôm nay.
+  return rows.filter((r): r is TodayItem => !!r && r.count > 0 && !isLinkHidden(r.href, env));
 }
 const QUEUE_SHORT: Record<string, string> = {
   "gia-su": "hồ sơ gia sư chờ duyệt", "bai-viet": "bài viết bị báo cáo", "ho-so": "hồ sơ gia sư bị báo cáo", "tra-loi": "câu trả lời bị báo cáo",

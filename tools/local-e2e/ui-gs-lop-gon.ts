@@ -6,9 +6,12 @@
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 
 const RAIL = "Module của gia sư";
-const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
+// DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH, mục Học phí của Cài đặt theo cờ HOC_PHI (mặc định ẨN). Bài đọc cờ ở tiến trình này: chạy cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
+const DIEM_DANH = featureOn("DIEM_DANH"), HOC_PHI = featureOn("HOC_PHI");
+const TABS = ["Bài học", "Học sinh", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"];
 
 (async () => {
   await wipe();
@@ -68,9 +71,12 @@ const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
     await pg.locator('nav[aria-label^="Trang của"]').first().waitFor({ timeout: 120000 });
     await oneStrip("trang lớp"); await oneH1("trang lớp");
     const strip = pg.locator('nav[aria-label^="Trang của"]:visible');
-    check(`${tag}: dải tab đúng 4 mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
+    check(`${tag}: dải tab đúng ${TABS.length} mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
     check(`${tag}: mở lớp rơi vào Bài học (aria-current)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: h1 là tên lớp; không breadcrumb quản trị, không liên kết /admin`, (await pg.locator("h1:visible").innerText()).includes("Toán 9") && (await pg.locator('main a[href*="/admin"]').count()) === 0 && !(await pg.getByText(/Quản trị|Khoá học|Khóa học ›/).count()));
+    const deLop = pg.locator("[data-de-cua-lop]:visible");
+    const deBox = await deLop.boundingBox().catch(() => null);
+    check(`${tag}: Q4 — chủ lớp có nút "Đề của lớp" ≥44px trỏ ngân hàng đề lọc theo lớp`, (await deLop.count()) === 1 && (await deLop.getAttribute("href")) === `/lop-cua-toi/de-thi?lop=${encodeURIComponent(c1.id)}` && (deBox?.height ?? 0) >= 44, { href: await deLop.getAttribute("href").catch(() => null), h: deBox?.height });
     check(`${tag}: thanh bên vẫn MỘT mục sáng ('Lớp')`, (await railCurrent()) === 1);
     await noOverflow("Bài học");
     await shot(pg, `gs-lop-gon-bai-hoc-${tag}`);
@@ -79,7 +85,7 @@ const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
     const tabUrl: Record<string, RegExp> = {
       "Học sinh": /\/hoc-vien/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
     };
-    for (const name of ["Học sinh", "Điểm danh", "Cài đặt", "Bài học"]) {
+    for (const name of [...TABS.slice(1), "Bài học"]) {
       await pg.locator('nav[aria-label^="Trang của"]:visible').getByRole("link", { name, exact: true }).click();
       await pg.waitForURL(tabUrl[name], { timeout: 120000 });
       await pg.waitForFunction(n => [...document.querySelectorAll('nav[aria-label^="Trang của"] [aria-current=page]')].some(e => (e as HTMLElement).innerText.trim() === n), name, { timeout: 120000 });
@@ -117,13 +123,16 @@ const TABS = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
     await pg.goto(`${BASE}${base}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.getByText("Thông tin cơ bản").first().waitFor({ timeout: 120000 });
     const cn = pg.locator('nav[aria-label^="Mục của"]:visible');
-    check(`${tag}: 5 mục con Thông tin · Học phí · Đồng giảng · Cộng đồng · Bản ghi`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(["Thông tin", "Học phí", "Đồng giảng", "Cộng đồng", "Bản ghi"]), await cn.getByRole("link").allInnerTexts());
-    await cn.getByRole("link", { name: "Học phí" }).click();
-    await pg.waitForURL(/muc=hoc-phi/, { timeout: 120000 });
-    await pg.getByText("Học phí và đối soát").first().waitFor({ timeout: 120000 });
-    check(`${tag}: Học phí chỉ chuyển chỗ hiển thị (nút "Mở Học phí" dẫn sang trang Học phí, không có nút tạo phiếu/thu tiền)`, (await pg.getByRole("link", { name: /Mở Học phí/ }).count()) === 1 && (await pg.getByRole("button", { name: /Tạo phiếu|Thanh toán|Thu tiền/ }).count()) === 0);
-    await oneStrip("Cài đặt › Học phí"); await oneH1("Cài đặt › Học phí");
-    await noOverflow("Cài đặt › Học phí");
+    const MUC = ["Thông tin", ...(HOC_PHI ? ["Học phí"] : []), "Đồng giảng", "Cộng đồng", "Bản ghi", "Học online"];
+    check(`${tag}: ${MUC.length} mục con ${MUC.join(" · ")} (DG-HOC-ONLINE thêm mục cuối; Học phí theo cờ HOC_PHI)`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(MUC), await cn.getByRole("link").allInnerTexts());
+    if (HOC_PHI) {
+      await cn.getByRole("link", { name: "Học phí" }).click();
+      await pg.waitForURL(/muc=hoc-phi/, { timeout: 120000 });
+      await pg.getByText("Học phí và đối soát").first().waitFor({ timeout: 120000 });
+      check(`${tag}: Học phí chỉ chuyển chỗ hiển thị (nút "Mở Học phí" dẫn sang trang Học phí, không có nút tạo phiếu/thu tiền)`, (await pg.getByRole("link", { name: /Mở Học phí/ }).count()) === 1 && (await pg.getByRole("button", { name: /Tạo phiếu|Thanh toán|Thu tiền/ }).count()) === 0);
+      await oneStrip("Cài đặt › Học phí"); await oneH1("Cài đặt › Học phí");
+      await noOverflow("Cài đặt › Học phí");
+    }
 
     section(`Bài học: panel "Thêm bài học" · ${tag}px`);
     await pg.goto(`${BASE}${base}?tab=chuong-bai`, { waitUntil: "domcontentloaded", timeout: 180000 });

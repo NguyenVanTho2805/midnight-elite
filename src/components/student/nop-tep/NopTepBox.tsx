@@ -16,6 +16,7 @@ import {
   NOP_TEP_BASE, NOP_TEP_MSG, attachNopTepReturn, formatBytes, formatVnDate, formatVnStamp, loadNopTepList, preflightNopTep, removeNopTepFile, splitName, uploadNopTepFile,
   type NopTepFileView, type NopTepLimits, type NopTepList, type NopTepMode, type NopTepScope,
 } from "./nopTepClient";
+import { nopTepSafeName } from "@/lib/nopTep";
 
 export type { NopTepMode } from "./nopTepClient";
 
@@ -111,7 +112,8 @@ function useUploads(scope: NopTepScope, limits: NopTepLimits, onUploaded: (fileI
     const fresh: LocalItem[] = [];
     const starts: LocalItem[] = [];
     for (const file of files) {
-      const base = { key: newKey(), file, name: file.name, size: file.size, pct: 0 };
+      // Hiện đúng tên máy chủ sẽ lưu (nopTepSafeName: ≤120 ký tự, giữ đuôi) — không hiện tên gốc dài/có ký tự lạ rồi đổi sau khi tải lại.
+      const base = { key: newKey(), file, name: nopTepSafeName(file.name), size: file.size, pct: 0 };
       if (active >= limits.maxFiles) { fresh.push({ ...base, state: "loi", message: NOP_TEP_MSG.too_many, retryable: false }); continue; }
       const pre = preflightNopTep(file, limits);
       if (pre) { fresh.push({ ...base, state: "loi", message: pre.message, retryable: false }); continue; }

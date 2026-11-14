@@ -12,6 +12,7 @@ import { MAX_DOCUMENTS_PER_LESSON, formatMegabytes } from "@/lib/mediaStorage";
 import type { GtConfig } from "@/lib/giaoTrinh";
 import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLenTep";
 import { OThaTep, type OThaTrangThai } from "@/components/tutor/upload/OThaTep";
+import { useCamKetBanQuyen } from "@/components/tutor/upload/useCamKetBanQuyen";
 
 export interface DocItem { name: string; url: string; type?: string }
 
@@ -41,7 +42,6 @@ function DocBadge({ type }: { type: string }) {
   );
 }
 
-const PLEDGE_KEY = "kin.gt.cam-ket"; // cùng khoá với ô tải của màn Giáo trình: tích một lần mỗi phiên
 const KIN_FILE_RE = /^\/api\/media\/[A-Za-z0-9_-]+\/file$/;
 
 type Cfg = { state: "loading" } | { state: "error" } | { state: "ok"; document: GtConfig["document"] };
@@ -63,12 +63,9 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   const latest = useRef(value);
   useEffect(() => { latest.current = value; }, [value]);
   const [problem, setProblem] = useState<string | null>(null);
-  const [pledge, setPledge] = useState(false);
+  const [pledge, setPledgeSaved] = useCamKetBanQuyen();
   const [cfg, setCfg] = useState<Cfg>({ state: "loading" });
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } }, []);
-  const setPledgeSaved = (v: boolean) => { setPledge(v); try { sessionStorage.setItem(PLEDGE_KEY, v ? "1" : "0"); } catch { /* bỏ qua */ } };
 
   // Một lần cho cả ngăn: kho tệp bật hay tắt (chỉ đọc khối document, không đọc video).
   const loadCfg = useCallback(() => {
@@ -168,13 +165,15 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
         </div>
       )}
 
+      {/* DG (14/11/2026, vòng dạy thật): câu báo (chưa tích cam kết, quá số tệp) đứng NGAY TRÊN ô thả — trước đây nằm dưới đoạn pháp lý dài, gia sư thả tệp
+          xong không thấy gì xảy ra. */}
+      {problem && <p role="status" data-loi className="mb-2 text-sm font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {/* Ô thả: đang kiểm / lỗi kiểm / kho tắt / không phải chủ lớp / sẵn sàng (+ kéo vào). */}
       <OThaTep state={zone} onFiles={onFiles} onRetry={loadCfg} accept={accept} pledge={pledge} onPledgeChange={setPledgeSaved}
         hint={ready && d ? `${d.exts.map(x => x.toUpperCase()).join(", ")} · tối đa ${formatMegabytes(d.maxBytes)} mỗi tệp · tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài` : undefined} />
 
       {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
       <p data-copyright-notice className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
-      {problem && <p role="status" data-loi className="text-xs mt-1 font-semibold" style={{ color: "var(--kin-tt-chu-loi)" }}>{problem}</p>}
       {docs.length === 0 && up.queue.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}

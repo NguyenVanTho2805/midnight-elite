@@ -9,6 +9,12 @@ import { featureOn } from "@/lib/features";
 // Bài đọc cờ ở tiến trình này: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
 const LICH = featureOn("LICH"), CONG_DONG = featureOn("CONG_DONG");
 const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"];
+// DG (14/11/2026): bài này kiểm VỎ HỘP VIỆC đầy đủ (Hộp việc, Học phí trên thanh; Báo cáo tháng, Sổ điểm, Doanh thu, Bài đăng, Yêu cầu, Gói trong bảng Khác) — tất cả
+// nay thuộc cờ HOP_VIEC, HOC_PHI, SO_DIEM, KINH_DOANH, TIM_GIA_SU (mặc định ẨN). Vỏ gọn mặc định (không cờ) được kiểm ở ui-don-gian.ts. Chạy bài này với máy chủ dev
+// và tiến trình test cùng đặt NEXT_PUBLIC_KIN_MO_{HOP_VIEC,HOC_PHI,SO_DIEM,KINH_DOANH,TIM_GIA_SU}=1 để kiểm "bật lại là như cũ". Thiếu cờ → dừng, báo rõ (không đếm là đạt).
+const NEED = ["HOP_VIEC", "HOC_PHI", "SO_DIEM", "KINH_DOANH", "TIM_GIA_SU"] as const;
+const missing = NEED.filter(k => !featureOn(k));
+if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(k => `NEXT_PUBLIC_KIN_MO_${k}=1`).join(" ")} (vỏ mặc định kiểm ở ui-don-gian.ts).`); process.exit(2); }
 
 (async () => {
   await wipe();
@@ -184,8 +190,10 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   const cg = await ctxFor(TC, { width: 1280, height: 800 });
   const pc = await cg.newPage(); watch(pc);
   await pc.goto(`${BASE}/lop-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
-  check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
+  // DG (14/11/2026): Lịch đang ẩn (cờ LICH) thì màn đầu của chế độ gọn là thư viện Lớp, không vào trang đã rút khỏi menu.
+  const compactHome = LICH ? "/lop-cua-toi/lich" : "/lop-cua-toi/lop";
+  await pc.waitForURL(u => u.pathname === compactHome, { timeout: 90000 });
+  check(`Hộp việc đã tắt → /lop-cua-toi chuyển về ${LICH ? "Lịch" : "Lớp (Lịch đang ẩn)"}`, new URL(pc.url()).pathname === compactHome, pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
   check(`thanh chỉ có ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`, (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === (LICH ? 3 : 2));
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
@@ -209,7 +217,8 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check(`B3: ${LICH ? 5 : 4} ô (Hộp việc, ${LICH ? "Lịch, " : ""}Lớp, Học phí + Khác), mỗi nút cao ≥ 44px`, hit.length === (LICH ? 5 : 4) && hit.every(h => h >= 44), hit);
+  // DG (14/11/2026): thanh dưới luôn đủ 4 module + Khác — module ẩn theo cờ (Lịch khi LICH tắt) nhường chỗ cho module kế tiếp (Bài tập), TutorShell MOBILE_ORDER.
+  check(`B3: 5 ô (Hộp việc, ${LICH ? "Lịch, Lớp, Học phí" : "Lớp, Học phí, Bài tập"} + Khác), mỗi nút cao ≥ 44px`, hit.length === 5 && hit.every(h => h >= 44), hit);
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
   check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);

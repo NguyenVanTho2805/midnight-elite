@@ -37,7 +37,8 @@ import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
 
     section(`${w}px · tab Bài tập của bài video có 2 link`);
     await page.goto(`${BASE}/student/bai-giang/rec2`, { waitUntil: "networkidle" });
-    await page.getByRole("button", { name: /Bài tập/ }).first().click({ timeout: 30000 });
+    // DG (14/11/2026): trang bài một cột — khối Bài tập luôn hiện (không còn nút tab), chỉ cuộn tới.
+    await page.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded({ timeout: 30000 });
     await page.getByText("Làm bài 2 trên Azota").waitFor({ timeout: 30000 });
     const h2 = await page.locator('a:has-text("Làm bài")').evaluateAll(as => as.map(a => (a as HTMLAnchorElement).href));
     check("tab Bài tập: 2 nút đúng href", h2.join("|") === "https://azota.vn/b1|https://azota.vn/b2", h2);

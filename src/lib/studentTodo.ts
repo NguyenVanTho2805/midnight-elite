@@ -77,7 +77,17 @@ export interface TodoTask {
 }
 
 /** Buổi học (kind "buoi-hoc"): giờ, tên lớp, ghi chú của lớp (có thể rỗng). */
-export interface TodoSession { courseLine: string; range: string; topic: string; dayText: string; href: string; cancelled: boolean; place?: string; joinUrl?: string }
+export interface TodoSession { courseLine: string; range: string; topic: string; dayText: string; href: string; cancelled: boolean; place?: string; joinUrl?: string;
+  /** Q7 chủ chốt (14/11): đang trong cửa sổ vào lớp (JOIN_SOON_BEFORE_MIN trước giờ học → 2 giờ sau) ⇒ "Mở link học online" thành nút chính. */
+  joinSoon?: boolean }
+
+/** Phút trước giờ học mà nút link học online được đưa lên làm nút chính. */
+export const JOIN_SOON_BEFORE_MIN = 30;
+/** Thuần. true khi now ∈ [at − JOIN_SOON_BEFORE_MIN phút, at + 2 giờ] (2 giờ = cùng ngưỡng classItem còn hiện buổi đã bắt đầu). */
+export function isJoinSoon(at: Date, now: Date): boolean {
+  const d = at.getTime() - now.getTime();
+  return d <= JOIN_SOON_BEFORE_MIN * 60_000 && d >= -2 * 3_600_000;
+}
 
 export interface StudentTodoItem {
   id: string;
@@ -230,7 +240,7 @@ function classItem(e: TodoEvent, now: Date): StudentTodoItem | null {
   return {
     id: `buoi-hoc:${e.id}`, kind: "buoi-hoc", title: `${prefix} ${e.subject} ${e.time}`, subtitle: topic,
     at: at.toISOString(), when: whenLabel(at, now), status, needsAction: false, done: cancelled,
-    session: { courseLine: topic.split(" — ")[0], range: e.endTime ? `${e.time}–${e.endTime}` : e.time, topic: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "", dayText: whenLabel(at, now), href: link, cancelled, place, joinUrl },
+    session: { courseLine: topic.split(" — ")[0], range: e.endTime ? `${e.time}–${e.endTime}` : e.time, topic: topic.includes(" — ") ? topic.slice(topic.indexOf(" — ") + 3) : "", dayText: whenLabel(at, now), href: link, cancelled, place, joinUrl, joinSoon: !!joinUrl && isJoinSoon(at, now) },
     detail: {
       heading: `${prefix} ${topic} ${e.time} ${whenLabel(at, now).toLowerCase()}`,
       meta: `${DAY_LABELS_VI[dayOfWeekOfKey(e.isoDate)]}, ${dm(e.isoDate)}${at.getTime() > now.getTime() ? ` · ${remainingText(at, now)}` : " · đang diễn ra hoặc vừa bắt đầu"}${place ? ` · ${place}` : ""}`,

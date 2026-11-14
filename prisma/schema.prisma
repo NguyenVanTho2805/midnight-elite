@@ -91,9 +91,13 @@ model Course {
   // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
   calendarColor String?
   classJoinUrl  String?
+  // DG-HOC-ONLINE (14/11/2026): gia sư chọn gửi email nhắc học sinh TRƯỚC giờ học bao nhiêu phút (15 | 60 | 1440). null = tắt (mặc định, mọi lớp cũ).
+  // Cron /api/cron/nhac-buoi-hoc (gọi mỗi 15 phút từ cron-job.org) đọc cột này; chống gửi trùng bằng ClassLessonReminderLog.
+  reminderLeadMinutes Int?
   studentProfiles    StudentProfile[]
   joinRequests       ClassJoinRequest[]
   studentReminders   StudentReminder[] // LOI-04
+  lessonReminderLogs ClassLessonReminderLog[] // DG-HOC-ONLINE
 
   @@index([ownerId])
   @@map("courses")
@@ -1341,6 +1345,26 @@ model ClassReminderLog {
   @@unique([scheduleId, dateKey, studentId, recipient, kind])
   @@index([courseId, dateKey])
   @@map("class_reminder_logs")
+}
+
+// DG-HOC-ONLINE (14/11/2026) — mỗi dòng: MỘT email "sắp tới giờ học" đã gửi (hoặc đang gửi) cho MỘT học sinh về MỘT buổi.
+// Dòng được TẠO TRƯỚC khi gửi (unique chặn hai lượt cron chạy chồng gửi trùng); gửi lỗi thì xoá dòng để lượt sau thử lại.
+// sessionKey: "<scheduleId>:<ngày gốc YYYY-MM-DD>" cho buổi theo lịch tuần, "extra:<AttendanceSession.id>" cho buổi lẻ / bù / phát sinh.
+// userId là chuỗi không FK (như các bảng nhắc khác): xoá / ẩn danh tài khoản không cần dọn bảng này. Không chứa số tiền, không chứa nội dung thư.
+model ClassLessonReminderLog {
+  id          String   @id @default(cuid())
+  courseId    String
+  sessionKey  String
+  userId      String
+  startAt     DateTime // giờ bắt đầu buổi lúc gửi
+  leadMinutes Int // lead đã áp (15 | 60 | 1440)
+  createdAt   DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, sessionKey, userId])
+  @@index([createdAt])
+  @@map("class_lesson_reminder_logs")
 }
 
 // ─── PHIẾU HỌC PHÍ + ĐỐI SOÁT VIETQR (TT-200) ────────────────────────────────
