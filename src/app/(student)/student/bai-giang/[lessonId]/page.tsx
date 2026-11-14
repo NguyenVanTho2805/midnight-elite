@@ -25,7 +25,6 @@ import CourseOutline from "@/components/student/CourseOutline";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
-type SidebarTabKey = "tailieu" | "baitap" | "ghichu";
 
 // Học viên bấm vào tài liệu → mở tab xem trước (/xem-tai-lieu) thay vì tải
 // thẳng file — trang đó tự xử lý xem trước (PDF/Office) + nút tải riêng giữ
@@ -528,8 +527,6 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   // LOI-03: ?tab=bai-tap (liên kết "Làm bài tập" của phiếu "Hôm nay có lớp") cũng mở thẳng tab Bài tập; bài loại quiz mở tab Bài tập mặc định.
   const [tabParam] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("tab")));
   const [firstLessonId] = useState(params.lessonId);
-  // null = tab mặc định theo loại bài (quiz → Bài tập, còn lại → Tài liệu), tính lúc vẽ khi đã biết loại bài.
-  const [activeTab, setActiveTab] = useState<SidebarTabKey | null>(nopCode || tabParam === "bai-tap" ? "baitap" : null);
   const { completedIds, watching, positions, markComplete, unmarkComplete } = useProgress();
   const [player, setPlayer] = useState<PlayerControl | null>(null);
   const [session, setSession] = useState<{ email?: string; role?: string } | null>(null);
@@ -538,10 +535,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     fetch("/api/auth/me", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => setSession(d?.user ?? d ?? null)).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if ((nopCode || tabParam === "bai-tap") && params.lessonId === firstLessonId) return; // vừa nộp bài xong / đến từ "Làm bài tập": giữ tab Bài tập
-    setActiveTab(null);
-  }, [params.lessonId, nopCode, tabParam, firstLessonId]);
+  // DG (14/11/2026): trang xếp MỘT CỘT (video → Tài liệu → Bài tập → Ghi chú), không còn tab. ?nop=<mã> (vừa nộp bài) và ?tab=bai-tap ("Làm bài tập")
+  // cuộn tới khối Bài tập khi trang đã vẽ — thay cho việc mở thẳng tab Bài tập trước đây.
+  const [wantBaiTap, setWantBaiTap] = useState(() => !!nopCode || tabParam === "bai-tap");
   useEffect(() => { // bỏ ?nop khỏi địa chỉ để tải lại trang không báo lại
     if (!nopCode) return;
     const u = new URL(window.location.href);
@@ -697,12 +693,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const isCompleted    = completedIds.has(params.lessonId);
   const watchedHere    = watching[params.lessonId] ?? 0;
 
-  const sidebarTabs: { key: SidebarTabKey; label: string; icon: React.ReactNode }[] = [
-    { key: "tailieu", label: "Tài liệu", icon: <FileDownload size={14} /> },
-    { key: "baitap" as const, label: "Bài tập", icon: <Edit size={14} /> },
-    { key: "ghichu", label: "Ghi chú", icon: <StickyNote size={14} /> },
-  ];
-  const shownTab: SidebarTabKey = activeTab ?? (lesson.type === "quiz" ? "baitap" : "tailieu");
+  const sectionHead = (id: string, icon: React.ReactNode, label: string) => (
+    <h2 id={id} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{icon}{label}</h2>
+  );
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6">
@@ -751,7 +744,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             ? <AzotaPanel lessonId={params.lessonId} azotaUrl={lesson.azotaUrl} deadline={lesson.azotaDeadline} canSubmit={enrolled && session?.role !== "admin"} />
             : <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Gia sư chưa gắn link bài Azota cho bài này.</p>)}
           {lesson.type === "document" && (
-            <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Bài này là tài liệu. Xem thử hoặc tải về ở tab Tài liệu bên dưới.</p>
+            <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Bài này là tài liệu. Xem thử hoặc tải về ở mục Tài liệu bên dưới.</p>
           )}
 
           {/* Lesson info — không đóng khung, chỉ là phần mở rộng tự nhiên của video */}
@@ -784,29 +777,21 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </button>
           </div>
 
-          {/* Tài liệu / Bài tập / Ghi chú — gộp thành 1 khối duy nhất dạng tab
-              thay vì 3 ô riêng biệt xếp chồng, đỡ rối mắt hơn. */}
-          <div className="rounded-xl overflow-hidden" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            <div className="flex" style={{ borderBottom: "1px solid var(--kin-vien-thuong)" }}>
-              {sidebarTabs.map(t => (
-                <button key={t.key} type="button" onClick={() => setActiveTab(t.key)}
-                  className="flex items-center gap-1.5 px-4 py-3 text-xs font-bold transition-colors"
-                  style={{
-                    borderBottom: `2px solid ${shownTab === t.key ? "var(--kin-nhan-nen)" : "transparent"}`,
-                    marginBottom: "-1px",
-                    color: shownTab === t.key ? "var(--kin-nhan-link)" : "var(--kin-chu-mo)",
-                  }}>
-                  {t.icon}
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="p-4">
-              {shownTab === "tailieu" && <DocumentRows materials={lesson.materials} />}
-              {shownTab === "baitap"  && <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.type === "quiz" ? undefined : lesson.azotaUrl ?? undefined} azotaAbove={lesson.type === "quiz" && !!lesson.azotaUrl} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />}
-              {shownTab === "ghichu"  && <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />}
-            </div>
-          </div>
+          {/* DG (14/11/2026, chủ: "trang bài một cột"): bỏ dải tab Tài liệu · Bài tập · Ghi chú — xếp dọc dưới video theo đúng thứ tự học: xem → đọc tài liệu → làm bài
+              → ghi chú. Mỗi khối có tiêu đề chữ; nội dung từng khối giữ nguyên thành phần cũ (DocumentRows, TabBaiTap, StampedNotes). */}
+          <section aria-labelledby="bai-tai-lieu" data-lesson-section="tai-lieu" className="rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu")}
+            <DocumentRows materials={lesson.materials} />
+          </section>
+          <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
+            ref={el => { if (el && wantBaiTap && params.lessonId === firstLessonId) { setWantBaiTap(false); requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); } }}>
+            {sectionHead("bai-bai-tap", <Edit size={14} />, "Bài tập")}
+            <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.type === "quiz" ? undefined : lesson.azotaUrl ?? undefined} azotaAbove={lesson.type === "quiz" && !!lesson.azotaUrl} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />
+          </section>
+          <section aria-labelledby="bai-ghi-chu" data-lesson-section="ghi-chu" className="rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+            {sectionHead("bai-ghi-chu", <StickyNote size={14} />, "Ghi chú")}
+            <StampedNotes lessonId={params.lessonId} adminNote={dbLesson.adminNote} control={player} />
+          </section>
 
           {/* Prev / Next — chỉ 1 dòng phân cách mảnh, không phải 2 ô riêng */}
           <div className="flex items-stretch gap-4 pt-4 pb-6" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
