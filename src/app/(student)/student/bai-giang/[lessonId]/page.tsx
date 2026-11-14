@@ -101,9 +101,9 @@ function dbToLocalSections(dbSections: DBSection[], completedIds: Set<string>): 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<LessonType, { label: string; color: string; bg: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }> = {
-  record:   { label: "Record",   color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", Icon: Play },
+  record:   { label: "Video",    color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", Icon: Play },
   live:     { label: "LIVE",     color: "var(--kin-tt-chu-xong)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Flash },
-  quiz:     { label: "Bài Tập",     color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Edit },
+  quiz:     { label: "Bài tập",     color: "var(--kin-tt-chu-cho)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: Edit },
   document: { label: "Tài liệu", color: "var(--kin-chu-mo)", bg: "var(--kin-chu-tren-nut-chinh)", Icon: ClipboardList },
 };
 
@@ -496,19 +496,15 @@ function LeftCourseSidebar({ sections, currentId, onSelect, completedIds, watchi
         )}
       </div>
 
-      {/* Toggle tab — desktop only */}
+      {/* Toggle tab — desktop only. Vùng bấm 44×48 (quy tắc nút ≥44px), phần nhìn thấy vẫn là mấu 16px. */}
       {!mobile && (
         <button onClick={onToggle} aria-label={isOpen ? "Thu gọn danh sách bài học" : "Mở danh sách bài học"} aria-expanded={isOpen} aria-controls="bai-giang-cot"
-          className="flex-shrink-0 self-start mt-10 flex items-center justify-center rounded-r-lg text-sm font-bold transition-colors hover:bg-[var(--kin-vien-thuong)]"
-          style={{
-            width: 16, height: 48,
-            background: "var(--kin-nen-bang)",
-            border: "1px solid var(--kin-vien-thuong)",
-            borderLeft: "none",
-            color: "var(--kin-chu-mo)",
-            writingMode: "horizontal-tb",
-          }}>
-          {isOpen ? "‹" : "›"}
+          className="group flex-shrink-0 self-start mt-10 flex items-center justify-start"
+          style={{ width: 44, height: 48 }}>
+          <span aria-hidden className="flex h-full items-center justify-center rounded-r-lg text-sm font-bold transition-colors group-hover:bg-[var(--kin-vien-thuong)]"
+            style={{ width: 16, background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", borderLeft: "none", color: "var(--kin-chu-mo)" }}>
+            {isOpen ? "‹" : "›"}
+          </span>
         </button>
       )}
     </div>
@@ -752,9 +748,6 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <TypeBadge type={lesson.type} />
-                <span className="text-xs font-mono px-2 py-0.5 rounded-lg" style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>
-                  {lesson.code}
-                </span>
               </div>
               <h1 className="text-xl font-extrabold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{lesson.title}</h1>
               <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
@@ -766,7 +759,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             </div>
             <button
               onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
-              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+              className="flex-shrink-0 flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
               style={{
                 background: isCompleted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)",
                 border: `1px solid ${isCompleted ? "var(--kin-tt-vien-xong)" : "var(--kin-vien-thuong)"}`,

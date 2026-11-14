@@ -74,6 +74,9 @@ const TABS = ["Bài học", "Học sinh", ...(DIEM_DANH ? ["Điểm danh"] : [])
     check(`${tag}: dải tab đúng ${TABS.length} mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
     check(`${tag}: mở lớp rơi vào Bài học (aria-current)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: h1 là tên lớp; không breadcrumb quản trị, không liên kết /admin`, (await pg.locator("h1:visible").innerText()).includes("Toán 9") && (await pg.locator('main a[href*="/admin"]').count()) === 0 && !(await pg.getByText(/Quản trị|Khoá học|Khóa học ›/).count()));
+    const deLop = pg.locator("[data-de-cua-lop]:visible");
+    const deBox = await deLop.boundingBox().catch(() => null);
+    check(`${tag}: Q4 — chủ lớp có nút "Đề của lớp" ≥44px trỏ ngân hàng đề lọc theo lớp`, (await deLop.count()) === 1 && (await deLop.getAttribute("href")) === `/lop-cua-toi/de-thi?lop=${encodeURIComponent(c1.id)}` && (deBox?.height ?? 0) >= 44, { href: await deLop.getAttribute("href").catch(() => null), h: deBox?.height });
     check(`${tag}: thanh bên vẫn MỘT mục sáng ('Lớp')`, (await railCurrent()) === 1);
     await noOverflow("Bài học");
     await shot(pg, `gs-lop-gon-bai-hoc-${tag}`);

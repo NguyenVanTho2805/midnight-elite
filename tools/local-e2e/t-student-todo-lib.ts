@@ -1,6 +1,6 @@
 // "Việc của tôi" của học sinh — quy tắc thuần (src/lib/studentTodo.ts).
 import { check, section, done } from "./h";
-import { buildStudentTodo, dueTextOf, fmtScore, remainingText, whenLabel, MAX_ITEMS, type TodoAssignment, type TodoEvent } from "@/lib/studentTodo";
+import { buildStudentTodo, dueTextOf, fmtScore, remainingText, whenLabel, isJoinSoon, JOIN_SOON_BEFORE_MIN, MAX_ITEMS, type TodoAssignment, type TodoEvent } from "@/lib/studentTodo";
 
 // Thứ Ba 13/10/2026 20:00 giờ VN
 const NOW = new Date("2026-10-13T13:00:00Z");
@@ -95,5 +95,17 @@ check("chấm xong không nhận xét → comment null (màn hình không bịa 
 const ss = run([], [ev({ topic: "Toán 9 — Học live qua Zoom", endTime: "22:30" })]).items[0].session!;
 check("buổi học: giờ '21:00–22:30', tên lớp tách khỏi ghi chú, đường dẫn lớp", ss.range === "21:00–22:30" && ss.courseLine === "Toán 9" && ss.topic === "Học live qua Zoom" && ss.href === "/student/hoc-tap?course=c1" && !ss.cancelled, ss);
 check("buổi không có giờ kết thúc → chỉ giờ bắt đầu; buổi huỷ có cờ cancelled", run([], [ev({})]).items[0].session!.range === "21:00" && run([], [ev({ topic: "[ĐÃ HUỶ] Toán 9" })]).items[0].session!.cancelled === true);
+
+
+section("Q7 — link học online thành nút chính khi sát giờ");
+const at = vn("2026-10-13", "21:00");
+const m = (min: number) => new Date(at.getTime() + min * 60_000);
+check(`còn đúng ${JOIN_SOON_BEFORE_MIN} phút → sát giờ; còn ${JOIN_SOON_BEFORE_MIN + 1} phút → chưa`, isJoinSoon(at, m(-JOIN_SOON_BEFORE_MIN)) && !isJoinSoon(at, m(-JOIN_SOON_BEFORE_MIN - 1)));
+check("đã bắt đầu 1 giờ → vẫn sát giờ; quá 2 giờ 1 phút → hết", isJoinSoon(at, m(60)) && isJoinSoon(at, m(120)) && !isJoinSoon(at, m(121)));
+const soonRun = (now: Date, o: Partial<TodoEvent>) => buildStudentTodo({ assignments: [], events: [ev(o)], now }).items[0]?.session;
+check("buổi có link, 20:40 (còn 20 phút) → joinSoon = true", soonRun(m(-20), { joinUrl: "https://meet.google.com/abc-defg-hij" })?.joinSoon === true);
+check("buổi có link, 20:00 (NOW, còn 60 phút) → joinSoon = false", soonRun(NOW, { joinUrl: "https://meet.google.com/abc-defg-hij" })?.joinSoon === false);
+check("buổi không có link → joinSoon = false dù sát giờ", soonRun(m(-10), {})?.joinSoon === false);
+check("buổi đã huỷ → không link, joinSoon = false", soonRun(m(-10), { topic: "[ĐÃ HUỶ] Toán 9", joinUrl: "https://meet.google.com/abc-defg-hij" })?.joinSoon === false);
 
 done();

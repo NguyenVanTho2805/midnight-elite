@@ -693,6 +693,19 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
             <DrawerToggle checked={ls.isLocked} onChange={() => setLs(f => ({ ...f, isLocked: !f.isLocked }))} label="Khoá bài (yêu cầu đăng ký)" />
             <DrawerToggle checked={ls.isFree} onChange={() => setLs(f => ({ ...f, isFree: !f.isFree }))} label="Học thử miễn phí" />
 
+            {/* Vòng dạy thử 14/11: link YouTube là việc chính của bài — luôn hiện, không nằm trong mục gập. */}
+            <div data-video-bai>
+              <SlotLinkEditor
+                label="Link video bài giảng (YouTube, Google Drive)"
+                slot="video"
+                placeholder="https://youtube.com/watch?v=..."
+                urls={ls.videoUrls}
+                onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
+                onMove={moveLink}
+                extra={<VideoUploadBox courseId={courseSlug} onUploaded={link => setLs(f => ({ ...f, videoUrls: [...f.videoUrls.filter(u => u.trim()), link] }))} />}
+              />
+            </div>
+
             <DocumentsEditor
               value={ls.documentsRaw}
               onChange={v => setLs(f => ({ ...f, documentsRaw: v }))}
@@ -705,20 +718,11 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
             <div data-them-link>
               <button type="button" onClick={() => setLinksOpen(o => !o)} aria-expanded={linksOpen} aria-controls="ls-them-link" data-open={linksOpen ? "" : undefined}
                 className="flex w-full min-h-11 items-center justify-between gap-2 border-b border-[var(--kin-vien-nhat)] text-left text-sm font-semibold text-[var(--kin-chu-chinh)]">
-                <span>Thêm link video · Azota</span>
+                <span>Thêm link Azota · thời lượng</span>
                 <KinChevron open={linksOpen} />
               </button>
               <KinFold open={linksOpen} id="ls-them-link">
                 <div className="space-y-4 pt-3">
-                  <SlotLinkEditor
-                    label="Link video bài giảng (YouTube, Google Drive)"
-                    slot="video"
-                    placeholder="https://youtube.com/watch?v=..."
-                    urls={ls.videoUrls}
-                    onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
-                    onMove={moveLink}
-                    extra={<VideoUploadBox courseId={courseSlug} onUploaded={link => setLs(f => ({ ...f, videoUrls: [...f.videoUrls.filter(u => u.trim()), link] }))} />}
-                  />
                   <SlotLinkEditor
                     label="Link bài Azota (không bắt buộc)"
                     slot="azota"
