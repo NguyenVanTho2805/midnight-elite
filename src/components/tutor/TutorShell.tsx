@@ -20,19 +20,21 @@ import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { KinCallout } from "@/components/kin/Callout";
-import { OPTIONAL_TUTOR_MODULES, visibleTutorModules, type OptionalTutorModule } from "@/lib/userPreferences";
+import { OPTIONAL_TUTOR_MODULES, shownTutorModules, tutorModuleAllowed, type OptionalTutorModule } from "@/lib/userPreferences";
 import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
-import { isLinkHidden, visibleLinks } from "@/lib/features";
+import { featureOn, visibleLinks } from "@/lib/features";
+import { landingPath } from "@/lib/landing";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
-/** 4 tab của thanh dưới điện thoại theo Figma 299:116033. */
-const MOBILE_KEYS = new Set(["hop-viec", "lich", "lop", "hoc-phi"]);
+/** 4 tab của thanh dưới điện thoại theo Figma 299:116033 (Hộp việc · Lịch · Lớp · Học phí). DG (14/11/2026): module nào ẩn theo cờ thì nhường chỗ cho
+ *  module kế tiếp trong danh sách ưu tiên (Bài tập, Thư viện) — điện thoại không chỉ còn mỗi "Lớp". Đủ module thì vẫn đúng 4 tab Figma. */
+const MOBILE_ORDER = ["hop-viec", "lich", "lop", "hoc-phi", "bai-kt", "thu-vien"];
 // BU-00 bước 3 (31/10/2026): trang đề thi / ngân hàng / quản lớp của gia sư nằm ở /lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* (bí danh của
 // /admin/thi-thu*, /admin/khoa-hoc* — src/lib/tutorRoutes.ts), chạy trong chính vỏ này; gia sư không còn vào /admin/* (proxy 307 sang bí danh).
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của gia sư, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // LOI-01 (11/11/2026): mục dẫn vào phần đang ẩn (src/lib/features.ts) bị lọc — "Kiểm duyệt cộng đồng" khi Cộng đồng ẩn (Hộp việc vẫn dẫn tới khi có báo cáo bài trong lớp).
-// Nhóm "Dạy học" luôn còn mục (Báo cáo tháng, Sổ điểm) nên thứ tự 4 nhóm mà `wide` bên dưới dựa vào không đổi.
+// `groups` luôn đủ 4 nhóm theo thứ tự (kể cả nhóm rỗng) để `wide` bên dưới tách đúng; DG: nhóm rỗng bị lọc SAU đó (thanh rộng, bảng "Khác").
 const MORE_ALL: MoreGroup[] = [
   { title: "Dạy học", links: [
     { label: "Báo cáo tháng", href: "/lop-cua-toi/bao-cao-thang", icon: "bao-cao" },
@@ -77,9 +79,14 @@ export default function TutorShell({
   if (pending) return <PendingShell user={user} onLogout={() => void logout()}>{children}</PendingShell>;
   // LOI-01: module Lịch rời thanh khi phần Lịch đang ẩn (chỉ gỡ lối vào: /lop-cua-toi/lich vẫn chạy, Hộp việc còn dòng báo nghỉ / buổi bù / nhắc lịch trỏ vào đó).
   // Module Thư viện (/thu-vien = "Thư viện của tôi" của gia sư) KHÔNG lọc ở đây: cờ Thư viện chỉ ẩn thư viện CHUNG.
-  const visible = visibleTutorModules({ modules }).filter(m => !(m.key === "lich" && isLinkHidden(m.href)));
+  // DG (14/11/2026): Hộp việc / Học phí rời thanh khi cờ HOP_VIEC / HOC_PHI tắt (mặc định) — cùng một chỗ quyết với Lịch (userPreferences.tutorModuleAllowed).
+  const visible = shownTutorModules({ modules });
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
-  const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => !visible.some(m => m.key === k)).length;
+  // Module ẩn theo CỜ không tính: gia sư không bật lại được ở Cài đặt nên không mời "Thêm module".
+  const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => tutorModuleAllowed(k) && !visible.some(m => m.key === k)).length;
+  const mobileKeys = new Set(MOBILE_ORDER.filter(k => visible.some(m => m.key === k)).slice(0, 4));
+  const home = landingPath("admin", "teacher");
+  const homeLabel = featureOn("HOP_VIEC") ? "KiN — Hộp việc của gia sư" : "KiN — Lớp của gia sư";
 
   // B1: Hộp việc là trang chủ duy nhất; "Tổng quan" chỉ còn trong bảng Khác khi gia sư đã tắt Hộp việc (khi đó đó là lối duy nhất tới các con số).
   const hopViecOn = visible.some(m => m.key === "hop-viec");
@@ -87,12 +94,14 @@ export default function TutorShell({
     ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
       : g),
-    { title: "Tài khoản", links: [
+    { title: "Tài khoản", links: visibleLinks([
       { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },
       ...(hiddenCount > 0 ? [{ label: "Thêm module", href: "/lop-cua-toi/cai-dat#module", icon: "cai-dat" }] : []),
-    ] },
+    ]) },
   ];
+  // DG: nhóm hết mục (Dạy học khi Sổ điểm / Báo cáo tháng / Kiểm duyệt cùng ẩn; Tiền khi Doanh thu ẩn) không vẽ tiêu đề rỗng.
+  const panelGroups = groups.filter(g => g.links.length > 0);
   const moreActive = moreOpen || groups.some(g => g.links.some(l => isUnder(pathname, l.href) && !isUnder(pathname, "/lop-cua-toi/cai-dat")));
 
   const mods = visible.map<ModuleItem>(m => ({
@@ -102,7 +111,7 @@ export default function TutorShell({
       : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/de-thi")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
       : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/quan-lop")  // quản lớp / điểm danh / học viên của lớp
       : isUnder(pathname, m.href),
-    desktopOnly: !MOBILE_KEYS.has(m.key),
+    desktopOnly: !mobileKeys.has(m.key),
   }));
   // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp khi Lớp bật. B6 GS-09 (08/11/2026): KHÔNG còn phụ thuộc module Lớp — tắt Lớp vẫn thấy Học sinh
   // (đứng cuối các module), vì Yêu cầu tìm gia sư và hồ sơ học sinh vào từ đó. Trang riêng của gia sư (/lop-cua-toi/hoc-sinh), không dùng /admin/hoc-sinh.
@@ -120,7 +129,7 @@ export default function TutorShell({
     { title: money.title, items: [...withStudents.filter(m => m.key === "hoc-phi").map(asNav), ...money.items] },
     intro,
     account,
-  ];
+  ].filter(g => g.items.length > 0);
   const items: ModuleItem[] = [
     ...withStudents,
     // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản). B3: "Khác" lên thanh dưới điện thoại qua mobileMore.
@@ -131,13 +140,13 @@ export default function TutorShell({
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
       <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
-        home={{ href: "/lop-cua-toi", label: "KiN — Hộp việc của gia sư" }} footnote="Miễn phí ra mắt" />
+        home={{ href: home, label: homeLabel }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
         <div className="h-12 md:h-[68px] flex items-center justify-between gap-3 px-4 md:px-10 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)]">
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={Object.values(badges).reduce((a, n) => a + (n > 0 ? n : 0), 0)} />
-            <Link href="/lop-cua-toi" aria-label="KiN — Hộp việc của gia sư" className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
+            <Link href={home} aria-label={homeLabel} className="inline-flex md:hidden"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
             {user && <p data-top-title className="hidden md:block truncate text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Sổ dạy học của {user.name}</p>}
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -157,7 +166,7 @@ export default function TutorShell({
         {children}
       </div>
 
-      {moreOpen && <MorePanel id="khac-bang" groups={groups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+      {moreOpen && <MorePanel id="khac-bang" groups={panelGroups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }

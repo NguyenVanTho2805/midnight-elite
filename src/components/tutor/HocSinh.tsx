@@ -19,6 +19,7 @@ import { payerLabel } from "@/lib/consentPolicy";
 import { ALERT_LABEL, REPORT_LINK_LABEL, alertsOf, filterStudents, type StudentAlert, type StudentSignals } from "@/lib/tutorStudentView";
 import { KinPage, KinPageHeader, KinTableSkeleton, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD } from "@/components/kin/PageLayout";
 import { KinSelect } from "@/components/kin/KinSelect";
+import { isLinkHidden } from "@/lib/features";
 
 type TabKey = "active" | "suspended" | "profiles" | "waitlist";
 /** Hồ sơ riêng của gia sư (đã che theo đồng ý): chỉ các trường dùng ở danh sách. */
@@ -103,7 +104,8 @@ export default function HocSinh() {
       <KinPageHeader title="Học sinh"
         sub={<>{rows ? `${nActive} học sinh đang học · ` : <span aria-hidden className="invisible">00 học sinh đang học · </span>}Chỉ gồm học sinh trong các lớp của bạn.</>}
         actions={<>
-          <Link href="/lop-cua-toi/yeu-cau" className={kinButtonClass("secondary")}>{newRequests > 0 ? `Yêu cầu tìm gia sư · ${newRequests} mới` : "Yêu cầu tìm gia sư"}</Link>
+          {/* DG: Yêu cầu tìm gia sư thuộc sàn (cờ TIM_GIA_SU). */}
+          {!isLinkHidden("/lop-cua-toi/yeu-cau") && <Link href="/lop-cua-toi/yeu-cau" className={kinButtonClass("secondary")}>{newRequests > 0 ? `Yêu cầu tìm gia sư · ${newRequests} mới` : "Yêu cầu tìm gia sư"}</Link>}
           <Link href="/lop-cua-toi/hoc-sinh/nhap" className={kinButtonClass("secondary")}>Nhập danh sách</Link>
           <Link href="/lop-cua-toi/hoc-sinh/them" className={kinButtonClass("primary")}>Thêm học sinh</Link>
         </>} />

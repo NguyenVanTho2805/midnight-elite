@@ -17,7 +17,8 @@ export default function HomeLandingBlocks({ landing, findTutor }: { landing: Hom
       {/* LOI-01: khối Gia sư / Tin tức chỉ dựng khi phần Tìm gia sư / Tin tức đang mở (src/lib/features.ts). */}
       {featureOn("TIM_GIA_SU") && <HomeTutors tutors={landing.tutors} findTutor={findTutor} />}
       <HomeCourses courses={landing.courses} chips={landing.courseChips} />
-      <HomeExams exams={landing.exams} />
+      {/* DG: khối Thi thử miễn phí chỉ dựng khi phần Thi thử công khai đang mở (cờ THI_THU_CONG_KHAI). */}
+      {featureOn("THI_THU_CONG_KHAI") && <HomeExams exams={landing.exams} />}
       {featureOn("TIN_TUC") && <HomeNews articles={landing.articles} />}
     </>
   );

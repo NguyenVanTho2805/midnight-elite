@@ -79,7 +79,9 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
   const manage = (sub = "") => contentHref(d.isTeacher !== false, `/admin/khoa-hoc/${d.courseId}${sub}`);
   // Trang khung giờ kéo-thả (gia sư). Quản trị xem lớp vẫn dùng tab Lịch học của trang quản khoá.
   const lichHref = d.isTeacher !== false ? `${classBase(d.courseId)}/lich-hoc` : manage("?tab=lich-hoc");
-  const [tab, setTab] = useState<LopTab>(d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab) ? "diem-danh" : d.initialTab);
+  // DG (14/11/2026): tab Học phí ẩn khi cờ HOC_PHI tắt (mặc định) — mở ?tab=hoc-phi thì về tab đầu.
+  const feeOn = featureOn("HOC_PHI");
+  const [tab, setTab] = useState<LopTab>((d.viewRole && !canManageRole(d.viewRole) && ["ma-moi", "hoc-phi", "cong-dong"].includes(d.initialTab)) || (!feeOn && d.initialTab === "hoc-phi") ? "diem-danh" : d.initialTab);
   const [adding, setAdding] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [addBusy, setAddBusy] = useState(false);
@@ -99,7 +101,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
     { key: "diem-danh", label: mgr ? "Buổi học & điểm danh" : "Buổi tôi dạy" },
     { key: "hoc-sinh", label: mgr && d.pending.length > 0 ? `Học sinh · ${n} · ${d.pending.length} chờ` : `Học sinh · ${n}` },
     { key: "giao-vien", label: "Giáo viên" },
-    ...(mgr ? [{ key: "ma-moi", label: "Mã mời" }, { key: "hoc-phi", label: "Học phí" }, { key: "cong-dong", label: "Cộng đồng lớp" }] as KinTabItem<LopTab>[] : []),
+    ...(mgr ? [{ key: "ma-moi", label: "Mã mời" }, ...(feeOn ? [{ key: "hoc-phi", label: "Học phí" }] : []), { key: "cong-dong", label: "Cộng đồng lớp" }] as KinTabItem<LopTab>[] : []),
   ];
   const toast = duyetMessage(d.duyet, d.duyetN);
   const sub = [`${n} học sinh`, d.schedule ?? "Chưa xếp lịch", d.category].filter(Boolean).join(" · ");
@@ -268,7 +270,7 @@ export default function LopChiTiet({ d }: { d: LopChiTietData }) {
           </section>
         )}
 
-        {mgr && tab === "hoc-phi" && (
+        {mgr && feeOn && tab === "hoc-phi" && (
           <div className="space-y-[var(--kin-cach-muc)]">
             <LopHocPhi courseId={d.courseId} feeMode={d.feeMode} adminView={d.isTeacher === false} />
             <LopPhiKhac courseId={d.courseId} />

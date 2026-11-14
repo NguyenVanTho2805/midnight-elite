@@ -5,9 +5,15 @@
 //   Gia sư CHỜ DUYỆT (BU-00 bước 5, 31/10/2026): vẫn là role "student" (không cột mới, không đổi JWT) nhưng có đơn đang chờ / bị từ chối → trang chờ duyệt
 //              /lop-cua-toi/cho-duyet trong vỏ gia sư, không rơi vào khu học sinh. `tutorPending` do API tính (src/lib/tutorProfile.ts tutorApplicationStatus);
 //              nơi không biết (proxy chỉ có cookie) bỏ trống → về Việc của tôi rồi AuthGuard đẩy sang trang chờ duyệt.
+//              DG (14/11/2026): Hộp việc ẩn (cờ HOP_VIEC tắt, mặc định) ⇒ thư viện Lớp /lop-cua-toi/lop.
 //   Quản trị : /admin
+import { featureOn } from "@/lib/features";
+
+/** DG (14/11/2026): Hộp việc đang ẩn (cờ HOP_VIEC, mặc định) ⇒ trang đầu của gia sư là thư viện Lớp /lop-cua-toi/lop. */
+export const TUTOR_HOME_NO_INBOX = "/lop-cua-toi/lop";
+
 export function landingPath(role: string, adminRole?: string | null, tutorPending?: boolean): string {
-  if (role === "admin") return adminRole === "teacher" ? "/lop-cua-toi" : "/admin";
+  if (role === "admin") return adminRole === "teacher" ? (featureOn("HOP_VIEC") ? "/lop-cua-toi" : TUTOR_HOME_NO_INBOX) : "/admin";
   if (role === "student" && tutorPending) return "/lop-cua-toi/cho-duyet";
   return "/student/viec-cua-toi";
 }

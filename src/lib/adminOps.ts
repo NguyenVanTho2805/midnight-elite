@@ -4,7 +4,7 @@
 //  • Nhật ký kiểm toán KHÔNG hiện tên, SĐT, ngày sinh của trẻ: người thực hiện chỉ hiện TÊN khi là nhân sự (role admin), còn lại chỉ hiện vai.
 //    Phần `metadata` của AuditLog không bao giờ được đưa ra giao diện (có thể chứa tên học sinh).
 //  • Không bịa số liệu: mục chưa có dữ liệu thật thì ghi "chưa có".
-import { COIN_VISIBLE, COIN_LOGIC_ON, hideCoin } from "@/lib/features";
+import { COIN_VISIBLE, COIN_LOGIC_ON, hideCoin, isLinkHidden, type FeatureEnv } from "@/lib/features";
 import { isTrialMode } from "@/lib/trialMode";
 import { isPlanEnforced } from "@/lib/planLimits";
 import { ROLE_PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
@@ -246,9 +246,9 @@ export interface TodayItem { key: string; group: TodayGroupKey; label: string; c
 const queueHref = (kind: string) => `/admin/kiem-duyet?loai=${kind}`;
 /**
  * Chỉ giữ việc có số > 0, kèm NHÓM. Việc nặng (chờ lâu) đứng trước nhờ thứ tự cố định. Mọi loại hàng chờ dẫn tới `/admin/kiem-duyet?loai=<kind>`.
- * Chỉ SỐ LƯỢNG yêu cầu: không tổng tiền, không số dư.
+ * Chỉ SỐ LƯỢNG yêu cầu: không tổng tiền, không số dư. `env`: cờ tính năng (để test); bỏ trống = đọc môi trường.
  */
-export function buildTodayList(c: TodayCounts): TodayItem[] {
+export function buildTodayList(c: TodayCounts, env?: FeatureEnv): TodayItem[] {
   const rows: (TodayItem | null)[] = [
     { key: "gia-su", group: "duyet", label: "Hồ sơ gia sư chờ duyệt", count: c.tutorsPending, href: queueHref("gia-su"), hint: "Mở hàng chờ để duyệt hoặc từ chối" },
     { key: "bai-viet", group: "duyet", label: "Bài viết bị báo cáo", count: c.threadReports, href: queueHref("bai-viet"), hint: "Gỡ bài hoặc giữ lại" },
@@ -263,7 +263,9 @@ export function buildTodayList(c: TodayCounts): TodayItem[] {
     c.scheduledArticles == null ? null : { key: "bai-hen-gio", group: "theo-doi", label: "Bài viết hẹn giờ sắp lên", count: c.scheduledArticles, href: "/admin/tin-tuc", hint: "Học sinh được báo khi bài lên" },
     c.cronSlow == null ? null : { key: "cron-cham", group: "he-thong", label: "Tác vụ định kỳ chạy chậm", count: c.cronSlow, href: "/admin/trien-khai", hint: "Xem lần gọi gần nhất ở màn Triển khai" },
   ];
-  return rows.filter((r): r is TodayItem => !!r && r.count > 0);
+  // DG (14/11/2026): dòng dẫn tới trang của phần đang ẨN (src/lib/features.ts) bị bỏ — "Yêu cầu gói Pro chờ kích hoạt" (/admin/goi-pro, cờ KINH_DOANH),
+  // "Bài viết hẹn giờ sắp lên" (/admin/tin-tuc, cờ TIN_TUC). Dòng đã ẩn cũng không vào tổng việc chờ của Hôm nay.
+  return rows.filter((r): r is TodayItem => !!r && r.count > 0 && !isLinkHidden(r.href, env));
 }
 const QUEUE_SHORT: Record<string, string> = {
   "gia-su": "hồ sơ gia sư chờ duyệt", "bai-viet": "bài viết bị báo cáo", "ho-so": "hồ sơ gia sư bị báo cáo", "tra-loi": "câu trả lời bị báo cáo",

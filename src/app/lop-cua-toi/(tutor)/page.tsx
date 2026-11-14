@@ -21,6 +21,8 @@ import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 import ThuVienLop from "@/components/student/ThuVienLop";
+import { featureOn, isLinkHidden } from "@/lib/features";
+import { TUTOR_HOME_NO_INBOX } from "@/lib/landing";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,9 @@ export default async function LopCuaToiPage() {
     const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });
     // TT-203: Hộp việc đã bị gia sư tắt (chế độ gọn tường minh `modules` không có "hop-viec") thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở
     // /lop-cua-toi/tong-quan (B1 08/11/2026: trang đó chỉ còn khi Hộp việc tắt; còn bật thì chuyển về đây, nơi số liệu đã dời lên đầu). BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
-    if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
+    // DG (14/11/2026): cờ HOP_VIEC tắt (mặc định) ⇒ trang đầu là thư viện Lớp (proxy đã 307; đây là lớp bảo hiểm). Gia sư tự tắt Hộp việc mà Lịch đang ẩn ⇒ cũng về Lớp.
+    if (!featureOn("HOP_VIEC")) redirect(TUTOR_HOME_NO_INBOX);
+    if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect(isLinkHidden("/lop-cua-toi/lich") ? TUTOR_HOME_NO_INBOX : "/lop-cua-toi/lich");
     return <HopViec top={<Suspense fallback={null}><TutorOverviewStats tutorId={session.userId} /></Suspense>} />;
   }
 

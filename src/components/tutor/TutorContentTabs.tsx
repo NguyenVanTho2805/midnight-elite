@@ -10,6 +10,7 @@ import { Suspense, useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { contentTabsFor, type ContentTabRole } from "@/lib/tutorRoutes";
+import { isLinkHidden } from "@/lib/features";
 
 export type ContentTabsScope = "de-thi" | "quan-lop";
 const SCOPE_ROOT: Record<ContentTabsScope, string> = { "de-thi": "/lop-cua-toi/de-thi", "quan-lop": "/lop-cua-toi/quan-lop" };
@@ -35,7 +36,8 @@ function Strip({ scope, role }: { scope: ContentTabsScope; role?: ContentTabRole
   if (!group) return null;
   return (
     <nav ref={ref} aria-label={`Trang của ${group.label}`} className="flex items-stretch gap-1 px-3 border-b border-[var(--kin-vien-thuong)] overflow-x-auto flex-shrink-0 bg-[var(--kin-nen-trang)] print:hidden">
-      {group.tabs.map(t => (
+      {/* DG (14/11/2026): tab dẫn vào phần đang ẩn (Điểm danh — cờ DIEM_DANH, src/lib/features.ts) không hiện; route đã chặn 307 ở proxy. */}
+      {group.tabs.filter(t => !isLinkHidden(t.href)).map(t => (
         <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined} className={KIN_TAB_BOX}>
           <KinTabInner active={t.active}>{t.label}</KinTabInner>
         </Link>

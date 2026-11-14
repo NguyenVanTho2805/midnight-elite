@@ -4,6 +4,7 @@
 import { dayOfWeekOfKey, hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { OPEN_STATUSES } from "@/lib/tuitionInvoice";
 import { isLichOpen } from "@/lib/tutorFlags";
+import { featureOn } from "@/lib/features";
 
 export const WEEKDAY_LONG = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const vnd = (n: number) => `${Math.round(n).toLocaleString("vi-VN")}đ`;
@@ -32,8 +33,10 @@ export interface SetupChecklist { steps: SetupStep[]; doneCount: number; total: 
 
 /** 8 bước thiết lập theo thứ tự nên làm. Mỗi bước chỉ "xong" khi dữ liệu thật đã có; không có bước nào tick tay.
  *  LOI-02 F: lịch đang ẩn (cờ NEXT_PUBLIC_KIN_MO_LICH !== "1", mặc định) ⇒ bỏ bước "lich" (7 bước) — không nhắc đặt lịch khi màn Lịch học đã cất. */
-export function buildSetupChecklist(c: SetupCounts, opts: { lichOpen?: boolean } = {}): SetupChecklist {
+/** DG (14/11/2026): học phí đang ẩn (cờ NEXT_PUBLIC_KIN_MO_HOC_PHI !== "1", mặc định) ⇒ bỏ hai bước "tai-khoan" (tài khoản nhận học phí) và "phieu" (phiếu đầu tiên). */
+export function buildSetupChecklist(c: SetupCounts, opts: { lichOpen?: boolean; hocPhiOpen?: boolean } = {}): SetupChecklist {
   const lichOpen = opts.lichOpen ?? isLichOpen();
+  const hocPhiOpen = opts.hocPhiOpen ?? featureOn("HOC_PHI");
   const steps: SetupStep[] = [
     { key: "tai-khoan", label: "Thêm tài khoản nhận học phí", hint: "Để phiếu có mã QR chuyển thẳng vào tài khoản của cô.", done: c.payoutAccount, href: "/lop-cua-toi/hoc-phi?tab=nhan-tien" },
     { key: "lop", label: "Tạo lớp đầu tiên", hint: "Tên lớp, môn và mức học phí.", done: c.classes > 0, href: "/lop-cua-toi/lop/tao" },
@@ -43,7 +46,7 @@ export function buildSetupChecklist(c: SetupCounts, opts: { lichOpen?: boolean }
     { key: "phieu", label: "Lập phiếu học phí đầu tiên", hint: "Phiếu lập từ các buổi đã dạy trong tháng.", done: c.invoices > 0, href: "/lop-cua-toi/hoc-phi" },
     { key: "phu-huynh", label: "Mời phụ huynh xem sổ của con", hint: "Phụ huynh xem được điểm danh và phiếu của con mình.", done: c.parentLinks > 0, href: "/lop-cua-toi/hoc-sinh" },
     { key: "chot-buoi", label: "Chốt một buổi đã dạy", hint: "Buổi có ít nhất một em có mặt hoặc đi muộn.", done: c.taughtSessions > 0, href: "/lop-cua-toi/lich" },
-  ].filter(s => lichOpen || s.key !== "lich");
+  ].filter(s => (lichOpen || s.key !== "lich") && (hocPhiOpen || (s.key !== "tai-khoan" && s.key !== "phieu")));
   const doneCount = steps.filter(s => s.done).length;
   return { steps, doneCount, total: steps.length, allDone: doneCount === steps.length };
 }

@@ -34,7 +34,7 @@ import { placeLabel } from "@/lib/sessionBook";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
 import ThuVienLop from "@/components/student/ThuVienLop";
-import { featureOn } from "@/lib/features";
+import { featureOn, isLinkHidden } from "@/lib/features";
 import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds, sessionsBlockState } from "@/lib/studentLop";
 
 interface Lesson {
@@ -281,7 +281,8 @@ function Content({ courseId }: { courseId: string }) {
           {course.category && <p className="text-[var(--kin-chu-mo)]">Môn: {course.category}</p>}
           {isEnrolled && work.items && <p className="mt-3 text-[var(--kin-chu-mo)]">Bài cần làm: {needCount}<br />Bài chờ chấm: {waitCount}</p>}
           {/* CỜ TIỀN = không: chỉ là chữ dẫn sang trang phiếu học phí, không hiện số tiền ở đây. */}
-          {isEnrolled && <Link href="/student/hoc-phi" data-lop-hoc-phi className="mt-3 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Phiếu học phí của bạn →</Link>}
+          {/* DG: lối "Phiếu học phí" chỉ khi phần Học phí đang mở (cờ HOC_PHI). */}
+          {isEnrolled && !isLinkHidden("/student/hoc-phi") && <Link href="/student/hoc-phi" data-lop-hoc-phi className="mt-3 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Phiếu học phí của bạn →</Link>}
         </div>
       </section>
       <section aria-label="Tài liệu và bản ghi" data-materials-tab className="space-y-8">

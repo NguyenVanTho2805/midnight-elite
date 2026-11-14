@@ -7,6 +7,7 @@ import { KinButton, KinEmptyState, KinListRow, KinSectionHead, KinSkeleton, KinS
 import { callApi } from "@/components/tutor/shared";
 import { hasPermission, PERMISSIONS, useAuth } from "@/contexts/AuthContext";
 import type { TodayItem } from "@/lib/adminOps";
+import { featureOn } from "@/lib/features";
 
 interface Group { key: "duyet" | "theo-doi" | "he-thong"; label: string; items: TodayItem[] }
 interface Stats { students: number | null; openClasses: number | null; tutors: number | null }
@@ -31,7 +32,8 @@ export default function HomNay() {
   const [failed, setFailed] = useState(false);
   const [day, setDay] = useState("");
   const [rev, setRev] = useState<{ state: "load" | "err" | "ok"; value: number | null }>({ state: "load", value: null });
-  const canRevenue = hasPermission(user, PERMISSIONS.VIEW_REVENUE);
+  // DG (14/11/2026): thẻ "Doanh thu 30 ngày" thuộc phần Kinh doanh — ẩn (và không gọi API) khi cờ KINH_DOANH tắt, mặc định.
+  const canRevenue = hasPermission(user, PERMISSIONS.VIEW_REVENUE) && featureOn("KINH_DOANH");
 
   const load = useCallback(async () => {
     await Promise.resolve();
