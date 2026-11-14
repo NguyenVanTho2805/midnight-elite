@@ -22,7 +22,7 @@ import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components
 import { KinCallout } from "@/components/kin/Callout";
 import { OPTIONAL_TUTOR_MODULES, shownTutorModules, tutorModuleAllowed, type OptionalTutorModule } from "@/lib/userPreferences";
 import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
-import { featureOn, visibleLinks } from "@/lib/features";
+import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 import { landingPath } from "@/lib/landing";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
@@ -91,7 +91,8 @@ export default function TutorShell({
   // B1: Hộp việc là trang chủ duy nhất; "Tổng quan" chỉ còn trong bảng Khác khi gia sư đã tắt Hộp việc (khi đó đó là lối duy nhất tới các con số).
   const hopViecOn = visible.some(m => m.key === "hop-viec");
   const groups: MoreGroup[] = [
-    ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn
+    // DG: "Tổng quan" đi cùng cờ HOP_VIEC (route /lop-cua-toi/tong-quan chặn khi cờ tắt) — chỉ thêm khi gia sư TỰ tắt module Hộp việc lúc cờ đang mở.
+    ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn && !isLinkHidden("/lop-cua-toi/tong-quan")
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
       : g),
     { title: "Tài khoản", links: visibleLinks([
