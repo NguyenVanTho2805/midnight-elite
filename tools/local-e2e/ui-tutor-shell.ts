@@ -190,8 +190,10 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
   const cg = await ctxFor(TC, { width: 1280, height: 800 });
   const pc = await cg.newPage(); watch(pc);
   await pc.goto(`${BASE}/lop-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
-  check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
+  // DG (14/11/2026): Lịch đang ẩn (cờ LICH) thì màn đầu của chế độ gọn là thư viện Lớp, không vào trang đã rút khỏi menu.
+  const compactHome = LICH ? "/lop-cua-toi/lich" : "/lop-cua-toi/lop";
+  await pc.waitForURL(u => u.pathname === compactHome, { timeout: 90000 });
+  check(`Hộp việc đã tắt → /lop-cua-toi chuyển về ${LICH ? "Lịch" : "Lớp (Lịch đang ẩn)"}`, new URL(pc.url()).pathname === compactHome, pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
   check(`thanh chỉ có ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`, (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === (LICH ? 3 : 2));
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
@@ -215,7 +217,8 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check(`B3: ${LICH ? 5 : 4} ô (Hộp việc, ${LICH ? "Lịch, " : ""}Lớp, Học phí + Khác), mỗi nút cao ≥ 44px`, hit.length === (LICH ? 5 : 4) && hit.every(h => h >= 44), hit);
+  // DG (14/11/2026): thanh dưới luôn đủ 4 module + Khác — module ẩn theo cờ (Lịch khi LICH tắt) nhường chỗ cho module kế tiếp (Bài tập), TutorShell MOBILE_ORDER.
+  check(`B3: 5 ô (Hộp việc, ${LICH ? "Lịch, Lớp, Học phí" : "Lớp, Học phí, Bài tập"} + Khác), mỗi nút cao ≥ 44px`, hit.length === 5 && hit.every(h => h >= 44), hit);
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
   check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
