@@ -237,6 +237,14 @@ export async function runMorningDigest(now: Date, o: { dryRun: boolean }): Promi
 
   let nStudy = 0;
   for (const s of plan.studyToday) {
+    // 16/11: GIÀNH CHỖ trước (khoá chính SettingKV theo em + ngày VN) — hai lượt chạy chồng nhau cùng qua bước "đã có study_today chưa" ở planMorningDigest
+    // nên trước đây có thể gửi đôi (t-nhac-hoc "hai lượt chạy song song", chập chờn). Lượt thua gặp P2002 và bỏ qua. Không đổi chữ / người nhận.
+    try {
+      await prisma.settingKV.create({ data: { key: `nhac-hoc.study_today.${plan.dateKey}.${s.userId}`, value: now.toISOString() } });
+    } catch (e) {
+      if ((e as { code?: string })?.code === "P2002") continue;
+      throw e;
+    }
     await notify(s.userId, { type: "study_today", ...studyTodayText(s.count), link: NHAC_HREF });
     nStudy++;
   }

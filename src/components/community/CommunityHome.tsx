@@ -2,6 +2,7 @@
 // BU-05 — thân trang /cong-dong: tiêu đề, lời báo từ form khách, ô soạn (hoặc ô hỏi của khách), hàng chủ đề, feed.
 // Tab / lớp lấy từ địa chỉ (máy chủ đọc searchParams rồi truyền xuống); đổi tab = đổi địa chỉ (liên kết cũ ?tab=hoi-dap-qa vẫn đúng).
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 import { KinButton, KinStatus } from "@/components/kin";
 import { useAuth } from "@/contexts/AuthContext";
 import { CommunityFrame, useCommunityFrame } from "./CommunityFrame";
@@ -42,8 +43,15 @@ export function CommunityHome(props: HomeProps) {
   );
 }
 
+// 16/11: lúc hydrate, React đọc getServerSnapshot (false) ⇒ khối soạn bài khớp đúng HTML máy chủ (khung chờ). Thân trang này hydrate muộn hơn AuthProvider,
+// nên nếu chỉ dựa vào isLoading thì trình duyệt đã biết "khách" và vẽ ô hỏi của khách ⇒ lệch HTML ("Hydration failed" ở /cong-dong).
+const noopSubscribe = () => () => {};
+function useHydrated(): boolean { return useSyncExternalStore(noopSubscribe, () => true, () => false); }
+
 function HomeBody({ tab, scope, daGui, loi, guestOpen, classOnly = false }: HomeProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const hydrated = useHydrated();
+  const isLoading = authLoading || !hydrated;
   const { sidebar, scopes } = useCommunityFrame();
   const exit = classOnly ? { href: user ? landingPath(user.role ?? "student", user.adminRole) : "/", label: "Về trang của tôi" } : undefined;
   const className = classOnly ? scopes.find(s => s.id === scope)?.name : undefined;

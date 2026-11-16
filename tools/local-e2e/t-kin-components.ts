@@ -3,6 +3,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { check, section, done } from "./h";
+import { kinRequiredCheckValue, kinUncontrolledAdjust } from "@/components/kin/KinSelect";
 
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), "utf-8");
@@ -167,6 +168,17 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   const derived = site.slice(site.indexOf(':root, [data-vung="sang"] {'));
   for (const t of ["--kin-bong-toast", "--kin-bong-hop", "--kin-phu-hop"]) check(`${t} khai báo trong khối :root, [data-vung="sang"]`, derived.includes(`${t}:`));
   check("Toast/Confirm dùng token, không còn rgba viết tay trong component", !/rgba?\(/.test(read("src/components/kin/Toast.tsx")) && !/rgba?\(/.test(read("src/components/kin/Confirm.tsx")));
+
+  // P2 13/11 → sửa 16/11: hai ca KinSelect lệch so với <select> gốc.
+  section("KinSelect · P2 16/11 (danh sách đổi sau khi mount; giá trị không khớp lựa chọn)");
+  const A = [{ value: "a", label: "A" }, { value: "b", label: "B" }];
+  const B = [{ value: "x", label: "X", disabled: true }, { value: "y", label: "Y" }];
+  check("ks1. giá trị còn trong danh sách ⇒ không đổi, đánh dấu đã khớp", JSON.stringify(kinUncontrolledAdjust(A, "b", false)) === JSON.stringify({ seenOk: true }));
+  check("ks2. đã từng khớp, danh sách đổi mất giá trị ⇒ chọn lựa chọn DÙNG ĐƯỢC đầu tiên (bỏ mục disabled)", kinUncontrolledAdjust(B, "a", true).next === "y");
+  check("ks3. defaultValue cố ý không khớp (rỗng + placeholder), chưa từng khớp ⇒ giữ nguyên", kinUncontrolledAdjust(A, "", false).next === undefined);
+  check("ks4. danh sách đang rỗng (chờ tải) ⇒ không đổi", kinUncontrolledAdjust([], "a", true).next === undefined);
+  check("ks5. ô kiểm required: giá trị không khớp lựa chọn ⇒ rỗng (chưa chọn); khớp ⇒ giữ", kinRequiredCheckValue(A, "z") === "" && kinRequiredCheckValue(A, "a") === "a");
+  check("ks6. KinSelect dùng đúng hai hàm này (không chỉ khai báo)", /kinUncontrolledAdjust\(options, inner, innerSeenOk\)/.test(ks) && /value=\{kinRequiredCheckValue\(options, value\)\}/.test(ks));
 
   await done();
 })();

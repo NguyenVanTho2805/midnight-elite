@@ -305,10 +305,14 @@ export default function NhacHoc() {
         )}
         <form onSubmit={e => void addQuick(e)} className="sticky top-0 z-10 -mx-4 px-4 py-2 @min-[720px]:static @min-[720px]:mx-0 @min-[720px]:px-0 @min-[720px]:pt-0 bg-[var(--kin-nen-trang)]">
           <label htmlFor="nhac-them" className="sr-only">Thêm nhắc việc</label>
-          <input id="nhac-them" ref={quickRef} data-nhac-them value={quick} onChange={e => { setQuick(e.target.value); if (quickErr) setQuickErr(""); }}
-            readOnly={quickBusy} aria-busy={quickBusy || undefined} autoComplete="off" enterKeyHint="done"
-            aria-invalid={quickErr ? true : undefined} aria-describedby={quickErr ? "nhac-them-loi" : "nhac-them-goi-y"}
-            placeholder="Thêm nhắc việc… gõ #thẻ, Enter để lưu" className={`${KIN_FIELD} text-[length:var(--kin-co-body)]`} />
+          {/* Rà soát 16/11 (P3): thêm nút gửi nhìn thấy được (≥44px) — trước đây chỉ lưu bằng Enter. */}
+          <div className="flex items-stretch gap-2">
+            <input id="nhac-them" ref={quickRef} data-nhac-them value={quick} onChange={e => { setQuick(e.target.value); if (quickErr) setQuickErr(""); }}
+              readOnly={quickBusy} aria-busy={quickBusy || undefined} autoComplete="off" enterKeyHint="done"
+              aria-invalid={quickErr ? true : undefined} aria-describedby={quickErr ? "nhac-them-loi" : "nhac-them-goi-y"}
+              placeholder="Thêm nhắc việc… gõ #thẻ, Enter để lưu" className={`${KIN_FIELD} min-w-0 flex-1 text-[length:var(--kin-co-body)]`} />
+            <button type="submit" data-nhac-them-nut disabled={quickBusy || !quick.trim()} className={`flex-shrink-0 ${kinButtonClass("primary")}`}>Thêm</button>
+          </div>
           <p id="nhac-them-goi-y" className="sr-only">
             {nhom === "hom-nay" ? "Mục mới được hẹn hôm nay." : nhom === "da-hen" ? "Mục mới được hẹn ngày mai." : "Mục mới chưa có ngày hẹn."}
           </p>

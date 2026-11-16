@@ -25,9 +25,9 @@ export function FeedCard({ item, signedIn, showCourse, onPatch }: {
       <div className="kc-col1"><CommunityAvatar label={item.author.label} /></div>
       <div className="kc-body">
         {item.isPinned && <p className="kc-meta" style={{ fontWeight: 600 }}>Đã ghim</p>}
-        <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-x-2 flex-wrap">
           <AuthorLine author={item.author} />
-          <Link href={item.href} className="kc-meta hover:underline kc-focus"><time dateTime={item.createdAt}>{timeAgo(item.createdAt)}</time></Link>
+          <Link href={item.href} className="kc-meta hover:underline kc-focus inline-flex items-center min-h-11"><time dateTime={item.createdAt}>{timeAgo(item.createdAt)}</time></Link>
         </div>
         <div className="flex items-center gap-2 flex-wrap mt-1">
           <span className="kc-tag">{CATEGORY_LABEL[item.category] ?? item.category}</span>
@@ -36,10 +36,10 @@ export function FeedCard({ item, signedIn, showCourse, onPatch }: {
         </div>
         {isQuestion && item.title && (
           <h3 className="mt-2" style={{ fontSize: 16, lineHeight: "22px", fontWeight: 600, color: "var(--kin-chu-chinh)" }}>
-            <Link href={item.href} className="kc-focus hover:underline">{item.title}</Link>
+            <Link href={item.href} className="kc-focus hover:underline inline-flex items-center min-h-11">{item.title}</Link>
           </h3>
         )}
-        <Link href={item.href} className="block mt-1 kc-focus">
+        <Link href={item.href} className="block mt-1 min-h-11 kc-focus">
           <p className="kc-text" data-clamp={item.content.length > LONG ? "" : undefined}>{item.content}</p>
           {item.content.length > LONG && <span className="kc-meta" style={{ fontWeight: 600 }}>Xem thêm</span>}
         </Link>

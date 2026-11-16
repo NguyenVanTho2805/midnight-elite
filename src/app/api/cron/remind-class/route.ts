@@ -7,7 +7,7 @@ import { notifyMany } from "@/lib/notify";
 import { DAY_LABELS_VI, vnDayOfWeek } from "@/lib/types";
 import { hmOf, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { effectiveSlot } from "@/lib/sessionChange";
-import { effectiveMode, isOffScheduleKind, KIND_LABEL, resolveJoinUrl } from "@/lib/sessionBook";
+import { effectiveMode, isOffScheduleKind, KIND_LABEL, pickSessionFor, resolveJoinUrl } from "@/lib/sessionBook";
 import { sendUnmarkedDaily, type UnmarkedDailyResult } from "@/lib/unmarkedDailyServer";
 
 const BATCH_SIZE  = 20;
@@ -74,11 +74,13 @@ export async function GET(req: NextRequest) {
   // Bản ghi buổi theo lịch tuần (link / hình thức riêng buổi) khoá theo ngày HIỆU LỰC = ngày mai.
   const tomorrowSessions = todays.length === 0 ? [] : await prisma.attendanceSession.findMany({
     where: { date: new Date(`${tomorrowKey}T00:00:00Z`), courseId: { in: [...new Set(todays.map(t => t.sched.course.id))] } },
-    select: { courseId: true, joinUrl: true, mode: true },
+    select: { courseId: true, joinUrl: true, mode: true, startTime: true },
   });
-  const tomorrowSessionOf = new Map(tomorrowSessions.map(x => [x.courseId, x]));
+  // Rà soát 16/11 (P3): lớp có HAI buổi cùng ngày mai ⇒ khớp bản ghi buổi theo (lớp, giờ bắt đầu); chỉ khớp theo lớp khi ngày đó lớp có đúng MỘT bản ghi
+  // (trước đây khoá theo lớp ⇒ link / hình thức của buổi này áp nhầm cho buổi kia).
+  const tomorrowSessionOf = pickSessionFor(tomorrowSessions);
   const joinOfRegular = (t: (typeof todays)[number]): string | null => {
-    const sess = tomorrowSessionOf.get(t.sched.course.id);
+    const sess = tomorrowSessionOf(t.sched.course.id, t.startTime);
     if (effectiveMode({ sessionMode: sess?.mode, scheduleMode: t.sched.mode }) === "offline") return null;
     return resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: t.sched.joinUrl, classUrl: t.sched.course.classJoinUrl })?.url ?? null;
   };

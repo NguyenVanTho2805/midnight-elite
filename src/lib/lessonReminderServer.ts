@@ -3,10 +3,10 @@
 // Người nhận = học sinh Enrollment "active" của lớp (như remind-class: em chờ phụ huynh xác nhận hay tạm dừng KHÔNG nhận), bỏ em đã báo nghỉ buổi đó,
 // bỏ tài khoản đã khoá / đã ẩn danh. Thư đi tới email tài khoản của chính học sinh (như remind-class), không gửi phụ huynh, không thu thêm dữ liệu.
 import { prisma } from "@/lib/prisma";
-import { instantOf, parseHm, vnDateKeyOf } from "@/lib/classSessions";
+import { hmOf, instantOf, parseHm, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { applyChanges } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
-import { effectiveMode, isOffScheduleKind, resolveJoinUrl } from "@/lib/sessionBook";
+import { effectiveMode, isOffScheduleKind, pickSessionFor, resolveJoinUrl } from "@/lib/sessionBook";
 import { isAnonEmail } from "@/lib/accountDelete";
 import { sendLessonReminderEmail } from "@/lib/email";
 import {
@@ -49,7 +49,8 @@ export async function findDueLessons(now: Date): Promise<DueLesson[]> {
     where: { courseId: { in: live.map(c => c.id) }, date: { gte: dayDate(fromKey), lte: dayDate(toKey) } },
     select: { id: true, courseId: true, date: true, joinUrl: true, mode: true, kind: true, startTime: true, endTime: true },
   });
-  const sessionOf = new Map(sessions.map(s => [`${s.courseId}|${s.date.toISOString().slice(0, 10)}`, s]));
+  // Rà soát 16/11 (P3): khớp bản ghi buổi theo (lớp + ngày, giờ bắt đầu) — hai buổi cùng ngày không còn dùng chung link / hình thức của nhau.
+  const sessionOf = pickSessionFor(sessions.map(s => ({ ...s, courseId: `${s.courseId}|${s.date.toISOString().slice(0, 10)}` })));
 
   const out: DueLesson[] = [];
   for (const o of occs) {
@@ -58,7 +59,7 @@ export async function findDueLessons(now: Date): Promise<DueLesson[]> {
     const lead = leadOf(c.reminderLeadMinutes)!;
     if (!isReminderDue(o.startAt, lead, now)) continue;
     const rule = ruleOf.get(o.scheduleId)!;
-    const sess = sessionOf.get(`${o.courseId}|${o.dateKey}`) ?? null;
+    const sess = sessionOf(`${o.courseId}|${o.dateKey}`, hmOf(vnMinutesOfDay(o.startAt)));
     const mode = effectiveMode({ sessionMode: sess?.mode, scheduleMode: rule.mode });
     const join = mode === "offline" ? null : resolveJoinUrl({ sessionUrl: sess?.joinUrl, scheduleUrl: rule.joinUrl, classUrl: c.classJoinUrl });
     out.push({

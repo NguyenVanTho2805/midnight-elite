@@ -4,6 +4,7 @@ import { requirePermission, isNextResponse, ownerScopeWhere } from "@/lib/auth-g
 import { getSession } from "@/lib/session";
 import { PERMISSIONS } from "@/lib/permissions";
 import { notifyMany } from "@/lib/notify";
+import { attachCourseBlock, examAudience } from "@/lib/examNotifyServer";
 import { toSlug } from "@/lib/slug";
 import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 import { isEnrollmentActive } from "@/lib/enrollment";
@@ -131,6 +132,9 @@ export async function POST(req: NextRequest) {
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
+    // Rà soát 16/11 (P1): gia sư chỉ gắn đề vào lớp mình dạy.
+    const attachBlock = await attachCourseBlock(auth, data.courseId);
+    if (attachBlock) return NextResponse.json({ error: attachBlock.error }, { status: attachBlock.status });
     data.ownerId = auth.userId;
     data.code = await generateUniqueExamCode(typeof data.category === "string" ? data.category : "");
     data.id = await generateUniqueExamId(typeof data.id === "string" && data.id
@@ -142,18 +146,14 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exam = await prisma.exam.create({ data: data as any });
 
-    // Thông báo cho học viên đã đăng ký khoá học cùng category với đề thi
-    if (exam.active) {
-      const enrollments = await prisma.enrollment.findMany({
-        where:  { course: { category: { contains: exam.category.split(" ")[0] } } },
-        select: { userId: true },
-      });
-      const studentIds = [...new Set(enrollments.map(e => e.userId))];
-      await notifyMany(studentIds, {
+    // Rà soát 16/11 (P1): chỉ học sinh ĐANG HỌC đúng lớp của đề (hoặc đề thi thử công khai của KiN khi phần đó mở) — xem lib/examNotifyServer.ts.
+    if (exam.active && !exam.isDraft) {
+      const { users, link } = await examAudience(exam);
+      await notifyMany(users.map(u => u.id), {
         type:    "exam_new",
         title:   "Có đề thi mới",
         message: `Đề thi mới: "${exam.title}" — diễn ra ngày ${exam.date}`,
-        link:    `/thi-thu`,
+        link,
       });
     }
 

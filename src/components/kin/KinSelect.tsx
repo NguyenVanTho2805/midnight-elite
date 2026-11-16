@@ -93,6 +93,19 @@ function fixedContainer(el: HTMLElement | null): HTMLElement | null {
 
 interface Place { top: number; left: number; width: number; maxH: number; up: boolean }
 
+/** THUẦN (P2 16/11). Ô không điều khiển: `inner` từng khớp một lựa chọn (`seenOk`) mà nay danh sách không còn nó ⇒ `next` = lựa chọn dùng được đầu tiên
+ *  (như <select> gốc). Chưa từng khớp (defaultValue cố ý "" + placeholder) ⇒ không đổi. Danh sách rỗng ⇒ chờ, không đổi. */
+export function kinUncontrolledAdjust(options: KinSelectOption[], inner: string, seenOk: boolean): { seenOk: boolean; next?: string } {
+  if (options.some(o => o.value === inner)) return { seenOk: true };
+  if (!seenOk) return { seenOk: false };
+  const first = options.find(o => !o.disabled);
+  return first ? { seenOk: true, next: first.value } : { seenOk: true };
+}
+/** THUẦN (P2 16/11). Giá trị cho ô kiểm `required`: không khớp lựa chọn nào (nút đang hiện placeholder) ⇒ "" = chưa chọn. */
+export function kinRequiredCheckValue(options: KinSelectOption[], value: string): string {
+  return options.some(o => o.value === value) ? value : "";
+}
+
 export function KinSelect({
   value: valueProp, defaultValue, onChange, options: optionsProp, children, name, id, disabled, required, autoFocus, title,
   placeholder = "Chọn…", className = "", onBlur, ...rest
@@ -108,6 +121,16 @@ export function KinSelect({
   const options = useMemo(() => optionsProp ?? kinOptionsFromChildren(children), [optionsProp, children]);
   const [inner, setInner] = useState(defaultValue ?? options.find(o => !o.disabled)?.value ?? "");
   const value = valueProp ?? inner;
+  // P2 (16/11): ô KHÔNG điều khiển, danh sách lựa chọn đổi sau khi mount làm mất giá trị đang chọn ⇒ như <select> gốc, chọn lựa chọn dùng được ĐẦU TIÊN
+  // (trước đây giữ giá trị cũ: nút hiện "Chọn…" mà input ẩn vẫn gửi giá trị không còn trong danh sách). Chỉ áp khi giá trị ĐÃ từng khớp một lựa chọn —
+  // defaultValue cố ý không khớp (vd "" + placeholder "Chọn buổi") vẫn giữ nguyên như cũ.
+  // Điều chỉnh state ngay khi render (mẫu "adjusting state when a prop changes" của React), không qua effect.
+  const [innerSeenOk, setInnerSeenOk] = useState(() => options.some(o => o.value === inner));
+  if (valueProp === undefined) {
+    const adj = kinUncontrolledAdjust(options, inner, innerSeenOk);
+    if (adj.seenOk !== innerSeenOk) setInnerSeenOk(adj.seenOk);
+    if (adj.next !== undefined) setInner(adj.next);
+  }
   // <label htmlFor={id}> riêng (không bọc ô): sau khi chạy JS nối nhãn đó + giá trị như aria-labelledby.
   const [forLabel, setForLabel] = useState<string | undefined>(undefined);
   // <label> bọc ô: chữ của nhãn (trừ phần ô chọn) ⇒ span ẩn, để tên đọc = nhãn + giá trị, không lẫn chữ của danh sách đang mở.
@@ -315,7 +338,8 @@ export function KinSelect({
       </button>
       {required && (
         // Ô kiểm hợp lệ: input ẩn (type=hidden) không được trình duyệt kiểm `required`, nên dùng ô chữ vô hình, không nhận tiêu điểm, không tên (không gửi đi).
-        <input tabIndex={-1} aria-hidden required value={value} disabled={disabled} onChange={() => {}} data-kin-select-kiem
+        // P2 (16/11): giá trị không khớp lựa chọn nào ⇒ nút hiện placeholder ⇒ coi như CHƯA chọn (trước đây vẫn qua kiểm `required`).
+        <input tabIndex={-1} aria-hidden required value={kinRequiredCheckValue(options, value)} disabled={disabled} onChange={() => {}} data-kin-select-kiem
           onInvalid={e => { e.preventDefault(); setMissing(true); btn.current?.focus(); }}
           className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0" />
       )}

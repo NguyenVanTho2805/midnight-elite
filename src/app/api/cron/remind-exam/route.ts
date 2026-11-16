@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkCronAuth } from "@/lib/cronAuth";
 import { sendExamReminderEmail } from "@/lib/email";
 import { notifyMany } from "@/lib/notify";
+import { examAudience } from "@/lib/examNotifyServer";
 
 const BATCH_SIZE  = 20;
 const BATCH_DELAY = 1200;
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
   // Tìm kỳ thi diễn ra vào ngày mai
   const exams = await prisma.exam.findMany({
     where: { date: dateStr, active: true, isDraft: false, supersededById: null }, // QZ-04/07: không nhắc bản nháp hay phiên bản cũ
-    select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true },
+    select: { id: true, title: true, category: true, date: true, time: true, azotaUrl: true, courseId: true, ownerId: true },
   });
 
   if (exams.length === 0) {
@@ -39,21 +40,9 @@ export async function GET(req: NextRequest) {
   const log: string[] = [];
 
   for (const exam of exams) {
-    // Tìm học viên đăng ký khoá học có cùng category với kỳ thi
-    const enrollments = await prisma.enrollment.findMany({
-      where: {
-        course: { category: { contains: exam.category.split(" ")[0] } },
-      },
-      select: {
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    // Loại trùng (1 học viên có thể enroll nhiều khoá cùng category)
-    const seen = new Set<string>();
-    const students = enrollments
-      .map(e => e.user)
-      .filter(u => { if (seen.has(u.id)) return false; seen.add(u.id); return true; });
+    // Rà soát 16/11 (P1): người nhận = học sinh ĐANG HỌC đúng lớp của đề, hoặc đề thi thử công khai của KiN khi phần đó mở (lib/examNotifyServer.ts).
+    // Trước đây: mọi ghi danh cùng "môn" (kể cả em đã nghỉ, lớp của gia sư khác) nhận cả thư lẫn tin có tên đề.
+    const { users: students, link } = await examAudience(exam);
 
     // Gửi email theo batch
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
@@ -71,7 +60,7 @@ export async function GET(req: NextRequest) {
       type:    "exam_reminder",
       title:   "Nhắc nhở thi thử",
       message: `Đề thi "${exam.title}" sẽ diễn ra vào ${exam.date} lúc ${exam.time}`,
-      link:    `/thi-thu`,
+      link,
     });
 
     log.push(`${exam.title}: ${students.length} học viên`);

@@ -6,6 +6,7 @@ import {
   regularSessionKey, searchRangeKeys, WINDOW_MINUTES, NO_LINK_TEXT,
 } from "@/lib/lessonReminder";
 import { lessonReminderHtml } from "@/lib/email";
+import { pickSessionFor } from "@/lib/sessionBook";
 
 let pass = 0, fail = 0;
 const check = (name: string, cond: unknown, extra?: unknown) => {
@@ -98,6 +99,15 @@ check("36. httpsJoinUrl: https giữ, http / javascript: / rác / rỗng → nul
   check("40. thư thường không mang chữ đổi giờ", normal.subject.startsWith("Sắp tới giờ học") && !normal.text.includes("đổi giờ") && !normal.view.rescheduled);
   const h = lessonReminderHtml(moved.view);
   check("41. HTML thư dời giờ có nhãn ĐỔI GIỜ HỌC, HTML thường không", h.includes("ĐỔI GIỜ HỌC") && !lessonReminderHtml(normal.view).includes("ĐỔI GIỜ HỌC"));
+}
+
+{
+  // Rà soát 16/11 (P3): hai buổi cùng ngày của một lớp không dùng chung link.
+  const rows = [{ courseId: "A", startTime: "08:00", joinUrl: "u1" }, { courseId: "A", startTime: "19:00", joinUrl: "u2" }, { courseId: "B", startTime: null, joinUrl: "u3" }];
+  const pick = pickSessionFor(rows);
+  check("42. khớp theo (lớp, giờ): buổi 19:00 lấy đúng link của buổi 19:00", pick("A", "19:00")?.joinUrl === "u2" && pick("A", "08:00")?.joinUrl === "u1");
+  check("43. lớp có 2 bản ghi mà không khớp giờ ⇒ không đoán bừa (null)", pick("A", "15:00") === null);
+  check("44. lớp có đúng 1 bản ghi (không ghi giờ) ⇒ vẫn dùng bản ghi đó như trước", pick("B", "20:00")?.joinUrl === "u3" && pick("C", "20:00") === null);
 }
 
 console.log(`\n${pass} pass / ${fail} fail`);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { getSession } from "@/lib/session";
+import { attachCourseBlock } from "@/lib/examNotifyServer";
 import { PUBLIC_EXAM_CLOSED_CODE, PUBLIC_EXAM_CLOSED_MESSAGE } from "@/lib/features";
 import { closedPublicExam } from "@/lib/publicExamGate";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -59,7 +60,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     const { id } = await params;
-    const existing = await prisma.exam.findUnique({ where: { id }, select: { ownerId: true } });
+    const existing = await prisma.exam.findUnique({ where: { id }, select: { ownerId: true, courseId: true } });
     if (!existing) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
     if (!ownsResource(auth, existing.ownerId)) {
       return NextResponse.json({ error: "Bạn không có quyền với đề thi này" }, { status: 403 });
@@ -77,6 +78,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       if (key in body) data[key] = body[key];
     }
 
+    // Rà soát 16/11 (P1): ĐỔI lớp thì gia sư chỉ được gắn vào lớp mình dạy. Gửi lại đúng lớp cũ (trình soạn lưu cả bộ cài đặt) thì không kiểm —
+    // đề của đồng giảng gắn vào lớp đã giao cho chủ khác vẫn lưu được cài đặt khác.
+    if ("courseId" in data && (data.courseId ?? null) !== existing.courseId) {
+      const attachBlock = await attachCourseBlock(auth, data.courseId);
+      if (attachBlock) return NextResponse.json({ error: attachBlock.error }, { status: attachBlock.status });
+    }
     if (data.clusterScorePercents !== undefined && data.clusterScorePercents !== null) {
       const percents = data.clusterScorePercents;
       const valid = Array.isArray(percents) && percents.length === 4

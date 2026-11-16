@@ -21,7 +21,8 @@ const CD = featureOn("CONG_DONG"), DC = featureOn("DIEM_CHUAN"), LICH = featureO
 const QUIZ = CD && process.env.KIN_HOME_QUIZ !== "0"; // khối quiz nằm trong bảng tin (homeLayout.homeBlocksFor)
 const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(CD ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
 const NAV_GUEST = homeNavFor({ kind: "guest" }).map(i => i.label).join("|"), NAV_STUDENT = homeNavFor({ kind: "student" }).map(i => i.label).join("|");
-const BAR_CELLS = LICH ? 4 : 3; // Việc của tôi · (Lịch học) · Lớp của tôi · Khác
+const NHAC = featureOn("NHAC_HOC");
+const BAR_CELLS = 3 + (LICH ? 1 : 0) + (NHAC ? 1 : 0); // Việc của tôi · (Nhắc học, cờ NHAC_HOC) · (Lịch học) · Lớp của tôi · Khác
 
 import { FEATURES as KIN_FEATURES, featureOn as kinFeatureOn } from "@/lib/features";
 
@@ -138,7 +139,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     await rail.waitFor({ timeout: 120000 });
     await p.waitForTimeout(500);
     const g = await p.evaluate(`(() => { const nv = [...document.querySelectorAll('nav[aria-label="${railName}"]')].find(n => getComputedStyle(n).position !== "fixed"); const grp = nv.querySelector('.kin-rail-groups [role="group"]'); const links = [...grp.querySelectorAll('a')]; return { title: grp.getAttribute('aria-label'), items: links.map(a => (a.textContent || '').trim()), first: links[0].getAttribute('href'), firstCur: links[0].getAttribute('aria-current'), firstH: Math.round(links[0].getBoundingClientRect().height), width: Math.round(document.querySelector('#kin-rail').getBoundingClientRect().width) }; })()`) as any;
-    const wantItems = ["Trang chủ", "Việc của tôi", ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"].join("|");
+    const wantItems = ["Trang chủ", "Việc của tôi", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"].join("|");
     check(`${w}px: thanh rộng ${g.width}px, nhóm đầu '${g.title}' = ${g.items.join(" | ")} (Trang chủ đầu; cần ${wantItems}), → '/', không aria-current`, g.width === 272 && g.items[0] === "Trang chủ" && g.first === "/" && g.firstCur === null && g.firstH >= 36 && g.items.join("|") === wantItems, g);
     await rail.locator(".kin-rail-groups").getByRole("link", { name: "Trang chủ", exact: true }).click();
     await p.waitForURL(u => u.pathname === "/", { timeout: 120000 });
@@ -179,7 +180,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
     const lb = await lg.boundingBox({ timeout: 8000 }).catch(() => null); // thiếu logo → ca ĐỎ chứ không treo 30 giây rồi sập bài
     check(`${w}px: logo [data-mobile-home] → '/', nhãn 'KiN — Trang chủ', rộng và cao ≥ 44px`, !!lb && lb.width >= 44 && lb.height >= 44 && (await lg.getAttribute("href", { timeout: 3000 }).catch(() => null)) === "/" && (await lg.getAttribute("aria-label", { timeout: 3000 }).catch(() => null)) === "KiN — Trang chủ", lb);
     const four = await p.evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a, nav[aria-label="${railName}"] button')].filter(e => e.offsetParent && getComputedStyle(e.closest('nav')).position === 'fixed').map(e => [Math.round(e.getBoundingClientRect().width), Math.round(e.getBoundingClientRect().height)])`) as number[][];
-    check(`${w}px: thanh dưới vẫn ĐÚNG ${BAR_CELLS} ô (${BAR_CELLS - 1} module + Khác; "Lịch học" ${LICH ? "có" : "ẩn theo cờ LICH"}), mỗi ô ≥ 44×44 (mục Trang chủ không lên thanh dưới)`, four.length === BAR_CELLS && four.every(([a, b]) => a >= 44 && b >= 44), four);
+    check(`${w}px: thanh dưới vẫn ĐÚNG ${BAR_CELLS} ô (${BAR_CELLS - 1} module + Khác; "Lịch học" ${LICH ? "có" : "ẩn theo cờ LICH"}, "Nhắc học" ${NHAC ? "có" : "ẩn theo cờ NHAC_HOC"}), mỗi ô ≥ 44×44 (mục Trang chủ không lên thanh dưới)`, four.length === BAR_CELLS && four.every(([a, b]) => a >= 44 && b >= 44), four);
     check(`${w}px: không có liên kết 'Trang chủ KiN' ở dải trên bằng chữ (chỉ máy tính, khi thu thanh); không tràn ngang`, (await p.locator("[data-top-home]").isVisible().catch(() => false)) === false && await p.evaluate(NOT_OVERFLOW) as boolean);
     await bar.getByRole("button", { name: /^Khác/ }).click();
     const dm = p.getByRole("dialog", { name: "Các mục khác" });
@@ -470,7 +471,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
       const smAll = await small(p, "main"), smHead = await small(p, "header");
       const smMain = smAll.filter(x => !x.startsWith("[thẻ bài]")), smCard = smAll.filter(x => x.startsWith("[thẻ bài]"));
       check(`${name} ${w}px: không nút / liên kết nào cao < 44px trong THÂN trang (ngoài thẻ bài)`, smMain.length === 0, smMain.slice(0, 8));
-      // FeedCard (src/components/community/FeedCard.tsx:30,39,42, dùng chung /cong-dong, KHÔNG đổi ở nhánh này): giờ đăng, tên tác giả, nội dung bài là liên kết chữ 18–21px.
+      // FeedCard + AuthorLine (dùng chung /cong-dong): giờ đăng, tên tác giả, nội dung bài — vùng bấm ≥ 44px từ 16/11 (min-h-11), trước đó 18–21px.
       check(`${name} ${w}px: liên kết chữ TRONG thẻ bài (giờ đăng / tác giả / nội dung) cao ≥ 44px`, smCard.length === 0, smCard.slice(0, 8));
       check(`${name} ${w}px: không nút / liên kết nào cao < 44px trong THANH TRÊN (Navbar)`, smHead.length === 0, smHead.slice(0, 8));
       check(`${name} ${w}px: không tràn ngang`, await p.evaluate(NOT_OVERFLOW) as boolean);
@@ -486,7 +487,9 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
   // ═════════════════════════ G. Trang vẫn tĩnh ═════════════════════════
   section("G · trang chủ vẫn TĨNH: HTML khách và HTML kèm cookie học sinh giống hệt (không đọc cookie ở máy chủ); khối 'Lớp của tôi' không có trong HTML máy chủ");
   {
-    const norm = (s: string) => s.replace(/\s+/g, " ").replace(/"[a-f0-9]{8,}"/g, '""').replace(/nonce="[^"]*"/g, "").replace(/__next_r="[^"]*"/g, "").replace(/\bdata-precedence="[^"]*"/g, "");
+    // 16/11: bỏ khối <script>self.__next_f.push…</script> (luồng RSC) — máy chủ dev đánh số dòng của luồng khác nhau MỖI lần tải ("a4:" / "b4:"), nên so cả
+    // khối đó thì hai lần tải của CÙNG một khách cũng lệch. Phần HTML hiển thị vẫn so trọn; ca "không có tên học sinh" bên dưới vẫn quét cả trang (gồm luồng RSC).
+    const norm = (s: string) => s.replace(/<script>self\.__next_f\.push\([\s\S]*?\)<\/script>/g, "").replace(/\s+/g, " ").replace(/"[a-f0-9]{8,}"/g, '""').replace(/nonce="[^"]*"/g, "").replace(/__next_r="[^"]*"/g, "").replace(/\bdata-precedence="[^"]*"/g, "");
     const g1 = await fetch(`${BASE}/`); const gt = await g1.text();
     const s1 = await fetch(`${BASE}/`, { headers: { cookie: await cookieFor(S) } }); const st = await s1.text();
     check("khách 200 có <h1>; học sinh 200", g1.status === 200 && s1.status === 200 && /<h1/.test(gt));

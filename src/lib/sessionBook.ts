@@ -253,3 +253,15 @@ export function buildSessionShareMessage(i: { courseName: string; dateKey: strin
   if (i.url) lines.push(`Xem thêm: ${i.url}`);
   return lines.join("\n");
 }
+
+
+/** Rà soát 16/11 (P3). THUẦN. Tra bản ghi buổi (AttendanceSession) của MỘT ngày cho khung giờ (lớp, giờ bắt đầu):
+ *  khớp đúng giờ trước; không có thì chỉ nhận khi ngày đó lớp có đúng một bản ghi (buổi cũ không ghi giờ). Hai bản ghi trở lên mà không khớp giờ ⇒ null. */
+export function pickSessionFor<T extends { courseId: string; startTime: string | null }>(rows: readonly T[]): (courseId: string, startTime: string) => T | null {
+  const exact = new Map<string, T>(), byCourse = new Map<string, T[]>();
+  for (const r of rows) {
+    if (r.startTime) exact.set(`${r.courseId}|${r.startTime}`, r);
+    byCourse.set(r.courseId, [...(byCourse.get(r.courseId) ?? []), r]);
+  }
+  return (courseId, startTime) => exact.get(`${courseId}|${startTime}`) ?? (byCourse.get(courseId)?.length === 1 ? byCourse.get(courseId)![0] : null);
+}
