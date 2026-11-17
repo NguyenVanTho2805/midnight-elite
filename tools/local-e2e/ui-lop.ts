@@ -38,7 +38,7 @@ import { BASE } from "./h";
   // GS-LOP-GON → LOI-02: đầu lớp một lần + MỘT dải 4 tab (điều hướng, không role=tab); Mã mời là mục con của Học sinh (?muc=ma-moi).
   check("dòng phụ: 1 học sinh", (await body()).includes("1 học sinh"));
   const strip = p.getByRole("navigation", { name: /^Trang của/ });
-  check("dải tab: Bài học · Học sinh · Điểm danh · Cài đặt; Bài học sáng", (await strip.getByRole("link").allInnerTexts()).join("|") === "Bài học|Học sinh|Điểm danh|Cài đặt" && (await strip.locator("[aria-current=page]").innerText()) === "Bài học");
+  check("dải tab: Bài học · Học sinh · Thông báo · Điểm danh · Cài đặt; Bài học sáng", (await strip.getByRole("link").allInnerTexts()).join("|") === "Bài học|Học sinh|Thông báo|Điểm danh|Cài đặt" && (await strip.locator("[aria-current=page]").innerText()) === "Bài học");
   await strip.getByRole("link", { name: "Điểm danh", exact: true }).click();
   await p.waitForURL(/\/quan-lop\/[^/]+\/diem-danh/, { timeout: 90000 });
   await p.getByRole("button", { name: "Tạo buổi điểm danh" }).waitFor({ timeout: 90000 });

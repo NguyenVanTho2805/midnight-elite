@@ -115,7 +115,8 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const rAdmOwn = await api("GET", `/lop-cua-toi/${CAD.id}?tab=hoc-phi`, { as: ADM });
   check("quản trị đứng tên một lớp (isOwner nhưng không phải gia sư) → KHÔNG bị chuyển sang quan-lop", !(go(rAdmOwn).to ?? "").startsWith(QL), [rAdmOwn.status, go(rAdmOwn).to]);
   const rEnr = await api("GET", `/lop-cua-toi/${idA}`, { as: ENR });
-  check("học sinh trong lớp: 200, khung học sinh, KHÔNG chuyển hướng", rEnr.status === 200 && go(rEnr).to === null, [rEnr.status, go(rEnr).to]);
+  // LOI-03 mục 4.5 (Q4, commit d0159fbf): học sinh đã ghi danh mở /lop-cua-toi/<lớp> → 307 sang trang lớp của học sinh (kỳ vọng cũ "200 tại chỗ" đã lỗi thời).
+  check("học sinh trong lớp: 307 sang /student/hoc-tap?course=<lớp>", rEnr.status === 307 && (go(rEnr).to ?? "").startsWith("/student/hoc-tap?course="), [rEnr.status, go(rEnr).to]);
   const rStu = await api("GET", `/lop-cua-toi/${idA}`, { as: STU });
   check("học sinh ngoài lớp: không vào được (không 200 thân lớp, không lộ tên lớp)", !(rStu.status === 200 && rStu.text.includes("Lớp Toán Bí Mật Của Cô A")), rStu.status);
   const rB = await api("GET", `/lop-cua-toi/${idA}`, { as: B });
@@ -161,9 +162,9 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   }
   const dd = await api("GET", `${QL}/${idA}/diem-danh`, { as: A });
   check("diem-danh → 200, có 'Lịch sử buổi học', không chuyển hướng", dd.status === 200 && go(dd).to === null && dd.text.includes("Lịch sử buổi học"), [dd.status]);
-  section("2b. Một đầu lớp, MỘT dải tab (4 tab đúng thứ tự, LOI-02), không breadcrumb quản trị — trên mọi trang của chủ lớp (kể cả …/lich-hoc mở bằng link)");
-  const ORDER = ["Bài học", "Học sinh", "Điểm danh", "Cài đặt"];
-  for (const p of [``, `/hoc-vien`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
+  section("2b. Một đầu lớp, MỘT dải tab (5 tab đúng thứ tự, LOI-02 + TB-LOP), không breadcrumb quản trị — trên mọi trang của chủ lớp (kể cả …/lich-hoc mở bằng link)");
+  const ORDER = ["Bài học", "Học sinh", "Thông báo", "Điểm danh", "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+  for (const p of [``, `/hoc-vien`, `/thong-bao`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
     const r = await api("GET", `${QL}/${idA}${p}`, { as: A });
     const strip = /<nav[^>]*aria-label="Trang của[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(r.text)?.[1] ?? "";
     const labels = [...strip.matchAll(/<a [^>]*>([\s\S]*?)<\/a>/g)].map(m => m[1].replace(/<[^>]+>/g, "").trim());

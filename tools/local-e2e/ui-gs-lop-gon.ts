@@ -11,7 +11,7 @@ import { featureOn } from "@/lib/features";
 const RAIL = "Module của gia sư";
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH, mục Học phí của Cài đặt theo cờ HOC_PHI (mặc định ẨN). Bài đọc cờ ở tiến trình này: chạy cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
 const DIEM_DANH = featureOn("DIEM_DANH"), HOC_PHI = featureOn("HOC_PHI");
-const TABS = ["Bài học", "Học sinh", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"];
+const TABS = ["Bài học", "Học sinh", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
 
 (async () => {
   await wipe();
@@ -81,9 +81,9 @@ const TABS = ["Bài học", "Học sinh", ...(DIEM_DANH ? ["Điểm danh"] : [])
     await noOverflow("Bài học");
     await shot(pg, `gs-lop-gon-bai-hoc-${tag}`);
 
-    section(`Bốn tab, mỗi trang một h1 + một dải · ${tag}px`);
+    section(`Các tab của lớp, mỗi trang một h1 + một dải · ${tag}px`);
     const tabUrl: Record<string, RegExp> = {
-      "Học sinh": /\/hoc-vien/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
+      "Học sinh": /\/hoc-vien/, "Thông báo": /\/thong-bao/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
     };
     for (const name of [...TABS.slice(1), "Bài học"]) {
       await pg.locator('nav[aria-label^="Trang của"]:visible').getByRole("link", { name, exact: true }).click();

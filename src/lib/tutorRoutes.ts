@@ -106,7 +106,7 @@ const ROOT_NON_BAI_HOC_TABS = new Set(["cai-dat", "hoc-vien", "diem-danh", "lich
 /**
  * Dải tab theo đường đang mở (chỉ đường GIA SƯ). `tab` = giá trị ?tab= của trang lớp.
  *  - /lop-cua-toi/de-thi…        → "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" (sáng theo tiền tố dài nhất).
- *  - /lop-cua-toi/quan-lop/[id]… → LOI-02 (11/11/2026) đúng 4 tab "Bài học · Học sinh · Điểm danh · Cài đặt" (bảng A2):
+ *  - /lop-cua-toi/quan-lop/[id]… → LOI-02 (11/11/2026) "Bài học · Học sinh · Điểm danh · Cài đặt" (bảng A2); TB-LOP (17/11/2026) thêm "Thông báo" (…/thong-bao) sau Học sinh:
  *      Bài học = gốc lớp (sáng khi gốc mà ?tab= không phải cai-dat/hoc-vien/diem-danh/lich-hoc — kể cả ?tab=chuong-bai, ?tab=giao-trinh, ?tab lạ —
  *      hoặc trang con giao-trinh/… ("Xem như học sinh")); Học sinh = …/hoc-vien (cả ?tab=hoc-vien cũ); Điểm danh = …/diem-danh; Cài đặt = ?tab=cai-dat.
  *      "Giáo trình", "Bài tập" (?tab=chuong-bai), "Lịch học" đã bỏ khỏi dải; trang …/lich-hoc vẫn mở bằng link và KHÔNG tab nào sáng ở đó.
@@ -138,6 +138,7 @@ export function contentTabsFor(pathname: string, tab: string | null = null, role
     tabs: [
       baiHoc,
       { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
+      { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao") }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
       { label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") },
       { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: onRoot("cai-dat") },
     ],

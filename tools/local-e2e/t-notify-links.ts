@@ -62,6 +62,11 @@ import { prisma } from "@/lib/prisma";
   check("hoc-phi của gia sư chỉ đọc `tab` (searchParams: { tab?: string }) nên tham số `phieu` lạ bị bỏ qua, trang không vỡ", /searchParams: Promise<\{ tab\?: string \}>/.test(fs.readFileSync("src/app/lop-cua-toi/(tutor)/hoc-phi/page.tsx", "utf8")));
   check("tin hôm qua chưa điểm danh → /lop-cua-toi/lich (Lịch dạy)", /type: "unmarked_daily"[\s\S]{0,200}link: "\/lop-cua-toi\/lich"/.test(udaily));
 
+  section("TB-LOP: thông báo lớp → tab Thông báo của ĐÚNG lớp ở trang lớp học sinh");
+  const tb = await api("POST", `/api/courses/${C.id}/thong-bao`, { as: T, body: { body: "Mai lớp nghỉ." } });
+  const nTb = await prisma.notification.findFirst({ where: { userId: stu.id, type: "class_announcement" } });
+  check("đăng → 201; học viên active có thông báo trỏ /student/hoc-tap?course=<lớp>&tab=thong-bao", tb.status === 201 && nTb?.link === `/student/hoc-tap?course=${encodeURIComponent(C.id)}&tab=thong-bao`, [tb.status, nTb?.link]);
+
   await prisma.$disconnect();
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

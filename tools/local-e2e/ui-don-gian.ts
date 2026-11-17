@@ -123,7 +123,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const strip = p.getByRole("navigation", { name: /Trang của Quản lớp/ });
     await strip.waitFor({ timeout: 120000 });
     const tabs = (await strip.getByRole("link").allInnerTexts()).map(t => t.trim());
-    check("trang lớp: dải tab Bài học · Học sinh · Cài đặt (không Điểm danh)", tabs.join("|") === "Bài học|Học sinh|Cài đặt", tabs);
+    check("trang lớp: dải tab Bài học · Học sinh · Thông báo · Cài đặt (không Điểm danh)", tabs.join("|") === "Bài học|Học sinh|Thông báo|Cài đặt", tabs);
     await p.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const muc = p.getByRole("navigation", { name: "Mục của Cài đặt" });
     await muc.waitFor({ timeout: 120000 });

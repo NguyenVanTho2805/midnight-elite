@@ -18,7 +18,7 @@ import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
-const TABS = ["Bài học", "Học sinh", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"];
+const TABS = ["Bài học", "Học sinh", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };

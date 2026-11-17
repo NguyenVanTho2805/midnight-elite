@@ -1883,7 +1883,7 @@ model AuditLog {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded" | "join_request_new" | "join_request_approved" | "join_request_rejected"
+  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded" | "join_request_new" | "join_request_approved" | "join_request_rejected" | "class_announcement"
   title     String
   message   String
   link      String?
@@ -1977,6 +1977,24 @@ model ClassRecording {
   @@index([courseId])
   @@index([sessionId])
   @@map("class_recordings")
+}
+
+// ─── THÔNG BÁO LỚP (TB-LOP, 17/11/2026) ───────────────────────────────────────
+// Tin MỘT CHIỀU gia sư chủ lớp gửi cả lớp (đổi giờ, nhắc mang máy tính, link phòng học…). Học sinh ghi danh "active" chỉ ĐỌC, không trả lời
+// (hỏi đáp của lớp có chỗ riêng). Bảng mới, chỉ thêm. Không khai relation (như class_recordings): xoá lớp thì dòng ở lại, không ai đọc được nữa.
+// `deletedAt` = gia sư gỡ tin (giữ dòng: vẫn tính vào giới hạn đăng trong 24 giờ, tránh đăng-xoá-đăng để gửi tin liên tục).
+model ClassAnnouncement {
+  id        String    @id @default(cuid())
+  courseId  String
+  authorId  String
+  body      String
+  pinned    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([courseId, createdAt])
+  @@map("class_announcements")
 }
 
 // ─── AZOTA: HỌC SINH BÁO "ĐÃ LÀM" ─────────────────────────────────────────────

@@ -8,7 +8,8 @@
 //   x/y, % và "Học tiếp" tính bằng CÙNG hàm thuần với máy chủ (src/lib/studentLop.ts: orderedLessonIds / lopProgress / hocTiep) ⇒ thư viện và trang lớp không lệch nhau.
 // Giữ từ trước: NC2-041 (đổi lớp; đếm bài theo ID lớp), NC2-042 (bản ghi theo THÁNG, gập/mở), rà soát 28/10 (Content dựng lại theo ID lớp — phản hồi chậm của lớp trước
 // không lọt sang; lỗi tải danh sách lớp là LỖI, không phải "chưa vào lớp"), MD-07/SV-03 (Tài liệu & bản ghi gộp 3 nguồn của chính lớp), lớp đã nghỉ → SuspendedNotice.
-// BỎ vì chưa có dữ liệu thật: "Liên hệ cô …", "Hoạt động buổi học", tab "Thông báo", "n học sinh", dung lượng tệp, "Học trực tuyến", "Đánh giá".
+// BỎ vì chưa có dữ liệu thật: "Liên hệ cô …", "Hoạt động buổi học", "n học sinh", dung lượng tệp, "Học trực tuyến", "Đánh giá".
+// TB-LOP (17/11/2026): thêm tab "Thông báo" (tin một chiều của gia sư, components/student/ThongBaoHocSinh). ?tab=thong-bao (link từ thông báo) mở thẳng tab này.
 "use client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -34,6 +35,7 @@ import { placeLabel } from "@/lib/sessionBook";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
 import ThuVienLop from "@/components/student/ThuVienLop";
+import ThongBaoHocSinh from "@/components/student/ThongBaoHocSinh";
 import { featureOn, isLinkHidden } from "@/lib/features";
 import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds, sessionsBlockState } from "@/lib/studentLop";
 
@@ -88,7 +90,8 @@ interface Chapter { id: string; title: string; order: number; isImplicit?: boole
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
-type Tab = "tong-quan" | "noi-dung";
+type Tab = "tong-quan" | "noi-dung" | "thong-bao";
+const TAB_KEYS: Tab[] = ["tong-quan", "noi-dung", "thong-bao"];
 
 /** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]): /api/courses/[id] chỉ sắp theo `order`, khi hoà `order` thứ tự có thể khác
  *  ⇒ "Học tiếp" và x/y ở trang lớp lệch thư viện. Trả BẢN SAO, không đổi mảng gốc. */
@@ -104,12 +107,20 @@ function sortTree(sections: Section[]): Section[] {
 }
 const TYPE_LABEL: Record<string, string> = { record: "Bản ghi", live: "Học trực tiếp", quiz: "Bài tập", document: "Tài liệu" };
 
-function Content({ courseId }: { courseId: string }) {
+function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }) {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<Tab>("noi-dung");
+  const [tab, setTab] = useState<Tab>(initialTab);
+  // TB-LOP rà soát P2: ?tab= đổi khi đang ở chính lớp này (bấm thông báo "…&tab=thong-bao" trên chuông) ⇒ chuyển tab theo URL (Content không mount lại vì key = lớp).
+  const [seenInitial, setSeenInitial] = useState<Tab>(initialTab);
+  if (seenInitial !== initialTab) { setSeenInitial(initialTab); setTab(initialTab); }
+  // Bấm tab thì ghi ?tab= lên địa chỉ (replaceState, không thêm lịch sử) để tải lại / chia sẻ link vẫn đúng tab.
+  const pickTab = (t: Tab) => {
+    setTab(t);
+    try { const u = new URL(window.location.href); if (t === "noi-dung") u.searchParams.delete("tab"); else u.searchParams.set("tab", t); window.history.replaceState(window.history.state, "", u.pathname + u.search + u.hash); } catch { /* bỏ qua */ }
+  };
   const { completedIds, watching, loading: progressLoading } = useProgress();
   const { classes, loading: enrollmentsLoading, error: classesError, reload: reloadClasses } = useMyClasses();
   const enrolledIds = useMemo(() => new Set(classes.map(c => c.id)), [classes]);
@@ -199,6 +210,7 @@ function Content({ courseId }: { courseId: string }) {
   const tabs = [
     { key: "tong-quan" as const, label: "Tổng quan" },
     { key: "noi-dung" as const, label: "Nội dung" },
+    { key: "thong-bao" as const, label: "Thông báo" },
   ];
   // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
   const nextSessions = (work.events ?? []).filter(e => e.type === "class" && e.courseId === courseId).slice(0, 4);
@@ -358,9 +370,9 @@ function Content({ courseId }: { courseId: string }) {
     <div className="grid lg:grid-cols-[minmax(0,1fr)_354px] lg:grid-rows-[auto_1fr] gap-x-8 gap-y-8 items-start">
       <div className="min-w-0 lg:col-start-2 lg:row-start-1">{hero}</div>
       <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
-        <KinTabs tabs={tabs} value={tab} onChange={setTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
+        <KinTabs tabs={tabs} value={tab} onChange={pickTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
         <div role="tabpanel" id="lop-panel" aria-labelledby={`lop-tab-${tab}`} className="pt-6">
-          {tab === "noi-dung" ? contentTab : overview}
+          {tab === "noi-dung" ? contentTab : tab === "thong-bao" ? <ThongBaoHocSinh courseId={courseId} enrolled={isEnrolled} /> : overview}
         </div>
       </div>
       {(showSessions || showMyClasses) && <aside aria-label="Lịch và các lớp của bạn" data-lop-aside className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">
@@ -419,7 +431,8 @@ function PerCourse() {
   const searchParams = useSearchParams();
   const course = searchParams.get("course") ?? ""; // giữ đúng chữ này: t-links.ts:102 khoá việc trang đọc ?course=
   if (!course) return <ThuVienLop />;
-  return <Content key={course} courseId={course} />;
+  const t = searchParams.get("tab");
+  return <Content key={course} courseId={course} initialTab={TAB_KEYS.find(k => k === t) ?? "noi-dung"} />;
 }
 
 export default function LopCuaToi() {
