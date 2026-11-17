@@ -87,16 +87,10 @@ for (const [v, why] of [
 section("tutorFlags — cờ lịch NEXT_PUBLIC_KIN_MO_LICH");
 check('lichOpenFrom: chỉ "1" là bật', lichOpenFrom("1") === true && [undefined, "", "0", "true", "yes", " 1", "1 ", "on"].every(v => lichOpenFrom(v) === false));
 const saved = process.env.NEXT_PUBLIC_KIN_MO_LICH;
-delete process.env.NEXT_PUBLIC_KIN_MO_LICH;
-check("isLichOpen: không đặt → false (mặc định)", isLichOpen() === false);
-process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
-check('isLichOpen: "1" → true (đọc lúc gọi, không đóng băng lúc nạp)', isLichOpen() === true);
-process.env.NEXT_PUBLIC_KIN_MO_LICH = "0";
-check('isLichOpen: "0" → false', isLichOpen() === false);
-// LOI-07: một nguồn — isLichOpen / lichOpenFrom phải trả đúng như featureOn("LICH") của features.ts với mọi giá trị biến.
-for (const v of [undefined, "", "0", "1", "true", " 1", "on"]) {
+// HP-BO (17/11/2026): Lịch phía gia sư LUÔN hiện, mọi giá trị cờ — cờ chỉ còn cho Lịch học của học sinh.
+for (const v of [undefined, "", "0", "1", "true"]) {
   if (v === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = v;
-  check(`một nguồn: isLichOpen() === featureOn("LICH") khi biến = ${JSON.stringify(v)}`, isLichOpen() === featureOn("LICH") && lichOpenFrom(v) === featureOn("LICH", { LICH: v }));
+  check(`isLichOpen() luôn true khi biến = ${JSON.stringify(v)}`, isLichOpen() === true);
 }
 // Phá cố ý: một hàm "đọc riêng" kiểu cũ nhưng lệch luật (coi "true" là bật) phải bị bắt là KHÁC featureOn.
 const lechNguon = (v: string | undefined) => v === "1" || v === "true";

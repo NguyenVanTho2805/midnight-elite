@@ -10,6 +10,7 @@ import { KinCallout } from "@/components/kin/Callout";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinInput } from "@/components/kin/Input";
 import { SignupCodeForm } from "@/components/guest/SignupCodeForm";
+import { safeRedirect } from "@/lib/safeRedirect";
 import { useFieldValidation } from "@/components/kin/useFieldValidation";
 import { email as emailRule, matches, minLength, phoneVn, required, type FieldRule } from "@/lib/fieldRules";
 import { KinSelect } from "@/components/kin/KinSelect";
@@ -197,7 +198,7 @@ export default function DangKyPage() {
               {emailSent ? "Kiểm tra hộp thư" : "Tài khoản đã tạo!"}
             </h2>
             <div className="mb-6">
-              <SignupCodeForm email={s2.email.trim().toLowerCase()} initialSent={emailSent} onBack={() => setSubmitted(false)} />
+              <SignupCodeForm email={s2.email.trim().toLowerCase()} initialSent={emailSent} onBack={() => setSubmitted(false)} redirectTo={typeof window === "undefined" ? null : safeRedirect(new URLSearchParams(window.location.search).get("redirect"))} />
             </div>
             <Link href="/dang-nhap" className="text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>
               ← Quay về đăng nhập

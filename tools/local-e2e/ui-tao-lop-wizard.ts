@@ -102,7 +102,7 @@ import { prisma } from "@/lib/prisma";
   await o.locator("[data-one-off]").click();
   const dlg = o.getByRole("dialog").filter({ hasText: "Tạo lớp không có lịch cố định?" });
   await dlg.waitFor({ timeout: 10000 });
-  check("KinConfirm nêu hệ quả: 'KiN sẽ nhắc cô ở Hộp việc cho tới khi cô đặt lịch'; không window.confirm", (await dlg.innerText()).includes("KiN sẽ nhắc cô ở Hộp việc") && nativeDialogs === 0);
+  check("KinConfirm nêu hệ quả: 'Cô đặt lịch sau ở mục Lịch'; không window.confirm", (await dlg.innerText()).includes("Cô đặt lịch sau ở mục Lịch") && nativeDialogs === 0);
   await dlg.getByRole("button", { name: "Quay lại" }).click();
   await o.getByRole("button", { name: "Tiếp tục" }).click();
   check("bấm 'Quay lại' trong hộp → chưa chọn gì, 'Tiếp tục' vẫn bị chặn ở bước 2", await o.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "2");

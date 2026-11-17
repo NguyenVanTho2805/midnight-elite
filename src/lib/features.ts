@@ -89,7 +89,8 @@ const PATH_RULES: readonly PathRule[] = [
   { feature: "CONG_DONG", path: "/lop-cua-toi/kiem-duyet", sub: true },
   { feature: "CONG_DONG", path: "/admin/cong-dong", sub: true },
   // 3. Lịch: CHỈ gỡ lối vào ở menu. Không chặn route: Hộp việc còn dòng báo nghỉ / buổi bù / nhắc lịch trỏ vào đó; dữ liệu lịch, điểm danh, học phí theo buổi giữ nguyên.
-  { feature: "LICH", path: "/lop-cua-toi/lich", sub: true },
+  // HP-BO (17/11/2026): Lịch của GIA SƯ luôn hiện (cờ LICH chỉ còn ẩn Lịch học của học sinh) — đây là lối duy nhất tới trang buổi: điểm danh, ghi chú, "Đã dạy xong",
+  //   dời / huỷ buổi, sửa khung giờ tuần. Rà soát 17/11: ẩn nó thì gia sư không vận hành được lớp.
   { feature: "LICH", path: "/student/lich-hoc", sub: true },
   // 4. Tin tức.
   { feature: "TIN_TUC", path: "/tin-tuc", sub: true, route: true },
@@ -196,6 +197,29 @@ export function blockedRouteFeature(pathname: string, viewer: FeatureViewer, env
   const r = PATH_RULES.find(x => x.route && matches(x, p) && (x.route === true || x.route.includes(viewer)) && !featureOn(x.feature, env));
   return r ? r.feature : null;
 }
+
+// HP-BO (17/11/2026, chủ: "bỏ luôn phần học phí đi, sau này phát triển sau"): khi HOC_PHI tắt, API GHI của học phí cũng đóng (404 JSON ở src/proxy.ts),
+// để không còn đường nào âm thầm tạo đơn giá, phiếu, gói buổi, khoản phí. GET giữ nguyên (màn còn đọc dữ liệu rỗng). Không xoá route, không đổi tệp tiền nào.
+const API_RULES: readonly { feature: FeatureKey; re: RegExp }[] = [
+  { feature: "HOC_PHI", re: /^\/api\/tutor\/(invoices|hoc-phi-thang|bank-transactions|payout-account|student-discounts|late-fee-hint)(?:\/.*)?$/ },
+  { feature: "HOC_PHI", re: /^\/api\/tutor\/lop\/[^/]+\/bang-hoc-phi(?:\/.*)?$/ },
+  { feature: "HOC_PHI", re: /^\/api\/courses\/[^/]+\/(fee-rates|fees|extra-fees|packages)(?:\/.*)?$/ },
+  { feature: "HOC_PHI", re: /^\/api\/users\/me\/invoices(?:\/.*)?$/ },
+  { feature: "HOC_PHI", re: /^\/api\/phieu\/[^/]+\/reported$/ },
+  { feature: "HOC_PHI", re: /^\/api\/parent-portal\/[^/]+\/invoices(?:\/.*)?$/ },
+  { feature: "HOC_PHI", re: /^\/api\/webhooks\/sepay\/[^/]+$/ },
+];
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/** API bị đóng vì phần đang ẩn (chỉ phương thức GHI). null = cho qua. */
+export function blockedApiFeature(pathname: string, method: string, env: FeatureEnv = readFeatureEnv()): FeatureKey | null {
+  if (READ_METHODS.has(method.toUpperCase())) return null;
+  const p = pathOf(pathname);
+  if (!p || !p.startsWith("/api/")) return null;
+  const r = API_RULES.find(x => x.re.test(p) && !featureOn(x.feature, env));
+  return r ? r.feature : null;
+}
+export const PAUSED_API_MESSAGE = "Phần học phí đang tạm đóng.";
 
 // LOI-07 (11/11/2026, nợ P3 của LOI-01): thông báo / liên kết cũ trỏ vào phần đang ẩn → bị chuyển về trang đầu mà không biết vì sao. Chốt chặn (hostRouting.decideRoute,
 // trang /cong-dong/<id>) gắn `?tam-dong=<CỜ>` lên trang đích; một component dùng chung (src/components/kin/PausedNotice.tsx, cắm ở layout gốc) đọc dấu bằng

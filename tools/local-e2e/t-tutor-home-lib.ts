@@ -36,7 +36,7 @@ check("cờ bật mà thiếu khung giờ ⇒ KHÔNG allDone (ca phá: bước l
   process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
   const on = buildSetupChecklist(ZERO, { hocPhiOpen: true });
   if (prev === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = prev;
-  check("mặc định (không đặt cờ) đọc isLichOpen ⇒ 7 bước; cờ \"1\" ⇒ 8 bước", dflt.total === 7 && on.total === 8, { dflt: dflt.total, on: on.total });
+  check("HP-BO: Lịch gia sư luôn hiện ⇒ có bước lịch cả khi không đặt cờ (8 bước) lẫn cờ \"1\"", dflt.total === 8 && on.total === 8, { dflt: dflt.total, on: on.total });
 }
 section("DG: học phí ẩn (cờ HOC_PHI tắt) ⇒ bỏ hai bước \"Thêm tài khoản nhận học phí\", \"Lập phiếu học phí đầu tiên\"");
 {

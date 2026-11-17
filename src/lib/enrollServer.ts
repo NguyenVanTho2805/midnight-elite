@@ -164,7 +164,7 @@ export async function notifyTutorNewJoinRequest(course: { id: string; name: stri
   if (!course.ownerId) return;
   await notifyLikeAggregate(course.ownerId, {
     type: JOIN_NOTIFY_TYPES.new,
-    link: `/lop-cua-toi/${course.id}?tab=hoc-sinh`,
+    link: `/lop-cua-toi/${course.id}?tab=hoc-sinh&duyet=1`, // HP-BO: mở thẳng mục Xin vào lớp
     singularTitle: "Có học sinh xin vào lớp",
     buildMessage: (n) => n > 1 ? `Có ${n} yêu cầu vào lớp "${course.name}" đang chờ bạn duyệt` : `Có yêu cầu vào lớp "${course.name}" đang chờ bạn duyệt`,
   });

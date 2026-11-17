@@ -25,7 +25,8 @@ export default function AuthGuard({ requiredRole, children }: Props) {
     if (isLoading) return;
     if (!user) {
       // Đăng nhập xong quay lại đúng trang đang định vào, không đá về trang chủ (Figma 33:2, cột "hết hạn thì sao").
-      router.replace(`/dang-nhap?redirect=${encodeURIComponent(pathname)}`);
+      // HP-BO (17/11/2026): giữ cả ?tham số (link mời /student/nhap-ma-lop?code=… không mất mã).
+      router.replace(`/dang-nhap?redirect=${encodeURIComponent(pathname + window.location.search)}`);
       return;
     }
     if (bounce) router.replace(bounce);

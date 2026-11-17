@@ -24,10 +24,12 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
   const TF = await mkTutor("Cô Sử");
   const SA = await mkUser({ name: "Em Đang Học" }), SB = await mkUser({ name: "Em Chờ Phụ Huynh" }), SC = await mkUser({ name: "Em Xin Vào" });
   const cSu = await mkCourse(TF.id, { name: "Lịch Sử - Tổng Ôn" });
+  // HP-BO (17/11/2026): Lịch gia sư luôn hiện ⇒ lớp KHÔNG khung giờ là một việc "chưa có lịch học". Bài này kiểm số đỏ khi không có việc nào, nên lớp có 1 khung giờ.
+  await prisma.classSchedule.create({ data: { courseId: cSu.id, dayOfWeek: 5, startTime: "19:00", endTime: "20:30" } });
   await prisma.enrollment.create({ data: { userId: SA.id, courseId: cSu.id, status: "active" } });
   await prisma.enrollment.create({ data: { userId: SB.id, courseId: cSu.id, status: "pending_consent" } });
-  check("dữ liệu đúng tình huống của chủ: lớp mở, 0 khung giờ, 1 em active không phụ huynh, 1 em pending_consent",
-    (await prisma.classSchedule.count({ where: { courseId: cSu.id } })) === 0 && (await prisma.parentLink.count({ where: { studentId: SA.id } })) === 0
+  check("dữ liệu đúng tình huống của chủ: lớp mở, 1 khung giờ, 1 em active không phụ huynh, 1 em pending_consent",
+    (await prisma.classSchedule.count({ where: { courseId: cSu.id } })) === 1 && (await prisma.parentLink.count({ where: { studentId: SA.id } })) === 0
     && (await prisma.enrollment.count({ where: { courseId: cSu.id, status: "active" } })) === 1 && (await prisma.enrollment.count({ where: { courseId: cSu.id, status: "pending_consent" } })) === 1
     && (await prisma.course.findUnique({ where: { id: cSu.id } }))?.classStatus === "open");
 
@@ -77,7 +79,7 @@ type Read = { navs: number; inboxItem: number; badges: { href: string | null; te
     check(`${tag}: KHÔNG có số đỏ nào trên thanh module (số đỏ = 0)`, r0.badges.length === 0, r0.badges);
     check(`${tag}: "Cần cô xử lý" rỗng — "Không có việc nào đang chờ cô", không dòng, không "N việc"`, r0.empty && r0.rows === 0 && r0.aside === null, r0);
     check(`${tag}: số đỏ (0) = số việc nhìn thấy (0)`, badgeNum(r0) === visibleCount(r0) && badgeNum(r0) === r0.rowSum, [badgeNum(r0), visibleCount(r0), r0.rowSum]);
-    check(`${tag}: không có dòng nhắc "chưa có lịch học" (cờ lịch tắt)`, !r0.noSched);
+    check(`${tag}: không có dòng nhắc "chưa có lịch học" (lớp đã có khung giờ)`, !r0.noSched);
     check(`${tag}: em chờ phụ huynh ở khối "Chờ phụ huynh" (không tính là việc)`, r0.waitText.includes("Em Chờ Phụ Huynh") && r0.waitText.includes("Không tính là việc cô cần làm"), r0.waitText.slice(0, 300));
     await pg.screenshot({ path: `${SHOTS}/loi-02-hop-viec-0-${tag}.png`, fullPage: true });
 

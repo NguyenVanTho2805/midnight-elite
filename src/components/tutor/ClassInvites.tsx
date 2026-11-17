@@ -9,6 +9,7 @@ import { KinCopyButton } from "@/components/kin/CopyButton";
 import BulkInvite from "@/components/tutor/BulkInvite";
 import { KinStatus } from "@/components/kin/Status";
 import type { JoinPolicy } from "@/lib/joinRequest";
+import { featureOn } from "@/lib/features";
 
 export interface Invite {
   id: string; code: string; maxUses: number | null; usedCount: number;
@@ -157,7 +158,8 @@ export function JoinPolicyBox({ courseId, policy, isFree, canOpen, pending, onCh
       </div>
       <fieldset className="mt-3 space-y-2" disabled={busy}>
         <legend className="sr-only">Cách học sinh vào lớp</legend>
-        {POLICY_OPTIONS.map(o => {
+        {/* HP-BO (17/11/2026): Học phí đang ẩn ⇒ không có khái niệm "lớp miễn phí", bỏ ô "Vào ngay" bị khoá (lớp nào đã đặt sẵn "Vào ngay" vẫn thấy để đổi được). */}
+        {POLICY_OPTIONS.filter(o => o.value !== "open" || canOpen || value === "open" || featureOn("HOC_PHI")).map(o => {
           const locked = o.value === "open" && !canOpen;
           return (
             <label key={o.value} className={`flex items-start gap-3 min-h-11 py-1 text-sm ${locked ? "opacity-60" : ""}`}>

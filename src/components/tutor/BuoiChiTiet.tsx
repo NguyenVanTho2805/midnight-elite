@@ -6,6 +6,7 @@
 // "Ghi chú buổi trước": chỉ ghi chép CHUNG (đã dạy, nhận xét chung) của buổi gần nhất cùng lớp; nhận xét riêng từng em không hiện ở đây.
 // Ô Figma chưa làm vì cần dữ liệu/tiền chưa có: "Phí dự kiến khi chốt", "Chính sách cho em", "Xem trước PNG/PDF", ảnh bài làm của em (BU-10), điểm buổi (đã ở khối riêng).
 "use client";
+import { featureOn } from "@/lib/features";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { KinButton, useKinConfirm } from "@/components/kin";
@@ -184,9 +185,9 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
       {mgr && !closed && past && !detail.cancelled && (
         <KinCallout title="Buổi đã qua nhưng chưa chốt" className="mb-6">
           Khi dạy xong, bấm <b>Đã dạy xong</b> ở khung bên cạnh để ghi lại trạng thái.{" "}
-          {perSessionFee
+          {perSessionFee && featureOn("HOC_PHI")
             ? "Với lớp tính học phí theo buổi, lúc đó học phí của buổi được tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi chưa tính."
-            : "Việc này không tạo hay sửa học phí."}
+            : featureOn("HOC_PHI") ? "Việc này không tạo hay sửa học phí." : ""}
         </KinCallout>
       )}
       {!mgr && closed && <KinCallout title="Buổi đã chốt" className="mb-6" ><span data-bu-da-chot>Buổi đã chốt: chỉ chủ lớp sửa được. Nhờ chủ lớp mở lại nếu cần sửa.</span></KinCallout>}
@@ -260,7 +261,7 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
               ? <KinButton variant="secondary" onClick={() => void reopen()} loading={closing} loadingLabel="Đang mở lại...">Mở lại buổi</KinButton>
               : <KinButton onClick={() => void close()} loading={closing} loadingLabel="Đang chốt..." disabled={!past || detail.cancelled}>Đã dạy xong</KinButton>}
             {mgr && !past && !closed && <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Buổi này chưa tới ngày nên chưa chốt được.</p>}
-            {mgr && <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>}
+            {mgr && featureOn("HOC_PHI") && <KinCallout title="Chốt buổi và học phí">Lớp tính học phí theo buổi hoặc theo giờ chỉ có khoản học phí khi buổi đã dạy xong: bấm Đã dạy xong thì KiN tính cho em có mặt hoặc đi muộn; lưu điểm danh thôi thì chưa tính. Mở lại buổi sẽ gỡ khoản chưa vào phiếu, khoản đã vào phiếu giữ nguyên. Lớp tính theo số buổi trong tháng (cách cũ) không đổi.</KinCallout>}
           </KinPanel>
 
           <section aria-labelledby="bu-truoc" className="space-y-2" data-bu-previous>

@@ -39,6 +39,7 @@ import { jfetch } from "@/components/tutor/studentUi";
 import { FREE_CLASS_TAG, type JoinPolicy } from "@/lib/joinRequest";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 import { KinSelect } from "@/components/kin/KinSelect";
+import { featureOn } from "@/lib/features";
 
 const FIELD = KIN_FIELD;
 const LABEL = KIN_LABEL;
@@ -61,6 +62,8 @@ export default function TaoLop() {
   const [feeMode, setFeeMode] = useState<NewFeeMode>("per_session"); // HOCPHI-THEO-BUOI: lớp mới mặc định theo buổi; cách cũ không còn trong lựa chọn
   const [feeRate, setFeeRate] = useState("");
   const [feeMinutes, setFeeMinutes] = useState("90");
+  // HP-BO (17/11/2026): Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ bước 1 không hỏi học phí, lớp tạo ra không có đơn giá, bỏ lựa chọn "Vào ngay" (chỉ dành cho lớp miễn phí).
+  const feeOn = featureOn("HOC_PHI");
   const [free, setFree] = useState(false);                       // BU-01: "Miễn phí" (dấu do gia sư tick) — mặc định "Có học phí" = hành vi cũ
   const [policy, setPolicy] = useState<JoinPolicy>("approve");  // BU-01: mặc định Cô duyệt
   const [students, setStudents] = useState<string[]>([]);
@@ -95,12 +98,12 @@ export default function TaoLop() {
   const rules = useMemo<Record<string, readonly FieldRule[]>>(() => {
     const r: Record<string, readonly FieldRule[]> = { name: [required("Cô nhập tên lớp trước nhé.")] };
     // HP-LOP-TRUONG: "Theo bảng học phí tháng" không hỏi đơn giá lúc tạo lớp (cô đặt bảng bậc ở tab Học phí sau).
-    if (!free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) {
+    if (feeOn && !free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) {
       r.feeRate = [v => { const x = validateFeeSetup({ mode: feeMode, rate: Number(v), sessionMinutes: 90 }); return x.ok ? null : x.error; }];
       if (feeMode === "per_hour") r.feeMinutes = [v => { const x = validateFeeSetup({ mode: feeMode, rate: FEE_RATE_MIN, sessionMinutes: Number(v) }); return x.ok ? null : x.error; }];
     }
     return r;
-  }, [feeMode, free]);
+  }, [feeMode, free, feeOn]);
   const fv = useFieldValidation(rules);
 
   const openKey = firstDate || todayKey;
@@ -118,7 +121,7 @@ export default function TaoLop() {
 
   function checkInfo(): string | null {
     if (!name.trim()) return "Cô nhập tên lớp trước nhé.";
-    if (!free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
+    if (feeOn && !free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
     return null;
   }
   function next() {
@@ -138,7 +141,7 @@ export default function TaoLop() {
   async function chooseOneOff() {
     const ok = await ask({
       title: "Tạo lớp không có lịch cố định?",
-      message: "Lớp sẽ chưa có lịch cố định. KiN sẽ nhắc cô ở Hộp việc cho tới khi cô đặt lịch. Vẫn tạo lớp không lịch?",
+      message: "Lớp sẽ chưa có lịch cố định. Cô đặt lịch sau ở mục Lịch. Vẫn tạo lớp không lịch?",
       confirmLabel: "Vẫn tạo không lịch", cancelLabel: "Quay lại", tone: "thuong",
     });
     if (ok) { setNoFixed(true); setError(null); }
@@ -155,27 +158,31 @@ export default function TaoLop() {
     if (slotErr) { setError(slotErr); setStep(2); return; }
     if (activeBlocks.length === 0 && !noFixed) { setError("Cô thêm ít nhất một khung giờ học hằng tuần, hoặc chọn 'Lớp này học buổi lẻ'."); setStep(2); return; }
     let fee: Record<string, unknown> = {};
-    if (!free && feeMode === FEE_MODE_SHEET) {
+    if (!feeOn) {
+      fee = {};
+    } else if (!free && feeMode === FEE_MODE_SHEET) {
       fee = { feeMode: FEE_MODE_SHEET }; // không gửi feeRate: lớp bảng tháng không có đơn giá lớp
     } else if (!free && isNewFeeMode(feeMode)) {
       const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) });
       if (v.ok) fee = { feeMode, feeRate: v.value.rate, ...(v.value.sessionMinutes != null ? { feeSessionMinutes: v.value.sessionMinutes } : {}) };
     }
     setBusy(true); setError(null);
-    const slug = toSlug(clean);
+    let slug = toSlug(clean);
     const cat = category.trim() || "Khác";
     try {
       const payload = {
         ...fee,
         id: slug, name: clean, adminName: clean, shortTitle: clean.toUpperCase().split(" ").slice(0, 2).join("\n"),
         category: cat, instructor: "KiN", teacherAvatar: "K", openDate: openKey.split("-").reverse().join("/"),
-        types: ["Video"], tag: free ? FREE_CLASS_TAG : null, tagColor: null,
+        types: ["Video"], tag: feeOn && free ? FREE_CLASS_TAG : null, tagColor: null,
         bg: CATEGORY_GRADIENT[cat] ?? "var(--kin-chu-phu)", strip: "var(--kin-tt-chu-cho)",
         joinPolicy: policy, price: 0, originalPrice: null, lessons: 0, hours: 0, status: true,
         // Tạo lớp + khung giờ trong MỘT giao dịch (không còn cảnh "lớp có rồi, khung giờ lỗi").
         schedules: activeBlocks.map(toApiSlot), requireSchedule: true, noFixedSchedule: activeBlocks.length === 0 && noFixed,
       };
-      await api.courses.create(payload);
+      const created = await api.courses.create(payload);
+      // HP-BO: mã trùng lớp của gia sư khác ⇒ máy chủ tự thêm hậu tố (-2, -3…); đi tiếp theo mã máy chủ trả về.
+      if (created && typeof created.id === "string" && created.id) slug = created.id;
     } catch (err) {
       setError(`Chưa tạo được lớp: ${err instanceof Error ? err.message : "lỗi không rõ"}. Cô kiểm tra tên lớp rồi bấm lại.`);
       setBusy(false);
@@ -234,7 +241,7 @@ export default function TaoLop() {
                 </div>
               </section>
 
-              <section aria-labelledby="tl-hp">
+              {feeOn && <section aria-labelledby="tl-hp">
                 <KinSectionHead id="tl-hp" title="Học phí" aside="Chọn một" />
                 <fieldset className="pt-5">
                   <legend className="sr-only">Lớp có thu học phí không</legend>
@@ -248,9 +255,9 @@ export default function TaoLop() {
                     ))}
                   </div>
                 </fieldset>
-              </section>
+              </section>}
 
-              {free ? (
+              {!feeOn ? null : free ? (
                 <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" data-fee-free-note>Lớp miễn phí không có học phí.</p>
               ) : <section aria-labelledby="tl-phi">
                 <KinSectionHead id="tl-phi" title="Cách tính học phí" aside="Theo buổi là mặc định" />
@@ -307,8 +314,8 @@ export default function TaoLop() {
                 <KinSectionHead id="tl-vao" title="Cách vào lớp" aside="Đổi được sau" />
                 <fieldset className="pt-5">
                   <legend className="sr-only">Cách học sinh vào lớp</legend>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {POLICY_CARDS.map(c => {
+                  <div className={`grid gap-3 ${feeOn ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                    {POLICY_CARDS.filter(c => feeOn || c.value !== "open").map(c => {
                       const locked = c.value === "open" && !free;
                       return (
                         <label key={c.value} data-policy={c.value} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${locked ? "opacity-60" : ""} ${policy === c.value ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>

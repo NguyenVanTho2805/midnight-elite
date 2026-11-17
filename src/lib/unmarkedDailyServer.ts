@@ -35,7 +35,8 @@ export async function sendUnmarkedDaily(now: Date = new Date()): Promise<Unmarke
   let notified = 0;
   for (const t of todo) {
     if (done.has(t.tutorId)) continue;
-    await notify(t.tutorId, { type: "unmarked_daily", title: "Buổi hôm qua chưa điểm danh", message: unmarkedDailyMessage(t.count), link: "/lop-cua-toi" }, { count: t.count });
+    // HP-BO (17/11/2026): trỏ Lịch dạy (luôn hiện, mở được từng buổi để điểm danh); gốc /lop-cua-toi bị 307 về danh sách lớp khi Hộp việc ẩn.
+    await notify(t.tutorId, { type: "unmarked_daily", title: "Buổi hôm qua chưa điểm danh", message: unmarkedDailyMessage(t.count), link: "/lop-cua-toi/lich" }, { count: t.count });
     notified++;
   }
   return { date, tutorsChecked: tutorIds.length, notified, alreadySent: todo.length - notified };

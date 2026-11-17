@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { decrypt } from "@/lib/session";
 import { METHOD_HEADER } from "@/lib/sessionVerify";
 import { ADMIN_HOST, MAIN_HOST, decideRoute, needsSession, type RouteSession } from "@/lib/hostRouting";
+import { blockedApiFeature, PAUSED_API_MESSAGE } from "@/lib/features";
 
 // Tách admin ra domain riêng — admin.midnightelite-edu.com phục vụ đúng cây
 // route /admin (đã có sẵn ở src/app/(admin)/admin), domain chính không còn
@@ -20,6 +21,10 @@ async function sessionOf(req: NextRequest): Promise<RouteSession | null> {
 export async function proxy(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   const { pathname, search } = req.nextUrl;
+
+  // HP-BO: API ghi của phần đang ẩn (học phí) → 404 JSON, không chạy route.
+  const pausedApi = blockedApiFeature(pathname, req.method);
+  if (pausedApi) return NextResponse.json({ error: PAUSED_API_MESSAGE, code: "feature_paused", feature: pausedApi }, { status: 404, headers: { "Cache-Control": "no-store" } });
 
   const session = needsSession(host, pathname) ? await sessionOf(req) : null;
   const d = decideRoute({ host, pathname, search, session });

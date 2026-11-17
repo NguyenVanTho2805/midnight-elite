@@ -89,8 +89,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     const railCurrent = () => pg.locator(`nav[aria-label="${RAIL}"] [aria-current=page]:visible`).count();
     await pg.goto(`${BASE}/lop-cua-toi/lop`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.locator("[data-lop-the]").first().waitFor({ timeout: 120000 });
-    if (process.env.NEXT_PUBLIC_KIN_MO_LICH !== "1")
-      check(`${tag}: cờ lịch tắt → thẻ lớp không có "Chưa xếp lịch" / "Đặt lịch"`, (await pg.getByText("Chưa xếp lịch").count()) === 0 && (await pg.getByRole("link", { name: /^Đặt lịch/ }).count()) === 0);
+    // HP-BO (17/11/2026): Lịch gia sư luôn hiện ⇒ thẻ lớp chưa có lịch có "Đặt lịch" (mọi giá trị cờ LICH): số liên kết "Đặt lịch" = số thẻ "Chưa xếp lịch".
+    check(`${tag}: "Đặt lịch" đi cùng "Chưa xếp lịch" trên thẻ lớp`, (await pg.getByRole("link", { name: /^Đặt lịch/ }).count()) === (await pg.getByText("Chưa xếp lịch").count()));
     const href = await pg.locator("[data-lop-the]", { hasText: "Toán 9" }).getByRole("link", { name: /^Mở lớp/ }).getAttribute("href");
     check(`${tag}: liên kết "Mở lớp" = gốc lớp, không query, không /giao-trinh`, href === base(A.id), href);
     await pg.locator("[data-lop-the]", { hasText: "Toán 9" }).getByRole("link", { name: /^Mở lớp/ }).click();

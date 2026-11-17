@@ -110,10 +110,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     check("thấy thẻ lớp đang quản lý", await visible(p.getByText("Toán 9 gọn")));
     const nav = p.getByRole("navigation", { name: "Module của gia sư" });
     const navText = (await nav.allInnerTexts()).join("\n");
-    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Sổ điểm", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan", "Lịch"]) {
+    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Sổ điểm", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
       check(`thanh gia sư KHÔNG có '${gone}'`, !navText.split("\n").some(t => t.trim() === gone), navText);
     }
-    for (const keep of ["Lớp", "Học sinh", "Bài tập", "Thư viện", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
+    for (const keep of ["Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
     const hrefs = await nav.locator("a").evaluateAll(as => as.map(a => a.getAttribute("href") ?? ""));
     check("không liên kết nào trên thanh dẫn vào trang đã chặn", !hrefs.some(h => /\/lop-cua-toi\/(hoc-phi|doanh-thu|goi|so-diem|bao-cao-thang|bai-dang|yeu-cau|tong-quan)/.test(h)), hrefs);
     check("logo / lối về đầu trỏ /lop-cua-toi/lop", hrefs.includes("/lop-cua-toi/lop"));
@@ -132,7 +132,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await p.goto(`${BASE}/lop-cua-toi/cai-dat`, { waitUntil: "domcontentloaded", timeout: 120000 });
     await p.locator("#module").waitFor({ timeout: 120000 });
     const modText = await p.locator("#module").innerText();
-    check("Cài đặt › Module hiển thị: không công tắc Hộp việc / Học phí / Lịch", !/Hộp việc|Học phí|\bLịch\b/.test(modText.split("\n").filter(l => !/^Tắt module/.test(l)).join("\n")), modText);
+    check("Cài đặt › Module hiển thị: không công tắc Hộp việc / Học phí (Lịch luôn bật, HP-BO)", !/Hộp việc|Học phí/.test(modText.split("\n").filter(l => !/^Tắt module/.test(l)).join("\n")), modText);
     await ctx.close();
   }
 

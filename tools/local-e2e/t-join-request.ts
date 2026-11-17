@@ -67,7 +67,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   const pg = await api("GET", `/lop-cua-toi/${AP.id}`, { as: A });
   check("GET /lop-cua-toi/<id> của A không phải 200 (404 / chuyển hướng)", pg.status !== 200, pg.status);
   const nt1 = await prisma.notification.findMany({ where: { userId: T.id, type: "join_request_new" } });
-  check("gia sư nhận đúng 1 thông báo join_request_new, trỏ tab Học sinh", nt1.length === 1 && nt1[0].link === `/lop-cua-toi/${AP.id}?tab=hoc-sinh`, nt1);
+  check("gia sư nhận đúng 1 thông báo join_request_new, trỏ tab Học sinh", nt1.length === 1 && nt1[0].link === `/lop-cua-toi/${AP.id}?tab=hoc-sinh&duyet=1`, nt1);
   check("thông báo: có tên lớp, KHÔNG tên em, KHÔNG số tiền", nt1[0].message.includes("Toán Duyệt") && !/Em An|Xin Lop/.test(nt1[0].title + nt1[0].message) && !/\d{4,}|\d\s*(đ|₫|vnd)/i.test(nt1[0].message));
   const rdA2 = await api("POST", `/api/invites/${codeA}/redeem`, { as: A });
   check("nhập lại khi đang pending → pending, KHÔNG tăng lượt, KHÔNG báo lại", rdA2.json?.pending === true && (await prisma.classInvite.findUnique({ where: { code: codeA } }))?.usedCount === 1 && (await prisma.notification.count({ where: { userId: T.id, type: "join_request_new" } })) === 1 && (await prisma.notification.findFirst({ where: { userId: T.id, type: "join_request_new" } }))?.count === 1);

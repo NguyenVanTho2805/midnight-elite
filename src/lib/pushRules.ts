@@ -127,7 +127,8 @@ export interface PushPayload { title: string; body: string; url: string }
  */
 /** DG (14/11/2026): khi Hộp việc đang ẩn (cờ HOP_VIEC tắt, mặc định), "/lop-cua-toi" chuyển về thư viện Lớp — tin không được hứa "mở Hộp việc".
  *  Hai loại trỏ Hộp việc (báo nghỉ sát giờ, buổi chưa điểm danh) đổi sang danh sách lớp, nơi gia sư mở đúng lớp để xử lý. */
-export const HOP_VIEC_OFF_TEXT = { body: "Bấm để mở danh sách lớp.", url: "/lop-cua-toi/lop" } as const;
+// HP-BO (17/11/2026): Hộp việc ẩn ⇒ mở Lịch (luôn hiện; nơi xử lý báo nghỉ và điểm danh từng buổi) thay cho danh sách lớp.
+export const HOP_VIEC_OFF_TEXT = { body: "Bấm để mở Lịch.", url: "/lop-cua-toi/lich" } as const;
 const HOP_VIEC_TYPES: readonly PushType[] = ["absence_late", "unmarked_daily"];
 
 export function pushPayload(type: PushType, opts: { count?: number; env?: FeatureEnv } = {}): PushPayload {

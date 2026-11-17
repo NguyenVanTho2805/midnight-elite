@@ -7,5 +7,6 @@ import { featureOn } from "@/lib/features";
 /** Giá trị biến môi trường → cờ lịch bật? Cùng luật với `featureOn`: chỉ đúng chuỗi "1" là bật; mọi giá trị khác (kể cả không đặt) là tắt. */
 export const lichOpenFrom = (v: string | undefined): boolean => featureOn("LICH", { LICH: v });
 
-/** Cờ lịch (NEXT_PUBLIC_KIN_MO_LICH) đang mở? Đọc lúc gọi, qua `featureOn("LICH")`. Mặc định (không đặt) ⇒ false. */
-export const isLichOpen = (): boolean => featureOn("LICH");
+/** Lịch phía GIA SƯ có hiện không. HP-BO (17/11/2026): luôn hiện — Lịch là lối tới trang buổi (điểm danh, chốt buổi, dời / huỷ, sửa khung giờ).
+ *  Cờ NEXT_PUBLIC_KIN_MO_LICH chỉ còn điều khiển Lịch học của học sinh (features.ts). */
+export const isLichOpen = (): boolean => true;

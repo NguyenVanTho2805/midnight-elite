@@ -18,7 +18,7 @@
 //  - DG (14/11/2026, đã chạy, 202 ca): bỏ nhánh `r.re` trong `matches` → 9 đỏ (bảng học phí lớp, điểm danh lớp: liên kết + chốt chặn); regex điểm danh không neo cuối
 //    (`diem-danh/`) → 1 đỏ; "/student/thi-thu" thêm `sub: true` → 4 đỏ (phòng thi đề được giao bị chặn); /admin/doanh-thu `route: true` thay vì ["admin"] → 1 đỏ;
 //    bỏ chốt DG ở nhánh tên miền admin của decideRoute → 3 đỏ; bỏ nhánh TUTOR_ROOT → 1 đỏ; landingPath bỏ featureOn("HOP_VIEC") → 4 đỏ.
-import { FEATURES, featureEnvName, featureOn, hiddenLinkFeature, isLinkHidden, visibleLinks, blockedRouteFeature, mayBlockRoute, readFeatureEnv, classScopeOf, COIN_LOGIC_ON, PAUSED_PARAM, pausedSearch, pausedNoticeFrom, type FeatureEnv, type FeatureKey } from "@/lib/features";
+import { FEATURES, featureEnvName, featureOn, hiddenLinkFeature, isLinkHidden, visibleLinks, blockedRouteFeature, mayBlockRoute, readFeatureEnv, classScopeOf, COIN_LOGIC_ON, PAUSED_PARAM, pausedSearch, pausedNoticeFrom, blockedApiFeature, type FeatureEnv, type FeatureKey } from "@/lib/features";
 import { decideRoute, needsSession, featureViewerOf, ADMIN_HOST, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
 import { landingPath } from "@/lib/landing";
 import { homeNavFor, homeBlocksFor } from "@/lib/homeLayout";
@@ -59,7 +59,7 @@ const LINKS: [string, FeatureKey][] = [
   ["/giang-vien", "TIM_GIA_SU"], ["/giang-vien?mon=toan", "TIM_GIA_SU"], ["/giang-vien/x", "TIM_GIA_SU"],
   ["/cong-dong", "CONG_DONG"], ["/cong-dong?tab=hoi-dap-qa", "CONG_DONG"], ["/cong-dong/hoi-dap/q1", "CONG_DONG"], ["/cong-dong/ho-so/u1", "CONG_DONG"], ["/student/cong-dong", "CONG_DONG"], ["/student/hoi-dap", "CONG_DONG"],
   ["/lop-cua-toi/kiem-duyet", "CONG_DONG"], ["/admin/cong-dong", "CONG_DONG"],
-  ["/lop-cua-toi/lich", "LICH"], ["/lop-cua-toi/lich/khung?lop=x", "LICH"], ["/student/lich-hoc", "LICH"],
+  ["/student/lich-hoc", "LICH"], // HP-BO (17/11): /lop-cua-toi/lich rời danh sách — Lịch gia sư luôn hiện (xem KEEP)
   ["/tin-tuc", "TIN_TUC"], ["/tin-tuc/bai-1", "TIN_TUC"], ["/student/tin-tuc", "TIN_TUC"], ["/admin/tin-tuc", "TIN_TUC"],
   ["/thu-vien", "THU_VIEN"], ["/thu-vien#c-abc", "THU_VIEN"], ["/admin/thu-vien-video", "THU_VIEN"],
   ["/student/tieng-anh", "TIENG_ANH"], ["/student/tieng-anh/doc/1", "TIENG_ANH"],
@@ -83,7 +83,7 @@ for (const [href, k] of LINKS) {
 // DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — /thi-thu, /student/thi-thu, /student/hoc-phi, /lop-cua-toi/hoc-phi, /lop-cua-toi/yeu-cau, /lop-cua-toi/bai-dang, /lop-cua-toi/so-diem,
 // /admin/trang-chu rời danh sách này (nay thuộc cờ mới, xem LINKS). Thêm các đường dạy học PHẢI còn: phòng thi đề được giao, trang lớp gia sư, tab Học sinh / Lịch học / Cài đặt.
 const KEEP = ["/", "/khoa-hoc", "/khoa-hoc?gia=free", "/student/thi-thu/de-1", "/student/thi-thu/de-1?lan=2", "/student/viec-cua-toi", "/student/hoc-tap", "/student/hoc-tap?course=c1", "/student/bai-giang/b1", "/student/ho-so", "/student/nhap-ma-lop",
-  "/lop-cua-toi", "/lop-cua-toi/lop", "/lop-cua-toi/lop/tao", "/lop-cua-toi/bai-tap", "/lop-cua-toi/ho-so", "/lop-cua-toi/cai-dat", "/lop-cua-toi/ho-tro", "/lop-cua-toi/hoc-sinh", "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/ngan-hang-de-thi",
+  "/lop-cua-toi", "/lop-cua-toi/lich", "/lop-cua-toi/lich/khung?lop=x", "/lop-cua-toi/lop", "/lop-cua-toi/lop/tao", "/lop-cua-toi/bai-tap", "/lop-cua-toi/ho-so", "/lop-cua-toi/cai-dat", "/lop-cua-toi/ho-tro", "/lop-cua-toi/hoc-sinh", "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/ngan-hang-de-thi",
   "/lop-cua-toi/quan-lop/c1", "/lop-cua-toi/quan-lop/c1?tab=cai-dat", "/lop-cua-toi/quan-lop/c1/hoc-vien", "/lop-cua-toi/quan-lop/c1/lich-hoc", "/lop-cua-toi/quan-lop/c1/giao-trinh", "/lop-cua-toi/c1", "/lop-cua-toi/c1/ban-ghi",
   "/lop-cua-toi/hoc-phix", "/lop-cua-toi/c1/bang-hoc-phix", "/lop-cua-toi/quan-lop/c1/diem-danhx", "/thi-thux", "/student/thi-thux",
   "/admin", "/admin/kiem-duyet", "/admin/gia-su", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/khoa-hoc/danh-muc", "/admin/thi-thu/ngan-hang-cau-hoi", "/admin/nhat-ky", "/admin/trien-khai", "/admin/ho-tro",
@@ -228,5 +228,20 @@ if (!featureOn("HOP_VIEC")) {
     && eq(d("/student/hoc-phi", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=HOC_PHI" }));
   check("khách mở /thi-thu → 307 về '/?tam-dong=THI_THU_CONG_KHAI'; học sinh mở /student/thi-thu/de-1 → next", eq(d("/thi-thu", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=THI_THU_CONG_KHAI" }) && eq(d("/student/thi-thu/de-1", student), { kind: "next" }));
 } else console.log("  (máy đang bật HOP_VIEC: bỏ qua ca trang đầu gia sư)");
+
+section("HP-BO (17/11/2026): API GHI của học phí đóng khi HOC_PHI tắt");
+{
+  const W = ["/api/tutor/invoices", "/api/tutor/invoices/abc/zalo", "/api/tutor/hoc-phi-thang", "/api/tutor/bank-transactions/x/resolve", "/api/tutor/payout-account/webhook-key",
+    "/api/tutor/student-discounts", "/api/tutor/lop/lop-a/bang-hoc-phi/nhap/xac-nhan", "/api/courses/lop-a/fee-rates", "/api/courses/lop-a/packages/p1", "/api/courses/lop-a/extra-fees",
+    "/api/courses/lop-a/fees", "/api/users/me/invoices/K1/reported", "/api/phieu/tok/reported", "/api/parent-portal/tok/invoices/K1/reported", "/api/webhooks/sepay/t1"];
+  check("tắt: mọi POST vào API học phí → HOC_PHI", W.every(p => blockedApiFeature(p, "POST", OFF) === "HOC_PHI"), W.filter(p => blockedApiFeature(p, "POST", OFF) !== "HOC_PHI"));
+  check("tắt: PATCH / DELETE / put chữ thường cũng chặn", blockedApiFeature("/api/courses/lop-a/fee-rates", "PATCH", OFF) === "HOC_PHI" && blockedApiFeature("/api/tutor/invoices/i1", "delete", OFF) === "HOC_PHI");
+  check("tắt: GET / HEAD không chặn (màn còn đọc)", W.every(p => blockedApiFeature(p, "GET", OFF) === null && blockedApiFeature(p, "HEAD", OFF) === null));
+  check("mở HOC_PHI: không chặn gì", W.every(p => blockedApiFeature(p, "POST", only("HOC_PHI")) === null));
+  const KEEP = ["/api/courses", "/api/courses/lop-a", "/api/courses/lop-a/sessions/2026-11-17/close", "/api/attendance-sessions/s1", "/api/tutor/lop", "/api/tutor/lop/lop-a/hoc-sinh",
+    "/api/tutor/goi/mua", "/api/webhooks/sepay-pro", "/api/phieu/tok/viewed", "/api/parent-portal/tok", "/api/tutor/invoicesx", "/api/courses/lop-a/feesx", "/lop-cua-toi/hoc-phi"];
+  check("tắt: lớp, chốt buổi, điểm danh, học sinh, KiN Pro, đường na ná, trang (không phải /api) KHÔNG chặn", KEEP.every(p => blockedApiFeature(p, "POST", OFF) === null), KEEP.filter(p => blockedApiFeature(p, "POST", OFF) !== null));
+  check("có ?tham số / / cuối vẫn nhận đúng", blockedApiFeature("/api/tutor/invoices/?x=1", "POST", OFF) === "HOC_PHI");
+}
 
 done();

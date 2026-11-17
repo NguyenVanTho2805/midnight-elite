@@ -21,7 +21,7 @@ import { BASE } from "./h";
   await p.getByRole("list", { name: "Danh sách lớp" }).waitFor({ timeout: 60000 });
   const body = async () => (await p.locator("body").innerText()).replace(/\s+/g, " ");
   // LOI-02: "Chưa xếp lịch" chỉ hiện khi cờ lịch bật (NEXT_PUBLIC_KIN_MO_LICH=1); lớp CÓ lịch thì luôn hiện.
-  const lichOn = process.env.NEXT_PUBLIC_KIN_MO_LICH === "1";
+  const lichOn = true; // HP-BO (17/11/2026): Lịch gia sư luôn hiện, mọi giá trị cờ LICH
   check(`hiện lịch cố định thật 'T6 · 19:00–20:30'; 'Chưa xếp lịch' ${lichOn ? "có" : "KHÔNG có (cờ lịch tắt)"} ở lớp chưa có khung`, (await body()).includes("T6 · 19:00–20:30") && (await body()).includes("Chưa xếp lịch") === lichOn);
   check("không có cột 'Cách tính phí' (chưa có dữ liệu)", !(await body()).includes("Cách tính phí"));
   check("lớp chưa có học sinh có lối 'Mời học sinh' + khối nhắc tên lớp đó", (await p.getByRole("link", { name: /Mời học sinh/ }).count()) >= 1 && (await body()).includes("Toán 8 chưa có học sinh"));

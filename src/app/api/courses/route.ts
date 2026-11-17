@@ -1,3 +1,4 @@
+import { featureOn } from "@/lib/features";
 import { NextRequest, NextResponse } from "next/server";
 import { isReservedCourseId } from "@/lib/courseIds";
 import { prisma } from "@/lib/prisma";
@@ -100,7 +101,9 @@ export async function POST(req: NextRequest) {
     // HP-15: hình thức học phí chọn LÚC TẠO LỚP (theo buổi / giờ / khoá). Không gửi, hoặc gửi cách cũ → lớp mặc định, y như trước.
     // Chỉ lớp tạo SAU mới có thể khác mặc định; không có đường nào đổi hình thức của lớp đã tạo.
     // HOCPHI-THEO-BUOI 3.1: có đơn giá (feeRate) mà không nói feeMode → mặc định theo buổi. Không gửi cả hai → lớp cũ như trước (đường quản trị / ngăn kéo cũ).
-    const feeModeIn: unknown = body.feeMode !== undefined ? body.feeMode : (body.feeRate !== undefined && body.feeRate !== null ? "per_session" : undefined);
+    // HP-BO (17/11/2026): phần Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ bỏ qua mọi trường học phí: lớp tạo ra là lớp mặc định, không có đơn giá, chốt buổi không sinh phí.
+    const feeModeIn: unknown = !featureOn("HOC_PHI") ? undefined
+      : body.feeMode !== undefined ? body.feeMode : (body.feeRate !== undefined && body.feeRate !== null ? "per_session" : undefined);
     let feeSetup: FeeSetup | null = null;
     if (feeModeIn !== undefined && feeModeIn !== FEE_MODE_LEGACY) {
       if (moneyPathsBlocked()) return NextResponse.json({ error: PREVIEW_BLOCKED_MESSAGE }, { status: 503 });
@@ -142,11 +145,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
     }
 
-    // Kiểm tra slug trùng trước khi insert
-    const existing = await prisma.course.findUnique({ where: { id: data.id as string } });
+    // Mã lớp trùng (hai gia sư cùng đặt "Toán 9"): HP-BO (17/11/2026) gia sư được tự thêm hậu tố -2, -3… thay vì báo lỗi "Slug" khó hiểu. Quản trị giữ báo trùng như cũ.
+    let existing = await prisma.course.findUnique({ where: { id: data.id as string }, select: { id: true } });
+    if (existing && auth.adminRole === "teacher") {
+      const base = String(data.id);
+      for (let n = 2; n <= 50 && existing; n++) {
+        const cand = `${base}-${n}`;
+        if (isReservedCourseId(cand)) continue;
+        existing = await prisma.course.findUnique({ where: { id: cand }, select: { id: true } });
+        if (!existing) data.id = cand;
+      }
+    }
     if (existing) {
       return NextResponse.json(
-        { error: `Slug "${data.id}" đã tồn tại. Hãy đặt tên khác để tạo slug duy nhất.` },
+        { error: "Đã có lớp trùng mã này. Hãy đặt tên lớp khác một chút (vd thêm năm học hoặc ca học)." },
         { status: 409 },
       );
     }
