@@ -22,6 +22,7 @@ import {
   type BlueprintRow, type CategoryFlat, type Counts, type ExamMode, type Level, type PickItem, type RutRes, type Scope, type StatsRes,
 } from "./deThiClient";
 import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Cells = Record<string, Partial<Record<Level, string>>>;
 const newSeed = () => Math.random().toString(36).slice(2, 10);
@@ -295,9 +296,9 @@ export default function MaTranBuilder({ id }: { id: string }) {
         {roots.length > 1 && (
           <div className="min-w-0 w-full sm:w-64">
             <label htmlFor="mt-mon" className={`${KIN_LABEL} mb-2`}>Môn</label>
-            <select id="mt-mon" className={KIN_FIELD} value={rootId ?? ""} onChange={e => { setRootId(e.target.value); setStats(null); clearDraw(); }}>
+            <KinSelect id="mt-mon" value={rootId ?? ""} onChange={v => { setRootId(v); setStats(null); clearDraw(); }}>
               {roots.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            </KinSelect>
           </div>
         )}
         <KinTabs<Scope> label="Kho câu hỏi để bốc" value={scope} onChange={s => { setScope(s); clearDraw(); }} className="min-w-0 max-w-full"
@@ -460,26 +461,26 @@ export default function MaTranBuilder({ id }: { id: string }) {
                 </div>
                 <div className="min-w-0">
                   <label htmlFor="mt-lop" className={`${KIN_LABEL} mb-2`}>Lớp (chọn sau cũng được)</label>
-                  <select id="mt-lop" className={KIN_FIELD} value={courseId} onChange={e => setCourseId(e.target.value)}>
+                  <KinSelect id="mt-lop" value={courseId} onChange={v => setCourseId(v)}>
                     <option value="">Chưa chọn lớp</option>
                     {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </KinSelect>
                 </div>
                 <div className="min-w-0">
                   <label htmlFor="mt-mode" className={`${KIN_LABEL} mb-2`}>Chế độ</label>
-                  <select id="mt-mode" className={KIN_FIELD} value={mode} onChange={e => setMode(e.target.value as ExamMode | "")}>
+                  <KinSelect id="mt-mode" value={mode} onChange={v => setMode(v as ExamMode | "")}>
                     <option value="">Chọn khi giao đề</option>
                     {(Object.keys(MODE_LABEL) as ExamMode[]).map(m => <option key={m} value={m}>{MODE_LABEL[m]}</option>)}
-                  </select>
+                  </KinSelect>
                 </div>
                 <fieldset className="min-w-0 md:col-span-2">
                   <legend className={`${KIN_LABEL} mb-2`}>Mã đề</legend>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <label htmlFor="mt-codes" className="text-[length:var(--kin-co-goc)]">Số mã đề</label>
-                    <select id="mt-codes" className={`${KIN_FIELD} !w-auto`} value={codes} onChange={e => setCodes(Number(e.target.value))}>
+                    <KinSelect id="mt-codes" className="w-40 max-w-full" value={String(codes)} onChange={v => setCodes(Number(v))}>
                       <option value={1}>Một mã (không chia)</option>
                       {Array.from({ length: MA_DE_MAX - MA_DE_MIN + 1 }, (_, i) => MA_DE_MIN + i).map(n => <option key={n} value={n}>{n} mã đề ({variantCodeOf(1)}–{variantCodeOf(n)})</option>)}
-                    </select>
+                    </KinSelect>
                   </div>
                   {codes >= MA_DE_MIN ? (
                     <div className="mt-2 flex flex-wrap gap-x-6">

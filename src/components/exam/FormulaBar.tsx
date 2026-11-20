@@ -1,6 +1,9 @@
 // Thanh công thức trên ô tự luận của học sinh (phòng quiz). Mỗi nút CHÈN CHỮ THUẦN vào ô nhập qua `onChange` sẵn có của phòng thi
 // (cùng đường lưu nháp và nộp bài), không HTML thô, không tự gửi gì. Nút ≥ 44px; bấm nút không làm ô mất tiêu điểm.
+// LOI-07 (11/11/2026): đặt con trỏ NGAY trong lần bấm (flushSync rồi setSelectionRange), không chờ requestAnimationFrame. Bản cũ chờ khung hình sau:
+// phím gõ ngay sau khi bấm √x (hoặc khung hình bị trì hoãn ở tab nền) rơi vào CUỐI ô thay vì giữa ngoặc — "sqrt()16" thay cho "sqrt(16)" (ui-quiz-hs).
 "use client";
+import { flushSync } from "react-dom";
 import { FORMULA_BUTTONS, applyFormula } from "@/lib/essayFormula";
 
 export function FormulaBar({ areaId, value, onChange, disabled }: {
@@ -16,8 +19,10 @@ export function FormulaBar({ areaId, value, onChange, disabled }: {
             const el = document.getElementById(areaId) as HTMLTextAreaElement | null;
             const r = applyFormula(value, el?.selectionStart ?? value.length, el?.selectionEnd ?? value.length, b.kind);
             if (r.value === value) return;
-            onChange(r.value);
-            requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(r.selStart, r.selEnd); });
+            // Ô là ô có kiểm soát: React ghi giá trị mới thì con trỏ nhảy về cuối. flushSync ghi xong NGAY, rồi mới đặt con trỏ — không còn khe cho phím gõ chen vào.
+            flushSync(() => onChange(r.value));
+            el?.focus();
+            el?.setSelectionRange(r.selStart, r.selEnd);
           }}
           className="min-w-11 min-h-11 px-3 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-small)] font-semibold tabular-nums disabled:cursor-not-allowed disabled:opacity-60 hover:bg-[var(--kin-nen-bang)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]"
           style={{ border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)", background: "var(--kin-nen-trang)" }}>

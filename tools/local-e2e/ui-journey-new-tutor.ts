@@ -17,7 +17,7 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkSuper, mkUser, api, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import type { Page, Locator } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf, dayOfWeekOfKey } from "@/lib/classSessions";
@@ -41,7 +41,7 @@ const click = async (l: Locator, timeout = 60000) => { if (cur) cur.clicks++; aw
 const typeIn = async (l: Locator, text: string, timeout = 60000) => { if (cur) cur.types++; await l.fill(text, { timeout }); };
 // 'Màn con' = bước giao diện KHÔNG đổi đường dẫn (mở drawer, đổi tab, mở form) — ghi lại để so với 'màn' (đổi trang).
 const sub = (label: string) => { cur?.subs.push(label); };
-const pick = async (l: Locator, v: string | number, timeout = 60000) => { if (cur) cur.clicks++; await l.selectOption(String(v), { timeout }); };   // chọn trong ô xổ = 1 lần bấm (đã tính)
+const pick = async (l: Locator, v: string | number, timeout = 60000) => { if (cur) cur.clicks++; await kinSelect(l, String(v), { timeout }); };   // chọn trong ô xổ = 1 lần bấm (đã tính)
 
 // Màn = lần đổi đường dẫn (pathname) khác nhau mà gia sư đi qua. Ghi mọi lần chuyển trang (cả chuyển kiểu SPA), sau bỏ chặng đệm
 // (xem collapse) và gộp liên tiếp cùng đường dẫn (khác ?query như ?tao=1, ?tab=… vẫn là một màn; tab/drawer ghi riêng ở 'màn con').
@@ -230,7 +230,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await click(p.getByRole("button", { name: "Tiếp tục" }));
   check("chưa có khung giờ → ở lại bước 2 và báo 'ít nhất một khung giờ'", await p.locator("p[role=alert]").filter({ hasText: "ít nhất một khung giờ" }).isVisible());
   await click(p.getByRole("button", { name: "Thêm khung giờ" }));
-  await pick(p.locator("[data-block-panel] select").first(), dayOfWeekOfKey(vnDateKeyOf(new Date())));
+  await pick(p.locator('[data-block-panel] [role="combobox"]').first(), dayOfWeekOfKey(vnDateKeyOf(new Date())));
   await pick(p.locator("#sched-s"), 17 * 60);
   await pick(p.locator("#sched-e"), 18 * 60);
   await click(p.getByRole("button", { name: "Lưu khung giờ" }));
@@ -259,7 +259,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   // GS-LOP-GON: khung giờ thêm bằng hộp thoại của WeekScheduleEditor (lưới LichKhung): Thứ / Bắt đầu / Kết thúc là ô xổ (giá trị = phút trong ngày), không còn input[type=time].
   const form = p.locator("[data-block-panel]").filter({ hasText: "Link vào lớp" }).last();
   await form.waitFor({ timeout: 60000 });
-  await pick(form.locator("select").first(), dow);
+  await pick(form.locator('[role="combobox"]').first(), dow);
   await pick(form.locator("#sched-s"), 19 * 60);
   await pick(form.locator("#sched-e"), 20 * 60 + 30);
   await click(p.getByRole("button", { name: "Lưu khung giờ" }));
@@ -321,7 +321,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await p.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 60000 });
   // Lớp CHƯA có học sinh thì dòng lớp hiện "Mời học sinh →" (LopHoc.tsx: empty ? Mời : "Mở lớp →" với aria-label "Mở lớp <tên>"), còn tên lớp luôn là liên kết tới /lop-cua-toi/<lớp>:
   // lớp của bài này mới tạo, chưa mời ai → kiểm theo liên kết tên lớp (cách cũ tìm "Mở lớp <tên>" nên đỏ ở bản nền #137 vì lớp trống).
-  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng liên kết tên lớp tới trang lớp (Giáo trình)", (await p.locator(`a[href="/lop-cua-toi/quan-lop/${course.id}/giao-trinh"]`).first().getAttribute("href", { timeout: 15000 }).catch(() => null)) === `/lop-cua-toi/quan-lop/${course.id}/giao-trinh`);
+  check("A4b: gia sư mở /lop-cua-toi/quan-lop → về danh sách Lớp; lớp mở được bằng liên kết tên lớp tới trang lớp (LOI-02: tab Bài học = gốc lớp)", (await p.locator(`a[href="/lop-cua-toi/quan-lop/${course.id}"]`).first().getAttribute("href", { timeout: 15000 }).catch(() => null)) === `/lop-cua-toi/quan-lop/${course.id}`);
   {
     const before = await prisma.course.count();
     const ac = await ctxFor(root, { width: 1280, height: 900 });

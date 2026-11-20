@@ -1,5 +1,5 @@
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinSelect, kinSelectValue } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -33,7 +33,7 @@ import { prisma } from "@/lib/prisma";
   let t = await ta.inputValue();
   check("tên, lớp còn 3 chỗ (5 − 2), 2 buổi đã dạy, link đuôi chung ?n=fb khi chưa đặt tên nhóm, dòng an toàn cuối bài", t.includes("Cô Lan đang nhận thêm học sinh.") && t.includes("• Lớp: Toán 9 (còn 3 chỗ)") && t.includes("• Đã dạy 2 buổi") && t.includes(`Xem hồ sơ và đăng ký học thử: ${BASE}/mentor/${T.id}?n=fb\n`) && t.trimEnd().endsWith("Cô không nhận chuyển khoản trước buổi học thử."), t);
   check("chưa đặt tên nhóm: có lời nhắc đặt tên", await page.getByText(/Chưa đặt tên nhóm nên link dùng đuôi chung/).isVisible());
-  check("xưng hô mặc định 'Cô' theo tên", (await page.locator("label", { hasText: "Xưng hô" }).locator("select").inputValue()) === "Cô");
+  check("xưng hô mặc định 'Cô' theo tên", (await kinSelectValue(page.locator("label", { hasText: "Xưng hô" }).locator('[role="combobox"]'))) === "Cô");
   check("bảng 'Link nào mang người về': fb-gia-su-toan-ha-noi 2 mở / 1 xem hết; ghi rõ không đếm được bài đăng", await page.getByRole("row", { name: /fb-gia-su-toan-ha-noi/ }).innerText().then(x => /2\s+1/.test(x.replace(/\s+/g, " "))) && await page.getByText(/không đếm được bài đăng trong nhóm/).isVisible());
 
   section("Mỗi nhóm một link riêng; đổi thì soạn lại");
@@ -42,9 +42,9 @@ import { prisma } from "@/lib/prisma";
   await page.getByLabel("Giờ còn trống", { exact: true }).fill("T3, T5 19h–20h30");
   await page.getByLabel("Học phí", { exact: true }).fill("200.000đ/buổi");
   await eventually("giờ và học phí vào bài", async () => { const x = await ta.inputValue(); return x.includes("• Giờ còn trống: T3, T5 19h–20h30") && x.includes("• Học phí: 200.000đ/buổi"); });
-  await page.locator("label", { hasText: "Xưng hô" }).locator("select").selectOption("Thầy");
+  await kinSelect(page.locator("label", { hasText: "Xưng hô" }).locator('[role="combobox"]'), "Thầy");
   await eventually("đổi xưng hô → dòng an toàn đổi theo", async () => (await ta.inputValue()).trimEnd().endsWith("Thầy không nhận chuyển khoản trước buổi học thử."));
-  await page.locator("label", { hasText: "Xưng hô" }).locator("select").selectOption("Cô");
+  await kinSelect(page.locator("label", { hasText: "Xưng hô" }).locator('[role="combobox"]'), "Cô");
   await page.getByRole("checkbox", { name: /Toán 9/ }).uncheck();
   await eventually("bỏ chọn lớp → bài không còn dòng Lớp", async () => !(await ta.inputValue()).includes("• Lớp:"));
   await page.getByRole("checkbox", { name: /Toán 9/ }).check();
@@ -80,7 +80,7 @@ import { prisma } from "@/lib/prisma";
   await np.getByRole("heading", { name: "Bài đăng tìm học sinh" }).waitFor({ timeout: 60000 });
   check("cảnh báo 'chưa được duyệt nên link chưa mở được'", await np.getByRole("alert").filter({ hasText: /chưa được duyệt/ }).isVisible());
   check("3 nút sao chép / Facebook / Zalo bị khoá", await np.getByRole("button", { name: "Sao chép bài đăng" }).isDisabled() && await np.getByRole("button", { name: "Chia sẻ lên Facebook" }).isDisabled() && await np.getByRole("button", { name: "Gửi qua Zalo" }).isDisabled());
-  check("xưng hô mặc định 'Thầy' theo tên", (await np.locator("label", { hasText: "Xưng hô" }).locator("select").inputValue()) === "Thầy");
+  check("xưng hô mặc định 'Thầy' theo tên", (await kinSelectValue(np.locator("label", { hasText: "Xưng hô" }).locator('[role="combobox"]'))) === "Thầy");
 
   section("Lối tắt ở Tổng quan + học sinh không vào được");
   await prisma.user.update({ where: { id: T.id }, data: { preferences: { modules: ["hop-viec", "lop"] } } });

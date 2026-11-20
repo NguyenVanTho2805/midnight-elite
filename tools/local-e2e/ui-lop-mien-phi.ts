@@ -2,8 +2,9 @@
 // Hành trình gia sư: tạo lớp miễn phí (3 cách vào) → thấy lớp trong /lop-cua-toi/lop + /api/tutor/lop → thấy MÃ LỚP có sẵn (khối "Cách học sinh vào lớp"), không sinh hai mã.
 // Hành trình học sinh: từ vỏ học sinh có lối tới lớp miễn phí (menu Khác + màn Lớp của tôi trống) → /khoa-hoc?gia=free thấy lớp.
 import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done, api, BASE } from "./h";
-import { launch, ctxFor, closeAll } from "./ui";
+import { launch, ctxFor, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 import type { Page } from "playwright";
 
 async function wizard(p: Page, name: string, policyLabel: string) {
@@ -12,8 +13,8 @@ async function wizard(p: Page, name: string, policyLabel: string) {
   await p.getByText("Miễn phí", { exact: true }).first().click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await p.locator("[data-block-panel] select").first().selectOption("2");
-  await p.locator("#sched-s").selectOption("1140"); await p.locator("#sched-e").selectOption("1230");
+  await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
+  await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
   await p.getByRole("button", { name: "Lưu khung giờ" }).click();
   await p.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await p.getByRole("button", { name: "Tiếp tục" }).click();
@@ -100,29 +101,39 @@ const overflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWi
   const small = await m.locator("[data-join-howto] button").evaluateAll(bs => bs.filter(b => b.getBoundingClientRect().height < 43.5).length);
   check("mọi nút trong khối ≥ 44px", small === 0, small);
 
-  section("Học sinh: có lối tới lớp miễn phí");
-  const sctx = await ctxFor(S, { width: 1280, height: 900, rail: "mac-dinh" });
-  const q = await sctx.newPage();
-  await q.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle", timeout: 120000 });
-  const lnk = q.locator("[data-lop-mien-phi]");
-  await lnk.waitFor({ timeout: 60000 });
-  check("màn Lớp của tôi (chưa có lớp) có 'Tìm lớp miễn phí' → /khoa-hoc?gia=free", (await lnk.getAttribute("href")) === "/khoa-hoc?gia=free");
-  const rail = q.getByRole("navigation", { name: "Module của học sinh" });
-  check("thanh bên có mục 'Lớp miễn phí' (nhóm Khám phá) cùng chỗ với Gia sư/Cộng đồng/Tin tức", await rail.getByRole("link", { name: "Lớp miễn phí", exact: true }).count() >= 1);
-  await lnk.click();
-  await q.waitForURL(/\/khoa-hoc\?gia=free/, { timeout: 90000 });
-  await q.getByText(/Free vao ngay/).first().waitFor({ timeout: 60000 });
-  const cat = (await q.locator("body").innerText());
-  check("/khoa-hoc lọc Miễn phí: thấy cả lớp 'Vào ngay' lẫn 'Cô duyệt' (học sinh thấy được lớp của gia sư)", cat.includes("Free vao ngay") && cat.includes("Free duyet"));
-  await q.goto(`${BASE}/khoa-hoc/${c3.id}`, { waitUntil: "networkidle" });
-  check("lớp 'Vào ngay': có nút 'Vào lớp miễn phí'", await q.getByRole("button", { name: /Vào lớp miễn phí/ }).or(q.getByRole("link", { name: /Vào lớp miễn phí/ })).first().isVisible());
-  await q.goto(`${BASE}/khoa-hoc/${c1.id}`, { waitUntil: "networkidle" });
-  check("lớp 'Cô duyệt': có nút 'Xin vào lớp'", await q.getByRole("button", { name: /Xin vào lớp/ }).or(q.getByRole("link", { name: /Xin vào lớp/ })).first().isVisible());
+  // DG (14/11/2026): lối "Lớp miễn phí" / "Tìm lớp miễn phí" của học sinh đi cùng cờ TIM_GIA_SU (mặc định ẨN). Tắt ⇒ chỉ kiểm KHÔNG có lối; mở ⇒ hành trình đủ như cũ.
+  if (!featureOn("TIM_GIA_SU")) {
+    section("Học sinh (TIM_GIA_SU tắt): không có lối tới lớp miễn phí");
+    const q0 = await (await ctxFor(S, { width: 1280, height: 900, rail: "mac-dinh" })).newPage();
+    await q0.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle", timeout: 120000 });
+    await q0.getByRole("link", { name: "Nhập mã lớp" }).first().waitFor({ timeout: 60000 });
+    check("Lớp của tôi trống: có 'Nhập mã lớp', KHÔNG 'Tìm lớp miễn phí'; thanh bên không 'Lớp miễn phí'", await q0.locator("[data-lop-mien-phi]").count() === 0
+      && await q0.getByRole("navigation", { name: "Module của học sinh" }).getByRole("link", { name: "Lớp miễn phí", exact: true }).count() === 0);
+  } else {
+    section("Học sinh: có lối tới lớp miễn phí");
+    const sctx = await ctxFor(S, { width: 1280, height: 900, rail: "mac-dinh" });
+    const q = await sctx.newPage();
+    await q.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle", timeout: 120000 });
+    const lnk = q.locator("[data-lop-mien-phi]");
+    await lnk.waitFor({ timeout: 60000 });
+    check("màn Lớp của tôi (chưa có lớp) có 'Tìm lớp miễn phí' → /khoa-hoc?gia=free", (await lnk.getAttribute("href")) === "/khoa-hoc?gia=free");
+    const rail = q.getByRole("navigation", { name: "Module của học sinh" });
+    check("thanh bên có mục 'Lớp miễn phí' (nhóm Khám phá) cùng chỗ với Gia sư/Cộng đồng/Tin tức", await rail.getByRole("link", { name: "Lớp miễn phí", exact: true }).count() >= 1);
+    await lnk.click();
+    await q.waitForURL(/\/khoa-hoc\?gia=free/, { timeout: 90000 });
+    await q.getByText(/Free vao ngay/).first().waitFor({ timeout: 60000 });
+    const cat = (await q.locator("body").innerText());
+    check("/khoa-hoc lọc Miễn phí: thấy cả lớp 'Vào ngay' lẫn 'Cô duyệt' (học sinh thấy được lớp của gia sư)", cat.includes("Free vao ngay") && cat.includes("Free duyet"));
+    await q.goto(`${BASE}/khoa-hoc/${c3.id}`, { waitUntil: "networkidle" });
+    check("lớp 'Vào ngay': có nút 'Vào lớp miễn phí'", await q.getByRole("button", { name: /Vào lớp miễn phí/ }).or(q.getByRole("link", { name: /Vào lớp miễn phí/ })).first().isVisible());
+    await q.goto(`${BASE}/khoa-hoc/${c1.id}`, { waitUntil: "networkidle" });
+    check("lớp 'Cô duyệt': có nút 'Xin vào lớp'", await q.getByRole("button", { name: /Xin vào lớp/ }).or(q.getByRole("link", { name: /Xin vào lớp/ })).first().isVisible());
 
-  const sm = await (await ctxFor(S, { width: 390, height: 800 })).newPage();
-  await sm.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle" });
-  await sm.locator("[data-lop-mien-phi]").waitFor({ timeout: 60000 });
-  check("390px: Lớp của tôi trống không tràn, nút ≥ 44px", !(await overflow(sm)) && (await sm.locator("[data-lop-mien-phi]").evaluate(e => e.getBoundingClientRect().height)) >= 43.5);
+    const sm = await (await ctxFor(S, { width: 390, height: 800 })).newPage();
+    await sm.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle" });
+    await sm.locator("[data-lop-mien-phi]").waitFor({ timeout: 60000 });
+    check("390px: Lớp của tôi trống không tràn, nút ≥ 44px", !(await overflow(sm)) && (await sm.locator("[data-lop-mien-phi]").evaluate(e => e.getBoundingClientRect().height)) >= 43.5);
+  }
 
   await closeAll();
   await done();

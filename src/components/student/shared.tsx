@@ -90,8 +90,10 @@ export function NextSession({ item, className = "" }: { item: StudentTodoItem; c
       {s.topic && <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{s.topic}</p>}
       {s.place && <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{s.place}</p>}
       <div className="mt-5 flex flex-wrap gap-3">
-        <Link href={s.href} className={kinButtonClass("primary")}>Vào lớp học</Link>
-        {s.joinUrl && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở link học online</a>}
+        {/* Q7 (14/11): sát giờ học (joinSoon) ⇒ link học online lên trước và là nút chính; ngoài cửa sổ đó giữ "Vào lớp học" là chính. */}
+        {s.joinUrl && s.joinSoon && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" data-join-soon className={kinButtonClass("primary")}>Mở link học online</a>}
+        <Link href={s.href} className={kinButtonClass(s.joinUrl && s.joinSoon ? "secondary" : "primary")}>Vào lớp học</Link>
+        {s.joinUrl && !s.joinSoon && <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở link học online</a>}
       </div>
     </KinPanel>
   );

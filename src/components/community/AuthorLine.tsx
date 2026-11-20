@@ -9,7 +9,7 @@ export function AuthorLine({ author }: { author: FeedAuthor }) {
   return (
     <span className="inline-flex items-center gap-2 flex-wrap min-w-0">
       {author.href && !isLinkHidden(author.href)
-        ? <Link href={author.href} className="kc-name kc-focus hover:underline">{author.label}</Link>
+        ? <Link href={author.href} className="kc-name kc-focus hover:underline inline-flex items-center min-h-11">{author.label}</Link>
         : <span className="kc-name">{author.label}</span>}
       {author.tag && <span className="kc-tag">{TAG_LABEL[author.tag]}</span>}
     </span>

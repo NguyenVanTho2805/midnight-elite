@@ -5,6 +5,7 @@ import { Search } from "griddy-icons";
 import { SCORE_METHODS, filterGroups, formatScore, groupScores, methodLabel, scoreDelta, type PublicScore } from "@/lib/admissionScore";
 import type { PublicFormula } from "@/lib/admissionFormula";
 import TinhDiemChuan from "./TinhDiemChuan";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export default function DiemChuanClient({ rows, formulas = [] }: { rows: PublicScore[]; formulas?: PublicFormula[] }) {
   const [query, setQuery] = useState("");
@@ -47,10 +48,10 @@ export default function DiemChuanClient({ rows, formulas = [] }: { rows: PublicS
           </div>
           <div className="sm:w-64">
             <label htmlFor="dc-m" className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-phu)" }}>Phương thức xét</label>
-            <select id="dc-m" value={method} onChange={e => setMethod(e.target.value)} className="notion-input w-full text-sm" style={{ color: "var(--kin-chu-chinh)", minHeight: 44 }}>
+            <KinSelect id="dc-m" value={method} onChange={v => setMethod(v)}>
               <option value="">Tất cả</option>
               {methods.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
-            </select>
+            </KinSelect>
           </div>
           <div className="sm:w-28 flex items-end">
             <button type="button" onClick={reset} className="w-full rounded-lg text-sm font-semibold text-white" style={{ background: "var(--kin-nhan-nen)", borderRadius: 8, minHeight: 44 }}>

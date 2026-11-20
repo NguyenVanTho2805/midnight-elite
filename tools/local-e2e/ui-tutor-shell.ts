@@ -7,8 +7,15 @@ import { featureOn } from "@/lib/features";
 
 // LOI-01 (11/11/2026): module "Lịch" và mục "Kiểm duyệt cộng đồng" rời menu khi phần Lịch / Cộng đồng đang ẨN (src/lib/features.ts) — route vẫn chạy.
 // Bài đọc cờ ở tiến trình này: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
-const LICH = featureOn("LICH"), CONG_DONG = featureOn("CONG_DONG");
+// HP-BO (17/11/2026): Lịch gia sư luôn hiện, mọi giá trị cờ LICH.
+const LICH = true, CONG_DONG = featureOn("CONG_DONG");
 const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học sinh", "Bài tập", "Thư viện", "Học phí"];
+// DG (14/11/2026): bài này kiểm VỎ HỘP VIỆC đầy đủ (Hộp việc, Học phí trên thanh; Báo cáo tháng, Sổ điểm, Doanh thu, Bài đăng, Yêu cầu, Gói trong bảng Khác) — tất cả
+// nay thuộc cờ HOP_VIEC, HOC_PHI, SO_DIEM, KINH_DOANH, TIM_GIA_SU (mặc định ẨN). Vỏ gọn mặc định (không cờ) được kiểm ở ui-don-gian.ts. Chạy bài này với máy chủ dev
+// và tiến trình test cùng đặt NEXT_PUBLIC_KIN_MO_{HOP_VIEC,HOC_PHI,SO_DIEM,KINH_DOANH,TIM_GIA_SU}=1 để kiểm "bật lại là như cũ". Thiếu cờ → dừng, báo rõ (không đếm là đạt).
+const NEED = ["HOP_VIEC", "HOC_PHI", "SO_DIEM", "KINH_DOANH", "TIM_GIA_SU"] as const;
+const missing = NEED.filter(k => !featureOn(k));
+if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(k => `NEXT_PUBLIC_KIN_MO_${k}=1`).join(" ")} (vỏ mặc định kiểm ở ui-don-gian.ts).`); process.exit(2); }
 
 (async () => {
   await wipe();
@@ -62,7 +69,10 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   check("mục cũ không còn: menu 226px, 'Doanh thu' trên thanh, biểu tượng emoji", await rail().getByRole("link", { name: /^Doanh thu/ }).count() === 0 && !/[\u{1F300}-\u{1FAFF}☀-➿]/u.test(await rail().innerText()));
   const total = (await pg.evaluate(`fetch("/api/tutor/hop-viec").then(r => r.json())`) as any).total as number;
   const badge = mod("Hộp việc").locator(".kin-badge-dem");
-  check("số đỏ trên Hộp việc = tổng việc (API) và có nhãn chữ", total === 5 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
+  // LOI-02 F (11/11/2026): số đỏ = việc CÔ cần làm = 2 khoản đối soát + 1 báo cáo = 3. Không cộng em chờ phụ huynh (pending_consent), và cờ lịch tắt
+  // (NEXT_PUBLIC_KIN_MO_LICH mặc định) nên không còn việc "lớp chưa có lịch". Trước LOI-02 là 5 (cộng cả hai).
+  // HP-BO (17/11/2026): Lịch gia sư luôn hiện ⇒ lớp chưa có khung giờ lại là một việc ⇒ 4.
+  check("số đỏ trên Hộp việc = tổng việc (API) = 4 và có nhãn chữ", total === 4 && (await badge.innerText()) === String(total) && (await badge.getAttribute("aria-label")) === `${total} việc cần xử lý`, total);
   check("các module khác không có số đỏ", await rail().locator(".kin-badge-dem:visible").count() === 1);
   check("dải trên 48px: logo KiN dẫn về Hộp việc + tên người dùng", await pg.getByRole("link", { name: /KiN — Hộp việc/ }).getAttribute("href") === "/lop-cua-toi" && await pg.getByText("Cô Lan").first().isVisible());
   check("Học sinh → /lop-cua-toi/hoc-sinh (không phải /admin/hoc-sinh)", await mod("Học sinh").getAttribute("href") === "/lop-cua-toi/hoc-sinh");
@@ -79,11 +89,11 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   check("dải 4 số: Học phí tháng đã xác nhận, Phiếu đã lập, Lớp đang quản lý, Lịch hôm nay", await pg.locator("[data-kin-stat]").count() === 4 && await stat(/Học phí tháng \d+ đã xác nhận/).count() === 1 && await stat("Phiếu đã lập").count() === 1 && await stat("Lớp đang quản lý").count() === 1 && await stat("Lịch hôm nay").count() === 1);
   check("số thật: 1 lớp, 2 học sinh đang học (không số bịa); chưa có phiếu → hiện 0đ + câu giải thích", /1 lớp/.test(await stat("Lớp đang quản lý").innerText()) && /2 học sinh đang học/.test(await stat("Lớp đang quản lý").innerText()) && /0đ/.test(await stat("Phiếu đã lập").innerText()) && /Chưa có phiếu/.test(await stat("Phiếu đã lập").innerText()), await pg.locator("[data-kin-stat-row]").innerText());
   check("Lịch hôm nay chưa có buổi → nói thẳng 'Hôm nay không có buổi dạy nào'", /Hôm nay không có buổi dạy nào/.test(await stat("Lịch hôm nay").innerText()));
-  check("có 3 dòng việc cô cần xử lý: đối soát, lớp chưa có lịch (TUT-lich-keo-tha), báo cáo (Chờ phụ huynh KHÔNG nằm trong danh sách này)", await rows.count() === 3 && /2 khoản tiền vào cần đối soát/.test(await rows.nth(0).innerText()) && /1 lớp chưa có lịch học/.test(await rows.nth(1).innerText()) && /1 báo cáo trong cộng đồng lớp/.test(await rows.nth(2).innerText()) && !/phụ huynh xác nhận/.test(await todo.innerText()), await rows.allInnerTexts());
-  check("mục 'Cần cô xử lý' ghi '4 việc' (2 khoản + 1 lớp chưa có lịch + 1 báo cáo, không tính việc chờ phụ huynh)", await pg.locator("[data-kin-section-head]", { hasText: "Cần cô xử lý" }).getByText("4 việc").isVisible());
+  check("có 3 dòng việc cô cần xử lý: đối soát, báo cáo, 1 lớp chưa có lịch học (HP-BO: Lịch gia sư luôn hiện), Chờ phụ huynh KHÔNG nằm trong danh sách này", await rows.count() === 3 && /2 khoản tiền vào cần đối soát/.test(await rows.nth(0).innerText()) && /1 lớp chưa có lịch học/.test(await rows.nth(1).innerText()) && /1 báo cáo trong cộng đồng lớp/.test(await rows.nth(2).innerText()) && !/phụ huynh xác nhận/.test(await todo.innerText()), await rows.allInnerTexts());
+  check("mục 'Cần cô xử lý' ghi '4 việc' (2 khoản + 1 báo cáo + 1 lớp chưa có lịch, không tính việc chờ phụ huynh) = số đỏ", await pg.locator("[data-kin-section-head]", { hasText: "Cần cô xử lý" }).getByText("4 việc").isVisible() && total === 4);
   check("dòng có CHỮ hành động (không chỉ chấm màu), việc khẩn đứng đầu", await rows.nth(0).locator("[data-kin-status]", { hasText: "Đối chiếu thủ công" }).isVisible() && await rows.nth(2).locator("[data-kin-status]", { hasText: "Giữ bài hoặc xoá bài vi phạm" }).isVisible());
   check("dòng đối soát nêu số tiền + nội dung chuyển khoản của khoản đầu", /\d{3}\.\d{3}đ|12\.\d{3}đ/.test(await rows.nth(0).innerText()) && /chuyen khoan|khong ma/.test(await rows.nth(0).innerText()), await rows.nth(0).innerText());
-  check("bấm dòng đối soát đi tới tab đối soát của Học phí; dòng báo cáo → /lop-cua-toi/kiem-duyet", await rows.nth(0).getAttribute("href") === "/lop-cua-toi/hoc-phi?tab=doi-soat" && await rows.nth(2).getAttribute("href") === "/lop-cua-toi/kiem-duyet" && (await rows.nth(1).getAttribute("href"))!.includes("/lich-hoc"));
+  check("bấm dòng đối soát đi tới tab đối soát của Học phí; dòng báo cáo → /lop-cua-toi/kiem-duyet", await rows.nth(0).getAttribute("href") === "/lop-cua-toi/hoc-phi?tab=doi-soat" && await rows.nth(2).getAttribute("href") === "/lop-cua-toi/kiem-duyet");
   const wait = pg.locator("section", { has: pg.getByRole("heading", { name: "Chờ phụ huynh" }) });
   check("'Chờ phụ huynh': ghi rõ 'Không tính là việc cô cần làm', nêu 1 học sinh chờ xác nhận", await wait.getByText("Không tính là việc cô cần làm").isVisible() && await wait.getByText("1 học sinh chờ phụ huynh xác nhận").isVisible());
   check("khối chờ phụ huynh dẫn tới danh sách học viên của lớp", await wait.getByRole("link", { name: /Mở danh sách học viên của lớp/ }).getAttribute("href") === `/lop-cua-toi/quan-lop/${c1.id}/hoc-vien`);
@@ -182,8 +192,10 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   const cg = await ctxFor(TC, { width: 1280, height: 800 });
   const pc = await cg.newPage(); watch(pc);
   await pc.goto(`${BASE}/lop-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await pc.waitForURL(/\/lop-cua-toi\/lich/, { timeout: 90000 });
-  check("Hộp việc đã tắt → /lop-cua-toi chuyển về Lịch", /\/lop-cua-toi\/lich$/.test(pc.url()), pc.url());
+  // DG (14/11/2026): Lịch đang ẩn (cờ LICH) thì màn đầu của chế độ gọn là thư viện Lớp, không vào trang đã rút khỏi menu.
+  const compactHome = LICH ? "/lop-cua-toi/lich" : "/lop-cua-toi/lop";
+  await pc.waitForURL(u => u.pathname === compactHome, { timeout: 90000 });
+  check(`Hộp việc đã tắt → /lop-cua-toi chuyển về ${LICH ? "Lịch" : "Lớp (Lịch đang ẩn)"}`, new URL(pc.url()).pathname === compactHome, pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
   check(`thanh chỉ có ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`, (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === (LICH ? 3 : 2));
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
@@ -207,7 +219,8 @@ const RAIL_ORDER = ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Lớp", "Học
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  check(`B3: ${LICH ? 5 : 4} ô (Hộp việc, ${LICH ? "Lịch, " : ""}Lớp, Học phí + Khác), mỗi nút cao ≥ 44px`, hit.length === (LICH ? 5 : 4) && hit.every(h => h >= 44), hit);
+  // DG (14/11/2026): thanh dưới luôn đủ 4 module + Khác — module ẩn theo cờ (Lịch khi LICH tắt) nhường chỗ cho module kế tiếp (Bài tập), TutorShell MOBILE_ORDER.
+  check(`B3: 5 ô (Hộp việc, ${LICH ? "Lịch, Lớp, Học phí" : "Lớp, Học phí, Bài tập"} + Khác), mỗi nút cao ≥ 44px`, hit.length === 5 && hit.every(h => h >= 44), hit);
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
   check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);

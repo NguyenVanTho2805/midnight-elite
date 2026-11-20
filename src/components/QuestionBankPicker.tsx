@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api, type QuestionBankItemFull, type ExamQuestionInput, type QuestionType, type Difficulty, type QuestionCategoryFull } from "@/lib/api";
 import { categoryPath } from "@/components/CategoryPicker";
 import { plainPreview } from "@/lib/mathtype/formulaImg";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: "NB",  label: "Nhận biết" },
@@ -119,16 +120,14 @@ export function QuestionBankPicker({ open, onClose, onAdd }: {
             style={{ borderColor: "var(--kin-vien-thuong)" }}
             placeholder="Tìm theo nội dung câu hỏi..."
             value={search} onChange={e => setSearch(e.target.value)} />
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none max-w-[220px]" style={{ borderColor: "var(--kin-vien-thuong)" }}
-            value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+          <KinSelect className="w-56 max-w-[220px]" aria-label="Lọc theo đầu mục" value={categoryFilter} onChange={v => setCategoryFilter(v)}>
             <option value="">Tất cả đầu mục</option>
             {categories.map(c => <option key={c.id} value={c.id}>{categoryPath(c.id, categories)}</option>)}
-          </select>
-          <select className="px-2.5 py-1.5 text-sm border rounded-lg outline-none" style={{ borderColor: "var(--kin-vien-thuong)" }}
-            value={difficultyFilter} onChange={e => setDiff(e.target.value)}>
+          </KinSelect>
+          <KinSelect className="w-40" aria-label="Lọc theo mức độ" value={difficultyFilter} onChange={v => setDiff(v)}>
             <option value="">Tất cả độ khó</option>
             {DIFFICULTIES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-          </select>
+          </KinSelect>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">

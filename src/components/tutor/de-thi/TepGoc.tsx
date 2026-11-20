@@ -19,6 +19,7 @@ import { useKinConfirm } from "@/components/kin/useConfirm";
 import { api, type ExamFileFolderFull, type ExamFileFull } from "@/lib/api";
 import { fileProblem, IMPORT_ACCEPT, qfetch, sizeText } from "@/components/tutor/quiz/quizClient";
 import { deThiDetailHref, deThiListHref, ganDe, importSave, isDocxFile, taoDeHref, tachTepGoc, toExamInputs, type AzotaParse } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type FileRow = ExamFileFull & { extractedExamId?: string | null };
 const GRID = "lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,1.8fr)] lg:gap-x-4";
@@ -198,10 +199,10 @@ export default function TepGoc() {
             </div>
             <div className="min-w-0 w-full sm:w-56">
               <label htmlFor="tg-fd" className={`${KIN_LABEL} mb-2`}>Thư mục</label>
-              <select id="tg-fd" className={KIN_FIELD} value={folderSel} onChange={e => setFolderSel(e.target.value)}>
+              <KinSelect id="tg-fd" value={folderSel} onChange={v => setFolderSel(v)}>
                 <option value="all">Tất cả</option><option value="none">Chưa phân loại</option>
                 {folders.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              </KinSelect>
             </div>
             <form className="min-w-0 w-full sm:w-auto flex items-end gap-2" onSubmit={e => { e.preventDefault(); void addFolder(); }}>
               <div className="min-w-0 flex-1 sm:w-56"><label htmlFor="tg-nf" className={`${KIN_LABEL} mb-2`}>Thư mục mới</label><input id="tg-nf" className={KIN_FIELD} value={newFolder} maxLength={80} onChange={e => setNewFolder(e.target.value)} placeholder="Tên thư mục" /></div>
@@ -221,10 +222,10 @@ export default function TepGoc() {
                     <div className="min-w-0 text-[var(--kin-chu-mo)]">{dmy(f.createdAt)}</div>
                     <div className="min-w-0">
                       <label htmlFor={`tg-mv-${f.id}`} className="sr-only">Thư mục của {f.fileName}</label>
-                      <select id={`tg-mv-${f.id}`} className={KIN_FIELD} value={f.folderId ?? ""} disabled={busy === `mv:${f.id}`} onChange={e => void move(f, e.target.value)}>
+                      <KinSelect id={`tg-mv-${f.id}`} value={f.folderId ?? ""} disabled={busy === `mv:${f.id}`} onChange={v => void move(f, v)}>
                         <option value="">Chưa phân loại</option>
                         {folders.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
+                      </KinSelect>
                     </div>
                     <div className="min-w-0">{f.extractedExamId ? <KinStatus tone="xong">Đã tách thành đề</KinStatus> : <KinStatus tone="mo">Chưa tách</KinStatus>}</div>
                     <div className="flex flex-wrap gap-2 lg:justify-end">

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { Badge, callApi, useNotify } from "@/components/tutor/shared";
-import { PUSH_DEFS, PUSH_TYPES, endpointFingerprint, type PushType, type PushTypes } from "@/lib/pushRules";
+import { PUSH_DEFS, visiblePushTypes, endpointFingerprint, type PushType, type PushTypes } from "@/lib/pushRules";
 import { isIosDevice, pushUiState, serverOffText, urlBase64ToUint8Array, type PushUiState } from "@/lib/pushClient";
 
 interface Device { id: string; label: string; createdAt: string; lastSeenAt: string; mine: boolean }
@@ -179,7 +179,8 @@ export default function PushSettings() {
           <div>
             <h3 className="text-sm font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Việc được báo</h3>
             <div className="divide-y" style={{ borderColor: "var(--kin-vien-thuong)" }}>
-              {PUSH_TYPES.map(t => (
+              {/* DG: loại tin học phí ẩn khi cờ HOC_PHI tắt (pushRules.visiblePushTypes). */}
+              {visiblePushTypes().map(t => (
                 <label key={t} htmlFor={`push-${t}`} className="flex items-start gap-3 py-3 min-h-[44px] cursor-pointer">
                   <input id={`push-${t}`} type="checkbox" role="switch" checked={cfg.types[t]} disabled={busy === `t:${t}`} onChange={e => void toggle(t, e.target.checked)}
                     className="mt-1 w-5 h-5 flex-shrink-0" style={{ accentColor: "var(--kin-nhan-nen)" }} />

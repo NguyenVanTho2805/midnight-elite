@@ -182,7 +182,8 @@ const snap = async (ids: string[]) => JSON.stringify((await prisma.tuitionInvoic
   const it = (inbox.json.items as any[]).find(i => i.id === "invoiceRemind");
   check("Pro: có việc, tiêu đề bắt đầu bằng số, nêu bước 2 và 'quá hạn tới 5 ngày'", inbox.status === 200 && !!it && /^1 phiếu đến lúc nhắc bước 2/.test(it.title) && it.title.includes("quá hạn tới 5 ngày") && it.href === "/lop-cua-toi/hoc-phi", it?.title);
   check("khung đọc có tên em + 'nhắc bước 2' + số còn lại; không tên khác", it.detail.rows.length === 1 && it.detail.rows[0].title === "Minh Anh" && it.detail.rows[0].sub.includes("nhắc bước 2") && it.detail.rows[0].sub.includes("1.200.000đ"), it.detail.rows);
-  check("số đỏ = tổng các loại, khớp loadTutorTodoTotal", inbox.json.total === (inbox.json.items as any[]).reduce((n, i) => n + Number(i.title.match(/^\d+/)?.[0] ?? 0), 0) && inbox.json.total === (await loadTutorTodoTotal(P.id)), [inbox.json.total, await loadTutorTodoTotal(P.id)]);
+  // LOI-02 F: số đỏ chỉ cộng việc CÔ cần làm — dòng `waiting` (chờ phụ huynh xác nhận) không vào số đỏ.
+  check("số đỏ = tổng các loại không waiting, khớp loadTutorTodoTotal", inbox.json.total === (inbox.json.items as any[]).filter(i => !i.waiting).reduce((n, i) => n + Number(i.title.match(/^\d+/)?.[0] ?? 0), 0) && inbox.json.total === (await loadTutorTodoTotal(P.id)), [inbox.json.total, await loadTutorTodoTotal(P.id)]);
   const inboxF = await api("GET", "/api/tutor/hop-viec", { as: F });
   await prisma.tuitionInvoice.update({ where: { id: fa.id }, data: { zaloOpenedAt: new Date(Date.now() - 4 * DAY) } });
   await prisma.invoiceReminder.deleteMany({ where: { invoiceId: fa.id } });

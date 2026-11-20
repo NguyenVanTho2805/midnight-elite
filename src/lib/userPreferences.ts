@@ -7,6 +7,7 @@ import { readTeaching, type TutorTeaching } from "@/lib/tutorArea";
 import { readPushPrefs, type PushTypes } from "@/lib/pushRules";
 import { readProfilePrefs, type TutorProfilePrefs } from "@/lib/tutorVisibility";
 import { patchCalendarPrefs, readCalendarPrefs, type CalendarPrefs } from "@/lib/sessionBook";
+import { featureOn, isLinkHidden, type FeatureEnv } from "@/lib/features";
 
 /** Module gia sư bật/tắt được. Lịch và Học phí luôn bật nên không nằm ở đây. */
 export const OPTIONAL_TUTOR_MODULES = ["hop-viec", "lop", "bai-kt", "thu-vien"] as const;
@@ -66,6 +67,11 @@ export interface UserPreferences {
   profile?: TutorProfilePrefs;
   /** LI-03: bộ lọc hiển thị Lịch dạy — ẩn buổi đã huỷ, và lớp đang lọc (vắng = tất cả lớp, hiện cả buổi huỷ). */
   calendar?: CalendarPrefs;
+  /**
+   * Q3 chủ chốt (14/11/2026): lúc gia sư tích ô cam kết bản quyền lần đầu (ISO, đặt ở MÁY CHỦ). Có mặt ⇒ ô tải tệp ở mọi máy
+   * đã tích sẵn (gia sư vẫn bỏ tích được ⇒ xoá khoá). Bản vá chỉ nhận `copyrightPledge: true | null`, không nhận thời điểm từ client.
+   */
+  copyrightPledgedAt?: string;
 }
 
 /** Khoá khoá-giao-dịch quanh đọc-sửa-ghi `User.preferences` (dùng chung API giao diện và API hồ sơ gia sư, để hai nơi không ghi đè nhau). */
@@ -137,6 +143,7 @@ export function readPreferences(raw: unknown): UserPreferences {
   const profile = readProfilePrefs(raw.profile);
   if (profile) out.profile = profile;
   if (isObj(raw.calendar)) { const c = readCalendarPrefs(raw.calendar); if (c.hideCancelled || c.courseId) out.calendar = c; }
+  if (typeof raw.copyrightPledgedAt === "string" && !Number.isNaN(Date.parse(raw.copyrightPledgedAt))) out.copyrightPledgedAt = new Date(raw.copyrightPledgedAt).toISOString();
   return out;
 }
 
@@ -147,7 +154,7 @@ export type PatchResult = { ok: true; value: UserPreferences } | { ok: false; er
  * `null` xoá khoá về mặc định. Khoá lạ hoặc sai kiểu → từ chối cả bản vá (không ghi dở).
  * "lich"/"hoc-phi" trong `modules` được bỏ qua (luôn bật), module lạ thì từ chối.
  */
-export function applyPreferencesPatch(current: UserPreferences, patch: unknown): PatchResult {
+export function applyPreferencesPatch(current: UserPreferences, patch: unknown, now?: Date): PatchResult {
   if (!isObj(patch)) return { ok: false, error: "Dữ liệu không hợp lệ" };
   const next: UserPreferences = { ...current };
   for (const [k, v] of Object.entries(patch)) {
@@ -216,6 +223,12 @@ export function applyPreferencesPatch(current: UserPreferences, patch: unknown):
         if (c.value.hideCancelled || c.value.courseId) next.calendar = c.value; else delete next.calendar;
         break;
       }
+      case "copyrightPledge":
+        // Q3: true = đã cam kết (giữ thời điểm lần đầu nếu đã có); null / false = bỏ cam kết.
+        if (v === null || v === false) { delete next.copyrightPledgedAt; break; }
+        if (v !== true) return { ok: false, error: "copyrightPledge chỉ nhận true hoặc null" };
+        if (!next.copyrightPledgedAt) next.copyrightPledgedAt = (now ?? new Date()).toISOString();
+        break;
       default:
         return { ok: false, error: `Không có tuỳ chọn "${k.slice(0, 40)}"` };
     }
@@ -232,9 +245,25 @@ export function visibleTutorModules(prefs: UserPreferences): TutorModuleDef[] {
   return TUTOR_MODULES.filter(m => m.always || on.has(m.key));
 }
 
-/** Module `key` có đang hiện trên thanh bên không (cùng quy tắc mặc định với `visibleTutorModules`: chưa chọn gì = đủ module). */
-export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"]): boolean {
-  return visibleTutorModules(prefs).some(m => m.key === key);
+/**
+ * Module có được phép hiện theo CỜ tính năng (src/lib/features.ts) không — tách khỏi lựa chọn của gia sư (`visibleTutorModules` chỉ nói gia sư đã bật gì).
+ * LOI-01: Lịch ẩn theo cờ LICH. DG (14/11/2026): Hộp việc theo cờ HOP_VIEC, Học phí theo cờ HOC_PHI (mặc định cả hai ẨN). Module khác luôn được phép.
+ */
+export function tutorModuleAllowed(key: TutorModuleDef["key"], env?: FeatureEnv): boolean {
+  if (key === "lich") return !isLinkHidden("/lop-cua-toi/lich", env);
+  if (key === "hop-viec") return featureOn("HOP_VIEC", env);
+  if (key === "hoc-phi") return featureOn("HOC_PHI", env);
+  return true;
+}
+
+/** Module thật sự hiện trên thanh bên: lựa chọn của gia sư ∩ cờ tính năng. */
+export function shownTutorModules(prefs: UserPreferences, env?: FeatureEnv): TutorModuleDef[] {
+  return visibleTutorModules(prefs).filter(m => tutorModuleAllowed(m.key, env));
+}
+
+/** Module `key` có đang hiện trên thanh bên không (cùng quy tắc mặc định với `visibleTutorModules`: chưa chọn gì = đủ module; DG: và cờ tính năng cho phép). */
+export function isTutorModuleVisible(prefs: UserPreferences, key: TutorModuleDef["key"], env?: FeatureEnv): boolean {
+  return shownTutorModules(prefs, env).some(m => m.key === key);
 }
 
 export function reminderChannels(prefs: UserPreferences): { parent: boolean; student: boolean } {

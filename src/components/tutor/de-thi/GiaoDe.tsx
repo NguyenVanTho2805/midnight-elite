@@ -25,6 +25,7 @@ import {
   LOCKED_WHEN_ATTEMPTS, MODE_BLURB, MODE_DEFAULTS, MODE_LABEL, patchGiao, PUBLISH_BLOCK_TEXT, viewLevelOf, VIEW_LEVELS, warningText,
   type ExamMode, type GiaoCfg, type GiaoPatch, type ViewLevel,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Form {
   mode: ExamMode | ""; audience: "lop" | "link"; courseId: string;
@@ -274,10 +275,10 @@ export default function GiaoDe({ id }: { id: string }) {
                 {form.audience === "lop" && (
                   <div className="pl-8 max-w-[420px]">
                     <label htmlFor="gd-lop" className={`${KIN_LABEL} mb-2`}>Lớp</label>
-                    <select id="gd-lop" className={KIN_FIELD} value={form.courseId} onChange={e => set({ courseId: e.target.value })} disabled={locked || off}>
+                    <KinSelect id="gd-lop" value={form.courseId} onChange={v => set({ courseId: v })} disabled={locked || off}>
                       <option value="">Chọn lớp…</option>
                       {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    </KinSelect>
                     {courses.length === 0 && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Cô chưa có lớp. <Link className="underline" href="/lop-cua-toi/lop/tao">Tạo lớp</Link> trước rồi quay lại.</p>}
                   </div>
                 )}

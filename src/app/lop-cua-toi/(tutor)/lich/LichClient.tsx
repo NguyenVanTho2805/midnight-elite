@@ -25,6 +25,7 @@ import { KIND_LABEL, MODE_LABEL, JOIN_SOURCE_LABEL } from "@/lib/sessionBook";
 import { buildWeeklyScheduleMessage, coursesInWeek, occurrencesOfCourse } from "@/lib/weeklyScheduleMessage";
 import { sessionChangeMessage, CHANGE_REASON_MAX } from "@/lib/sessionChange";
 import type { ReminderItem, ScheduleOccurrence, ScheduleStudent } from "@/lib/reminderServer";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Payload {
   from: string; to: string; now: string;
@@ -305,9 +306,9 @@ export default function LichClient() {
       <div role="group" aria-label="Gửi lịch tuần qua Zalo" className="pt-5">
         {weekCourses.length > 1 && (
           <label className="mb-4 flex items-center gap-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp
-            <select value={weekCourseId} onChange={e => setWeekPick(e.target.value)} className="px-3 py-2 rounded-lg text-sm min-h-[44px] min-w-0 max-w-full" style={FIELD_STYLE}>
+            <KinSelect value={weekCourseId} onChange={v => setWeekPick(v)} className="w-64 min-w-0 max-w-full">
               {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </KinSelect>
           </label>
         )}
         {weekCourseId && weekMsg && <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] whitespace-pre-line break-words">{weekMsg}</p>}
@@ -348,10 +349,10 @@ export default function LichClient() {
           {weekCourses.length > 1 && (
             <label className="flex items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
               <span className="sr-only">Lọc theo lớp</span>
-              <select value={cls} onChange={e => { setCls(e.target.value); setOpen(null); savePrefs({ courseId: e.target.value || null }); }} aria-label="Lọc theo lớp" className="w-auto max-w-[240px] px-3 py-2 rounded-lg text-sm min-h-[44px] min-w-0 max-w-full" style={FIELD_STYLE}>
+              <KinSelect value={cls} onChange={v => { setCls(v); setOpen(null); savePrefs({ courseId: v || null }); }} aria-label="Lọc theo lớp" className="w-60 min-w-0 max-w-full">
                 <option value="">Tất cả lớp</option>
                 {weekCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              </KinSelect>
             </label>
           )}
           <label className="flex items-center gap-2 min-h-[44px] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">

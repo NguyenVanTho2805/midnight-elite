@@ -64,12 +64,14 @@ for (const f of files) {
   lines.forEach((ln, i) => { if (/attendanceSession\.count\(/.test(ln) && !/taughtSessionWhere\(/.test(ln)) offenders.push(`src/${f}:${i + 1}`); });
 }
 check("không còn attendanceSession.count nào đếm trần (không qua taughtSessionWhere)", offenders.length === 0, offenders);
-for (const f of ["src/app/api/tutors/[id]/route.ts", "src/app/api/invites/by-code/[code]/route.ts", "src/app/api/tutor/post-draft/route.ts"]) {
+// LOI-05: số buổi của hồ sơ chi tiết tính ở src/lib/tutorPublicProfile.ts (route /api/tutors/[id] chỉ là vỏ gọi hàm này).
+check("src/app/api/tutors/[id]/route.ts lấy dữ liệu qua loadPublicTutorProfile (không tự đếm)", /loadPublicTutorProfile\(/.test(readFileSync(join(root, "src/app/api/tutors/[id]/route.ts"), "utf8")) && !/attendanceSession/.test(readFileSync(join(root, "src/app/api/tutors/[id]/route.ts"), "utf8")));
+for (const f of ["src/lib/tutorPublicProfile.ts", "src/app/api/invites/by-code/[code]/route.ts", "src/app/api/tutor/post-draft/route.ts"]) {
   check(`${f} dùng taughtSessionWhere`, /attendanceSession\.count\([^\n]*taughtSessionWhere\(/.test(readFileSync(join(root, f), "utf8")));
 }
 
 section("Chữ công khai không hứa 'không sửa được'");
-const publicText = ["src/lib/funnel.ts", "src/components/tutor/PublicProfilePreview.tsx", "src/app/lop-cua-toi/(tutor)/bai-dang/BaiDangClient.tsx", "src/app/api/tutors/[id]/route.ts", "src/app/api/tutor/post-draft/route.ts"]
+const publicText = ["src/lib/funnel.ts", "src/components/tutor/PublicProfilePreview.tsx", "src/app/lop-cua-toi/(tutor)/bai-dang/BaiDangClient.tsx", "src/app/api/tutors/[id]/route.ts", "src/lib/tutorPublicProfile.ts", "src/app/api/tutor/post-draft/route.ts"]
   .map(f => [f, readFileSync(join(root, f), "utf8")] as const);
 check("không file nào còn câu 'không tự sửa được' / 'không sửa được' về số buổi", publicText.every(([, t]) => !/(không tự sửa được|gia sư không sửa được)/.test(t)), publicText.filter(([, t]) => /(không tự sửa được|gia sư không sửa được)/.test(t)).map(([f]) => f));
 

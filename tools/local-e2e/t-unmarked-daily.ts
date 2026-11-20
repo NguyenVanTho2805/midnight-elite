@@ -1,6 +1,7 @@
 // NC2-011 — tin 07:00 "Hôm qua có N buổi chưa điểm danh" với DỮ LIỆU THẬT: đếm đúng N, chỉ buổi HÔM QUA, buổi huỷ / dời đi / đủ điểm danh / lớp đóng không tính,
 // 1 tin / gia sư / ngày VN, cô lập giữa các gia sư, công tắc mặc định TẮT, chữ đẩy chỉ có N, và cron remind-class (HTTP) vẫn gửi khi NGÀY MAI không có buổi nào.
 // Cần Postgres + Next dev, PUSH_ENABLED=1 + VAPID_* (xem env.example.sh). Bộ gửi giả: không gọi ra mạng. Phần thuần: t-unmarked-daily-lib.ts.
+import { featureOn } from "@/lib/features";
 import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, eventually, section, done, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { setPushSender, pushToUser, type PushSender } from "@/lib/pushServer";
@@ -61,7 +62,7 @@ const notesOf = (u: TUser) => prisma.notification.findMany({ where: { userId: u.
   const r1 = await sendUnmarkedDaily(now);
   check("báo cho đúng 2 gia sư (TA, TB); duyệt 5 gia sư có lớp mở (TG lớp đóng + TF không lớp không bị duyệt)", r1.notified === 2 && r1.alreadySent === 0 && r1.date === yday && r1.tutorsChecked === 5, r1);
   const nA = await notesOf(TA), nB = await notesOf(TB);
-  check("TA: đúng 1 thông báo, N = 2 (không cộng buổi tuần trước), đích /lop-cua-toi", nA.length === 1 && /\b2\b/.test(nA[0].message) && nA[0].link === "/lop-cua-toi" && nA[0].isRead === false, nA);
+  check("TA: đúng 1 thông báo, N = 2 (không cộng buổi tuần trước), đích /lop-cua-toi/lich", nA.length === 1 && /\b2\b/.test(nA[0].message) && nA[0].link === "/lop-cua-toi/lich" && nA[0].isRead === false, nA);
   check("TB: đúng 1 thông báo, N = 1", nB.length === 1 && /\b1\b/.test(nB[0].message));
   const others = await prisma.notification.count({ where: { type: "unmarked_daily", userId: { in: [TC, TD, TE, TF, TG].map(t => t.id) } } });
   check("gia sư đủ điểm danh / buổi huỷ / buổi dời đi / lớp đóng / không có lớp → KHÔNG có thông báo", others === 0, others);
@@ -75,7 +76,7 @@ const notesOf = (u: TUser) => prisma.notification.findMany({ where: { userId: u.
   check(`TB bật: ${quietNow ? "đang giờ yên lặng thật → không đẩy" : "ngoài giờ yên lặng → đẩy đúng 1 tin"}; tin tới thiết bị của TB, không tới máy ai khác`,
     toB.length === (quietNow ? 0 : 1) && calls.every(c => c.endpoint !== epOf("f")) && calls.length === toB.length, calls);
   if (!quietNow) {
-    check("chữ đẩy của TB: 'Hôm qua có 1 buổi chưa điểm danh'; chỉ có đúng một dãy số là N; không tên", toB[0].payload.title === "Hôm qua có 1 buổi chưa điểm danh" && JSON.stringify(toB[0].payload.title + toB[0].payload.body + toB[0].payload.url).match(/\d+/g)?.join() === "1" && toB[0].payload.url === "/lop-cua-toi", toB[0]);
+    check("chữ đẩy của TB: 'Hôm qua có 1 buổi chưa điểm danh'; chỉ có đúng một dãy số là N; không tên", toB[0].payload.title === "Hôm qua có 1 buổi chưa điểm danh" && JSON.stringify(toB[0].payload.title + toB[0].payload.body + toB[0].payload.url).match(/\d+/g)?.join() === "1" && toB[0].payload.url === (featureOn("HOP_VIEC") ? "/lop-cua-toi" : "/lop-cua-toi/lich"), toB[0]);
   }
   calls.length = 0;
   const o7 = await pushToUser(TB.id, "unmarked_daily", { count: 3, now: vn(7, 0) });

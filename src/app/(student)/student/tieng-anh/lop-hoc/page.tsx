@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
 import { api, Card, ErrorLine, INK, PageHead, Pill, Progress, Skeleton } from "@/components/english/ui";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { extractPdfText } from "@/components/english/pdfText";
 import { useBookProcessing } from "@/components/english/useBookProcessing";
 
@@ -60,11 +61,10 @@ export default function Classroom() {
           <label className="text-sm" style={{ color: INK.chinh }}>Tên sách
             <input value={title} onChange={e => setTitle(e.target.value)} placeholder="vd English Grammar in Use" className="mt-1 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }} />
           </label>
-          <label className="text-sm" style={{ color: INK.chinh }}>Loại
-            <select value={kind} onChange={e => setKind(e.target.value as keyof typeof KIND)} className="mt-1 w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }}>
-              {Object.entries(KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </label>
+          <div className="text-sm" style={{ color: INK.chinh }}><span id="lh-loai">Loại</span>
+            <KinSelect className="mt-1" aria-labelledby="lh-loai" value={kind} onChange={v => setKind(v as keyof typeof KIND)}
+              options={Object.entries(KIND).map(([k, v]) => ({ value: k, label: v }))} />
+          </div>
           <KinButton type="submit" disabled={!file || !!step} loading={!!step} loadingLabel="Đang xử lý…">Tạo lớp học</KinButton>
         </form>
         {step && <div className="mt-3"><Progress value={step.pct} label={step.label} /></div>}

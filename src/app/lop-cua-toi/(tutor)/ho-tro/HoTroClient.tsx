@@ -4,6 +4,8 @@ import Link from "next/link";
 import { KinButton, KinCallout, KinSectionHead, KinStateCard, KinStatus, KinSkeleton } from "@/components/kin";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { CARD_STYLE, callApi } from "@/components/tutor/shared";
+import { isLinkHidden } from "@/lib/features";
+import { landingPath } from "@/lib/landing";
 import { FREE_PROMISE, KIND_LABEL, LANE_LABEL, MESSAGE_MAX, PRO_PROMISE, SERIOUS_PROMISE, SUBJECT_MAX, SUPPORT_KINDS, type SupportKind, type SupportLane } from "@/lib/supportDesk";
 
 interface Req { id: string; kind: SupportKind; kindLabel: string; subject: string; message: string; lane: SupportLane; status: string; statusLabel: string; reply: string | null; repliedAt: string | null; createdAt: string }
@@ -57,7 +59,8 @@ export default function HoTroClient() {
 
   return (
     <KinPage>
-      <KinPageHeader back={{ href: "/lop-cua-toi/goi", label: "← Gói của tôi" }} title="Liên hệ hỗ trợ" sub="Gửi việc đang kẹt, KiN trả lời ngay trong trang này." />
+      {/* DG (14/11/2026): Gói của tôi ẩn (cờ KINH_DOANH) ⇒ nút quay về trang đầu của gia sư, bỏ câu "Xem gói". */}
+      <KinPageHeader back={isLinkHidden("/lop-cua-toi/goi") ? { href: landingPath("admin", "teacher"), label: "← Về trang đầu" } : { href: "/lop-cua-toi/goi", label: "← Gói của tôi" }} title="Liên hệ hỗ trợ" sub="Gửi việc đang kẹt, KiN trả lời ngay trong trang này." />
       <div className="space-y-8 max-w-3xl">
         <KinCallout title={view.plan === "pro" ? "Bạn được hỗ trợ ưu tiên" : "Bạn đang ở gói Free"}>
           <span data-testid="loi-hua">{view.plan === "pro" ? PRO_PROMISE : FREE_PROMISE}</span>{" "}{SERIOUS_PROMISE}
@@ -107,7 +110,7 @@ export default function HoTroClient() {
                 ))}
               </ul>}
         </section>
-        <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Xem gói và quyền lợi ở <Link href="/lop-cua-toi/goi" className="underline">Gói của tôi</Link>.</p>
+        {!isLinkHidden("/lop-cua-toi/goi") && <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Xem gói và quyền lợi ở <Link href="/lop-cua-toi/goi" className="underline">Gói của tôi</Link>.</p>}
       </div>
     </KinPage>
   );

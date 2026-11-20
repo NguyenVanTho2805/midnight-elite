@@ -20,7 +20,9 @@ import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
-import { visibleLinks } from "@/lib/features";
+import ThuVienLop from "@/components/student/ThuVienLop";
+import { featureOn, isLinkHidden } from "@/lib/features";
+import { TUTOR_HOME_NO_INBOX } from "@/lib/landing";
 
 export const dynamic = "force-dynamic";
 
@@ -33,30 +35,27 @@ export default async function LopCuaToiPage() {
     const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { preferences: true } });
     // TT-203: Hộp việc đã bị gia sư tắt (chế độ gọn tường minh `modules` không có "hop-viec") thì màn đầu là Lịch; số liệu tổng quan vẫn mở được ở
     // /lop-cua-toi/tong-quan (B1 08/11/2026: trang đó chỉ còn khi Hộp việc tắt; còn bật thì chuyển về đây, nơi số liệu đã dời lên đầu). BU-00: `modules` vắng mặt = đủ module nên gia sư mới rơi thẳng vào Hộp việc, không chuyển hướng.
-    if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect("/lop-cua-toi/lich");
+    // DG (14/11/2026): cờ HOP_VIEC tắt (mặc định) ⇒ trang đầu là thư viện Lớp (proxy đã 307; đây là lớp bảo hiểm). Gia sư tự tắt Hộp việc mà Lịch đang ẩn ⇒ cũng về Lớp.
+    if (!featureOn("HOP_VIEC")) redirect(TUTOR_HOME_NO_INBOX);
+    if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect(isLinkHidden("/lop-cua-toi/lich") ? TUTOR_HOME_NO_INBOX : "/lop-cua-toi/lich");
     return <HopViec top={<Suspense fallback={null}><TutorOverviewStats tutorId={session.userId} /></Suspense>} />;
   }
 
   // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
   if (session.role === "student" && isApplicant(await loadTutorStatus(session))) redirect(TUTOR_PENDING_PATH);
 
+  // LOI-03 mục 4.5 (Q4): học sinh thấy ĐÚNG thư viện lớp của /student/hoc-tap (thẻ lớp, tiến độ, "Học tiếp"), trong vỏ học sinh của LopCuaToiFrame; URL giữ /lop-cua-toi.
+  // Bỏ danh sách thô cũ có hai nút "Lịch học" / "Học phí" trên từng lớp. Nhánh gia sư / quản trị bên dưới không đổi.
+  if (session.role === "student") return <ThuVienLop />;
+
   // 2 danh sách tuỳ role.
-  const [owned, enrolled] = await Promise.all([
-    session.role === "admin"
-      ? prisma.course.findMany({
-          where:   { ownerId: session.userId },
-          select:  { id: true, name: true, category: true, status: true },
-          orderBy: { createdAt: "desc" },
-        })
-      : Promise.resolve([]),
-    session.role === "student"
-      ? prisma.enrollment.findMany({
-          where:   { userId: session.userId, status: "active" },
-          include: { course: { select: { id: true, name: true, category: true } } },
-          orderBy: { createdAt: "desc" },
-        })
-      : Promise.resolve([]),
-  ]);
+  const owned = session.role === "admin"
+    ? await prisma.course.findMany({
+        where:   { ownerId: session.userId },
+        select:  { id: true, name: true, category: true, status: true },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   const items = session.role === "admin"
     ? owned.map(c => ({ id: c.id, name: c.name, category: c.category,
@@ -68,15 +67,7 @@ export default async function LopCuaToiPage() {
          ],
          subtitle: c.status ? "Đang mở" : "Đã đóng",
       }))
-    : enrolled.map(e => ({ id: e.course.id, name: e.course.name, category: e.course.category,
-         hrefOpen: `/lop-cua-toi/${e.course.id}`,
-         // LOI-01: lối nhanh "Lịch học" rời khi phần Lịch đang ẩn (src/lib/features.ts); route vẫn chạy.
-         actions: visibleLinks([
-           { label: "Lịch học",   href: "/student/lich-hoc" },
-           { label: "Học phí",    href: "/student/hoc-phi" },
-         ]),
-         subtitle: "Đang học",
-      }));
+    : [];
 
   const roleLabel = session.role === "admin" ? "Lớp bạn đang dạy" : "Lớp bạn đang học";
 

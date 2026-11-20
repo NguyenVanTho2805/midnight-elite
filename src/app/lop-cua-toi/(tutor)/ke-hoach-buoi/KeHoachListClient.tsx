@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { ACTIVITY_KEYS, TITLE_MAX, isDateKey } from "@/lib/sessionPlan";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Item { id: string; courseId: string; courseName: string; title: string; dateKey: string | null; filled: number; minutes: number; updatedAt: string }
 interface Payload { items: Item[]; courses: { id: string; name: string }[] }
@@ -77,9 +78,9 @@ export default function KeHoachListClient() {
             <h2 id="h-tao" className="text-sm font-bold mb-3" style={{ color: "var(--kin-chu-chinh)" }}>Tạo kế hoạch mới</h2>
             <div className="grid sm:grid-cols-3 gap-3">
               <label className="text-sm block">Lớp
-                <select value={courseId} onChange={e => setCourseId(e.target.value)} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+                <KinSelect value={courseId} onChange={v => setCourseId(v)} className="block mt-1">
                   {data.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </KinSelect>
               </label>
               <label className="text-sm block">Ngày dạy (không bắt buộc)
                 <input type="date" value={dateKey} onChange={e => setDateKey(e.target.value)} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
@@ -95,10 +96,10 @@ export default function KeHoachListClient() {
             <h2 className="text-sm font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Kế hoạch đã soạn ({items.length})</h2>
             {data.courses.length > 1 && (
               <label className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>Lọc theo lớp
-                <select value={filter} onChange={e => setFilter(e.target.value)} className="ml-2 px-2 py-1.5 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+                <KinSelect value={filter} onChange={v => setFilter(v)} className="mt-1 w-60 max-w-full">
                   <option value="">Tất cả lớp</option>
                   {data.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                </KinSelect>
               </label>
             )}
           </div>

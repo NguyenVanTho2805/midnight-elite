@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCourseAccessBy, roleForbidden } from "@/lib/courseAccessServer";
 import { canEditChapter } from "@/lib/courseAccess";
 import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
+import { parseScheduledAtInput } from "@/lib/tutorLessonDate";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: chapterId } = await params;
@@ -22,6 +23,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body = await req.json();
 
     if (!body.title?.trim()) return NextResponse.json({ error: "Thiếu tiêu đề" }, { status: 400 });
+    // LOI-02: ngày giờ học — kiểm SAU canEditChapter và tiêu đề. Vắng / null ⇒ null; rác ⇒ 400, không tạo bài.
+    const sa = parseScheduledAtInput(body.scheduledAt);
+    if (!sa.ok) return NextResponse.json({ error: "Ngày học không hợp lệ." }, { status: 400 });
     if (body.order !== undefined && body.order !== null && (typeof body.order !== "number" || !Number.isFinite(body.order))) {
       return NextResponse.json({ error: "order phải là số" }, { status: 400 });
     }
@@ -57,6 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       statsViews:    body.statsViews ?? 0,
       order:         body.order ?? (maxOrder._max.order ?? 0) + 1,
       chapterId,
+      scheduledAt:   sa.value ?? null,
       // BU-02-PHẲNG: chỉ nhận "draft" (Nhân bản mục nháp); mọi giá trị khác ⇒ mặc định cột "published" (hành vi tab Chương bài cũ không đổi).
       ...(body.status === "draft" ? { status: "draft" } : {}),
     };

@@ -8,7 +8,8 @@ import { loadUnmarkedSessions } from "@/lib/unmarkedServer";
 import { unmarkedHref } from "@/lib/unmarkedSessions";
 import { questionRowTitle, unansweredQuestionWhere } from "@/lib/tutorQuestions";
 import { addDaysKey, isMakeupExpiringSoon, MAKEUP_WARN_DAYS, vnDateKeyOf } from "@/lib/classSessions";
-import { INBOX_DETAIL_LIMIT, noScheduleWhere, inboxDateTime, inboxVnd, type InboxRaw, type InboxRow, type InboxSource } from "@/lib/tutorInbox";
+import { INBOX_DETAIL_LIMIT, noScheduleWhere, inboxDateTime, inboxVnd, todoCountsToRaw, type InboxRaw, type InboxRow, type InboxSource } from "@/lib/tutorInbox";
+import { isLichOpen } from "@/lib/tutorFlags";
 
 const take = INBOX_DETAIL_LIMIT;
 const mk = (count: number, rows: InboxRow[], at: Date | null | undefined): InboxSource => ({ count, rows, at: at ? at.toISOString() : null });
@@ -89,9 +90,11 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
       where: unansweredQuestionWhere(tutorId), orderBy: { createdAt: "asc" }, take,
       select: { id: true, title: true, content: true, createdAt: true, course: { select: { name: true } } },
     }),
-    // TUT-lich-keo-tha: lớp đang mở chưa có khung giờ — dòng chỉ có tên lớp (không tên em).
-    prisma.course.findMany({ where: noScheduleWhere(tutorId), orderBy: { createdAt: "asc" }, take, select: { id: true, name: true } }),
+    // TUT-lich-keo-tha: lớp đang mở chưa có khung giờ — dòng chỉ có tên lớp (không tên em). LOI-02 F: chỉ khi bật cờ lịch (tắt ⇒ không tải, không có dòng).
+    isLichOpen() ? prisma.course.findMany({ where: noScheduleWhere(tutorId), orderBy: { createdAt: "asc" }, take, select: { id: true, name: true } }) : Promise.resolve([] as { id: string; name: string }[]),
   ]);
+  // LOI-02 F: số của MỖI dòng lấy từ một bảng duy nhất (todoCountsToRaw) — cùng bảng todoBadgeTotal dùng cho số đỏ.
+  const n = todoCountsToRaw(c);
   const joinNames = joinGroups.length
     ? new Map((await prisma.course.findMany({ where: { id: { in: joinGroups.map(g => g.courseId) } }, select: { id: true, name: true } })).map(x => [x.id, x.name]))
     : new Map<string, string>();
@@ -121,51 +124,51 @@ export async function loadTutorInboxRaw(tutorId: string, now: Date = new Date())
   const ungradedAt = [subs[0]?.submittedAt, essays[0]?.updatedAt].filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
 
   return {
-    absence: mk(c.lateAbsences, absences.map(a => ({
+    absence: mk(n.absence, absences.map(a => ({
       title: a.student.name,
       sub: `${a.course.name} · buổi ${inboxDateTime(a.startAt)} · báo trước ${a.leadMinutes} phút${a.reason ? ` · "${cut(a.reason, 60)}"` : ""}`,
       href: "/lop-cua-toi/lich",
     })), absences[0]?.startAt),
-    check: mk(c.needBankCheck, checks.map(i => ({
+    check: mk(n.check, checks.map(i => ({
       title: i.student.name,
       sub: `Phiếu ${i.code} · ${monthText(i.yearMonth)} · còn ${inboxVnd(i.amountDue - i.paidAmount)} · báo đã chuyển ${i.parentReportedAt ? inboxDateTime(i.parentReportedAt) : ""}`.trim(),
       href: "/lop-cua-toi/hoc-phi",
     })), checks[0]?.parentReportedAt),
-    bank: mk(c.bankPending, banks.map(b => ({
+    bank: mk(n.bank, banks.map(b => ({
       title: inboxVnd(b.amount),
       sub: `${inboxDateTime(b.occurredAt)} · ${cut(b.content.replace(/\s+/g, " ").trim(), 80)}`,
       href: "/lop-cua-toi/hoc-phi?tab=doi-soat",
     })), banks[0]?.occurredAt),
-    consent: mk(c.pendingConsent, consents.map(e => ({
+    consent: mk(n.consent, consents.map(e => ({
       title: e.user.name, sub: `${e.course.name} · chờ phụ huynh xác nhận`, href: `/lop-cua-toi/quan-lop/${e.courseId}/hoc-vien`,
     })), consents[0]?.createdAt),
-    reminders: mk(c.remindersDue, reminderRows.slice(0, take), reminderAt),
-    makeup: mk(c.makeupExpiring, expiring.slice(0, take).map(m => ({
+    reminders: mk(n.reminders, reminderRows.slice(0, take), reminderAt),
+    makeup: mk(n.makeup, expiring.slice(0, take).map(m => ({
       title: m.student.name, sub: `${m.course.name} · buổi bù hết hạn ${inboxDateTime(m.expiresAt).slice(0, 5)}`, href: "/lop-cua-toi/lich",
     })), expiring[0]?.expiresAt),
-    reports: mk(c.classReports, reports.map(r => ({
+    reports: mk(n.reports, reports.map(r => ({
       title: cut(r.thread.content.replace(/\s+/g, " ").trim(), 80),
       sub: `Lý do: ${cut(r.reason, 60)}${r.thread.course ? ` · ${r.thread.course.name}` : ""}`, href: "/lop-cua-toi/kiem-duyet",
     })), reports[0]?.createdAt),
-    ungraded: mk(c.ungraded, ungradedRows, ungradedAt),
-    unmarked: mk(c.unmarkedSessions, unmarked.slice(0, take).map(u => ({
+    ungraded: mk(n.ungraded, ungradedRows, ungradedAt),
+    unmarked: mk(n.unmarked, unmarked.slice(0, take).map(u => ({
       title: u.courseName,
       sub: `buổi ${inboxDateTime(u.startAt)} · thiếu ${u.missing}/${u.total} em${u.missingNames.length ? `: ${u.missingNames.join(", ")}${u.missing > u.missingNames.length ? "…" : ""}` : ""}`,
       href: unmarkedHref(u.courseId, u.dateKey),
     })), unmarked[0]?.startAt),
-    joinRequests: mk(c.joinRequests, joinGroups.slice(0, take).map(g => ({
+    joinRequests: mk(n.joinRequests, joinGroups.slice(0, take).map(g => ({
       title: joinNames.get(g.courseId) ?? "Lớp",
       sub: `${g._count._all} yêu cầu đang chờ duyệt`,
       href: `/lop-cua-toi/${g.courseId}?tab=hoc-sinh`,
     })), joinGroups.map(g => g._min.createdAt).filter((d): d is Date => !!d).sort((a, b) => a.getTime() - b.getTime())[0] ?? null),
-    questions: mk(c.unansweredQuestions, questions.map(q => ({
+    questions: mk(n.questions, questions.map(q => ({
       title: questionRowTitle(q), sub: `${q.course?.name ?? "Lớp"} · hỏi lúc ${inboxDateTime(q.createdAt)}`, href: `/cong-dong/${q.id}`,
     })), questions[0]?.createdAt),
-    noSchedule: mk(c.noSchedule, noSchedCourses.map(x => ({
+    noSchedule: mk(n.noSchedule, noSchedCourses.map(x => ({
       title: x.name, sub: "Chưa có khung giờ học hằng tuần · Đặt lịch", href: `/lop-cua-toi/quan-lop/${x.id}/lich-hoc`,
     })), null),
-    invoiceRemind: invoiceRemindSource(c.invoiceReminders, remindDue),
-    draft: mk(c.draftInvoices, drafts.map(i => ({
+    invoiceRemind: invoiceRemindSource(n.invoiceRemind, remindDue),
+    draft: mk(n.draft, drafts.map(i => ({
       title: i.student.name, sub: `Phiếu nháp ${monthText(i.yearMonth)} · ${inboxVnd(i.amountDue)}`, href: "/lop-cua-toi/hoc-phi",
     })), drafts[0]?.createdAt),
   };

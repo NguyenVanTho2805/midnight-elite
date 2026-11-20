@@ -77,6 +77,9 @@ check("toHomeViewer với giá trị không phải object → guest", toHomeView
 
 void section("LOI-01 — các phần đang ẩn (không cờ nào)");
 for (const k of KINDS) check(`${k}: ẩn bảng tin, quiz và tính điểm khi Cộng đồng / Điểm chuẩn tắt`, !homeBlocksFor(V(k), ON, {}).community && !homeBlocksFor(V(k), ON, {}).quiz && !homeBlocksFor(V(k), ON, {}).score);
-for (const k of KINDS) check(`${k}: thanh trên không có Cộng đồng, Tin tức`, homeNavFor(V(k), {}).every(i => i.href !== "/cong-dong" && i.href !== "/tin-tuc") && homeNavFor(V(k), {}).slice(0, 2).map(i => i.label).join("|") === "Lớp học|Thi thử");
+for (const k of KINDS) check(`${k}: thanh trên không có Cộng đồng, Tin tức`, homeNavFor(V(k), {}).every(i => i.href !== "/cong-dong" && i.href !== "/tin-tuc") && homeNavFor(V(k), {}).slice(0, 1).map(i => i.label).join("|") === "Lớp học");
+// DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — "Thi thử" rời thanh trên khi cờ THI_THU_CONG_KHAI tắt (mặc định); bật lại thì đứng ngay sau "Lớp học" như cũ.
+for (const k of KINDS) check(`${k}: thanh trên không có Thi thử khi THI_THU_CONG_KHAI tắt; có lại ngay sau Lớp học khi =1`, !homeNavFor(V(k), {}).some(i => i.href === "/thi-thu")
+  && homeNavFor(V(k), { THI_THU_CONG_KHAI: "1" }).slice(0, 2).map(i => i.label).join("|") === "Lớp học|Thi thử");
 
 done();

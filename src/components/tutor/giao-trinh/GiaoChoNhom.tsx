@@ -5,10 +5,11 @@
 //   GET giao-vien: self.role, teachers[].userId (chỉ chủ/admin, khoá để giao). Thiếu assignedTo ⇒ coi như "other" (khoá an toàn).
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi } from "@/components/tutor/shared";
 import type { GtGroup } from "@/lib/giaoTrinh";
 import { canManageRole, type ViewRole } from "@/components/tutor/dongGiangUi";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export interface GiaoVienLopRow { id: string; userId?: string; name?: string; role: string; status: string }
 export interface GiaoVienLopInfo {
@@ -74,11 +75,11 @@ export default function GiaoChoNhom({ courseId, chapterId, teacherId, assignedTo
   return (
     <div data-gt-giao-cho={chapterId} className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <label htmlFor={id} className={`${KIN_LABEL} shrink-0`}>Giao cho</label>
-      <select id={id} aria-label="Giao cho giáo viên" disabled={busy} value={teacherId ?? ""} onChange={e => void change(e.target.value)} className={`${KIN_FIELD} min-h-11 w-auto max-w-full`}>
+      <KinSelect id={id} aria-label="Giao cho giáo viên" disabled={busy} value={teacherId ?? ""} onChange={v => void change(v)} className="w-auto max-w-full">
         <option value="">Chủ lớp / không giao</option>
         {info.assignable.filter(t => t.userId).map(t => <option key={t.id} value={t.userId}>{t.name ?? "Giáo viên bộ môn"}</option>)}
         {teacherId && !info.assignable.some(t => t.userId === teacherId) && <option value={teacherId}>{nameOf}</option>}
-      </select>
+      </KinSelect>
       {busy && <span className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]" aria-live="polite">Đang lưu…</span>}
       {err && <span role="alert" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</span>}
     </div>

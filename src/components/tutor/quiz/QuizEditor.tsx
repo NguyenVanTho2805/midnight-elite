@@ -23,6 +23,7 @@ import SaveToBank from "./SaveToBank";
 import { deThiSubHref } from "@/components/tutor/de-thi/deThiClient";
 import { qfetch, quizHref, versionsHref, DE_THI_ROOT, IMPORT_HREF, type QuizDetail, type QuizQ } from "./quizClient";
 import { clipVisible, visibleLength } from "@/lib/mathtype/formulaImg";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Tab = "noi-dung" | "dap-an";
 const STATUS_LABEL: Record<string, { tone: StatusTone; text: string }> = {
@@ -323,10 +324,10 @@ export default function QuizEditor({ id }: { id: string }) {
                 <fieldset disabled={locked} className="space-y-4 min-w-0 disabled:opacity-70">
                   <div><label htmlFor="qs-title" className={`${KIN_LABEL} mb-2`}>Tên quiz</label><input id="qs-title" className={KIN_FIELD} value={form.title} maxLength={150} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
                   <div><label htmlFor="qs-course" className={`${KIN_LABEL} mb-2`}>Lớp</label>
-                    <select id="qs-course" className={KIN_FIELD} value={form.courseId} onChange={e => setForm({ ...form, courseId: e.target.value })}>
+                    <KinSelect id="qs-course" value={form.courseId} onChange={v => setForm({ ...form, courseId: v })}>
                       <option value="">Chưa chọn lớp</option>
                       {data!.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    </KinSelect>
                     {data!.courses.length === 0 && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Cô chưa có lớp. <Link className="underline" href="/lop-cua-toi/lop/tao">Tạo lớp</Link> trước rồi quay lại.</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -335,9 +336,9 @@ export default function QuizEditor({ id }: { id: string }) {
                   </div>
                   <div className="max-w-[200px]"><label htmlFor="qs-dur" className={`${KIN_LABEL} mb-2`}>Thời lượng (phút)</label><input id="qs-dur" inputMode="numeric" className={KIN_FIELD} value={form.durationMin} onChange={e => setForm({ ...form, durationMin: e.target.value })} /></div>
                   <div><label htmlFor="qs-vis" className={`${KIN_LABEL} mb-2`}>Học sinh xem đáp án</label>
-                    <select id="qs-vis" className={KIN_FIELD} value={form.answerVisibility} onChange={e => setForm({ ...form, answerVisibility: e.target.value })}>
+                    <KinSelect id="qs-vis" value={form.answerVisibility} onChange={v => setForm({ ...form, answerVisibility: v })}>
                       {VISIBILITY.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
-                    </select>
+                    </KinSelect>
                   </div>
                   <label className="flex items-center gap-3 min-h-11 text-[length:var(--kin-co-goc)]"><input type="checkbox" className="w-5 h-5" checked={form.hideAnswerForWrong} onChange={e => setForm({ ...form, hideAnswerForWrong: e.target.checked })} />Câu làm sai chỉ hiện “Sai”, không lộ đáp án đúng</label>
                   <label className="flex items-center gap-3 min-h-11 text-[length:var(--kin-co-goc)]"><input type="checkbox" className="w-5 h-5" checked={form.showLeaderboard} onChange={e => setForm({ ...form, showLeaderboard: e.target.checked })} />Cho học sinh xem bảng xếp hạng</label>

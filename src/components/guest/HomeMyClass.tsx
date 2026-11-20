@@ -2,6 +2,7 @@
 // biết là học sinh thì khối hiện ra. Dữ liệu chỉ của chính em (useMyClasses + useProgress); không hiện bạn học. Ba trạng thái: đang tải · rỗng · LỖI (không coi lỗi là "chưa vào lớp nào").
 "use client";
 import Link from "next/link";
+import { featureOn } from "@/lib/features";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClasses } from "@/hooks/useMyClasses";
 import { useProgress } from "@/hooks/useProgress";
@@ -55,8 +56,8 @@ function MyClassBody() {
         {state === "empty" && (
           <div className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
             <KinEmptyState title="Bạn chưa vào lớp nào"
-              action={<span className="flex flex-wrap justify-center gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link><Link href="/khoa-hoc?gia=free" className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link></span>}>
-              Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp. Chưa có mã thì xem các lớp miễn phí đang mở.
+              action={<span className="flex flex-wrap justify-center gap-3"><Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>{featureOn("TIM_GIA_SU") && <Link href="/khoa-hoc?gia=free" className={kinButtonClass("secondary")}>Tìm lớp miễn phí</Link>}</span>}>
+              Gia sư sẽ gửi cho bạn mã mời của lớp. Nhập mã đó để vào lớp.{featureOn("TIM_GIA_SU") ? " Chưa có mã thì xem các lớp miễn phí đang mở." : ""}
             </KinEmptyState>
           </div>
         )}

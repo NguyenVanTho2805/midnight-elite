@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { issueInvoice } from "@/lib/invoiceServer";
 import { buildInboxItems } from "@/lib/tutorInbox";
 import { loadTutorInboxRaw } from "@/lib/tutorInboxServer";
-import { loadTutorTodoCounts } from "@/lib/tutorDashboard";
+import { loadTutorTodoCounts, loadTutorTodoTotal } from "@/lib/tutorDashboard";
 
 const COURSE_BASE = {
   category: "Toán", instructor: "KiN", teacherAvatar: "K", openDate: "01/10/2026", types: ["Video"], tag: null, tagColor: null,
@@ -233,7 +233,11 @@ const snapCourses = async () => (await prisma.course.count());
   await prisma.classSchedule.update({ where: { id: p1.id }, data: { active: true } });
 
   // ── 6. Hộp việc noSchedule ────────────────────────────────────────────────
-  section("Hộp việc: loại noSchedule");
+  // LOI-02 F: dòng "chưa có lịch" chỉ sống khi cờ lịch BẬT (NEXT_PUBLIC_KIN_MO_LICH="1"). Các ca gọi thư viện trong tiến trình bật cờ ở đây
+  // và gỡ ở cuối mục; máy chủ dev chạy cờ TẮT (mặc định) nên ca gọi /api/tutor/hop-viec kỳ vọng KHÔNG có dòng noSchedule.
+  section("Hộp việc: loại noSchedule (cờ lịch bật trong tiến trình test)");
+  const flagBefore = process.env.NEXT_PUBLIC_KIN_MO_LICH;
+  process.env.NEXT_PUBLIC_KIN_MO_LICH = "1";
   const T = await mkTutor("Cô Hộp"), T2 = await mkTutor("Thầy Hộp");
   const n0 = await loadTutorInboxRaw(T.id);
   check("chưa có lớp → noSchedule = 0, không có dòng", n0.noSchedule.count === 0 && !buildInboxItems(n0, new Date()).some(i => i.id === "noSchedule"));
@@ -250,8 +254,20 @@ const snapCourses = async () => (await prisma.course.count());
   check("thêm một khung BẬT → còn 1", (await loadTutorInboxRaw(T.id)).noSchedule.count === 1);
   const viaApi = await create({ schedules: [S(3, "19:00", "20:00")] }, T);
   check("tạo lớp qua API kèm khung → không thêm vào noSchedule (vẫn 1); tạo không khung → 2", viaApi.status === 201 && (await loadTutorInboxRaw(T.id)).noSchedule.count === 1 && (await create({}, T)).status === 201 && (await loadTutorInboxRaw(T.id)).noSchedule.count === 2);
+  // Ca phá ngược: cờ tắt trong tiến trình ⇒ cùng dữ liệu (2 lớp mở không lịch) mà noSchedule = 0 và không có dòng.
+  process.env.NEXT_PUBLIC_KIN_MO_LICH = "0";
+  const lichOff = await loadTutorInboxRaw(T.id);
+  check("cờ tắt (\"0\") ⇒ cùng 2 lớp không lịch mà noSchedule = 0, không dòng, loadTutorTodoCounts.noSchedule = 0",
+    lichOff.noSchedule.count === 0 && !buildInboxItems(lichOff, new Date()).some(i => i.id === "noSchedule") && (await loadTutorTodoCounts(T.id)).noSchedule === 0, lichOff.noSchedule);
+  if (flagBefore === undefined) delete process.env.NEXT_PUBLIC_KIN_MO_LICH; else process.env.NEXT_PUBLIC_KIN_MO_LICH = flagBefore;
+
+  // Máy chủ dev chạy cờ TẮT (mặc định): API không có dòng noSchedule; total = Σ số việc của các dòng không `waiting` = số đỏ (loadTutorTodoTotal, cờ tắt).
   const hv = await api("GET", "/api/tutor/hop-viec", { as: T });
-  check("GET /api/tutor/hop-viec có dòng noSchedule, tổng khớp", hv.status === 200 && hv.json.items.some((x: any) => x.id === "noSchedule") && hv.json.total >= 2, hv.json?.items?.map((x: any) => x.id));
+  const itemCount = (x: any) => (x.detail?.rows?.length ?? 0) + (x.detail?.more ?? 0);
+  const visible = (hv.json?.items ?? []).filter((x: any) => !x.waiting).reduce((s: number, x: any) => s + itemCount(x), 0);
+  check("GET /api/tutor/hop-viec (máy chủ cờ tắt) KHÔNG có dòng noSchedule dù có 2 lớp mở không lịch", hv.status === 200 && !hv.json.items.some((x: any) => x.id === "noSchedule"), hv.json?.items?.map((x: any) => x.id));
+  const badge = await loadTutorTodoTotal(T.id);
+  check("total của API = Σ việc dòng không waiting = số đỏ (loadTutorTodoTotal, cờ tắt)", hv.json.total === visible && hv.json.total === badge, { total: hv.json.total, visible, badge });
   void o2; void cl;
 
   // ── 7. TIỀN: đổi khung không đổi phí đã chốt ─────────────────────────────

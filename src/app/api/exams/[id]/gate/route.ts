@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { PUBLIC_EXAM_CLOSED_CODE, PUBLIC_EXAM_CLOSED_MESSAGE } from "@/lib/features";
+import { closedPublicExam } from "@/lib/publicExamGate";
 import { ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { parseDurationMinutes } from "@/lib/examGrading";
@@ -49,6 +51,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const max = policy.maxAttempts;
     // Phiên bản cũ đã bị thay: học sinh chưa có lượt nào thì không thấy (đề vẫn tồn tại cho người đã làm).
     if (exam.supersededById && used === 0 && session.role !== "admin") return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // DG: thi thử công khai đang đóng — em chưa làm lần nào thì không thấy đề (em đã làm vẫn xem lại được điểm / lượt dở của mình).
+    if (used === 0 && session.role !== "admin" && await closedPublicExam(exam)) {
+      return NextResponse.json({ error: PUBLIC_EXAM_CLOSED_MESSAGE, code: PUBLIC_EXAM_CLOSED_CODE }, { status: 404 });
+    }
 
     const now = new Date();
     const mode = isExamMode(exam.mode) ? exam.mode : null;

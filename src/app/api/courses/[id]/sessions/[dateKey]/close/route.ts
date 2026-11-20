@@ -12,6 +12,7 @@ import { isValidDateKey } from "@/lib/classSessions";
 import { closeCheck, isClosed } from "@/lib/sessionBook";
 import { authorizeCourse, dayDate, ensureSession, loadSessionDetail, reopenImpact } from "@/lib/sessionBookServer";
 import { logAction } from "@/lib/auditLog";
+import { featureOn } from "@/lib/features";
 import { reversePackageUsesForSession, syncPackageUsesForSession } from "@/lib/sessionPackageServer";
 import { lockAttendanceSession, removeChargesOnReopen, syncChargesOnClose, type SyncResult } from "@/lib/feeChargeServer";
 
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         await lockAttendanceSession(tx, session.id);
         const u = await tx.attendanceSession.updateMany({ where: { id: session.id, OR: [{ state: null }, { state: { not: "closed" } }] }, data: { state: "closed", closedAt: now, closedBy: r.auth.userId } });
         if (u.count !== 1) return { ch: null, used: 0 };
+        // HP-BO (17/11/2026): Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ chốt buổi chỉ ghi trạng thái, không sinh phí, không trừ gói.
+        if (!featureOn("HOC_PHI")) return { ch: null, used: 0 };
         const ch = await syncChargesOnClose(tx, session.id, r.auth.userId);
         const pk = await syncPackageUsesForSession(tx, session.id, { now }); // HP-31: sổ buổi của gói trả trước
         return { ch, used: pk.used };

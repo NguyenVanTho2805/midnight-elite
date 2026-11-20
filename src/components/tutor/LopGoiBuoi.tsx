@@ -12,6 +12,7 @@ import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi, useNotify } from "@/components/tutor/shared";
 import { CHARGE_LINK_LABEL, PACKAGE_MAX_SESSIONS, PACKAGE_NOTE_MAX, PACKAGE_STATUS_LABEL, type ChargeLink, type PackageStatus } from "@/lib/sessionPackage";
 import type { FeeMode } from "@/lib/tuitionFee";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const vnd = (n: number) => `${n.toLocaleString("vi-VN")}đ`;
 const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
@@ -122,10 +123,10 @@ export default function LopGoiBuoi({ courseId, feeMode }: { courseId: string; fe
           <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Lập gói cho một em</p>
           <div className="pt-3 grid sm:grid-cols-3 gap-5">
             <label className={KIN_LABEL}>Em lập gói
-              <select value={studentId} onChange={e => { setStudentId(e.target.value); setErr(null); }} className={`${KIN_FIELD} mt-2`}>
+              <KinSelect value={studentId} onChange={v => { setStudentId(v); setErr(null); }} className="mt-2">
                 <option value="">Chọn em…</option>
                 {data.students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              </KinSelect>
             </label>
             <label className={KIN_LABEL}>Số buổi (1–{PACKAGE_MAX_SESSIONS})
               <input inputMode="numeric" value={sessions} onChange={e => { setSessions(e.target.value.replace(/[^\d]/g, "")); setErr(null); }} className={`${KIN_FIELD} mt-2`} />

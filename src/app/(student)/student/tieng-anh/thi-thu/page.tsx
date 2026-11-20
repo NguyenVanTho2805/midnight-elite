@@ -4,6 +4,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { KinButton } from "@/components/kin";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { api, Card, ErrorLine, INK, PageHead, Pill, Skeleton, Stat } from "@/components/english/ui";
 import { nowMs } from "@/components/english/clock";
 import { MOCK_MINUTES, parseAnswerKey, QUESTIONS, SKILL_LABEL, type MockSkill } from "@/lib/english/mock";
@@ -259,12 +260,12 @@ export default function MockTests() {
               <input value={setup.title} onChange={e => setSetup(s => ({ ...s, title: e.target.value }))} placeholder="vd Cambridge 18 — Test 2" className={`mt-1 ${inputCls}`} style={inputStyle} />
             </label>
             {setup.skill === "reading" ? (
-              <label className="text-sm" style={{ color: INK.chinh }}>Dạng
-                <select value={setup.module} onChange={e => setSetup(s => ({ ...s, module: e.target.value as "academic" | "general" }))} className={`mt-1 ${inputCls}`} style={inputStyle}>
+              <div className="text-sm" style={{ color: INK.chinh }}><span id="tt-dang">Dạng</span>
+                <KinSelect className="mt-1" aria-labelledby="tt-dang" value={setup.module} onChange={v => setSetup(s => ({ ...s, module: v as "academic" | "general" }))}>
                   <option value="academic">Academic</option>
                   <option value="general">General Training</option>
-                </select>
-              </label>
+                </KinSelect>
+              </div>
             ) : <span />}
             <KinButton type="submit">Bắt đầu bấm giờ</KinButton>
           </form>
@@ -278,17 +279,17 @@ export default function MockTests() {
         <Card aria-labelledby="h-nhap">
           <h2 id="h-nhap" className="font-bold mb-2" style={{ color: INK.chinh }}>Nhập band Writing / Speaking</h2>
           <form className="grid sm:grid-cols-4 gap-2 items-end" onSubmit={e => { e.preventDefault(); void saveManual(); }}>
-            <label className="text-sm" style={{ color: INK.chinh }}>Kỹ năng
-              <select value={manual.skill} onChange={e => setManual(m => ({ ...m, skill: e.target.value as "writing" | "speaking" }))} className={`mt-1 ${inputCls}`} style={inputStyle}>
+            <div className="text-sm" style={{ color: INK.chinh }}><span id="tt-ky-nang">Kỹ năng</span>
+              <KinSelect className="mt-1" aria-labelledby="tt-ky-nang" value={manual.skill} onChange={v => setManual(m => ({ ...m, skill: v as "writing" | "speaking" }))}>
                 <option value="writing">Writing</option>
                 <option value="speaking">Speaking</option>
-              </select>
-            </label>
-            <label className="text-sm" style={{ color: INK.chinh }}>Band
-              <select value={manual.band} onChange={e => setManual(m => ({ ...m, band: e.target.value }))} className={`mt-1 ${inputCls}`} style={inputStyle}>
+              </KinSelect>
+            </div>
+            <div className="text-sm" style={{ color: INK.chinh }}><span id="tt-band">Band</span>
+              <KinSelect className="mt-1" aria-labelledby="tt-band" value={manual.band} onChange={v => setManual(m => ({ ...m, band: v }))}>
                 {Array.from({ length: 17 }, (_, i) => (1 + i * 0.5).toFixed(1)).map(b => <option key={b}>{b}</option>)}
-              </select>
-            </label>
+              </KinSelect>
+            </div>
             <label className="text-sm sm:col-span-2" style={{ color: INK.chinh }}>Ai chấm / ghi chú
               <input value={manual.note} onChange={e => setManual(m => ({ ...m, note: e.target.value }))} placeholder="vd cô X chấm, bài Task 2 về giáo dục" className={`mt-1 ${inputCls}`} style={inputStyle} />
             </label>

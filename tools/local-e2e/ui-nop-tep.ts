@@ -62,7 +62,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const open = async (p: any, url = lessonUrl) => {
     await p.goto(url, { waitUntil: "networkidle", timeout: 120000 });
     await hide(p);
-    await p.getByRole("button", { name: "Bài tập", exact: true }).first().click();
+    await p.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded(); // DG: trang bài một cột, không còn nút tab Bài tập
     await p.locator(BOX).waitFor({ timeout: 60000 });
   };
   const settled = async (p: any) => p.locator(`${BOX}:not([data-trang-thai="dang-tai"])`).waitFor({ timeout: 30000 });
@@ -79,8 +79,10 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   let release: () => void = () => {};
   const hold = new Promise<void>(r => { release = r; });
   await p1.route("**/api/media/nop-bai/danh-sach**", async r => { await hold; await r.continue().catch(() => {}); });
+  // DG (14/11/2026): trang bài một cột dựng khối Bài tập NGAY khi mở trang (trước đây chỉ khi bấm tab) ⇒ tải lại trang SAU khi giữ phản hồi để thấy trạng thái đang tải.
+  await p1.reload({ waitUntil: "domcontentloaded" });
   await hide(p1);
-  await p1.getByRole("button", { name: "Bài tập", exact: true }).first().click();
+  await p1.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded({ timeout: 120000 });
   await p1.locator(BOX).waitFor({ timeout: 60000 });
   check("đang tải: khung xương, aria-busy, data-trang-thai=dang-tai", (await p1.locator(`${BOX}[data-trang-thai="dang-tai"] [aria-busy="true"]`).count()) === 1);
   await shot(p1, "nop-tep-1280-dang-tai");
@@ -89,7 +91,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   // lỗi tải danh sách: 500, có "Thử lại"; bấm thì tải lại được
   await p1.route("**/api/media/nop-bai/danh-sach**", r => r.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
   await p1.reload({ waitUntil: "networkidle" }); await hide(p1);
-  await p1.getByRole("button", { name: "Bài tập", exact: true }).first().click();
+  await p1.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded(); // DG: trang bài một cột, không còn nút tab Bài tập
   await p1.locator('[data-nop-tep-loi-tai]').waitFor({ timeout: 30000 });
   check("lỗi tải: role=alert + chữ rõ + nút Thử lại ≥44px", (await p1.locator('[data-nop-tep-loi-tai]').getAttribute("role")) === "alert" && /Không tải được khối nộp bài/.test((await p1.locator('[data-nop-tep-loi-tai]').textContent()) ?? "")
     && (((await p1.locator('[data-nop-tep-loi-tai]').getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44));
@@ -165,7 +167,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const subs = await prisma.assignmentSubmission.findMany({ where: { assignmentId: A.id, userId: S.id } });
   check("đúng 1 AssignmentSubmission, kind 'tep', fileUrl là đường riêng tư /api/media/nop-bai/…", subs.length === 1 && subs[0].kind === "tep" && subs[0].fileUrl.startsWith("/api/media/nop-bai/"), subs.map(s => [s.kind, s.fileUrl]));
   check("tệp gắn vào bài nộp một lần (2 tệp ready đã gắn)", (await prisma.submissionFile.count({ where: { submissionId: subs[0].id, status: "ready" } })) === 2);
-  check("sau 303: tab Bài tập tự mở + banner kết quả 'Đã nộp bài.' (role=status)", (await p1.locator('[data-nop-tep-ket-qua="ok"]').getAttribute("role")) === "status" && /Đã nộp bài\./.test((await p1.locator('[data-nop-tep-ket-qua="ok"]').textContent()) ?? ""));
+  check("sau 303: khối Bài tập (một cột, cuộn tới) + banner kết quả 'Đã nộp bài.' (role=status)", (await p1.locator('[data-nop-tep-ket-qua="ok"]').getAttribute("role")) === "status" && /Đã nộp bài\./.test((await p1.locator('[data-nop-tep-ket-qua="ok"]').textContent()) ?? ""));
   check("địa chỉ đã bỏ ?nop (tải lại không báo lại)", !p1.url().includes("nop="), p1.url());
   const filesDb = await prisma.submissionFile.findMany({ where: { submissionId: subs[0].id }, orderBy: { createdAt: "asc" } });
   const sentence = (await p1.locator(`${BOX} [data-nop-tep-da-nop]`).textContent()) ?? "";
@@ -234,6 +236,33 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
     await pT.locator('[data-nop-tep-ds="het-han"]').waitFor({ timeout: 30000 });
     check("hết hạn phía gia sư: đúng câu, không nút tải tệp học sinh", (await pT.locator('[data-nop-tep-ds="het-han"]').textContent())?.trim() === EXPIRED_TEXT);
     await prisma.submissionFile.updateMany({ where: { submissionId: subs[0].id, kind: "student" }, data: { expiresAt: new Date(Date.now() + 59 * 86_400_000) } });
+
+    // LOI-02 mục 2.E: chấm TRƯỚC, đính SAU. Ép /dinh-kem trả 500 ⇒ điểm vẫn lưu (DB), một dòng báo riêng; tệp nháp không bị gắn.
+    section("LOI-02 E: đính tệp trả bài lỗi (500) ⇒ điểm GIỮ, báo riêng");
+    await pT.reload({ waitUntil: "networkidle" }); await hide(pT);
+    await pT.getByText("BT nộp tệp").first().click();
+    const tBox2 = pT.locator('[data-nop-tep="tutor_return"]');
+    await tBox2.waitFor({ timeout: 30000 });
+    await pT.route("**/api/media/nop-bai/dinh-kem", r => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Máy chủ đang bận." }) }));
+    const goCount = () => pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra] [data-nop-tep-go]').count(); // tệp ĐÃ trả (có "Gỡ tệp")
+    await tBox2.locator("[data-nop-tep-tep-tra]").waitFor({ timeout: 30000 }); // đã trả 1 tệp ở ca trước — chờ danh sách tải xong rồi mới đếm
+    const returned0 = await goCount();
+    await tBox2.locator("[data-nop-tep-input]").setInputFiles(f("nhan-xet-2.docx", docx("tra2")));
+    await tBox2.locator('[data-nop-tep-hang][data-trang-thai="san-sang"]').waitFor({ timeout: 30000 });
+    await pT.locator("#bt-score").fill("7");
+    await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
+    await pT.locator("[data-tra-bai-loi]").waitFor({ timeout: 30000 });
+    check("dòng báo riêng: 'Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm.' (role=status)",
+      (await pT.locator("[data-tra-bai-loi]").innerText()).trim() === "Điểm đã gửi. Chưa đính kèm được tệp trả bài — bấm Gửi lại để thử đính kèm." && (await pT.locator("[data-tra-bai-loi]").getAttribute("role")) === "status");
+    check("điểm vẫn lưu trong DB (7) dù đính kèm lỗi", (await prisma.assignmentSubmission.findUnique({ where: { id: subs[0].id } }))?.score === 7);
+    check("tệp mới KHÔNG thành tệp đã trả (đính kèm thất bại)", (await goCount()) === returned0, { truoc: returned0, sau: await goCount() });
+    await shot(pT, "nop-tep-1280-gia-su-dinh-loi");
+    await pT.unroute("**/api/media/nop-bai/dinh-kem");
+    await pT.getByRole("button", { name: "Gửi điểm & phản hồi" }).click();
+    // dinh-kem gắn bộ mới THAY bộ trả bài cũ (#155) ⇒ sau Gửi lại, tệp đã trả là nhan-xet-2.
+    await eventually("bấm Gửi lại ⇒ đính được (tệp đã trả = nhan-xet-2), dòng lỗi biến mất", async () => (await pT.locator("[data-tra-bai-loi]").count()) === 0 && (await goCount()) === 1
+      && /nhan-xet-2/.test((await pT.locator('[data-nop-tep="tutor_return"] [data-nop-tep-tep-tra]').innerText().catch(() => "")) ?? ""), 30000);
+    await prisma.assignmentSubmission.update({ where: { id: subs[0].id }, data: { score: 9 } });
   } else {
     const { api } = await import("./h");
     await api("PATCH", `/api/assignments/${A.id}/submissions/${subs[0].id}/grade`, { as: T, body: { score: 9, comment: "Em làm tốt, xem tệp đính kèm." } });
@@ -279,7 +308,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const cX = await ctxFor(SX, { width: 1280, height: 900 });
   const pX = await cX.newPage(); watch(pX);
   await pX.goto(lessonUrl, { waitUntil: "networkidle", timeout: 120000 });
-  check("không có khối nộp tệp (thấy thông báo nghỉ lớp có sẵn)", (await pX.locator("[data-nop-tep]").count()) === 0 && (await pX.getByRole("button", { name: "Bài tập", exact: true }).count()) === 0);
+  check("không có khối nộp tệp (thấy thông báo nghỉ lớp có sẵn)", (await pX.locator("[data-nop-tep]").count()) === 0 && (await pX.locator('[data-lesson-section="bai-tap"]').count()) === 0); // DG: một cột — đo khối Bài tập thay cho nút tab cũ
 
   // ─────────────────────────────────────────────────────────────────────────
   section("390px: không tràn ngang, nút ≥44px, tên dài cắt giữa, bàn phím");

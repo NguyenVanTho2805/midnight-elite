@@ -1,8 +1,8 @@
 // MD-02 / MD-07 / MD-17 / MD-11 — trình duyệt thật, 390px và 1280px: gia sư dán bản ghi bằng form (gắn buổi), thấy bảng ai đã xem; học sinh thấy bản ghi trong
-// tab "Tài liệu & bản ghi" của Lớp của tôi; không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
+// tab "Tài liệu & bản ghi" của Lớp của tôi (LOI-03, 11/11/2026: khối này dời vào tab "Tổng quan" của trang lớp — chỉ đổi tên tab được bấm); không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
-import { launch, ctxFor, closeAll, shot, type Page } from "./ui";
+import { launch, ctxFor, closeAll, shot, type Page, kinSelect, kinSelectValue } from "./ui";
 
 const YT = "https://youtu.be/dQw4w9WgXcQ";
 
@@ -32,7 +32,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     await tp.goto(`${BASE}/lop-cua-toi/${C.id}/ban-ghi?buoi=${ses.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
     await tp.getByRole("heading", { level: 1, name: "Bản ghi của lớp" }).waitFor({ timeout: 120000 });
     await tp.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {}); // đợi nạp xong mã trang (dev biên dịch lần đầu) trước khi gõ
-    check("buổi 16/10 từ ?buoi= được chọn sẵn trong ô 'Gắn vào buổi'", (await tp.locator("#rec-session").inputValue()) === ses.id);
+    check("buổi 16/10 từ ?buoi= được chọn sẵn trong ô 'Gắn vào buổi'", (await kinSelectValue(tp.locator("#rec-session"))) === ses.id);
     check("có chữ cam kết bản quyền và ô tick", (await tp.getByText(/Tôi là người tạo ra nội dung này/).count()) >= 1 && (await tp.locator('input[name="pledge"]').count()) === 1);
     check("không tràn ngang", (await overflow(tp)) <= 0, await overflow(tp));
     const submit = tp.getByRole("button", { name: "Lưu bản ghi" });
@@ -44,7 +44,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     await Promise.all([tp.waitForURL(/ban-ghi\?loi=/), submit.click()]);
     check("link lạ → thông báo lỗi có chữ", (await tp.getByRole("alert").filter({ hasText: "YouTube" }).count()) === 1);
     // link đúng → lưu, hiện trong buổi
-    await tp.fill("#rec-title", `Bản ghi ${label}`); await tp.fill("#rec-url", YT); await tp.selectOption("#rec-session", ses.id); await tp.check('input[name="pledge"]');
+    await tp.fill("#rec-title", `Bản ghi ${label}`); await tp.fill("#rec-url", YT); await kinSelect(tp.locator("#rec-session"), ses.id); await tp.check('input[name="pledge"]');
     await Promise.all([tp.waitForURL(/ban-ghi\?ok=1/), tp.getByRole("button", { name: "Lưu bản ghi" }).click()]);
     check("lưu xong: thông báo + bản ghi nằm dưới 'Buổi 16/10/2026'", (await tp.getByText("Đã lưu bản ghi vào lớp.").count()) === 1 && (await tp.locator(`[data-session-block="${ses.id}"] [data-recording-row]`, { hasText: `Bản ghi ${label}` }).count()) === 1);
     const open = tp.locator(`[data-recording-row]`, { hasText: `Bản ghi ${label}` }).getByRole("link", { name: "Mở" }).first();
@@ -66,7 +66,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const sctx = await ctxFor(S, { width: w, height: h });
     const sp = await sctx.newPage(); watch(sp);
     await sp.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await sp.getByRole("tab", { name: /Tài liệu & bản ghi/ }).click({ timeout: 120000 });
+    await sp.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 }); // LOI-03: khối "Tài liệu & bản ghi" nay nằm trong tab Tổng quan
     await sp.locator("[data-materials-tab]").waitFor({ timeout: 60000 });
     await sp.locator("[data-recording-row]").first().waitFor({ timeout: 60000 });
     const body = await sp.locator("[data-materials-tab]").innerText();

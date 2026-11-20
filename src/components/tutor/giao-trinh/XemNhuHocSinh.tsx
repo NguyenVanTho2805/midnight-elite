@@ -16,7 +16,7 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinSectionHead } from "@/components/kin/SectionHead";
 import { DocumentRows, parseMaterials, formatDeadlineVn } from "@/components/media/StudentLessonPanels";
 import { classifyMediaLink, parseLinkList, firstSafeHttpsLink, uploadIdOf } from "@/lib/mediaLink";
-import { giaoTrinhHref } from "@/lib/tutorRoutes";
+import { baiHocHref } from "@/lib/tutorRoutes";
 import { jfetch } from "@/components/tutor/studentUi";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 
@@ -46,7 +46,7 @@ export default function XemNhuHocSinh({ courseId, lessonId, embedded = false }: 
   const { ask, dialog } = useKinConfirm();
   const [pubBusy, setPubBusy] = useState(false);
   const [pubErr, setPubErr] = useState<string | null>(null);
-  const back = { href: giaoTrinhHref(courseId, true), label: "← Giáo trình" };
+  const back = { href: baiHocHref(courseId), label: "← Bài học" }; // LOI-02: tab "Bài học" = gốc lớp
 
   const run = useCallback(async () => {
     setLoad({ phase: "loading" });

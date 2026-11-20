@@ -24,6 +24,7 @@ import { AGE_GROUP_LABEL, payerLabel, type AgeGroup } from "@/lib/consentPolicy"
 import { REPORT_LINK_LABEL } from "@/lib/tutorStudentView";
 import type { StudentDetail } from "@/lib/tutorStudentDetailServer";
 import { jfetch, keyToVn } from "@/components/tutor/studentUi";
+import { featureOn } from "@/lib/features";
 
 type TabKey = "tong-quan" | "diem-danh" | "ghi-chu" | "phieu" | "bai-tap" | "bao-cao";
 const TAB_KEYS: TabKey[] = ["tong-quan", "diem-danh", "ghi-chu", "phieu", "bai-tap", "bao-cao"];
@@ -37,7 +38,9 @@ const fmtDue = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { time
 export default function HoSoEm({ userId, initialTab }: { userId: string; initialTab?: string }) {
   const [d, setD] = useState<StudentDetail | null>(null);
   const [err, setErr] = useState<"load" | "forbidden" | null>(null);
-  const [tab, setTab] = useState<TabKey>(TAB_KEYS.includes(initialTab as TabKey) ? (initialTab as TabKey) : "tong-quan");
+  // DG (14/11/2026): khối học phí (tab Phiếu, thẻ "Phiếu chưa đóng đủ", dòng nhắc đơn giá) chỉ hiện khi cờ HOC_PHI mở. Dữ liệu phiếu vẫn tải như cũ (chỉ đọc).
+  const feeOn = featureOn("HOC_PHI");
+  const [tab, setTab] = useState<TabKey>(TAB_KEYS.includes(initialTab as TabKey) && (feeOn || initialTab !== "phieu") ? (initialTab as TabKey) : "tong-quan");
   const [busy, setBusy] = useState(false);
   const [showImpact, setShowImpact] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
@@ -100,7 +103,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
   const unpaid = d.invoices.filter(i => i.status !== "paid" && i.status !== "cancelled").length;
   const tabs: KinTabItem<TabKey>[] = [
     { key: "tong-quan", label: "Tổng quan" }, { key: "diem-danh", label: "Điểm danh" }, { key: "ghi-chu", label: "Ghi chú" },
-    { key: "phieu", label: `Phiếu${d.invoices.length ? ` · ${d.invoices.length}` : ""}` }, { key: "bai-tap", label: "Bài tập" }, { key: "bao-cao", label: "Báo cáo riêng" },
+    ...(feeOn ? [{ key: "phieu" as const, label: `Phiếu${d.invoices.length ? ` · ${d.invoices.length}` : ""}` }] : []), { key: "bai-tap", label: "Bài tập" }, { key: "bao-cao", label: "Báo cáo riêng" },
   ];
   const p = d.profile;
   const att = d.attendance;
@@ -126,7 +129,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
               <KinStat label="Chuyên cần 90 ngày" value={att.rate === null ? "Chưa đủ dữ liệu" : `${att.rate}%`} hint={att.rate === null ? `${att.n} buổi có ghi, cần ít nhất 10` : `${att.n} buổi có ghi`} />
               <KinStat label="Buổi đã học" value={att.counts.present + att.counts.late} hint="Có mặt hoặc đi muộn, 90 ngày gần nhất" />
               <KinStat label="Buổi bù còn lại" value={d.makeupLeft} hint="Còn hạn dùng" />
-              <KinStat label="Phiếu chưa đóng đủ" value={unpaid} hint={d.invoices.length ? `trên ${d.invoices.length} phiếu` : "Chưa có phiếu"} />
+              {feeOn && <KinStat label="Phiếu chưa đóng đủ" value={unpaid} hint={d.invoices.length ? `trên ${d.invoices.length} phiếu` : "Chưa có phiếu"} />}
             </KinStatRow>
             <KinTwoCol>
               <section aria-labelledby="em-lop" className="min-w-0">
@@ -147,7 +150,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
                     ))}
                   </ul>
                 </KinPanel>
-                <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Đơn giá và cách tính học phí của lớp xem ở tab Học phí của lớp. Phiếu đã chốt không đổi khi cô đổi đơn giá sau này.</p>
+                {feeOn && <p className="mt-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Đơn giá và cách tính học phí của lớp xem ở tab Học phí của lớp. Phiếu đã chốt không đổi khi cô đổi đơn giá sau này.</p>}
               </section>
               <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
                 <section aria-labelledby="em-lh">
@@ -291,7 +294,7 @@ export default function HoSoEm({ userId, initialTab }: { userId: string; initial
           </section>
         )}
 
-        {tab === "phieu" && (
+        {feeOn && tab === "phieu" && (
           <section aria-labelledby="em-phieu">
             <KinSectionHead id="em-phieu" title="Phiếu học phí của em" aside={<Link href="/lop-cua-toi/hoc-phi" className="text-[var(--kin-nhan-link)] hover:underline">Mở trang Học phí →</Link>} />
             {d.invoices.length === 0 ? (

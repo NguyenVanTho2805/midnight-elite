@@ -355,7 +355,7 @@ function DangNhapForm() {
               {vai === "hoc-sinh" && <Link href="/student/nhap-ma-lop" className={outlineBtn}>Tôi có mã mời vào lớp</Link>}
               <div className="flex flex-col gap-3">
                 <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Chưa có tài khoản? Đăng ký gia sư hoặc học sinh.</p>
-                <Link href={`/dang-ky?vai=${vai}`} className={outlineBtn}>Tạo tài khoản KiN</Link>
+                <Link href={`/dang-ky?vai=${vai}${redirectTo ? `&redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={outlineBtn}>Tạo tài khoản KiN</Link>
               </div>
             </div>
             {/* Ngược lại, chỉ ở cửa quản trị: học viên / gia sư đăng nhập ở tên miền chính (cookie phiên không dùng chung giữa hai tên miền). */}

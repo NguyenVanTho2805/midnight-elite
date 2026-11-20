@@ -2,7 +2,7 @@
 // nhập dán / CSV / Excel / lịch có XEM TRƯỚC và lỗi từng dòng (LO-06, LO-17), hộp đồng ý, thu hồi, xoá, quyền, 390px, em tự đồng ý.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-ho-so.ts
 import { api, BASE, mkCourse, mkTutor, mkUser, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -32,7 +32,7 @@ import { prisma } from "@/lib/prisma";
   check("bước 2: tên trống → báo lỗi", await pg.getByText("Nhập tên em").first().isVisible());
   const NAME = "Bé Thử Wizard";
   await pg.getByLabel("Tên em").fill(NAME);
-  await pg.getByLabel("Lớp").selectOption(c1.id);
+  await kinSelect(pg.getByLabel("Lớp"), c1.id);
   await pg.getByLabel("Tên phụ huynh").fill("Chị Hoa");
   await pg.getByLabel(/Số Zalo/).fill("0912");
   check("người thanh toán hiện theo loại: phụ huynh + tên", await pg.getByText("Người thanh toán: Phụ huynh Chị Hoa.").isVisible());
@@ -84,7 +84,7 @@ import { prisma } from "@/lib/prisma";
   check("hiện đủ thông tin mở rộng (địa chỉ, ngày sinh dd/mm/yyyy)", await pg.getByLabel("Địa chỉ").inputValue() === "Số 9 phố Thử" && await pg.getByLabel("Ngày sinh").inputValue() === "15/03/2014");
   check("sổ đồng ý: 2 dòng, ghi 'Gia sư xác nhận', có bản chữ, 'Còn hiệu lực'", await pg.locator("[data-ledger-row]").count() === 2 && await pg.locator("[data-ledger]").getByText(/Gia sư xác nhận lúc/).first().isVisible() && await pg.locator("[data-ledger]").getByText("Còn hiệu lực").count() === 2);
   await pg.getByLabel("Số điện thoại của em").fill("0987654321");
-  await pg.getByLabel("Trạng thái").selectOption("inactive");
+  await kinSelect(pg.getByLabel("Trạng thái"), "inactive");
   await pg.getByRole("button", { name: "Lưu thay đổi" }).click();
   await pg.getByText(/Đã lưu\. Trường đã đổi/).waitFor({ timeout: 30000 });
   await pg.locator("[data-profile-status]", { hasText: "Không hoạt động" }).waitFor({ timeout: 30000 }); // đợi tải lại sau khi lưu

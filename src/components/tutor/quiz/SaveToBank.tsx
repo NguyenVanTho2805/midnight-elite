@@ -3,11 +3,12 @@
 // Nói thật: câu vào ngân hàng ở trạng thái NHÁP của cô (cần gửi duyệt ở trang Ngân hàng câu hỏi mới dùng chung được); tiêu chí chấm và hướng dẫn của câu tự luận KHÔNG được lưu.
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinButton } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
 import { BANK_DIFFICULTIES, categoryPath, type BankCategory as Cat } from "@/lib/quizBank";
 import { qfetch } from "./quizClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export default function SaveToBank({ examId, questionId, type, onDone, onCancel }: {
   examId: string; questionId: string; type: string; onDone: (msg: string) => void | Promise<void>; onCancel: () => void;
@@ -44,13 +45,13 @@ export default function SaveToBank({ examId, questionId, type, onDone, onCancel 
           <>
             <div className="grid sm:grid-cols-2 gap-3">
               <div><label htmlFor={`sb-cat-${questionId}`} className={`${KIN_LABEL} mb-2`}>Đầu mục</label>
-                <select id={`sb-cat-${questionId}`} className={KIN_FIELD} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+                <KinSelect id={`sb-cat-${questionId}`} value={categoryId} onChange={v => setCategoryId(v)}>
                   <option value="">Chọn đầu mục</option>{options.map(o => <option key={o.id} value={o.id}>{o.path}</option>)}
-                </select></div>
+                </KinSelect></div>
               <div><label htmlFor={`sb-dif-${questionId}`} className={`${KIN_LABEL} mb-2`}>Độ khó</label>
-                <select id={`sb-dif-${questionId}`} className={KIN_FIELD} value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+                <KinSelect id={`sb-dif-${questionId}`} value={difficulty} onChange={v => setDifficulty(v)}>
                   {BANK_DIFFICULTIES.map(d => <option key={d.v} value={d.v}>{d.label}</option>)}
-                </select></div>
+                </KinSelect></div>
             </div>
             <p className="text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
               KiN sao chép nội dung câu này sang ngân hàng; hai bên độc lập, sửa bên nào không đổi bên kia. Câu vào ngân hàng ở trạng thái nháp của cô, gửi duyệt ở trang Ngân hàng câu hỏi thì mới dùng chung được.

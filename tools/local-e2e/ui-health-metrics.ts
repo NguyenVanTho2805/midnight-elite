@@ -1,7 +1,7 @@
 // ĐX-04 (NC1-054) — trang quản trị "Số đo sản phẩm" trên trình duyệt: sáu thẻ, mẫu số + định nghĩa, "chưa đủ dữ liệu", menu, lỗi + Thử lại, điện thoại.
 // Cần Postgres + Next dev + Playwright (xem README).
 import { BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, ADMIN } from "./ui";
+import { launch, ctxFor, shot, ADMIN, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { generateInvoiceCode } from "@/lib/tuitionInvoice";
 import { generatePortalToken } from "@/lib/parentPortal";
@@ -64,7 +64,7 @@ const KEYS = ["zaloOpened", "parentViewed", "paidIn14", "bank", "timely", "tutor
   };
   // 10 gia sư đủ tuổi: 6 tạo lớp trong 24h (2 giờ), 1 muộn (50 giờ), 3 chưa có lớp → 6/10 = 60%; giờ lớp đầu: 7 gia sư → chưa đủ 10 cho trung vị
   for (let i = 0; i < 10; i++) await mkN(i, i < 6 ? 2 : i === 6 ? 50 : null);
-  await p.getByLabel("Khoảng thời gian").selectOption("30");
+  await kinSelect(p.getByLabel("Khoảng thời gian"), "30");
   await p.reload({ waitUntil: "networkidle" });
   await p.locator('[data-testid="so-actClass"]').waitFor({ timeout: 60000 });
   check("chỉ số 7: 60% và '6 / 10 gia sư' khi đủ 10 gia sư; có thanh", (await p.getByTestId("so-actClass").innerText()) === "60%" && await p.locator(e0("actClass")).getByText(/^6 \/ 10 gia sư/).isVisible() && (await p.locator(`${e0("actClass")} [role="img"]`).count()) === 1);
@@ -79,13 +79,13 @@ const KEYS = ["zaloOpened", "parentViewed", "paidIn14", "bank", "timely", "tutor
 
   section("Chọn khoảng thời gian");
   const req = p.waitForRequest(r => /\/api\/admin\/health-metrics\?days=7/.test(r.url()));
-  await p.getByLabel("Khoảng thời gian").selectOption("7");
+  await kinSelect(p.getByLabel("Khoảng thời gian"), "7");
   await req;
   check("chọn 7 ngày → gọi API days=7 và dòng khoảng ngày đổi", /Khoảng/.test(await p.getByTestId("khoang").innerText()));
 
   section("Lỗi mạng: thông báo + Thử lại");
   await p.route("**/api/admin/health-metrics*", r => r.fulfill({ status: 500, body: "{}" }));
-  await p.getByLabel("Khoảng thời gian").selectOption("30");
+  await kinSelect(p.getByLabel("Khoảng thời gian"), "30");
   await p.getByRole("alert").getByText("Không tải được số đo.").waitFor({ timeout: 15000 });
   await p.unroute("**/api/admin/health-metrics*");
   await p.getByRole("button", { name: "Thử lại" }).click();

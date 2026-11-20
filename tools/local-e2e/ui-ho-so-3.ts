@@ -2,7 +2,7 @@
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-ho-so-3.ts
 import { randomBytes } from "node:crypto";
 import { api, BASE, mkCourse, mkTutor, mkUser, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -62,7 +62,7 @@ import { prisma } from "@/lib/prisma";
   await pg.getByLabel("Tên phụ huynh", { exact: true }).last().fill("Chị Mai");
   await pg.getByLabel("Số Zalo phụ huynh").fill("0912345678");
   await pg.getByRole("button", { name: "Tạo gia đình" }).click();
-  await pg.getByLabel("Gia đình", { exact: true }).selectOption({ label: "Gia đình Thử" });
+  await kinSelect(pg.getByLabel("Gia đình", { exact: true }), { label: "Gia đình Thử" });
   await pg.getByRole("button", { name: "Lưu thay đổi" }).click();
   await pg.getByText(/Cần xác nhận đồng ý trước khi lưu thay đổi này/).waitFor({ timeout: 30000 });
   check("gắn vào gia đình mà chưa có phạm vi 'anh chị em' → hiện hộp đồng ý (phạm vi bắt buộc, không tích sẵn), chưa lưu", await pg.locator("[data-consent-box]").isVisible() && await pg.locator("[data-consent-scope=family]").isChecked() && await pg.locator("[data-consent-scope=family]").isDisabled() && await pg.locator("[data-consent-party]:checked").count() === 0 && (await prisma.studentProfile.findUnique({ where: { id: sib1 } }))?.familyId === null);

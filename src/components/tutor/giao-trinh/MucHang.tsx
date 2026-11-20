@@ -8,10 +8,11 @@ import { useId, useState } from "react";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinStatus } from "@/components/kin/Status";
 import { viewerHref } from "@/lib/library";
-import { giaoTrinhHref } from "@/lib/tutorRoutes";
+import { baiHocHref } from "@/lib/tutorRoutes";
 import type { GtEntry, GtGroup, GtItem } from "@/lib/giaoTrinh";
 import type { LessonStatus } from "@/lib/lessonStatus";
 import { ChipKieu, ChipTrangThai, KIND_LABEL } from "./ChipTrangThai";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const STORAGE_LABEL: Record<GtItem["storage"], string> = { link: "Link ngoài", kin: "Tệp trên KiN (riêng tư)", cloudinary_cu: "Tệp cũ (công khai)" };
 
@@ -144,17 +145,16 @@ export default function MucHang({ entry: e, courseId, groups, canUp, canDown, bu
 
       {more && (
         <div data-gt-them-thao-tac className="mx-4 mb-3 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-3 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-2">
-          <Link href={`${giaoTrinhHref(courseId, true)}/xem/${e.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
+          <Link href={`${baiHocHref(courseId)}/giao-trinh/xem/${e.id}`} className={kinButtonClass("secondary")}>Xem như học sinh</Link>
           <KinButton type="button" variant="secondary" disabled={busy} onClick={onDuplicate}>Nhân bản</KinButton>
           {e.status === "hidden" && <KinButton type="button" variant="secondary" disabled={busy} onClick={() => onSetStatus("draft")}>Đưa về Nháp</KinButton>}
           {groups.length > 0 && (
             <div className="min-w-0 sm:w-56">
               <label htmlFor={`${uid}-nhom`} className="block text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Chuyển nhóm</label>
-              <select id={`${uid}-nhom`} className="w-full min-h-11 px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]"
-                value={e.groupId ?? ""} disabled={busy} onChange={ev => onMoveGroup(ev.target.value || null)}>
+              <KinSelect id={`${uid}-nhom`} value={e.groupId ?? ""} disabled={busy} onChange={v => onMoveGroup(v || null)}>
                 <option value="">Chưa nhóm</option>
                 {groups.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-              </select>
+              </KinSelect>
             </div>
           )}
           <KinButton type="button" variant="danger" disabled={busy} onClick={onDelete}>Xoá mục</KinButton>

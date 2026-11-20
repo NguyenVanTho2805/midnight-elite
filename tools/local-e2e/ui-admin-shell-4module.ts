@@ -4,6 +4,8 @@
 import { mkUser, mkSuper, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN, adminGet } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { blockedRouteFeature } from "@/lib/features";
+import { visibleModules } from "@/lib/adminNav";
 
 const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
 
@@ -46,8 +48,10 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
 
   section("Mỗi module dẫn tới trang đầu được phép; Vận hành → /admin (Hôm nay)");
   await rail().getByRole("link", { name: /^Vận hành/ }).click();
-  await pg.waitForURL(/\/admin$/, { timeout: 60000 });
-  check("Vận hành → /admin, module sáng", await rail().getByRole("link", { name: /^Vận hành/ }).getAttribute("aria-current") === "page");
+  // DG (14/11/2026): Vận hành dẫn tới trang con ĐẦU TIÊN được phép và đang mở (adminNav.visibleModules) — Doanh thu ẩn theo cờ KINH_DOANH ⇒ Nhật ký.
+  const vhHref = visibleModules("admin_super").find(m => m.key === "van-hanh")!.href;
+  await pg.waitForURL(u => u.pathname === vhHref, { timeout: 60000 });
+  check(`Vận hành → ${vhHref} (trang con đầu tiên đang mở), module sáng`, await rail().getByRole("link", { name: /^Vận hành/ }).getAttribute("aria-current") === "page");
   await rail().getByRole("link", { name: /^Con người/ }).click();
   await pg.waitForURL(/\/admin\/gia-su/, { timeout: 60000 });
   check("Con người → /admin/gia-su (trang con đầu tiên)", /\/admin\/gia-su/.test(pg.url()));
@@ -62,7 +66,10 @@ const SKIP_44 = /nextjs-portal|KinToast|Mở rộng thanh bên/;
   section("Mọi trang trong nav mở được, không 404");
   for (const href of ["/admin/gia-su", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/danh-gia", "/admin/topups", "/admin/nhat-ky", "/admin/trien-khai", "/admin/goi-pro", "/admin/ho-tro"]) {
     const r = await adminGet(pg, `${ADMIN}${href}`);
-    check(`GET ${href} → 200`, r.status() === 200, r.status());
+    // DG (14/11/2026): trang của phần đang ẩn (Lịch sử đánh giá — VAN_HANH_PHU, Gói KiN Pro — KINH_DOANH) rời menu và 307 về /admin?tam-dong=<CỜ> (chốt ở hostRouting).
+    const k = blockedRouteFeature(href, "admin");
+    if (k) check(`GET ${href} → 307 /admin?tam-dong=${k} (phần đang ẩn)`, r.status() === 307 && (r.headers()["location"] ?? "").endsWith(`/admin?tam-dong=${k}`), [r.status(), r.headers()["location"]]);
+    else check(`GET ${href} → 200`, r.status() === 200, r.status());
   }
   await ctx.close();
 

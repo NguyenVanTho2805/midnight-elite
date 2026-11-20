@@ -1,5 +1,5 @@
 import { mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot } from "./ui";
+import { launch, ctxFor, shot, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf, vnMinutesOfDay, dayOfWeekOfKey, hmOf, instantOf, dueReminderKinds, weekRangeOf, addDaysKey } from "@/lib/classSessions";
 
@@ -173,7 +173,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await bar2.waitFor({ timeout: 60000 });
   const sendBtn = bar2.getByRole("button", { name: "Mở Zalo", exact: true });
   await eventually("thanh có chọn lớp (2 lớp có buổi) và nút mở được", async () => (await bar2.getByLabel("Lớp").count()) === 1 && (await sendBtn.isEnabled()));
-  await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
+  await kinSelect(bar2.getByLabel("Lớp"), { label: "Toán 9" });
   await sendBtn.click();
   const wdlg = page.getByRole("dialog");
   await wdlg.waitFor();
@@ -191,7 +191,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   await eventually("đã chép tin ĐÃ SỬA vào bộ nhớ tạm", async () => (await page.evaluate(() => navigator.clipboard.readText()).catch(() => "")).endsWith("Hẹn gặp các em."));
   await eventually("hiện 'Đã mở Zalo lúc HH:mm', không có chữ 'đã gửi'", async () => (await bar2.getByText(/Đã mở Zalo lúc \d\d:\d\d/).count()) === 1 && (await page.getByText(/đã gửi/i).count()) === 0);
   check("không ghi dòng nhắc lịch nào vào DB (không đổi schema)", (await prisma.classReminderLog.count()) === logsBefore);
-  await bar2.getByLabel("Lớp").selectOption({ label: "Lý 9" });
+  await kinSelect(bar2.getByLabel("Lớp"), { label: "Lý 9" });
   check("chọn lớp khác: trạng thái 'đã mở' không dính sang lớp kia", (await bar2.getByText(/Đã mở Zalo lúc/).count()) === 0);
   await sendBtn.click();
   const ldlg = page.getByRole("dialog");
@@ -200,7 +200,7 @@ async function slot(courseId: string, min: number, joinUrl: string | null = null
   check("tin của Lý 9 không lẫn Toán 9; lớp chưa gắn nhóm → nút 'Mở Zalo' + lối sang Cài đặt", ltext.includes("của lớp Lý 9:") && !ltext.includes("Toán 9") && await ldlg.getByRole("button", { name: "Mở Zalo", exact: true }).isVisible() && await ldlg.getByRole("link", { name: "Cài đặt → Kết nối" }).isVisible(), ltext);
   await page.keyboard.press("Escape");
   await ldlg.waitFor({ state: "detached" });
-  await bar2.getByLabel("Lớp").selectOption({ label: "Toán 9" });
+  await kinSelect(bar2.getByLabel("Lớp"), { label: "Toán 9" });
   await page.getByRole("button", { name: "Tuần sau ›" }).click();
   await eventually("đổi tuần → tiêu đề tuần đổi và trạng thái 'đã mở' không dính sang tuần khác", async () => (await page.getByText(`Tuần ${weekTitle(addDaysKey(wk, 7))}`).count()) >= 1 && (await bar2.getByText(/Đã mở Zalo lúc/).count()) === 0);
   await eventually("nút mở lại được ở tuần sau", () => sendBtn.isEnabled());

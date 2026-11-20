@@ -4,7 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf, weekRangeOf } from "@/lib/classSessions";
 import { check, mkCourse, mkTutor, mkUser, section, wipe, done } from "./h";
-import { closeAll, ctxFor, launch } from "./ui";
+import { closeAll, ctxFor, launch, kinSelect } from "./ui";
 
 const MAIN = process.env.BASE ?? "http://localhost:3100";
 const day = (k: string) => new Date(`${k}T00:00:00Z`);
@@ -77,7 +77,7 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
     await page.getByLabel("Đã dạy").fill("Phương trình bậc hai");
     await page.getByLabel("Bài tập về nhà").fill("Bài 1-6 trang 40");
     await page.getByLabel("Nhận xét chung").fill("Cả lớp theo kịp");
-    await page.getByLabel("Hình thức buổi này").selectOption("online");
+    await kinSelect(page.getByLabel("Hình thức buổi này"), "online");
     await page.getByLabel("Link học online riêng buổi này (không bắt buộc)").fill("https://meet.example/rieng");
     await page.waitForTimeout(3000);
     if ((await page.getByLabel("Đã dạy").inputValue()) === "Phương trình bậc hai" && (await page.getByLabel("Nhận xét chung").inputValue()) === "Cả lớp theo kịp" && !(await page.getByRole("button", { name: "Lưu ghi chép" }).isDisabled())) break;
@@ -157,7 +157,7 @@ const day = (k: string) => new Date(`${k}T00:00:00Z`);
   await drawer.waitFor();
   // Đặt buổi lẻ Lý 9 vào đúng ngày + giờ của buổi Lý 9 ngày mai (10:30–11:30 chồng 10:00–11:00).
   await drawer.getByRole("radio", { name: "Dạy bù" }).click();
-  await drawer.getByLabel("Lớp").selectOption({ label: "Lý 9" });
+  await kinSelect(drawer.getByLabel("Lớp"), { label: "Lý 9" });
   await drawer.getByLabel("Ngày").fill(tomorrow);
   await drawer.getByLabel("Bắt đầu").fill("10:30");
   await drawer.getByLabel("Kết thúc").fill("11:30");

@@ -3,6 +3,7 @@
 "use client";
 import { useId, type ReactNode } from "react";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export function TextField({ label, value, onChange, error, hint, type = "text", inputMode, placeholder, maxLength, required, autoComplete = "off", name, onBlur }: {
   label: string; value: string; onChange: (v: string) => void; error?: string; hint?: string; type?: string; inputMode?: "text" | "tel" | "email" | "numeric";
@@ -38,7 +39,7 @@ export function SelectField({ label, value, onChange, children, hint }: { label:
   return (
     <div className="min-w-0">
       <label htmlFor={id} className={`${KIN_LABEL} mb-2`}>{label}</label>
-      <select id={id} value={value} onChange={e => onChange(e.target.value)} className={KIN_FIELD}>{children}</select>
+      <KinSelect id={id} value={value} onChange={v => onChange(v)}>{children}</KinSelect>
       {hint && <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{hint}</p>}
     </div>
   );

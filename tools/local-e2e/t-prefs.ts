@@ -29,6 +29,14 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   check("reminders gộp từng phần", eq((applyPreferencesPatch({ reminders: { parent: true, student: true } }, { reminders: { student: false } }) as any).value.reminders, { parent: true, student: false }));
   check("null xoá khoá", eq((applyPreferencesPatch({ theme: "man", mode: "toi" }, { theme: null }) as any).value, { mode: "toi" }));
   check("vá dở không ghi: 1 khoá sai thì cả bản vá hỏng", !applyPreferencesPatch({ theme: "man" }, { mode: "toi", theme: "xxx" }).ok);
+  // Q3 (14/11): cam kết bản quyền nhớ theo tài khoản — máy chủ đặt thời điểm, client không gửi được thời điểm.
+  const T0 = new Date("2026-11-14T03:00:00Z"), T1 = new Date("2026-11-20T03:00:00Z");
+  const p1 = applyPreferencesPatch({}, { copyrightPledge: true }, T0) as any;
+  check("copyrightPledge: true → copyrightPledgedAt = thời điểm máy chủ", p1.ok && p1.value.copyrightPledgedAt === T0.toISOString(), p1);
+  check("tích lại → giữ thời điểm lần đầu", (applyPreferencesPatch(p1.value, { copyrightPledge: true }, T1) as any).value.copyrightPledgedAt === T0.toISOString());
+  check("null / false → bỏ cam kết", !("copyrightPledgedAt" in (applyPreferencesPatch(p1.value, { copyrightPledge: null }) as any).value) && !("copyrightPledgedAt" in (applyPreferencesPatch(p1.value, { copyrightPledge: false }) as any).value));
+  check("client gửi thời điểm hoặc chuỗi → 400", !applyPreferencesPatch({}, { copyrightPledge: "2020-01-01" }).ok && !applyPreferencesPatch({}, { copyrightPledgedAt: "2020-01-01T00:00:00Z" }).ok);
+  check("đọc: thời điểm hỏng bị bỏ, thời điểm đúng giữ", !("copyrightPledgedAt" in readPreferences({ copyrightPledgedAt: "abc" })) && readPreferences({ copyrightPledgedAt: T0.toISOString() }).copyrightPledgedAt === T0.toISOString());
 
   section("API /api/users/me/preferences");
   const u = await mkUser({ name: "Em Học" });
@@ -79,6 +87,16 @@ const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   ]);
   const fin = (await api("GET", "/api/users/me/preferences", { as: u })).json.preferences;
   check("đủ cả 4 thay đổi", fin.theme === "man" && eq(fin.modules, ["bai-kt"]) && fin.reminders?.parent === false && fin.mode === "sang", fin);
+  // Q3 qua API: tích ⇒ máy chủ đặt thời điểm; đọc lại ở "máy khác" (GET) vẫn còn; bỏ tích ⇒ mất; tài khoản khác không thấy.
+  const before = Date.now();
+  r = await api("PUT", "/api/users/me/preferences", { as: tutor, body: { copyrightPledge: true } });
+  const at = Date.parse(r.json?.preferences?.copyrightPledgedAt ?? "");
+  check("PUT copyrightPledge → 200, thời điểm do máy chủ đặt (gần bây giờ)", r.status === 200 && at >= before - 5000 && at <= Date.now() + 5000, r.json);
+  check("GET lại vẫn còn cam kết; tài khoản khác không có", !!(await api("GET", "/api/users/me/preferences", { as: tutor })).json.preferences.copyrightPledgedAt && !(await api("GET", "/api/users/me/preferences", { as: u })).json.preferences.copyrightPledgedAt);
+  r = await api("PUT", "/api/users/me/preferences", { as: tutor, body: { copyrightPledgedAt: "2000-01-01T00:00:00Z" } });
+  check("PUT thẳng copyrightPledgedAt → 400 (không giả mạo thời điểm)", r.status === 400);
+  r = await api("PUT", "/api/users/me/preferences", { as: tutor, body: { copyrightPledge: null } });
+  check("bỏ tích → khoá mất", r.status === 200 && !("copyrightPledgedAt" in r.json.preferences), r.json);
   const raw = await prisma.user.findUnique({ where: { id: u.id }, select: { preferences: true } });
   check("DB lưu JSON đúng", typeof raw?.preferences === "object");
 

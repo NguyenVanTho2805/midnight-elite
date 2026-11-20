@@ -7,6 +7,7 @@ import { KinButton } from "@/components/kin";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { callApi } from "@/components/tutor/shared";
 import { KIND_LABEL, MODE_LABEL, SESSION_MODES, type SessionKind } from "@/lib/sessionBook";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export interface QuickAddDefaults { courseId?: string; dateKey?: string; startTime?: string; endTime?: string; kind?: Exclude<SessionKind, "regular"> }
 export interface QuickAddCourse { id: string; name: string }
@@ -82,9 +83,9 @@ export default function ThemBuoiNhanh({ courses, defaults, onClose, onCreated }:
 
           <div>
             <label htmlFor="tb-lop" className={KIN_LABEL}>Lớp</label>
-            <select id="tb-lop" value={courseId} onChange={e => { setCourseId(e.target.value); setConflicts(null); }} className={`${KIN_FIELD} mt-2`}>
+            <KinSelect id="tb-lop" value={courseId} onChange={v => { setCourseId(v); setConflicts(null); }} className="mt-2">
               {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </KinSelect>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-1"><label htmlFor="tb-ngay" className={KIN_LABEL}>Ngày</label>
@@ -96,10 +97,10 @@ export default function ThemBuoiNhanh({ courses, defaults, onClose, onCreated }:
           </div>
           <div>
             <label htmlFor="tb-mode" className={KIN_LABEL}>Hình thức (không bắt buộc)</label>
-            <select id="tb-mode" value={mode} onChange={e => setMode(e.target.value as typeof mode)} className={`${KIN_FIELD} mt-2`}>
+            <KinSelect id="tb-mode" value={mode} onChange={v => setMode(v as typeof mode)} className="mt-2">
               <option value="">Chưa chọn</option>
               {SESSION_MODES.map(m => <option key={m} value={m}>{MODE_LABEL[m]}</option>)}
-            </select>
+            </KinSelect>
           </div>
           {mode === "offline" && (
             <div><label htmlFor="tb-loc" className={KIN_LABEL}>Địa chỉ học offline</label>

@@ -19,6 +19,7 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { dayAt } from "@/lib/baiTap";
 import { deThiListHref } from "@/components/tutor/de-thi/deThiClient";
 import { fmtPoints, validateEssayPoints, GRADE_STATE_LABEL, type GradeState, type QuizAnalytics } from "@/lib/quizGrade";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Row {
   attemptId: string; studentName: string; attemptNo: number; status: string; submittedAt: string | null;
@@ -248,9 +249,9 @@ function GradeTab({ base, ov, rows, cur, onPick, onChanged, onPublish, busy }: {
     <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_340px] gap-x-8 gap-y-8 items-start">
       <div className="min-w-0">
         <label htmlFor="cq-pick" className={`${KIN_LABEL} mb-2`}>Bài nộp đang chấm</label>
-        <select id="cq-pick" className={KIN_FIELD} value={id ?? ""} onChange={e => onPick(e.target.value)}>
+        <KinSelect id="cq-pick" value={id ?? ""} onChange={v => onPick(v)}>
           {rows.map((r, i) => <option key={r.attemptId} value={r.attemptId}>{r.studentName}{r.attemptNo > 1 ? ` · lượt ${r.attemptNo}` : ""} · {GRADE_STATE_LABEL[r.state]} ({i + 1}/{rows.length})</option>)}
-        </select>
+        </KinSelect>
 
         {loadErr ? <div className="mt-4"><ErrorStrip message="Không tải được bài này." onRetry={fetchDetail} /></div>
           : !d ? <div aria-busy="true" aria-label="Đang tải bài nộp" className="kin-skel kin-skel--soft h-[240px] rounded mt-4" />

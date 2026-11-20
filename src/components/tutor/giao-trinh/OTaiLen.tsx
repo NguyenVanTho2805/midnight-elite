@@ -19,12 +19,13 @@ import { formatMegabytes } from "@/lib/mediaStorage";
 import { COPYRIGHT_PLEDGE_LABEL, COPYRIGHT_NOTICE } from "@/lib/classRecordings";
 import type { AddResult, GtTarget } from "./useGiaoTrinh";
 import { ChipTrangThai } from "./ChipTrangThai";
+import { KinSelect } from "@/components/kin/KinSelect";
+import { useCamKetBanQuyen } from "@/components/tutor/upload/useCamKetBanQuyen";
 
 /** Mục (kiểu) mà link sẽ thành; khớp nhãn kiểu trên hàng. */
 const SLOT_NAME: Record<MediaSlot, string> = { video: "Video", live: "Buổi live", azota: "Bài tập", document: "Tài liệu" };
 /** Dải nguồn NHẬN ĐƯỢC (bỏ Vimeo: video chỉ nhận link YouTube; Zoom ở đây là link buổi live). */
 const SOURCES = ["YouTube", "Google Drive", "Zoom (phòng học)", "Meet", "Azota", "Google Form", "PDF", "Word", "Excel", "PowerPoint", "Ảnh"];
-const PLEDGE_KEY = "kin.gt.cam-ket";
 
 export interface AddedInfo { lessonId: string; key: string; createdLesson: boolean }
 
@@ -38,13 +39,18 @@ export interface OTaiLenProps {
   onUndo: (info: AddedInfo) => Promise<boolean>;
   /** Lớp chưa có mục nào: ô phóng lớn. */
   large?: boolean;
+  /** LOI-07: người xem được tải tệp lên KiN không. /api/media/document/init chỉ nhận CHỦ lớp (403 với đồng giảng / bộ môn) ⇒ false: chỉ còn dán link,
+   *  không ô chọn tệp; thả tệp vào ô báo tại chỗ, không có yêu cầu mạng (cam kết bản quyền vẫn hiện: nó nói cả về link). Mặc định true. */
+  allowFiles?: boolean;
 }
 
-export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onUndo, large }: OTaiLenProps) {
+const OWNER_ONLY_FILES = "Chỉ chủ lớp tải tệp lên KiN được. Bạn dán link (YouTube, Google Drive…) vào ô trên nhé.";
+
+export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onUndo, large, allowFiles = true }: OTaiLenProps) {
   const [text, setText] = useState("");
   const [attachTo, setAttachTo] = useState("");
   const [publishNow, setPublishNow] = useState(false);
-  const [pledge, setPledge] = useState(false);
+  const [pledge, setPledgeSaved] = useCamKetBanQuyen();
   const [drag, setDrag] = useState(false);
   const [linkBusy, setLinkBusy] = useState(false);
   const [boxError, setBoxError] = useState<string | null>(null);
@@ -54,9 +60,7 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
   const fileRef = useRef<HTMLInputElement>(null);
   const live = useRef(true);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { live.current = true; try { if (sessionStorage.getItem(PLEDGE_KEY) === "1") setPledge(true); } catch { /* không có sessionStorage */ } return () => { live.current = false; }; }, []);
-  const setPledgeSaved = (v: boolean) => { setPledge(v); try { sessionStorage.setItem(PLEDGE_KEY, v ? "1" : "0"); } catch { /* bỏ qua */ } };
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
 
   // Mục được chọn để gắn thêm đã biến mất (xoá, hoàn tác) ⇒ coi như "Mục mới".
   const attach = attachTo && lessons.some(l => l.id === attachTo) ? attachTo : "";
@@ -117,7 +121,10 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
   function onDrop(ev: DragEvent<HTMLDivElement>) {
     ev.preventDefault(); setDrag(false);
     const dropped = ev.dataTransfer.files;
-    if (dropped && dropped.length) { enqueue(dropped); return; }
+    if (dropped && dropped.length) {
+      if (!allowFiles) { setDone(null); setBoxError(OWNER_ONLY_FILES); return; }
+      enqueue(dropped); return;
+    }
     const t = ev.dataTransfer.getData("text/uri-list") || ev.dataTransfer.getData("text/plain");
     if (t) { setText(t.split("\n")[0].trim()); inputRef.current?.focus(); }
   }
@@ -132,13 +139,17 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
     <section aria-labelledby="gt-o-tai" data-gt-o-tai className={`rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] ${large ? "p-6 md:p-10" : "p-4 md:p-5"}`}>
       <h2 id="gt-o-tai" className="font-medium text-[var(--kin-chu-chinh)] text-[length:var(--kin-co-tieu-de)]">Thêm mục vào lớp</h2>
       <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-        <span className="max-md:hidden">Kéo thả tệp vào đây, hoặc dán link. Mỗi link hoặc tệp là một mục mới.</span>
-        <span className="md:hidden">Dán link hoặc chọn tệp từ máy. Mỗi link hoặc tệp là một mục mới.</span>
+        {allowFiles ? <>
+          <span className="max-md:hidden">Kéo thả tệp vào đây, hoặc dán link. Mỗi link hoặc tệp là một mục mới.</span>
+          <span className="md:hidden">Dán link hoặc chọn tệp từ máy. Mỗi link hoặc tệp là một mục mới.</span>
+        </> : <>Dán link vào ô dưới. Mỗi link là một mục mới.</>}
       </p>
       <p data-gt-gioi-han className="mt-1 text-[length:var(--kin-co-caption)] leading-5 text-[var(--kin-chu-mo)]">
-        {doc.enabled
-          ? <>{exts} · tối đa {formatMegabytes(doc.maxBytes)} mỗi tệp · còn {formatMegabytes(left)} trong kho của bạn. </>
-          : <>{doc.reason ?? "Chưa bật tải tệp lên KiN. Hãy dán link Google Drive."} </>}
+        {!allowFiles
+          ? <span data-gt-chi-chu-lop>Tải tệp lên KiN chỉ dành cho chủ lớp. Tài liệu: dán link Google Drive. </span>
+          : doc.enabled
+            ? <>{exts} · tối đa {formatMegabytes(doc.maxBytes)} mỗi tệp · còn {formatMegabytes(left)} trong kho của bạn. </>
+            : <>{doc.reason ?? "Chưa bật tải tệp lên KiN. Hãy dán link Google Drive."} </>}
         <b className="font-medium">Video: dán link YouTube.</b>
       </p>
       <p data-gt-nguon className="mt-1 text-[length:var(--kin-co-caption)] leading-5 text-[var(--kin-chu-mo)]">Nhận được: {SOURCES.join(" · ")}</p>
@@ -170,23 +181,25 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <input ref={fileRef} type="file" multiple accept={accept || undefined} className="hidden" aria-label="Chọn tệp từ máy"
-            onChange={e => { const l = e.target.files; if (l) enqueue(l); e.target.value = ""; }} />
-          <KinButton type="button" variant="secondary" className="max-md:flex-1" onClick={() => fileRef.current?.click()}>Chọn tệp từ máy</KinButton>
-          <KinButton type="button" variant="secondary" className="md:hidden flex-1" onClick={() => { inputRef.current?.focus(); inputRef.current?.scrollIntoView({ block: "center" }); }}>Dán link</KinButton>
-        </div>
+        {allowFiles && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <input ref={fileRef} type="file" multiple accept={accept || undefined} className="hidden" aria-label="Chọn tệp từ máy"
+              onChange={e => { const l = e.target.files; if (l) enqueue(l); e.target.value = ""; }} />
+            <KinButton type="button" variant="secondary" className="max-md:flex-1" onClick={() => fileRef.current?.click()}>Chọn tệp từ máy</KinButton>
+            <KinButton type="button" variant="secondary" className="md:hidden flex-1" onClick={() => { inputRef.current?.focus(); inputRef.current?.scrollIntoView({ block: "center" }); }}>Dán link</KinButton>
+          </div>
+        )}
       </div>
 
       {lessons.length > 0 && (
         <div className="mt-4">
           <label htmlFor="gt-gan-vao" className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Thêm thành</label>
-          <select id="gt-gan-vao" data-gt-gan-vao className={`${KIN_FIELD} mt-1`} value={attach} onChange={e => setAttachTo(e.target.value)}>
+          <KinSelect id="gt-gan-vao" data-gt-gan-vao className="mt-1" value={attach} onChange={v => setAttachTo(v)}>
             <option value="">Mục mới (mặc định)</option>
             <optgroup label="Gắn vào mục có sẵn">
               {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
             </optgroup>
-          </select>
+          </KinSelect>
         </div>
       )}
 

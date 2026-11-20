@@ -38,25 +38,45 @@ const expandTernary = (str: string): string[] => {
   const norm = (p: string) => p.split("#")[0].split("?")[0].replace(/\$\{[^}]*\}/g, "*").replace(/\/+$/, "").split("/").filter(Boolean);
   // Tiền tố / bản mẫu không phải liên kết: proxy.ts (so sánh tiền tố), StudentShell (`also` = tiền tố module).
   // hostRouting.ts: so khớp TIỀN TỐ ("/api", "/_next"), không phải liên kết. features.ts (LOI-01): bản đồ TIỀN TỐ đường dẫn → cờ ("/mentor" khớp /mentor/<id>, "/vinh-danh" giữ chỗ cho route chưa có).
-  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts", "src/lib/features.ts"]);
+  // robots.ts (LOI-07): ROBOTS_DISALLOW là TIỀN TỐ cấm bò ("/xac-" khớp /xac-thuc…, /xac-nhan…), không phải liên kết.
+  const IGNORE = new Set(["src/proxy.ts", "src/lib/hostRouting.ts", "src/lib/features.ts", "src/app/robots.ts"]);
   const IGNORE_PATH = new Set(["/student/bai-giang"]);
+  // LOI-07: chuỗi nằm ngay trong lời gọi so khớp (`pathname.endsWith("/xem-truoc")`, startsWith, includes) là phép so, không phải liên kết;
+  // chuỗi là ĐUÔI truyền cho hàm dựng đường dẫn lớp (`manage("/hoc-vien")` = contentHref(…, `/admin/khoa-hoc/${id}/hoc-vien`)) là phần sau của một đường thật.
+  const NOT_LINK_BEFORE = /(?:\.(?:endsWith|startsWith|includes)|\bmanage)\(\s*$/;
+  const linkCandidates = (ln: string): string[] => {
+    if (/^\s*(\/\/|\*|\/\*)/.test(ln)) return [];
+    const out: string[] = [];
+    for (const m of ln.matchAll(STR)) {
+      const p = m[2];
+      if (NOT_LINK_BEFORE.test(ln.slice(0, m.index))) continue;
+      if (p === "/" || /^\/(g|i|gi)$/.test(p) || /^\/\*/.test(p) || /\.(png|jpe?g|svg|webp|ico|css|js|json|pdf|csv|woff2?|mp4)$/.test(p.split("?")[0]) || p.startsWith("/api/") || IGNORE_PATH.has(p)) continue;
+      if (norm(p).length === 0) continue;
+      out.push(p);
+    }
+    return out;
+  };
+  // Ca phá cố ý: bộ lọc mới không được nuốt liên kết sai thật.
+  check("phá: cùng chuỗi \"/hoc-vien\" nhưng là href trần (không qua manage) vẫn bị bắt", linkCandidates(`<Link href="/hoc-vien">x</Link>`).some(p => !matchRoute(pages, norm(p))));
+  check("phá: chuỗi sai nằm SAU một phép so trên cùng dòng vẫn bị bắt", linkCandidates(`if (a.endsWith("/x")) router.push("/student/khong-co-trang-nay");`).some(p => !matchRoute(pages, norm(p))));
+  check("phép so endsWith/startsWith/includes và đuôi manage(…) không bị coi là liên kết", linkCandidates(`if (pathname.endsWith("/xem-truoc")) return; s.startsWith("/xac-"); <Link href={manage("/hoc-vien")}>`).length === 0);
   const badPages: string[] = [];
   let nLinks = 0;
   for (const f of files) {
     if (IGNORE.has(f)) continue;
     read(f).split("\n").forEach((ln, i) => {
-      if (/^\s*(\/\/|\*|\/\*)/.test(ln)) return;
-      for (const m of ln.matchAll(STR)) {
-        const p = m[2];
-        if (p === "/" || /^\/(g|i|gi)$/.test(p) || /^\/\*/.test(p) || /\.(png|jpe?g|svg|webp|ico|css|js|json|pdf|csv|woff2?|mp4)$/.test(p.split("?")[0]) || p.startsWith("/api/") || IGNORE_PATH.has(p)) continue;
-        const segs = norm(p);
-        if (segs.length === 0) continue;
+      for (const p of linkCandidates(ln)) {
         nLinks++;
-        if (!matchRoute(pages, segs)) badPages.push(`${f}:${i + 1} ${p}`);
+        if (!matchRoute(pages, norm(p))) badPages.push(`${f}:${i + 1} ${p}`);
       }
     });
   }
   check(`${nLinks} địa chỉ nội bộ đều có trang đích`, badPages.length === 0, badPages);
+  // manage(sub) ở LopChiTiet dựng /admin/khoa-hoc/<id><sub> → trang đích thật phải có cho mọi đuôi đường dẫn đang dùng.
+  for (const f of files) {
+    if (!/const manage = \(sub = ""\) => contentHref\([^,]+, `\/admin\/khoa-hoc\/\$\{[^}]+\}\$\{sub\}`\)/.test(read(f))) continue;
+    for (const m of read(f).matchAll(/\bmanage\("(\/[^"?#]*)/g)) check(`${f.split("/").pop()}: manage("${m[1]}") có trang /admin/khoa-hoc/[id]${m[1]}`, matchRoute(pages, ["admin", "khoa-hoc", "*", ...m[1].split("/").filter(Boolean)]));
+  }
 
   section("2. Lời gọi API: có route và đúng phương thức");
   const ALLOWED = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "dynamic", "revalidate", "runtime", "maxDuration", "preferredRegion", "fetchCache", "dynamicParams", "generateStaticParams", "config"]);

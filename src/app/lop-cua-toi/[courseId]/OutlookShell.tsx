@@ -15,6 +15,8 @@ import { useState } from "react";
 import Link from "next/link";
 import ClassInvitesPanel from "@/components/tutor/ClassInvites";
 import { contentHref } from "@/lib/tutorRoutes";
+import { KinSelect } from "@/components/kin/KinSelect";
+import { featureOn } from "@/lib/features";
 
 type Role = "tutor" | "student";
 
@@ -111,7 +113,9 @@ export default function OutlookShell({ courseId, courseName, category, role, vie
   /** Người xem là GIA SƯ thật (role admin + adminRole teacher) → lối tắt đi bí danh /lop-cua-toi/quan-lop/…; quản trị xem với role="tutor" giữ /admin/khoa-hoc/…. */
   isTeacher?: boolean;
 }) {
-  const items = role === "tutor" ? tutorItems(isTeacher) : studentItems();
+  // DG (14/11/2026): mục Học phí / Điểm danh rời danh sách khi cờ HOC_PHI / DIEM_DANH tắt (mặc định). Route của chúng đã chặn 307 ở proxy.
+  const items = (role === "tutor" ? tutorItems(isTeacher) : studentItems())
+    .filter(it => !(it.key === "hoc-phi" && !featureOn("HOC_PHI")) && !(it.key === "diem-danh" && !featureOn("DIEM_DANH")));
   const [active, setActive] = useState(items[0].key);
   const activeItem = items.find(it => it.key === active) ?? items[0];
 
@@ -134,17 +138,11 @@ export default function OutlookShell({ courseId, courseName, category, role, vie
 
         {/* Mobile: dropdown */}
         <div className="sm:hidden mb-3">
-          <select value={active} onChange={e => setActive(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg text-sm"
-            style={{
-              background: "var(--kin-nen-bang)",
-              color:      "var(--kin-chu-chinh)",
-              border:     "1px solid var(--kin-vien-thuong)",
-            }}>
+          <KinSelect aria-label="Mục của lớp" value={active} onChange={v => setActive(v)}>
             {items.map(it => (
               <option key={it.key} value={it.key}>{it.icon} {it.label}</option>
             ))}
-          </select>
+          </KinSelect>
         </div>
 
         <div className="flex gap-4">

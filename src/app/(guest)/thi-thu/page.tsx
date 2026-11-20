@@ -9,6 +9,7 @@ import { useEnrollments } from "@/hooks/useEnrollments";
 import { computeExamStatus, type ExamStatus } from "@/lib/examData";
 import { groupExamsByMonth } from "@/lib/examList";
 import { KinPage, KinPageHeader, KinStatus, KinEmptyState, kinButtonClass, KIN_TABLE_HEAD, KIN_TABLE_ROW, KIN_FIELD, type StatusTone } from "@/components/kin";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface MyResult {
   examId: string; score: number | null; totalPoints: number; rank: number | null;
@@ -98,9 +99,9 @@ export default function ThiThuPage() {
           {/* Kỳ thi (nhóm đề: ĐGNL HSA, Tốt nghiệp THPT…) là một ô chọn, không phải hàng nút thứ hai: hàng nút ấy cũng có "Tất cả" nên dễ nhầm với bộ lọc trạng thái bên cạnh. */}
           <label className="block min-w-0">
             <span className="sr-only">Kỳ thi</span>
-            <select value={cat} onChange={e => setCat(e.target.value)} className={KIN_FIELD}>
+            <KinSelect value={cat} onChange={v => setCat(v)}>
               {COURSE_CATEGORIES.map(c => <option key={c} value={c}>{c === "Tất cả" ? "Tất cả kỳ thi" : c}</option>)}
-            </select>
+            </KinSelect>
           </label>
           <div role="group" aria-label="Lọc theo trạng thái làm bài" className="flex flex-wrap items-center gap-1">
             {TABS.map(t => (

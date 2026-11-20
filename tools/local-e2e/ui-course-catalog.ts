@@ -1,6 +1,6 @@
 // CAT-01 — /khoa-hoc trong trình duyệt (COO chạy, KHÔNG chạy trên cổng 3100 chung khi chưa được phép): 1280 và 390, URL giữ bộ lọc, thẻ, trạng thái rỗng, vai khách / học sinh.
 import { mkTutor, mkUser, mkCourse, wipe, check, section, done, BASE } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -57,7 +57,7 @@ import { prisma } from "@/lib/prisma";
   check("tải lại vẫn 2 thẻ và chip bật", (await pg.locator("[data-course-card]").count()) === 2 && (await pg.locator('[data-chip="ĐGNL HCM"]').getAttribute("aria-pressed")) === "true");
 
   section("Lọc giá / còn chỗ / rỗng / xoá lọc");
-  await pg.getByRole("combobox", { name: "Giá" }).selectOption("free");
+  await kinSelect(pg.getByRole("combobox", { name: "Giá" }), "free");
   check("miễn phí → 1 thẻ", (await pg.locator("[data-course-card]").count()) === 1);
   await pg.getByRole("searchbox").fill("khong-co-gi-ca");
   check("rỗng do lọc có nút Xoá bộ lọc", (await pg.locator("[data-clear-filters]").count()) >= 1 && /Không có khoá học phù hợp/.test(await pg.locator("[data-catalog]").innerText()));
@@ -139,6 +139,20 @@ import { prisma } from "@/lib/prisma";
   await fchip.click();
   await lp.waitForURL(/\/khoa-hoc-da-luu$/, { timeout: 30000 });
   check("bấm chip → trang 'Lớp đang theo dõi' (nơi xem lại / bỏ theo dõi)", await lp.getByRole("heading", { name: /Lớp đang theo dõi/ }).first().isVisible());
+
+  section("LOI-07: gia sư mở /khoa-hoc → KHÔNG có nút theo dõi, KHÔNG chip 'Đang theo dõi', không gọi /api/followed-courses/<lớp> (API chỉ nhận học sinh → 403)");
+  const tp = await (await ctxFor(T, { width: 1280, height: 800 })).newPage(); tp.on("pageerror", (e: unknown) => errors.push(String(e)));
+  const tutorFollow: string[] = [];
+  tp.on("response", r => { if (/\/api\/followed-courses\//.test(r.url())) tutorFollow.push(`${r.request().method()} ${r.status()}`); });
+  await tp.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });
+  await tp.locator("[data-course-card]").first().waitFor({ timeout: 60000 });
+  await tp.waitForTimeout(800);   // đợi AuthContext biết vai (nút theo dõi vẽ cho khách trước khi biết người dùng)
+  check("gia sư: 4 thẻ, không thẻ nào có nút 'Theo dõi lớp' / 'Bỏ theo dõi lớp'", (await tp.locator("[data-course-card]").count()) === 4 && (await tp.getByRole("button", { name: /theo dõi lớp/i }).count()) === 0);
+  check("gia sư: không có chip 'Đang theo dõi'", (await tp.locator("[data-followed-chip]").count()) === 0);
+  check("gia sư: không có yêu cầu POST/DELETE /api/followed-courses/<lớp> nào (không 403)", tutorFollow.length === 0, tutorFollow);
+  await lp.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 });   // `lp` đang ở /khoa-hoc-da-luu sau ca chip
+  await lp.locator("[data-followed-chip]").waitFor({ timeout: 30000 });
+  check("ca đối chứng: học sinh (em nghỉ lớp) vẫn có nút theo dõi ở 3 lớp còn lại", (await lp.getByRole("button", { name: /theo dõi lớp/i }).count()) === 3);
 
   check("không lỗi JS trang", errors.length === 0, errors.slice(0, 3));
   check("gõ tìm / chọn chip / đổi lọc không gây cảnh báo React 'cập nhật Router khi đang dựng' (replaceState ngoài hàm cập nhật state)", reactWarns.length === 0, reactWarns.slice(0, 2));

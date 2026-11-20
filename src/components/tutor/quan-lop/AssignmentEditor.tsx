@@ -7,6 +7,7 @@ import { useKinConfirm } from "@/components/kin/useConfirm";
 import { AiQuotaNote } from "@/components/AiQuotaNote";
 import { DropZone } from "@/components/DropZone";
 import { checkLinkForSlot } from "@/lib/mediaLink";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 function fmtDue(d: string | null): string {
   if (!d) return "";
@@ -71,10 +72,9 @@ function QuestionRow({ q, qi, onChange, onRemove }: {
       </div>
       {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-32 rounded-lg border border-gray-200 ml-[52px]" />}
       <div className="flex items-center gap-2 pl-[52px]">
-        <select className={inpSm + " w-28"} value={q.type} onChange={e => setType(e.target.value as "MC" | "ESSAY")}>
-          <option value="MC">Trắc nghiệm</option>
-          <option value="ESSAY">Tự luận</option>
-        </select>
+        {/* LOI-02 (2.G): KinSelect thay <select> gốc (panel bài học). */}
+        <KinSelect className="w-40 flex-shrink-0" aria-label={`Loại câu ${qi + 1}`} value={q.type} onChange={v => setType(v as "MC" | "ESSAY")}
+          options={[{ value: "MC", label: "Trắc nghiệm" }, { value: "ESSAY", label: "Tự luận" }]} />
         <input type="number" min={0.25} step={0.25} className={inpSm + " w-16"} value={q.points} title="Điểm"
           onChange={e => onChange({ points: e.target.value })} />
       </div>
@@ -207,12 +207,12 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
       {!isEditing ? (
         <div className="flex gap-2">
           <button type="button" onClick={() => setMode("file")}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
+            className="flex-1 min-h-11 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
             style={mode === "file" ? { borderColor: "var(--kin-nhan-nen)", background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" } : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             📎 Nộp file
           </button>
           <button type="button" onClick={() => setMode("interactive")}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
+            className="flex-1 min-h-11 py-2 rounded-lg text-xs font-semibold border-2 transition-colors"
             style={mode === "interactive" ? { borderColor: "var(--kin-nhan-nen)", background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-link)" } : { borderColor: "var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>
             🖥️ Làm trên web
           </button>
@@ -241,7 +241,7 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
           <input className={inp} placeholder="Dán link Drive của đề bài…" value={fileUrl}
             onChange={e => { setFileUrl(e.target.value); if (!fileName) setFileName(""); }} />
           <p data-tai-lieu-dong className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-            Tải tệp đề lên: dùng tab Giáo trình của lớp (sắp có). Hiện chỉ dán link Drive.
+            Có tệp đề (PDF, Word)? Thả vào ô Tài liệu của bài ở trên — học sinh thấy ngay cạnh bài tập. Ô này chỉ để dán link Drive.
           </p>
         </div>
       )}
@@ -278,10 +278,10 @@ function AssignmentForm({ initial, onCancel, onSave, saving }: {
       )}
 
       <div className="flex items-center justify-end gap-2 pt-1">
-        <button onClick={onCancel} className="px-3 py-1.5 text-xs border rounded-lg text-gray-600 hover:bg-gray-50">Huỷ</button>
+        <button onClick={onCancel} className="min-h-11 px-4 text-sm border rounded-lg text-gray-600 hover:bg-gray-50">Huỷ</button>
         <button onClick={handleSaveClick}
           disabled={!title.trim() || saving}
-          className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-40" style={{ background: "var(--kin-nhan-nen)" }}>
+          className="min-h-11 px-4 text-sm font-semibold text-white rounded-lg disabled:opacity-40" style={{ background: "var(--kin-nhan-nen)" }}>
           {saving ? "Đang lưu..." : "Lưu bài tập"}
         </button>
       </div>
@@ -547,11 +547,11 @@ export function AssignmentEditor({ lessonId }: { lessonId: string }) {
   }
 
   return (
-    <div>
+    <div data-bai-tap-tu-nop>
       {dialog}
       <div className="flex items-center justify-between mb-3 pb-1 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-700">Bài tập tự nộp</p>
-        {!adding && <button onClick={() => setAdding(true)} className="text-xs font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm bài tập</button>}
+        {!adding && <button onClick={() => setAdding(true)} className="min-h-11 px-2 text-sm font-semibold" style={{ color: "var(--kin-nhan-link)" }}>+ Thêm bài tập</button>}
       </div>
       <p className="text-xs text-gray-400 -mt-2 mb-3">Song song với Azota ở trên — dùng khi muốn học viên nộp bài trực tiếp trên nền tảng để chấm điểm.</p>
 
@@ -574,12 +574,12 @@ export function AssignmentEditor({ lessonId }: { lessonId: string }) {
                 </p>
               </div>
               {a.mode === "interactive" ? (
-                <button onClick={() => setViewingResults(a)} className="text-xs px-2 py-1 rounded text-green-600 hover:bg-green-50 flex-shrink-0">Xem kết quả</button>
+                <button onClick={() => setViewingResults(a)} className="min-h-11 text-xs px-2 rounded text-green-600 hover:bg-green-50 flex-shrink-0">Xem kết quả</button>
               ) : (
-                <button onClick={() => setGrading(a)} className="text-xs px-2 py-1 rounded text-green-600 hover:bg-green-50 flex-shrink-0">Chấm bài</button>
+                <button onClick={() => setGrading(a)} className="min-h-11 text-xs px-2 rounded text-green-600 hover:bg-green-50 flex-shrink-0">Chấm bài</button>
               )}
-              <button onClick={() => setEditing(a)} className="text-xs px-2 py-1 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">Sửa</button>
-              <button onClick={() => handleDelete(a.id)} className="text-xs px-2 py-1 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
+              <button onClick={() => setEditing(a)} className="min-h-11 text-xs px-2 rounded text-blue-600 hover:bg-blue-50 flex-shrink-0">Sửa</button>
+              <button onClick={() => handleDelete(a.id)} aria-label={`Xoá bài tập ${a.title}`} className="min-h-11 min-w-11 text-xs px-2 rounded text-red-400 hover:bg-red-50 flex-shrink-0">✕</button>
             </div>
           ))}
         </div>

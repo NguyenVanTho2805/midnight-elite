@@ -13,8 +13,10 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
 
 type Msg = { tone: "loi" | "cho" | "xong"; text: string } | null;
 
-export function SignupCodeForm({ email, initialSent = true, initialCooldown = 60, onBack }: {
+export function SignupCodeForm({ email, initialSent = true, initialCooldown = 60, onBack, redirectTo }: {
   email: string;
+  /** HP-BO (17/11/2026): trang học sinh định vào trước khi đăng ký (vd link mời /student/nhap-ma-lop?code=…). Chỉ dùng khi đích mặc định là vỏ học sinh. */
+  redirectTo?: string | null;
   /** false = lần gửi đầu thất bại: chưa có mã nào, hiện nút "Gửi mã". */
   initialSent?: boolean;
   initialCooldown?: number;
@@ -67,7 +69,8 @@ export function SignupCodeForm({ email, initialSent = true, initialCooldown = 60
         setOk(true);
         // Tải cứng: AuthProvider chỉ hỏi /api/auth/me một lần lúc mở trang, chưa có phiên lúc đó (xem /xac-thuc-email).
         const landing = typeof data.landing === "string" && data.landing.startsWith("/") ? data.landing : "/student/hoc-tap";
-        setTimeout(() => window.location.assign(landing), 900);
+        const dest = redirectTo && redirectTo.startsWith("/student/") && landing.startsWith("/student") ? redirectTo : landing;
+        setTimeout(() => window.location.assign(dest), 900);
         return;
       }
       setCode(""); setInvalid(true);

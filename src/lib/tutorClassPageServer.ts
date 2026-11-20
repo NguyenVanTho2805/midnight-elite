@@ -122,13 +122,23 @@ export async function loadStudentsTab(session: SessionPayload, courseId: string,
 }
 
 // ─── Tab Cài đặt ───────────────────────────────────────────────────────────────────────────────────────────────
-export interface ClassSettingsData { courseId: string; courseName: string; feeMode: FeeMode; muc: MucCaiDat }
+export interface ClassSettingsData {
+  courseId: string; courseName: string; feeMode: FeeMode; muc: MucCaiDat;
+  /** DG-HOC-ONLINE: link học online chung (Course.classJoinUrl) + nhắc email trước giờ học (Course.reminderLeadMinutes, null = tắt). `onlineFlash` từ ?luu= / ?loi= sau POST + 303. */
+  online?: { joinUrl: string | null; leadMinutes: number | null; flash: "ok" | "link" | "lead" | null };
+}
 
 /** Dữ liệu tab Cài đặt của CHỦ lớp: chỉ cần hình thức học phí để truyền LopHocPhi (TIỀN: chỉ ĐỌC, không đổi). */
 export async function loadClassSettings(courseId: string, query: ClassQuery): Promise<ClassSettingsData | null> {
-  const c = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, feeMode: true } });
+  const c = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, feeMode: true, classJoinUrl: true, reminderLeadMinutes: true } });
   if (!c) return null;
-  return { courseId: c.id, courseName: c.name, feeMode: normalizeFeeMode(c.feeMode), muc: mucCaiDatOf(first(query, "muc")) };
+  const muc = mucCaiDatOf(first(query, "muc"));
+  const luu = first(query, "luu"), loi = first(query, "loi");
+  const flash = luu === "ok" ? "ok" : loi === "link" ? "link" : loi === "lead" ? "lead" : null;
+  return {
+    courseId: c.id, courseName: c.name, feeMode: normalizeFeeMode(c.feeMode), muc,
+    ...(muc === "hoc-online" ? { online: { joinUrl: c.classJoinUrl, leadMinutes: c.reminderLeadMinutes, flash } } : {}),
+  };
 }
 
 // ─── Tab Điểm danh: lịch sử buổi học ───────────────────────────────────────────────────────────────────────────

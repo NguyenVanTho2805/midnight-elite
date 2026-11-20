@@ -9,7 +9,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ThreadDetailView } from "@/components/community/ThreadDetailView";
-import { featureOn } from "@/lib/features";
+import { featureOn, pausedSearch } from "@/lib/features";
 import { getSession } from "@/lib/session";
 import { landingPath } from "@/lib/landing";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +33,8 @@ export default async function ThreadDetailPage({ params }: { params: Promise<{ i
   } catch {
     courseId = null; // DB lỗi: coi như bài chung, không vẽ bài.
   }
-  if (!courseId) redirect(home);
+  // LOI-07: gắn dấu ?tam-dong=CONG_DONG để trang đầu nói "Phần này đang tạm đóng." (cùng một kết quả cho mã không có / bài chung / bài lớp ngoài quyền — không lộ gì thêm).
+  if (!courseId) redirect(home + pausedSearch("CONG_DONG"));
   // Quay lại = hỏi đáp của chính lớp đó (/cong-dong?scope=<mã lớp>, lối hỏi trong lớp còn mở khi bảng tin ẩn — xem src/lib/features.ts classScopeOf).
   return <ThreadDetailView id={id} bare backHref={`/cong-dong?scope=${encodeURIComponent(courseId)}`} backLabel="Hỏi đáp của lớp" />;
 }

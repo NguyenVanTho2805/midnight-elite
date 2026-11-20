@@ -2,6 +2,7 @@
 // Phòng thi KHÔNG có vỏ; mọi màn (cổng, làm bài, hết giờ, kết quả, xem lại) nằm trong cùng khung data-vung="phong-thi" do trang bọc.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ExamAttemptHistoryItem, type ExamFull } from "@/lib/api";
+import { PUBLIC_EXAM_CLOSED_CODE } from "@/lib/features";
 import { examRoomApi, type GateResponse, type ReviewResponse } from "@/lib/examRoomApi";
 
 export type Phase = "loading" | "error" | "gate" | "azota" | "taking" | "done" | "review";
@@ -12,6 +13,8 @@ export function useRoomPage(examId: string) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [gate, setGate] = useState<GateResponse | null>(null);
   const [gateErr, setGateErr] = useState(false);
+  /** DG: máy chủ báo thi thử công khai đang đóng (cờ THI_THU_CONG_KHAI) — trang báo đúng lý do thay cho "Không tìm thấy đề". */
+  const [publicClosed, setPublicClosed] = useState(false);
   const [myResult, setMyResult] = useState<MyResult | null>(null);
   const [history, setHistory] = useState<ExamAttemptHistoryItem[]>([]);
   const [board, setBoard] = useState<{ score: number }[]>([]);
@@ -43,7 +46,12 @@ export function useRoomPage(examId: string) {
     (async () => {
       try {
         const [ex, mine] = await Promise.all([
-          fetch(`/api/exams/${examId}`, { credentials: "same-origin" }).then(r => (r.ok ? (r.json() as Promise<ExamFull>) : null)),
+          fetch(`/api/exams/${examId}`, { credentials: "same-origin" }).then(async r => {
+            if (r.ok) return r.json() as Promise<ExamFull>;
+            const body = await r.json().catch(() => null) as { code?: string } | null;
+            if (body?.code === PUBLIC_EXAM_CLOSED_CODE) setPublicClosed(true);
+            return null;
+          }),
           fetch("/api/exam-results?mine=true", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : [])) as Promise<(MyResult & { examId: string })[]>,
         ]);
         if (!live) return;
@@ -82,5 +90,5 @@ export function useRoomPage(examId: string) {
 
   /** Lượt có thể xem lại khi vào thẳng trang đã có kết quả: lượt đã nộp gần nhất trong lịch sử. */
   const latestSubmitted = history.find(h => h.status !== "in_progress")?.id ?? null;
-  return { exam, phase, setPhase, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
+  return { exam, phase, setPhase, publicClosed, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
 }

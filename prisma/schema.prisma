@@ -91,8 +91,13 @@ model Course {
   // và link học online CHUNG của lớp (ưu tiên thấp nhất: riêng buổi > theo khung giờ > chung lớp).
   calendarColor String?
   classJoinUrl  String?
+  // DG-HOC-ONLINE (14/11/2026): gia sư chọn gửi email nhắc học sinh TRƯỚC giờ học bao nhiêu phút (15 | 60 | 1440). null = tắt (mặc định, mọi lớp cũ).
+  // Cron /api/cron/nhac-buoi-hoc (gọi mỗi 15 phút từ cron-job.org) đọc cột này; chống gửi trùng bằng ClassLessonReminderLog.
+  reminderLeadMinutes Int?
   studentProfiles    StudentProfile[]
   joinRequests       ClassJoinRequest[]
+  studentReminders   StudentReminder[] // LOI-04
+  lessonReminderLogs ClassLessonReminderLog[] // DG-HOC-ONLINE
 
   @@index([ownerId])
   @@map("courses")
@@ -210,8 +215,11 @@ model Lesson {
   notes          LessonNote[]
   azotaDone      LessonAzotaDone[]
   assignments    Assignment[]
+  studentReminders StudentReminder[] // LOI-04
   // BU-02-PHẲNG: "draft" | "published" | "hidden". Mặc định "published" ⇒ mọi bài cũ vẫn hiện. Chuỗi, không enum.
   status         String           @default("published")
+  // LOI-0111: ngày giờ học của bài (gia sư ghi ở màn sửa bài). Null = bài không gắn ngày. Dùng cho phiếu "Hôm nay có lớp" của học sinh.
+  scheduledAt    DateTime?
 
   @@map("lessons")
 }
@@ -1041,6 +1049,7 @@ model User {
   tutorRequestsReceived TutorRequest[]     @relation("TutorRequestTarget")
   sessionScores        SessionStudentScore[] @relation("SessionScoreStudent")
   personalEvents       StudentPersonalEvent[] @relation("PersonalEventOwner") // NC2-043: lịch riêng của học sinh
+  studentReminders     StudentReminder[] @relation("StudentReminderOwner") // LOI-04
 
   // Tiếng Anh tự học (docs/tieng-anh/DAC-TA.md) — mọi bản ghi gắn với một người học, xoá tài khoản thì xoá theo.
   engProfile      EngProfile?
@@ -1336,6 +1345,26 @@ model ClassReminderLog {
   @@unique([scheduleId, dateKey, studentId, recipient, kind])
   @@index([courseId, dateKey])
   @@map("class_reminder_logs")
+}
+
+// DG-HOC-ONLINE (14/11/2026) — mỗi dòng: MỘT email "sắp tới giờ học" đã gửi (hoặc đang gửi) cho MỘT học sinh về MỘT buổi.
+// Dòng được TẠO TRƯỚC khi gửi (unique chặn hai lượt cron chạy chồng gửi trùng); gửi lỗi thì xoá dòng để lượt sau thử lại.
+// sessionKey: "<scheduleId>:<ngày gốc YYYY-MM-DD>" cho buổi theo lịch tuần, "extra:<AttendanceSession.id>" cho buổi lẻ / bù / phát sinh.
+// userId là chuỗi không FK (như các bảng nhắc khác): xoá / ẩn danh tài khoản không cần dọn bảng này. Không chứa số tiền, không chứa nội dung thư.
+model ClassLessonReminderLog {
+  id          String   @id @default(cuid())
+  courseId    String
+  sessionKey  String
+  userId      String
+  startAt     DateTime // giờ bắt đầu buổi lúc gửi
+  leadMinutes Int // lead đã áp (15 | 60 | 1440)
+  createdAt   DateTime @default(now())
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, sessionKey, userId])
+  @@index([createdAt])
+  @@map("class_lesson_reminder_logs")
 }
 
 // ─── PHIẾU HỌC PHÍ + ĐỐI SOÁT VIETQR (TT-200) ────────────────────────────────
@@ -1854,7 +1883,7 @@ model AuditLog {
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded" | "join_request_new" | "join_request_approved" | "join_request_rejected"
+  type      String // "enrollment" | "exam_new" | "exam_reminder" | "thread_reply" | "thread_like" | "reply_like" | "article_new" | "parent_link_request" | "parent_link_verified" | "parent_consent_requested" | "parent_consent_responded" | "join_request_new" | "join_request_approved" | "join_request_rejected" | "class_announcement"
   title     String
   message   String
   link      String?
@@ -1950,6 +1979,24 @@ model ClassRecording {
   @@map("class_recordings")
 }
 
+// ─── THÔNG BÁO LỚP (TB-LOP, 17/11/2026) ───────────────────────────────────────
+// Tin MỘT CHIỀU gia sư chủ lớp gửi cả lớp (đổi giờ, nhắc mang máy tính, link phòng học…). Học sinh ghi danh "active" chỉ ĐỌC, không trả lời
+// (hỏi đáp của lớp có chỗ riêng). Bảng mới, chỉ thêm. Không khai relation (như class_recordings): xoá lớp thì dòng ở lại, không ai đọc được nữa.
+// `deletedAt` = gia sư gỡ tin (giữ dòng: vẫn tính vào giới hạn đăng trong 24 giờ, tránh đăng-xoá-đăng để gửi tin liên tục).
+model ClassAnnouncement {
+  id        String    @id @default(cuid())
+  courseId  String
+  authorId  String
+  body      String
+  pinned    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([courseId, createdAt])
+  @@map("class_announcements")
+}
+
 // ─── AZOTA: HỌC SINH BÁO "ĐÃ LÀM" ─────────────────────────────────────────────
 // Lời khai của học sinh rằng đã làm bài Azota của một bài giảng (KiN không biết thật), kèm LINK bài làm (không bắt buộc).
 // Bảng riêng, KHÔNG dùng Assignment: tránh bài "ảo" lọt vào danh sách bài tập, hàng đợi chấm và số "chưa chấm" của gia sư.
@@ -2008,6 +2055,31 @@ model StudentPersonalEvent {
 
   @@index([userId, dateKey])
   @@map("student_personal_events")
+}
+
+// LOI-04: nhắc học của học sinh (kiểu Reminders). Chỉ chủ đọc/sửa. Ghi chú là dữ liệu cá nhân: không vào thông báo, không gửi AI.
+model StudentReminder {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  note       String?   @db.Text
+  tags       String[]  @default([])
+  dueAt      DateTime?            // mốc UTC; có ngày mà không giờ ⇒ 00:00 VN của ngày đó + dueHasTime=false
+  dueHasTime Boolean   @default(false)
+  doneAt     DateTime?
+  courseId   String?
+  lessonId   String?
+  notifiedAt DateTime?            // đã vào tóm tắt sáng; đổi ngày/giờ hẹn ⇒ về null
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user   User    @relation("StudentReminderOwner", fields: [userId], references: [id], onDelete: Cascade)
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([userId, dueAt])
+  @@index([dueAt])
+  @@map("student_reminders")
 }
 
 model ExamResult {

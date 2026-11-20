@@ -22,6 +22,7 @@ import { canDo, canMarkSession } from "@/lib/courseAccess";
 import { isAttendanceStatus } from "@/lib/attendance";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
+import { featureOn } from "@/lib/features";
 import { lockAttendanceSession, removeUninvoicedChargesForSession, syncSessionCharges, type SyncResult } from "@/lib/feeChargeServer";
 import { reversePackageUsesForSession, syncPackageUsesForSession, type PackageSyncResult } from "@/lib/sessionPackageServer";
 import { noteShareAllowed } from "@/lib/sessionNoteServer";
@@ -221,6 +222,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       // Lớp cách cũ (mặc định): trả sớm, không ghi gì.
       // TUT-dong-giang: đồng giảng / bộ môn chỉ ghi điểm danh THUẦN — KHÔNG gọi hai hàm đồng bộ tiền dưới đây (chỉ chủ lớp / quản trị).
       if (helper) return { ch: null, pk: null };
+      // HP-BO (17/11/2026): Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ điểm danh thuần, không đồng bộ phí / gói.
+      if (!featureOn("HOC_PHI")) return { ch: null, pk: null };
       const ch = await syncSessionCharges(tx, {
         sessionId: id, courseId: session.courseId, sessionDate: session.date, by: auth.userId,
         items: items.map(i => ({ userId: i.userId, status: i.status, makeupUsed: !!i.makeupCreditId })),

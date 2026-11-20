@@ -4,6 +4,10 @@
 //
 // Chỉ hiện việc có thật và cần gia sư ra tay (bo-cuc-outlook.md: số đỏ chỉ đếm việc cần ra tay). Không có dòng "đã xong"
 // giả; không có loại việc nào không có nguồn dữ liệu thật.
+//
+// LOI-02 F (11/11/2026): số đỏ = số việc nhìn thấy ở "Cần cô xử lý". MỘT nguồn: INBOX_ACTION_KINDS (mọi loại trừ loại `waiting` — chờ phụ huynh).
+// todoBadgeTotal (số đỏ trên thanh module, từ bộ đếm) và inboxTotal (total của /api/tutor/hop-viec, từ danh sách) đều chỉ cộng các loại này.
+import type { TodoCounts } from "@/lib/tutorTodo";
 export type InboxKind = "absence" | "check" | "bank" | "consent" | "reports" | "ungraded" | "unmarked" | "reminders" | "makeup" | "invoiceRemind" | "draft" | "joinRequests" | "questions" | "noSchedule";
 /** TUT-lich-keo-tha: lớp ĐANG MỞ của gia sư không có khung giờ hằng tuần nào đang bật. Một điều kiện cho cả bộ đếm (số đỏ) lẫn danh sách chi tiết. */
 export const noScheduleWhere = (tutorId: string) => ({ ownerId: tutorId, classStatus: "open", classSchedules: { none: { active: true } } });
@@ -196,5 +200,23 @@ export function buildInboxItems(raw: InboxRaw, now: Date): InboxItem[] {
     || (order.get(a.id)! - order.get(b.id)!));
 }
 
-/** Tổng số việc — số đỏ trên thanh module (khớp với tutorDashboard.loadTutorTodoTotal). */
-export const inboxTotal = (raw: InboxRaw): number => INBOX_KINDS.reduce((n, k) => n + Math.max(0, raw[k]?.count ?? 0), 0);
+/** LOI-02 F: loại việc CÔ cần ra tay — mọi loại trừ loại `waiting` (hiện chỉ "consent": chờ phụ huynh xác nhận). Chỉ các loại này vào số đỏ. */
+export const INBOX_ACTION_KINDS: InboxKind[] = INBOX_KINDS.filter(k => !META[k].waiting);
+
+/** Bộ đếm (tutorDashboard.loadTutorTodoCounts) → số theo loại dòng Hộp việc. Đủ 14 loại; tutorInboxServer dựng dòng từ chính bảng này. */
+export function todoCountsToRaw(c: TodoCounts): Record<InboxKind, number> {
+  return {
+    absence: c.lateAbsences, check: c.needBankCheck, bank: c.bankPending, consent: c.pendingConsent, reports: c.classReports, ungraded: c.ungraded,
+    unmarked: c.unmarkedSessions, reminders: c.remindersDue, makeup: c.makeupExpiring, invoiceRemind: c.invoiceReminders, draft: c.draftInvoices,
+    joinRequests: c.joinRequests, questions: c.unansweredQuestions, noSchedule: c.noSchedule,
+  };
+}
+
+/** Số đỏ trên thanh module Hộp việc, tính từ bộ đếm: Σ các loại INBOX_ACTION_KINDS (bỏ pendingConsent). Bằng inboxTotal của cùng dữ liệu. */
+export function todoBadgeTotal(c: TodoCounts): number {
+  const n = todoCountsToRaw(c);
+  return INBOX_ACTION_KINDS.reduce((s, k) => s + Math.max(0, Number(n[k]) || 0), 0);
+}
+
+/** Tổng số việc CÔ cần làm = total của /api/tutor/hop-viec = "N việc" của "Cần cô xử lý" = số đỏ (todoBadgeTotal). LOI-02: chỉ cộng INBOX_ACTION_KINDS. */
+export const inboxTotal = (raw: InboxRaw): number => INBOX_ACTION_KINDS.reduce((n, k) => n + Math.max(0, raw[k]?.count ?? 0), 0);

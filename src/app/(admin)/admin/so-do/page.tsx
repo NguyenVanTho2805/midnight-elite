@@ -12,6 +12,7 @@ import {
   ACTIVATION_ORDER, METRIC_DEFS, METRIC_ORDER, MIN_SAMPLE, hoursText, insufficientText, percentOf, ratio, ratioText, sampleText,
   type MetricKey, type Ratio,
 } from "@/lib/healthMetrics";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 type Payload = HealthMetricsPayload & { minSample: number };
 
@@ -64,10 +65,9 @@ function SoDoContent() {
           </p>
         </div>
         <label className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Khoảng thời gian
-          <select value={days} onChange={e => setDays(Number(e.target.value))}
-            className="block mt-1 px-3 min-h-[44px] rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-chinh)]">
+          <KinSelect value={String(days)} onChange={v => setDays(Number(v))} className="block mt-1">
             {[7, 30, 90].map(d => <option key={d} value={d}>{d} ngày gần nhất</option>)}
-          </select>
+          </KinSelect>
         </label>
       </header>
 

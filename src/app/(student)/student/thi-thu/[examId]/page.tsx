@@ -18,10 +18,12 @@ import TakingRoom from "@/components/student/exam-room/TakingRoom";
 import { answersOpenLabel } from "@/components/student/exam-room/roomLogic";
 import { useRoomPage } from "@/components/student/exam-room/useRoomPage";
 import { useRoomSession } from "@/components/student/exam-room/useRoomSession";
+import { isLinkHidden } from "@/lib/features";
 
-const ExitLink = () => (
-  <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>
-);
+// DG (14/11/2026): danh sách thi thử công khai ẩn (cờ THI_THU_CONG_KHAI) ⇒ lối ra là Việc của tôi (đề được giao nằm ở đó), không vào trang đã chặn.
+const ExitLink = () => isLinkHidden("/student/thi-thu")
+  ? <Link href="/student/viec-cua-toi" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về Việc của tôi</Link>
+  : <Link href="/student/thi-thu" className="inline-flex items-center min-h-11 text-sm font-semibold hover:underline" style={{ color: "var(--kin-nhan-link)" }}>← Về danh sách đề thi</Link>;
 
 export default function ExamEntryPage() {
   return (
@@ -64,6 +66,15 @@ function ExamRoomPage() {
   const wrap = (children: React.ReactNode, narrow = true) => <div className="px-4 py-6"><div className={narrow ? "max-w-[480px] mx-auto" : ""}>{children}</div></div>;
 
   if (phase === "loading") return <div className="max-w-lg mx-auto flex justify-center py-20" role="status" aria-label="Đang tải phòng thi"><KinLoader size={44} /></div>;
+  if (d.publicClosed) {
+    return wrap(
+      <div data-thi-thu-dong className="text-center py-14 space-y-4">
+        <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Phần thi thử công khai đang tạm đóng</p>
+        <p className="text-sm" style={{ color: "var(--kin-chu-mo)" }}>Đề được giao trong lớp vẫn làm bình thường ở Việc của tôi.</p>
+        <div className="flex flex-col items-center gap-2"><ExitLink /></div>
+      </div>,
+    );
+  }
   if (phase === "error" || !exam) {
     return wrap(
       <div className="text-center py-14 space-y-4">

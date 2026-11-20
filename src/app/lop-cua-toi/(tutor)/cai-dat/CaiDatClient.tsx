@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { callApi, useNotify } from "@/components/tutor/shared";
-import { OPTIONAL_TUTOR_MODULES, TUTOR_MODULES, applyPreferencesPatch, normalizeMessengerHandle, reminderChannels, type UserPreferences, type OptionalTutorModule } from "@/lib/userPreferences";
+import { OPTIONAL_TUTOR_MODULES, TUTOR_MODULES, tutorModuleAllowed, applyPreferencesPatch, normalizeMessengerHandle, reminderChannels, type UserPreferences, type OptionalTutorModule } from "@/lib/userPreferences";
 import { normalizeZaloGroupUrl } from "@/lib/funnel";
 import { normalizeZaloPhone } from "@/lib/zaloShare";
 import { KinButton } from "@/components/kin";
@@ -113,8 +113,9 @@ export default function CaiDatClient({ initial, classes, phone, quota = null }: 
           Tắt module chỉ là ẩn khỏi thanh bên — dữ liệu giữ nguyên, bật lại là thấy đủ. Khi Hộp việc đang tắt, việc cần xử lý hiện thành chấm trên đúng buổi trong Lịch.
         </p>
         <div className={ROWS}>
-          {TUTOR_MODULES.filter(m => m.always).map(m => <Switch key={m.key} id={`m-${m.key}`} checked disabled label={m.label} hint={m.hint} />)}
-          {TUTOR_MODULES.filter(m => !m.always).map(m => (
+          {/* DG (14/11/2026): module đang ẩn theo CỜ tính năng (Lịch, Hộp việc, Học phí — userPreferences.tutorModuleAllowed) không hiện công tắc: bật ở đây cũng không thấy. */}
+          {TUTOR_MODULES.filter(m => m.always && tutorModuleAllowed(m.key)).map(m => <Switch key={m.key} id={`m-${m.key}`} checked disabled label={m.label} hint={m.hint} />)}
+          {TUTOR_MODULES.filter(m => !m.always && tutorModuleAllowed(m.key)).map(m => (
             <Switch key={m.key} id={`m-${m.key}`} checked={modules.includes(m.key as OptionalTutorModule)}
               onChange={v => toggleModule(m.key as OptionalTutorModule, v)} label={m.label} hint={m.hint} />
           ))}

@@ -21,6 +21,7 @@ import { jfetch } from "@/components/tutor/studentUi";
 import { itemKey, type LibUse, type TutorLibrary } from "@/lib/giaoTrinh";
 import { ChipTrangThai, STATUS_LABEL } from "./ChipTrangThai";
 import type { DocType } from "@/lib/mediaLink";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export interface TvCourse { id: string; name: string; lessons: { id: string; title: string; status: string }[] }
 /** `TutorLibrary` (src/lib/giaoTrinh.ts, do tut-code gộp) + cây lớp để chọn đích "Dùng ở lớp khác" + dung lượng kho. tutorLibraryServer.loadTutorLibrary phải trả đủ ba trường thêm này. */
@@ -67,16 +68,16 @@ function UseElsewhere({ courses, url, name, onDone, onCancel }: { courses: TvCou
     <div data-tv-dung-lop-khac className="mt-3 rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] p-4 space-y-3 md:col-span-4">
       <div>
         <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`tv-lop-${url}`}>Lớp</label>
-        <select id={`tv-lop-${url}`} className={`${KIN_FIELD} mt-1`} value={courseId} onChange={e => { setCourseId(e.target.value); setLessonId("new"); }}>
+        <KinSelect id={`tv-lop-${url}`} className="mt-1" value={courseId} onChange={v => { setCourseId(v); setLessonId("new"); }}>
           {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </KinSelect>
       </div>
       <div>
         <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" htmlFor={`tv-bai-${url}`}>Mục</label>
-        <select id={`tv-bai-${url}`} className={`${KIN_FIELD} mt-1`} value={lessonId} onChange={e => setLessonId(e.target.value)}>
+        <KinSelect id={`tv-bai-${url}`} className="mt-1" value={lessonId} onChange={v => setLessonId(v)}>
           <option value="new">Mục mới (Nháp)</option>
           {(course?.lessons.length ?? 0) > 0 && <optgroup label="Gắn vào mục có sẵn">{course?.lessons.map(l => <option key={l.id} value={l.id}>{l.title} · {statusWord(l.status)}</option>)}</optgroup>}
-        </select>
+        </KinSelect>
         <p className="mt-1 text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Mục mới ở dạng Nháp, chỉ bạn thấy. Bạn đăng ở Giáo trình của lớp đó.</p>
       </div>
       {err && <p role="alert" data-tv-loi className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{err}</p>}
@@ -186,7 +187,7 @@ export default function ThuVienCuaToi({ view }: { view: TutorLibraryView | null 
               </div>
               <div>
                 <label htmlFor="tv-loai" className="block mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Loại</label>
-                <select id="tv-loai" className={KIN_FIELD} value={filter} onChange={e => setFilter(e.target.value)}>{FILTERS.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</select>
+                <KinSelect id="tv-loai" value={filter} onChange={v => setFilter(v)}>{FILTERS.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}</KinSelect>
               </div>
             </div>
 

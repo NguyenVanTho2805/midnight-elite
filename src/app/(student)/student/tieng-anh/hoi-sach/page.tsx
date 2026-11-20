@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, Card, INK, LinkButton, PageHead, Skeleton } from "@/components/english/ui";
 import AskBox from "@/components/english/AskBox";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Book { id: string; title: string; status: string }
 
@@ -21,12 +22,10 @@ function Inner() {
   );
   return (
     <Card>
-      <label className="text-sm block mb-3" style={{ color: INK.chinh }}>Hỏi trong
-        <select value={bookId} onChange={e => setBookId(e.target.value)} className="ml-2 min-h-11 px-3 rounded-[var(--kin-bo-md)] border" style={{ borderColor: "var(--kin-vien-o-nhap)", background: "var(--kin-nen-trang)" }}>
-          <option value="">Tất cả sách của tôi</option>
-          {books.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
-        </select>
-      </label>
+      <div className="text-sm flex flex-wrap items-center gap-2 mb-3" style={{ color: INK.chinh }}><span id="hs-hoi-trong">Hỏi trong</span>
+        <KinSelect className="w-72 max-w-full" aria-labelledby="hs-hoi-trong" value={bookId} onChange={setBookId}
+          options={[{ value: "", label: "Tất cả sách của tôi" }, ...books.map(b => ({ value: b.id, label: b.title }))]} />
+      </div>
       <AskBox key={bookId} bookId={bookId || undefined} />
     </Card>
   );

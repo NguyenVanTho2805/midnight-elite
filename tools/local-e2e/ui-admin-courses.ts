@@ -1,7 +1,7 @@
 // CAT-02 — danh sách khoá học phía quản trị: bảng 6 cột (cột đầu là TÊN), bộ lọc đồng bộ URL + chip, panel bên, chọn nhiều + Hoàn tác,
 // lỗi tải không bị nuốt thành "không tìm thấy", sức chứa, vai gia sư, điện thoại 390px. Không có ô sửa giá.
 import { mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done, BASE } from "./h";
-import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -56,14 +56,14 @@ import { prisma } from "@/lib/prisma";
   await pg.getByRole("button", { name: "Xoá bộ lọc" }).click();
   await pg.waitForFunction(() => !location.search.includes("q="), null, { timeout: 15000 });
   check("'Xoá bộ lọc' trả đủ 4 hàng", (await rows.count()) === 4);
-  await pg.getByRole("combobox", { name: /Kỳ thi/ }).selectOption("ĐGNL HCM");
+  await kinSelect(pg.getByRole("combobox", { name: /Kỳ thi/ }), "ĐGNL HCM");
   await pg.waitForURL(/kythi=/, { timeout: 15000 });
   check("lọc Kỳ thi → 2 hàng, có chip", (await rows.count()) === 2 && await pg.locator("[data-filter-chips]").getByText(/Kỳ thi: ĐGNL HCM/).isVisible());
   await pg.getByRole("button", { name: "Xoá bộ lọc" }).click();
-  await pg.getByRole("combobox", { name: /Giá/ }).selectOption("mien-phi");
+  await kinSelect(pg.getByRole("combobox", { name: /Giá/ }), "mien-phi");
   check("lọc Miễn phí → 2 hàng", (await rows.count()) === 2);
   await pg.getByRole("button", { name: "Xoá bộ lọc" }).click();
-  await pg.getByRole("combobox", { name: /Gia sư/ }).selectOption({ index: 1 }).catch(() => {});
+  await kinSelect(pg.getByRole("combobox", { name: /Gia sư/ }), { index: 1 }).catch(() => {});
 
   section("Panel sửa nhanh (không hộp thoại), không ô giá");
   await pg.goto(`${ADMIN}/admin/khoa-hoc`, { waitUntil: "networkidle" });

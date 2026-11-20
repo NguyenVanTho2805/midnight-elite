@@ -17,6 +17,7 @@ import {
   deThiDetailHref, deThiListHref, deThiSubHref, EXAM_STATUS_LABEL, fetchCourseNames, fetchDeThi, maTranListHref, MODE_LABEL, taoDeHref, tepGocHref, variantCodeOf, variantCountOf,
   type DeThiItem,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const GRID = "lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)] lg:gap-x-4";
 const dmy = (iso: string): string => { const d = new Date(iso); return Number.isNaN(d.getTime()) || d.getFullYear() < 2000 ? "—" : d.toLocaleDateString("vi-VN"); };
@@ -106,10 +107,10 @@ export default function DeThiList() {
             </div>
             <div className="min-w-0 w-full sm:w-56">
               <label htmlFor="dt-st" className={`${KIN_LABEL} mb-2`}>Trạng thái</label>
-              <select id="dt-st" className={KIN_FIELD} value={status} onChange={e => setStatus(e.target.value)}>
+              <KinSelect id="dt-st" value={status} onChange={v => setStatus(v)}>
                 <option value="">Tất cả</option>
                 {statuses.map(s => <option key={s} value={s}>{EXAM_STATUS_LABEL[s]?.text ?? s}</option>)}
-              </select>
+              </KinSelect>
             </div>
             <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] pb-3">{shown.length}/{items.length} đề</p>
           </div>

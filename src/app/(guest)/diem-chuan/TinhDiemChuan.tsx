@@ -7,6 +7,7 @@ import { computeScore, describeFormula, FORMULA_DISCLAIMER, type ComputeResult, 
 import { formatScore } from "@/lib/admissionScore";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const label = (f: PublicFormula) => `${f.name}${f.school ? ` — ${f.school}` : ""}${f.year ? ` (${f.year})` : ""}`;
 
@@ -38,9 +39,9 @@ export default function TinhDiemChuan({ formulas }: { formulas: PublicFormula[] 
       {formulas.length > 1 && (
         <div className="mt-3">
           <label htmlFor="tc-sel" className={KIN_LABEL}>Chọn công thức</label>
-          <select id="tc-sel" value={f.id} onChange={e => pick(e.target.value)} className={`${KIN_FIELD} mt-1`}>
+          <KinSelect id="tc-sel" value={f.id} onChange={v => pick(v)} className="mt-1">
             {formulas.map(x => <option key={x.id} value={x.id}>{label(x)}</option>)}
-          </select>
+          </KinSelect>
         </div>
       )}
 

@@ -22,6 +22,7 @@ import { isProfileHidden } from "@/lib/tutorVisibility";
 import { loadHomeContent } from "@/lib/siteContentServer";
 import { loadPublicFormulas } from "@/lib/admissionFormulaServer";
 import { homeBlocksFor } from "@/lib/homeLayout";
+import { featureOn } from "@/lib/features";
 import { EMPTY_LANDING } from "@/lib/homeLanding";
 import { loadHomeLanding } from "@/lib/homeLandingServer";
 import HomeSections from "@/components/guest/HomeSections";
@@ -46,7 +47,8 @@ async function loadStats(): Promise<{ value: string; label: string }[]> {
     ]);
     return [
       { value: learners, label: "Học sinh đang học" },
-      { value: exams, label: "Đề thi thử" },
+      // DG: số "Đề thi thử" chỉ khi danh sách thi thử công khai đang mở (cờ THI_THU_CONG_KHAI).
+      ...(featureOn("THI_THU_CONG_KHAI") ? [{ value: exams, label: "Đề thi thử" }] : []),
       { value: tutors, label: "Gia sư" },
     ].filter(s => s.value > 0).map(s => ({ value: s.value.toLocaleString("vi-VN"), label: s.label }));
   } catch {

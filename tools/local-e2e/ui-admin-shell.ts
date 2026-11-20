@@ -7,6 +7,9 @@
 import { BASE, mkTutor, mkUser, mkSuper, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
 import { visibleModules } from "@/lib/adminNav";
+import { landingPath } from "@/lib/landing";
+// DG (14/11/2026): trang đầu gia sư theo cờ HOP_VIEC (tắt, mặc định ⇒ thư viện Lớp /lop-cua-toi/lop; =1 ⇒ Hộp việc /lop-cua-toi).
+const TUTOR_HOME = landingPath("admin", "teacher");
 
 (async () => {
   await wipe();
@@ -56,9 +59,9 @@ import { visibleModules } from "@/lib/adminNav";
   const ct = await ctxFor(T, { width: 1280, height: 800 });
   const pt = await ct.newPage(); watch(pt);
   await pt.goto(`${BASE}/admin/kiem-duyet`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await pt.waitForURL(/\/lop-cua-toi$/, { timeout: 120000 });
+  await pt.waitForURL(u => u.pathname === TUTOR_HOME, { timeout: 120000 });
   await pt.getByRole("navigation", { name: "Module của gia sư" }).first().waitFor({ timeout: 90000 });
-  check("gia sư mở /admin/kiem-duyet → Hộp việc /lop-cua-toi, giữ tên miền chính", new URL(pt.url()).pathname === "/lop-cua-toi" && !new URL(pt.url()).host.startsWith("admin."), pt.url());
+  check(`gia sư mở /admin/kiem-duyet → trang đầu gia sư ${TUTOR_HOME}, giữ tên miền chính`, new URL(pt.url()).pathname === TUTOR_HOME && !new URL(pt.url()).host.startsWith("admin."), pt.url());
   check("vỏ là của GIA SƯ; không thanh bên quản trị, không bảng hàng chờ", (await pt.getByRole("navigation", { name: railName }).count()) === 0 && (await pt.locator("[data-queue-table]").count()) === 0);
   for (const p of ["/admin", "/admin/gia-su", "/admin/ho-so-gia-su"]) {
     await pt.goto(`${BASE}${p}`, { waitUntil: "domcontentloaded", timeout: 120000 });

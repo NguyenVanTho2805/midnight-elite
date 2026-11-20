@@ -102,6 +102,8 @@ export async function anonymizeUser(userId: string, kind: AccountKind): Promise<
       await tx.pushSubscription.deleteMany({ where: { userId } });
       await tx.verifyToken.deleteMany({ where: { userId } });
       await tx.passwordResetToken.deleteMany({ where: { userId } });
+      // LOI-04: ẩn danh là UPDATE nên Cascade không chạy; ghi chú nhắc học của học sinh phải xoá tường minh.
+      await tx.studentReminder.deleteMany({ where: { userId } });
       if (kind === "tutor") { await tx.tutorPayoutAccount.deleteMany({ where: { userId } }); await tx.tutorDocBrand.deleteMany({ where: { userId } }); }
       return { counts };
     });

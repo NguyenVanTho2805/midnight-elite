@@ -72,7 +72,9 @@ section("LOI-01 — các phần đang ẩn (không cờ nào)");
 const hidden = ["/admin/tin-tuc", "/admin/thu-vien-video", "/admin/cong-dong", "/admin/vinh-danh", "/admin/diem-chuan", "/admin/diem-chuan/cong-thuc"];
 for (const role of ["admin_super", "admin_content"] as const) {
   const hs = visibleModules(role, {}).flatMap(m => m.subs.map(x => x.href));
-  check(`${role}: không thấy trang của phần ẩn; vẫn thấy Hàng chờ, Lớp, Đề thi, Chữ trang chủ`, hidden.every(h => !hs.includes(h)) && ["/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu", "/admin/trang-chu"].every(h => hs.includes(h)), hs);
+  // DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — "Chữ trang chủ" nay cũng ẩn (cờ VAN_HANH_PHU), cùng Doanh thu, Gói KiN Pro (KINH_DOANH), Phễu gia sư, Số đo, Lịch sử đánh giá.
+  const dgHidden = ["/admin/trang-chu", "/admin/doanh-thu", "/admin/goi-pro", "/admin/pheu", "/admin/so-do", "/admin/danh-gia"];
+  check(`${role}: không thấy trang của phần ẩn (kể cả 6 trang DG); vẫn thấy Hàng chờ, Lớp, Đề thi`, [...hidden, ...dgHidden].every(h => !hs.includes(h)) && ["/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu"].every(h => hs.includes(h)), hs);
 }
 
 done();

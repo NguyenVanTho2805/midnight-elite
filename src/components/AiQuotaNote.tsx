@@ -5,6 +5,7 @@
 // Không gửi gì cho AI từ đây; không dữ liệu học sinh.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { isLinkHidden } from "@/lib/features";
 import { kinButtonClass } from "@/components/kin/Button";
 
 interface Q { applicable: boolean; plan?: "free" | "pro"; enforced?: boolean; used?: number; limit?: number; remaining?: number; state?: string }
@@ -55,9 +56,9 @@ export function AiQuotaNote({ busy = false, className = "" }: { busy?: boolean; 
           {!q.enforced && " Hiện KiN chưa chặn khi hết lượt."} Trích lỗi thì lượt được trả lại.
         </p>
       )}
-      <Link href="/lop-cua-toi/goi" data-testid="ai-quota-link" className={`${kinButtonClass(out && q.enforced ? "primary" : "secondary")} mt-2`}>
+      {!isLinkHidden("/lop-cua-toi/goi") && <Link href="/lop-cua-toi/goi" data-testid="ai-quota-link" className={`${kinButtonClass(out && q.enforced ? "primary" : "secondary")} mt-2`}>
         {out && q.enforced ? "Xem Gói của tôi" : "Xem gói"}
-      </Link>
+      </Link>}
     </div>
   );
 }

@@ -6,7 +6,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { KinPage, KinPageHeader, KinPageSkeleton, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
+import { KinPage, KinPageHeader, KinPageSkeleton, KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
@@ -18,6 +18,7 @@ import {
   fetchCategories, fetchStats, LEVELS, LEVEL_LABEL, nganHangNodeHref, nganHangSoanTayHref, nhapWordHref, SCOPE_LABEL,
   type CategoryFlat, type Counts, type Scope, type StatNode, type StatsRes,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const CELL = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 const HEAD_CELL = "px-3 py-2 text-right font-normal whitespace-nowrap";
@@ -171,9 +172,9 @@ export default function NganHangHome() {
         {roots.length > 1 && (
           <div className="min-w-0 w-full sm:w-64">
             <label htmlFor="nh-mon" className={`${KIN_LABEL} mb-2`}>Môn</label>
-            <select id="nh-mon" className={KIN_FIELD} value={rootId ?? ""} onChange={e => { setRootId(e.target.value); setSelId(null); setStats(null); setCollapsed(new Set()); }}>
+            <KinSelect id="nh-mon" value={rootId ?? ""} onChange={v => { setRootId(v); setSelId(null); setStats(null); setCollapsed(new Set()); }}>
               {roots.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            </KinSelect>
           </div>
         )}
         <KinTabs<Scope> label="Kho câu hỏi" value={scope} onChange={setScope} className="min-w-0 max-w-full"

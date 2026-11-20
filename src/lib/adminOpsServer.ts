@@ -9,7 +9,7 @@ import { countSlowJoinCourses, userNotHiddenWhere } from "@/lib/adminQueueExtern
 import { NOT_SYSTEM_ACCOUNT } from "@/lib/adminSystemAccounts";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import {
-  AUDIT_PAGE_SIZE, CRON_JOBS, auditGroupWhere, auditRowView, buildTodayList, cronSettingKey, cronView, foldQueueItems, groupTodayItems,
+  AUDIT_PAGE_SIZE, MONITORED_CRON_JOBS, auditGroupWhere, auditRowView, buildTodayList, cronSettingKey, cronView, foldQueueItems, groupTodayItems,
   type AuditFilter, type AuditRowView, type CronView, type TodayGroupKey, type TodayItem,
 } from "@/lib/adminOps";
 
@@ -24,9 +24,9 @@ export async function recordCronRun(job: string, now: Date = new Date()): Promis
 }
 
 export async function loadCronViews(now: Date = new Date()): Promise<CronView[]> {
-  const rows = await prisma.settingKV.findMany({ where: { key: { in: CRON_JOBS.map(j => cronSettingKey(j.key)) } }, select: { key: true, value: true } });
+  const rows = await prisma.settingKV.findMany({ where: { key: { in: MONITORED_CRON_JOBS.map(j => cronSettingKey(j.key)) } }, select: { key: true, value: true } });
   const by = new Map(rows.map(r => [r.key, r.value]));
-  return CRON_JOBS.map(j => cronView(j, by.get(cronSettingKey(j.key)) ?? null, now));
+  return MONITORED_CRON_JOBS.map(j => cronView(j, by.get(cronSettingKey(j.key)) ?? null, now));
 }
 
 /** Trang nhật ký (mới nhất trước). Chỉ chọn cột an toàn: KHÔNG chọn `metadata`. Tên người thực hiện chỉ lấy ra để auditActor quyết định (nhân sự mới hiện). */

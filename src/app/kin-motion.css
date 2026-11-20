@@ -248,7 +248,7 @@
 .kin-rail-hl[data-anim] { transition: transform .5s var(--kin-spring), width .45s var(--kin-ease), height .45s var(--kin-ease); }
 .kin-rail-items[data-hl] .kin-rail-it[aria-current="page"] { background: transparent !important; }
 /* Nút mở rộng / thu hẹp ở cạnh dưới thanh: chỉ hiện khi rê chuột vào thanh, có tiêu điểm bàn phím, hoặc đang ở trạng thái rộng. */
-.kin-rail-wide { position: absolute; right: 0; bottom: 16px; z-index: 2; width: 26px; height: 36px; display: grid; place-items: center; border-radius: 10px 0 0 10px; background: var(--kin-nen-re-chuot); color: var(--kin-chu-phu); opacity: 0; transition: opacity .2s, background-color .2s; }
+.kin-rail-wide { position: absolute; right: 0; bottom: 16px; z-index: 2; width: 26px; height: 44px; display: grid; place-items: center; border-radius: 10px 0 0 10px; background: var(--kin-nen-re-chuot); color: var(--kin-chu-phu); opacity: 0; transition: opacity .2s, background-color .2s; }
 .kin-rail-wrap:hover .kin-rail-wide, .kin-rail-wide:focus-visible, html[data-kin-rail="rong"] .kin-rail-wide { opacity: 1; }
 .kin-rail-wide:hover { background: var(--kin-vien-thuong); color: var(--kin-chu-chinh); }
 .kin-rail-wide svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--kin-spring); }

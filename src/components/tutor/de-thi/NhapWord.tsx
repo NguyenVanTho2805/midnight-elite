@@ -20,6 +20,7 @@ import {
   ANSWER_SOURCE_LABEL, deThiDetailHref, fetchCategories, flattenCategories, formulaProblem, hasFormulaPlaceholder, hasImgToken, importSave, LEVEL_LABEL, LEVELS, luuNhieu, maskImgTokens, nganHangHref, nganHangNodeHref, nhapWordHref,
   taoDeHref, tierLabel, toBankInput, toExamInputs, unmaskImgTokens, uploadWord, wordFileProblem, WORD_MAX_QUESTIONS, type AzotaFlag, type AzotaQuestion, type Level, type LuuNhieuRes, type NhapWordRes,
 } from "./deThiClient";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Item {
   q: AzotaQuestion;
@@ -254,10 +255,10 @@ export default function NhapWord() {
               ) : nodes.length === 0 ? (
                 <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Ngân hàng chưa có nút nào. Nút gốc “Môn” do quản trị tạo; cô <Link href="/lop-cua-toi/ho-tro" className="underline">nhắn hỗ trợ</Link> để mở môn.</p>
               ) : (
-                <select id="nw-target" className={KIN_FIELD} value={target} onChange={e => setTarget(e.target.value)}>
+                <KinSelect id="nw-target" value={target} onChange={v => setTarget(v)}>
                   <option value="">Chọn nút…</option>
                   {nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
-                </select>
+                </KinSelect>
               )}
               <p className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Nên chọn nút Yêu cầu cần đạt hoặc Chương; câu trùng nội dung trong cùng nút sẽ tự được bỏ qua.</p>
             </div>
@@ -334,10 +335,10 @@ function Row({ it, reason, patch, onAnswer, onTf }: {
         </p>
         <div className="flex items-center gap-2 min-h-11">
           <label htmlFor={`${idBase}-lv`} className="sr-only">Mức của câu {q.number}</label>
-          <select id={`${idBase}-lv`} className={`${KIN_FIELD} !w-auto`} value={it.difficulty ?? ""} onChange={e => patch({ difficulty: (e.target.value || null) as Level | null })}>
+          <KinSelect id={`${idBase}-lv`} className="w-40 max-w-full" value={it.difficulty ?? ""} onChange={v => patch({ difficulty: (v || null) as Level | null })}>
             <option value="">Chưa đặt mức</option>
             {LEVELS.map(l => <option key={l} value={l}>{l} · {LEVEL_LABEL[l]}</option>)}
-          </select>
+          </KinSelect>
         </div>
       </div>
 

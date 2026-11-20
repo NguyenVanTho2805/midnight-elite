@@ -1,7 +1,7 @@
 // HP-15/HP-16/HP-17 — giao diện: Tạo lớp có mục "Cách tính học phí" (mặc định cách cũ), tab Học phí của lớp kiểu mới
 // (đơn giá hiện hành, đổi đơn giá có ngày hiệu lực + xem trước + Giữ nguyên / Áp dụng, đơn giá riêng từng em), lớp cũ giữ lối vào cũ.
 import { mkUser, mkTutor, mkCourse, wipe, check, section, done, BASE } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { vnDateKeyOf } from "@/lib/classSessions";
 
@@ -31,7 +31,7 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.getByRole("button", { name: "Tiếp tục" }).click();
   // TUT-lich-keo-tha: bước Lịch học bắt buộc có ít nhất một khung giờ (đặt bằng panel của lưới).
   await page.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await page.locator("[data-block-panel] select").first().selectOption("2");
+  await kinSelect(page.locator('[data-block-panel] [role="combobox"]').first(), "2");
   await page.getByRole("button", { name: "Lưu khung giờ" }).click();
   await page.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await page.getByRole("button", { name: "Tiếp tục" }).click();
@@ -65,7 +65,7 @@ import { vnDateKeyOf } from "@/lib/classSessions";
   await page.getByText("Đã đổi đơn giá.").waitFor({ timeout: 30000 });
   check("áp dụng: dòng phí 360.000, có 2 mốc đơn giá", (await prisma.feeCharge.findFirstOrThrow({ where: { courseId: created.id } })).amount === 360_000 && (await prisma.courseFeeRate.count({ where: { courseId: created.id } })) === 2);
   await page.getByRole("heading", { name: "Lịch sử đơn giá" }).waitFor();
-  await page.getByLabel("Học sinh").selectOption(stu.id);
+  await kinSelect(page.getByLabel("Học sinh"), stu.id);
   await page.getByLabel(/Đơn giá \(đ \/ giờ\)/).fill("150000");
   await page.getByRole("button", { name: "Xem trước tác động" }).last().click();
   await page.getByText(/360\.000đ → 225\.000đ/).waitFor({ timeout: 30000 });

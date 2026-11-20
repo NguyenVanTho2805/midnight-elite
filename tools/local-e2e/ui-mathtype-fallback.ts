@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeFileSync, mkdtempSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkTutor, wipe, check, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll } from "./ui";
+import { launch, ctxFor, shot, closeAll, kinSelect, kinSelectValue } from "./ui";
 import { mkTree } from "./bu03";
 
 const FILE = `${homedir()}/Downloads/De_Toan12_GK1_Azota.docx`;
@@ -64,8 +64,9 @@ const NH = "/lop-cua-toi/de-thi/ngan-hang-cau-hoi";
 
     if (W === 1280) {
       section("lưu → mở lại thấy ảnh");
-      const sels = pg.locator("main select");
-      for (let i = 0, n = await sels.count(); i < n; i++) { const sel = sels.nth(i); if ((await sel.locator('option[value="NB"]').count()) && (await sel.inputValue()) === "") await sel.selectOption("NB"); }
+      // LOI-06: ô "Mức" là KinSelect (nút combobox, mục mang data-value) — chọn NB cho câu chưa có mức.
+      const sels = pg.locator('main [role="combobox"][id$="-lv"]');
+      for (let i = 0, n = await sels.count(); i < n; i++) { const sel = sels.nth(i); if ((await kinSelectValue(sel)) === "") await kinSelect(sel, "NB"); }
       await pg.waitForTimeout(500);
       const saveBtn = pg.getByRole("button", { name: /^Lưu \d+ câu vào ngân hàng/ });
       check("nút Lưu bật được (cờ ảnh không chặn)", await saveBtn.isEnabled());

@@ -3,9 +3,13 @@
 // (không tính là việc gia sư cần làm); cột phải "Buổi học sắp tới", "Lớp thường dùng", ghi chú chân.
 // Điện thoại: một cột, buổi học sắp tới lên trước. Lỗi tải: giữ số cũ, dải báo lỗi có "Thử lại". Đang tải lần đầu: khung xương, không vòng xoay.
 // Dữ liệu: /api/tutor/hop-viec ({ items, total, overview }); tải lại khi cửa sổ lấy lại focus.
+// LOI-02 (mục 2.F): "Cần cô xử lý · N việc" = `total` của API (một nguồn sự thật với số đỏ ở thanh bên, todoBadgeTotal), KHÔNG đếm bằng số đầu tiêu đề.
+// "Chờ phụ huynh" vẫn hiện nhưng không tính vào số. Lấy lại focus ⇒ tải lại danh sách; CHỈ khi `total` mới KHÁC `total` lần trước mới router.refresh() (vẽ lại layout
+// máy chủ để số đỏ tính lại). Không đổi ⇒ không refresh (rẻ); đổi ⇒ refresh ngay (số đỏ không bao giờ cũ hơn danh sách — rà soát LOI-02 vòng 2 P3-A).
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { InboxItem } from "@/lib/tutorInbox";
 import type { HopViecOverview } from "@/lib/tutorOverview";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
@@ -21,6 +25,7 @@ import { KinPage, KinPageHeader, KIN_TWO_COL, KIN_TABLE_HEAD } from "@/component
 import { KinMoney, KinMoneyEye } from "@/components/kin/MoneyVisibility";
 import SetupChecklist from "@/components/tutor/SetupChecklist";
 import DongGiangNhom from "@/components/tutor/DongGiangNhom";
+import { featureOn } from "@/lib/features";
 
 function Skeleton() {
   const sk = "kin-skel kin-skel--soft";
@@ -37,17 +42,28 @@ function Skeleton() {
   );
 }
 
+
 export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
+  const fee = featureOn("HOC_PHI");
   const [items, setItems] = useState<InboxItem[] | null>(null);
   const [overview, setOverview] = useState<HopViecOverview | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState(false);
+  const router = useRouter();
+  const lastTotal = useRef<number | null>(null); // total của lần tải trước (lần đầu = cùng lượt với layout máy chủ ⇒ số đỏ đang khớp)
 
   const load = useCallback(() => {
     fetch("/api/tutor/hop-viec", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setItems(Array.isArray(d.items) ? d.items : []); setOverview(d.overview ?? null); setError(false); })
+      .then(d => {
+        setItems(Array.isArray(d.items) ? d.items : []); setOverview(d.overview ?? null);
+        const t = typeof d.total === "number" && Number.isFinite(d.total) ? d.total : null;
+        setTotal(t); setError(false);
+        if (t !== null && lastTotal.current !== null && t !== lastTotal.current) router.refresh(); // số việc đổi ⇒ layout tính lại số đỏ
+        if (t !== null) lastTotal.current = t;
+      })
       .catch(() => setError(true));
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     load();
@@ -58,7 +74,7 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
 
   const todo = (items ?? []).filter(i => !i.waiting);
   const waiting = (items ?? []).filter(i => i.waiting);
-  const todoCount = todo.reduce((n, i) => n + (Number(i.title.match(/^\d+/)?.[0]) || 1), 0);
+  const todoCount = total ?? todo.length; // API cũ chưa có `total` ⇒ đếm dòng
   const o = overview;
 
   return (
@@ -77,8 +93,9 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
         <>
           {o.setup && <SetupChecklist setup={o.setup} />}
           <KinStatRow boxed className="hidden md:grid">
-            <KinStat label={`Học phí tháng ${o.monthNumber} đã xác nhận`} value={<KinMoney>{o.stats.confirmed.value}</KinMoney>} hint={o.stats.confirmed.hint} />
-            <KinStat label="Phiếu đã lập" value={<KinMoney>{o.stats.invoices.value}</KinMoney>} hint={<KinMoney>{o.stats.invoices.hint}</KinMoney>} />
+            {/* DG (14/11/2026): số học phí của tháng chỉ hiện khi cờ HOC_PHI mở. */}
+            {fee && <KinStat label={`Học phí tháng ${o.monthNumber} đã xác nhận`} value={<KinMoney>{o.stats.confirmed.value}</KinMoney>} hint={o.stats.confirmed.hint} />}
+            {fee && <KinStat label="Phiếu đã lập" value={<KinMoney>{o.stats.invoices.value}</KinMoney>} hint={<KinMoney>{o.stats.invoices.hint}</KinMoney>} />}
             <KinStat label="Lớp đang quản lý" value={o.stats.classes.value} hint={o.stats.classes.hint} />
             <KinStat label="Lịch hôm nay" value={o.stats.today.value} hint={o.stats.today.hint} />
           </KinStatRow>
@@ -175,7 +192,7 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
                 </div>
               </section>
 
-              <section aria-labelledby="hv-fee" className="mt-8" data-hv-fee>
+              {fee && <section aria-labelledby="hv-fee" className="mt-8" data-hv-fee>
                 <KinSectionHead id="hv-fee" title={`Học phí tháng ${o.monthNumber}`} aside={<Link href="/lop-cua-toi/hoc-phi" className="inline-flex items-center min-h-11 hover:underline">Mở sổ học phí</Link>} />
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <KinPanel data-fee-card="da-thu">
@@ -189,7 +206,7 @@ export default function HopViec({ top }: { top?: React.ReactNode } = {}) {
                     <p className="mt-1 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{o.month.receivableHint}</p>
                   </KinPanel>
                 </div>
-              </section>
+              </section>}
             </div>
 
             <div className="lg:col-start-2 lg:row-start-2 min-w-0">

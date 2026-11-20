@@ -1,6 +1,7 @@
 // CAT-02 — thanh ngữ cảnh khi chọn nhiều khoá: thay chỗ thanh lọc. Hiện · Ẩn · Đổi kỳ thi ▾ · Bỏ chọn. Vai gia sư không có "Đổi kỳ thi".
 "use client";
-import { KinButton, KIN_FIELD } from "@/components/kin";
+import { KinButton } from "@/components/kin";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 export function BulkBar({ count, total, canCategory, categories, busy, onShow, onHide, onCategory, onClear, onSelectAll }: {
   count: number;
@@ -25,11 +26,10 @@ export function BulkBar({ count, total, canCategory, categories, busy, onShow, o
         {canCategory && (
           <label className="inline-flex items-center">
             <span className="sr-only">Đổi kỳ thi cho các khoá đã chọn</span>
-            <select disabled={busy} value="" onChange={e => { if (e.target.value) onCategory(e.target.value); }}
-              className={`${KIN_FIELD} bg-[var(--kin-nen-trang)] w-auto pr-8`}>
+            <KinSelect disabled={busy} value="" onChange={v => { if (v) onCategory(v); }} className="w-56 max-w-full">
               <option value="">Đổi kỳ thi ▾</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </KinSelect>
           </label>
         )}
         <KinButton variant="ghost" onClick={onClear}>Bỏ chọn</KinButton>

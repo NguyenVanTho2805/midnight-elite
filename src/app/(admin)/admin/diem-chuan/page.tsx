@@ -6,6 +6,7 @@ import PermissionGuard from "@/components/PermissionGuard";
 import { PERMISSIONS } from "@/contexts/AuthContext";
 import { Badge, CARD_STYLE, FIELD_STYLE, Modal, callApi, useNotify } from "@/components/tutor/shared";
 import { IMPORT_COLUMNS, SCORE_METHODS, formatScore, methodLabel } from "@/lib/admissionScore";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Row {
   id: string; school: string; major: string; variant: string; year: number; method: string; score: number; scale: number;
@@ -219,9 +220,9 @@ function Content() {
                 <input inputMode="numeric" value={editing.form.year} onChange={e => set({ year: e.target.value })} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} />
               </label>
               <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Phương thức
-                <select value={editing.form.method} onChange={e => set({ method: e.target.value })} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE}>
+                <KinSelect value={editing.form.method} onChange={v => set({ method: v })} className="block mt-1">
                   {SCORE_METHODS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
-                </select>
+                </KinSelect>
               </label>
               <label className="block text-xs" style={{ color: "var(--kin-chu-phu)" }}>Điểm chuẩn
                 <input inputMode="decimal" value={editing.form.score} onChange={e => set({ score: e.target.value })} className="block w-full mt-1 px-3 py-2 rounded-lg text-sm min-h-[44px]" style={FIELD_STYLE} placeholder="28,5" />

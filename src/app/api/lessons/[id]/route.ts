@@ -8,6 +8,7 @@ import { isCourseManager, lessonFor, type MediaContext } from "@/lib/mediaAccess
 import { isSuspended, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { validateLessonLinks, validateDocumentsJson, claimUploadedVideos, claimUploadedDocuments } from "@/lib/lessonMediaServer";
 import { isLearnerVisible } from "@/lib/lessonStatus";
+import { parseScheduledAtInput } from "@/lib/tutorLessonDate";
 
 // MD-03: ownerId (định danh gia sư) chỉ dùng để kiểm quyền ở máy chủ, KHÔNG đi ra JSON. Trả bản chỉ còn chapter.section.courseId.
 type LessonWithOwner = { chapter: { section: { courseId: string; course: { ownerId: string | null } } } };
@@ -68,7 +69,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }))!;
   if (!canEditChapter(acc.role, auth.userId, existing.chapter.teacherId)) return roleForbidden();
 
-  const body   = await req.json();
+  // LOI-02: thân JSON hỏng (hoặc không phải đối tượng) ⇒ 400 có chữ, thay vì req.json() ném lỗi thành 500.
+  let body: Record<string, unknown>;
+  try {
+    const parsed: unknown = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+    body = parsed as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Dữ liệu gửi lên không đúng." }, { status: 400 });
+  }
   try {
     const data: Record<string, unknown> = {};
     const allowed = [
@@ -77,6 +86,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ];
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
+    }
+    // LOI-02: ngày giờ học. Vắng khoá ⇒ không đổi cột; null ⇒ xoá; chuỗi ISO đầy đủ có múi giờ ⇒ ghi; còn lại ⇒ 400 (không ghi gì).
+    if ("scheduledAt" in body) {
+      const sa = parseScheduledAtInput(body.scheduledAt);
+      if (!sa.ok || sa.value === undefined) return NextResponse.json({ error: "Ngày học không hợp lệ." }, { status: 400 });
+      data.scheduledAt = sa.value;
     }
     // MD-01: báo lỗi sớm ở máy chủ (không chỉ ở trình duyệt) khi link video/Zoom/Azota sai hoặc dán nhầm ô. Chỉ kiểm ô ĐỔI so với bản đang lưu.
     const linkErr = validateLessonLinks(data, existing);

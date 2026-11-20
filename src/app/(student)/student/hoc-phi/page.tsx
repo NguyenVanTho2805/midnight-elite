@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNotify } from "@/components/tutor/shared";
 import { currentYearMonth } from "@/lib/tuition";
 import InvoiceCard from "@/components/parent/InvoiceCard";
+import { KinSelect } from "@/components/kin/KinSelect";
 import type { PartyInvoiceView } from "@/lib/invoiceServer";
 
 type Breakdown = {
@@ -87,11 +88,9 @@ export default function HocPhiPage() {
             Tính theo số buổi của môn trong tháng. Vắng không trừ tiền.
           </p>
         </div>
-        <select value={yearMonth} onChange={e => setYearMonth(e.target.value)}
-          className="px-3 py-1.5 text-body-sm font-semibold rounded-lg"
-          style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-chinh)" }}>
-          {months.map(m => <option key={m} value={m}>{monthLabel(m)}</option>)}
-        </select>
+        {/* LOI-06: KinSelect thay <select> gốc — giá trị vẫn là "YYYY-MM" như cũ. */}
+        <KinSelect className="w-44" aria-label="Tháng" value={yearMonth} onChange={setYearMonth}
+          options={months.map(m => ({ value: m, label: monthLabel(m) }))} />
       </div>
 
       {loading ? (

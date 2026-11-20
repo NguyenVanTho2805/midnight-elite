@@ -14,6 +14,7 @@ import DongGiangNhom from "@/components/tutor/DongGiangNhom";
 import { KinPage, KinPageHeader, KIN_FIELD } from "@/components/kin/PageLayout";
 import ThuVienLop from "@/components/tutor/ThuVienLop";
 import { classBase } from "@/lib/tutorClassRoutes";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const FIELD = KIN_FIELD;
 
@@ -76,16 +77,16 @@ export default function LopHoc() {
               <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Tên lớp, môn học…" className={`${FIELD} mt-2`} />
             </label>
             <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Môn học
-              <select value={category} onChange={e => setCategory(e.target.value)} className={`${FIELD} mt-2`}>
+              <KinSelect value={category} onChange={v => setCategory(v)} className="mt-2">
                 <option value="">Tất cả môn</option>
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </KinSelect>
             </label>
             <label className="block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">Trạng thái
-              <select value={status} onChange={e => setStatus(e.target.value)} className={`${FIELD} mt-2`}>
+              <KinSelect value={status} onChange={v => setStatus(v)} className="mt-2">
                 <option value="">Tất cả trạng thái</option>
                 {statuses.map(s => <option key={s} value={s}>{CLASS_STATUS_LABEL[s] ?? s}</option>)}
-              </select>
+              </KinSelect>
             </label>
           </div>
 

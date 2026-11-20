@@ -4,6 +4,7 @@
 // Sáu chỉ số cơ bản và doanh thu theo lớp/tháng ở phần trên trang, không bao giờ bị che.
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { isLinkHidden } from "@/lib/features";
 import { KinButton, KinSkeleton, KinStatus } from "@/components/kin";
 import { kinButtonClass } from "@/components/kin/Button";
 import { CARD_STYLE, callApi } from "@/components/tutor/shared";
@@ -50,7 +51,7 @@ function LockedPreview() {
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center" style={{ background: "var(--kin-nen-trang)", opacity: 0.94 }}>
         <KinStatus tone="mo">Có trong KiN Pro</KinStatus>
         <p className="text-sm max-w-sm" style={{ color: "var(--kin-chu-phu)" }}>Xu hướng chuyên cần theo tuần và tháng, cảnh báo em vắng liên tiếp, so sánh các lớp của bạn.</p>
-        <Link href="/lop-cua-toi/goi" className={kinButtonClass("primary")} data-testid="khoa-pro-nut">Xem gói KiN Pro</Link>
+        {!isLinkHidden("/lop-cua-toi/goi") && <Link href="/lop-cua-toi/goi" className={kinButtonClass("primary")} data-testid="khoa-pro-nut">Xem gói KiN Pro</Link>}
       </div>
     </div>
   );

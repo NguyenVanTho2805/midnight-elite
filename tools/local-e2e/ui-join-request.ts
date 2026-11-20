@@ -4,7 +4,7 @@
 // Từ chối kèm lời nhắn → em thấy lời nhắn; lớp miễn phí + "Vào ngay" → vào thẳng; wizard đúng thứ tự bước, "Miễn phí" ẩn mục học phí, "Vào ngay" khoá khi có học phí.
 // 390px: không tràn ngang, nút >= 44px. Ba trạng thái: rỗng / lỗi giả lập 500 / đang tải. Cần Postgres + Next dev (xem README). Phần thuần: t-join-request-lib.ts.
 import { BASE, mkUser, mkTutor, mkCourse, api, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, shot, closeAll, type Page } from "./ui";
+import { launch, ctxFor, shot, closeAll, type Page, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 const FREE_TAG = "Miễn phí";
@@ -103,9 +103,10 @@ async function mobileReport(page: Page) {
     && (await prisma.classJoinRequest.count({ where: { courseId: A.id, userId: S1.id, status: "approved" } })) === 1);
 
   section("Học sinh F5 thấy lớp; thẻ Đang chờ duyệt biến mất");
-  await sp.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "networkidle" });
-  await sp.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 60000 });
-  await eventually("thấy tên lớp, không còn khối Đang chờ duyệt", async () => (await sp.getByText(/Toán 9 Cô duyệt/).count()) > 0 && (await sp.locator("[data-pending-join]").count()) === 0);
+  // LOI-03 (11/11/2026): khối "Đang chờ duyệt" nay chỉ ở THƯ VIỆN lớp (/student/hoc-tap) và trang lớp có h1 = tên lớp — kiểm ở thư viện: thẻ lớp hiện, khối chờ duyệt biến mất.
+  await sp.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle" });
+  await sp.getByRole("heading", { level: 1, name: "Lớp của tôi" }).waitFor({ timeout: 60000 });
+  await eventually("thấy thẻ lớp trong thư viện, không còn khối Đang chờ duyệt", async () => (await sp.locator(`[data-class-card="${A.id}"]`).getByText(/Toán 9 Cô duyệt/).count()) > 0 && (await sp.locator("[data-pending-join]").count()) === 0);
 
   // ───────── Từ chối kèm lời nhắn
   section("Từ chối kèm lời nhắn → em thấy lời nhắn, chưa gửi lại được ngay");
@@ -162,7 +163,7 @@ async function mobileReport(page: Page) {
   await wz.getByRole("button", { name: "Tiếp tục" }).click();
   // TUT-lich-keo-tha: bước Lịch học bắt buộc có khung giờ.
   await wz.getByRole("button", { name: "Thêm khung giờ" }).click();
-  await wz.locator("[data-block-panel] select").first().selectOption("2");
+  await kinSelect(wz.locator('[data-block-panel] [role="combobox"]').first(), "2");
   await wz.getByRole("button", { name: "Lưu khung giờ" }).click();
   await wz.locator("[data-block-panel]").waitFor({ state: "detached", timeout: 10000 });
   await wz.getByRole("button", { name: "Tiếp tục" }).click();

@@ -12,6 +12,7 @@ import { KinStatus } from "@/components/kin/Status";
 import { kinButtonClass } from "@/components/kin/Button";
 import { useKinConfirm } from "@/components/kin/useConfirm";
 import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL, WATCH_LABEL, type WatchState } from "@/lib/classRecordings";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
 interface Props {
@@ -99,10 +100,10 @@ export default function BanGhiClient(p: Props) {
                 </div>
                 <div>
                   <label htmlFor="rec-session" className={KIN_LABEL}>Gắn vào buổi</label>
-                  <select id="rec-session" name="sessionId" defaultValue={p.bySession.some(g => g.session.id === p.preselectSession) ? p.preselectSession : ""} className={`${KIN_FIELD} mt-2`}>
+                  <KinSelect id="rec-session" name="sessionId" defaultValue={p.bySession.some(g => g.session.id === p.preselectSession) ? p.preselectSession : ""} className="mt-2">
                     <option value="">Chưa gắn buổi nào</option>
                     {p.bySession.map(g => <option key={g.session.id} value={g.session.id}>Buổi {dmy(g.session.dateKey)}</option>)}
-                  </select>
+                  </KinSelect>
                 </div>
                 <label className="flex items-start gap-3 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-chinh)] min-h-11">
                   <input type="checkbox" name="pledge" required className="mt-1 h-5 w-5 flex-shrink-0" />

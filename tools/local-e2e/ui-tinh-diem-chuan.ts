@@ -2,7 +2,7 @@
 // Kiểm: xem trước công thức khi gõ, báo lỗi vượt thang / thiếu nguồn, lưu bền, bật-tắt công khai & đối chiếu, xoá có hộp xác nhận; công cụ chỉ hiện khi có công thức CÔNG KHAI,
 // tính đúng (8,5×2 + 7,25 + 9 = 33,25 × 0,75 = 24,94), lời giải từng bước, kẹp thang, báo lỗi từng ô, lưu ý "chỉ mang tính tham khảo" LUÔN hiện, không gửi điểm lên máy chủ, 390px.
 import { BASE, api, mkSuper, mkUser, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll, shot, ADMIN, type Page } from "./ui";
+import { launch, ctxFor, closeAll, shot, ADMIN, type Page, kinSelect, kinSelectOptions } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -100,9 +100,9 @@ import { prisma } from "@/lib/prisma";
   await mk("Công thức mất nguồn", { sourceUrl: "" });
   await gp.reload({ waitUntil: "domcontentloaded" });
   await gp.locator("[data-score-calc]").waitFor({ timeout: 120000 });
-  const opts = await gp.locator("#tc-sel option").allInnerTexts();
+  const opts = await kinSelectOptions(gp.locator("#tc-sel"));
   check("ô chọn công thức chỉ có 2 mục công khai có nguồn (không có bản nháp, không có công thức mất nguồn)", opts.length === 2 && opts.some(o => /Khối A00/.test(o)) && opts.some(o => /Tổng 3 môn D01/.test(o)) && !opts.some(o => /nháp|mất nguồn/.test(o)), opts);
-  await gp.selectOption("#tc-sel", { label: opts.find(o => /D01/.test(o))! });
+  await kinSelect(gp.locator("#tc-sel"), { label: opts.find(o => /D01/.test(o))! });
   await gp.locator("#tc-m1").waitFor({ timeout: 15000 });
   check("chọn D01: ô nhập đổi theo công thức (Toán, Văn, Anh), công thức đã đối chiếu KHÔNG còn nhãn 'Chưa đối chiếu', ô nhập cũ được xoá", (await gp.locator("[data-score-calc] label").allInnerTexts()).some(x => /Văn/.test(x)) && (await gp.locator("[data-calc-unverified]").count()) === 0 && (await gp.locator("#tc-m1").inputValue()) === "");
   await gp.fill("#tc-m1", "9"); await gp.fill("#tc-m2", "8"); await gp.fill("#tc-m3", "7,5");

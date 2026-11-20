@@ -204,8 +204,10 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms);
   const sub = baoCao?.subs.find(s => s.href === "/admin/so-do");
   check("menu: 'Số đo sản phẩm' nằm trong module Vận hành (BU-08: trước là Báo cáo), cùng quyền với Phễu gia sư", !!sub && sub.label === "Số đo sản phẩm" && sub.permission === baoCao?.subs.find(s => s.href === "/admin/pheu")?.permission);
   check("matchSub nhận /admin/so-do là module Vận hành (BU-08)", matchSub("/admin/so-do")?.moduleKey === "van-hanh");
-  const hrefs = (r: "admin_super" | "admin_content" | "teacher") => visibleModules(r).flatMap(x => x.subs.map(s => s.href));
-  check("quản lý trung tâm thấy trang, gia sư thì không", hrefs("admin_super").includes("/admin/so-do") && hrefs("admin_content").includes("/admin/so-do") && !hrefs("teacher").includes("/admin/so-do"));
+  // DG (14/11/2026): Số đo sản phẩm thuộc cờ VAN_HANH_PHU (mặc định ẩn) — ca quyền chạy khi cờ mở; ca mặc định kiểm ẩn ở mọi vai.
+  const hrefs = (r: "admin_super" | "admin_content" | "teacher", env: Record<string, string> = { VAN_HANH_PHU: "1" }) => visibleModules(r, env).flatMap(x => x.subs.map(s => s.href));
+  check("quản lý trung tâm thấy trang, gia sư thì không (cờ VAN_HANH_PHU mở)", hrefs("admin_super").includes("/admin/so-do") && hrefs("admin_content").includes("/admin/so-do") && !hrefs("teacher").includes("/admin/so-do"));
+  check("cờ VAN_HANH_PHU tắt (mặc định): không vai nào thấy Số đo sản phẩm trong menu", (["admin_super", "admin_content", "teacher"] as const).every(r => !hrefs(r, {}).includes("/admin/so-do")));
 
   done();
 })().catch(e => { console.error("CRASH", e); process.exit(1); });

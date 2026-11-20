@@ -78,10 +78,14 @@ const MONEY = /\d[\d.,]*\s?đ(?![\p{L}])/u; // số + "đ" đứng riêng; khôn
       const setup = pg.locator("[data-setup-checklist]");
       await setup.waitFor({ timeout: 15000 });
       const stepState = async (k: string) => (await setup.locator(`[data-setup-step="${k}"]`).getAttribute("data-done")) !== null;
-      const got = await Promise.all(["tai-khoan", "lop", "hoc-sinh", "lich", "diem-danh", "phieu", "phu-huynh", "chot-buoi"].map(stepState));
-      check("tick theo dữ liệu thật: 7 bước xong, 'Mời phụ huynh' chưa (chưa có liên kết phụ huynh)", got.join() === "true,true,true,true,true,true,false,true", got);
-      check("mỗi dòng ghi CHỮ 'Đã xong' hoặc 'Chưa làm' (không chỉ màu)", (await setup.getByText("Đã xong", { exact: true }).count()) === 7 && (await setup.getByText("Chưa làm", { exact: true }).count()) === 1);
-      check("đếm tiến độ 7/8 và có progressbar", /7\/8 bước/.test(await setup.innerText()) && (await setup.getByRole("progressbar").getAttribute("aria-valuenow")) === "7");
+      // HP-BO (17/11/2026): Lịch gia sư luôn hiện ⇒ có bước "lich" (8 bước). Bước lịch xong hay chưa theo dữ liệu thật (lớp có khung giờ hay không).
+      check("có bước 'Đặt lịch học cho lớp'", (await setup.locator('[data-setup-step="lich"]').count()) === 1);
+      const lichDone = await stepState("lich");
+      const got = await Promise.all(["tai-khoan", "lop", "hoc-sinh", "diem-danh", "phieu", "phu-huynh", "chot-buoi"].map(stepState));
+      check("tick theo dữ liệu thật: 6 bước xong, 'Mời phụ huynh' chưa (chưa có liên kết phụ huynh)", got.join() === "true,true,true,true,true,false,true", got);
+      const doneN = 6 + (lichDone ? 1 : 0);
+      check("mỗi dòng ghi CHỮ 'Đã xong' hoặc 'Chưa làm' (không chỉ màu)", (await setup.getByText("Đã xong", { exact: true }).count()) === doneN && (await setup.getByText("Chưa làm", { exact: true }).count()) === 8 - doneN);
+      check(`đếm tiến độ ${doneN}/8 và có progressbar`, new RegExp(`${doneN}/8 bước`).test(await setup.innerText()) && (await setup.getByRole("progressbar").getAttribute("aria-valuenow")) === String(doneN) && (await setup.getByRole("progressbar").getAttribute("aria-valuemax")) === "8");
       const rowH = await setup.locator('[data-setup-step] a').first().boundingBox();
       check("dòng bước cao ≥ 44px", !!rowH && rowH.height >= 43.5, rowH);
       if (tag === "390-dark" || tag === "1440-light") await shot(pg, `trangchu-hopviec-${tag}`);
@@ -145,7 +149,7 @@ const MONEY = /\d[\d.,]*\s?đ(?![\p{L}])/u; // số + "đ" đứng riêng; khôn
     }
   }
 
-  section("HV-10: gia sư mới tinh — 0/8, đóng được, không nhắc lại; xong cả 8 thì không hiện");
+  section("HV-10: gia sư mới tinh — 0/8 (HP-BO: có bước lịch), đóng được, không nhắc lại; xong cả 8 thì không hiện");
   {
     const ctx = await ctxFor(T0, { width: 1280, height: 900 });
     const pg = await ctx.newPage(); watch(pg);
@@ -164,6 +168,8 @@ const MONEY = /\d[\d.,]*\s?đ(?![\p{L}])/u; // số + "đ" đứng riêng; khôn
     // Gia sư đủ 8 bước → không bao giờ hiện
     const parent = await mkUser({ name: "PH Thử" });
     await prisma.parentLink.create({ data: { parentId: parent.id, studentId: s1.id, status: "verified", verifiedAt: new Date() } });
+    // HP-BO: bước lịch (Lịch gia sư luôn hiện) — lớp của cô có khung giờ.
+    for (const c of await prisma.course.findMany({ where: { ownerId: T.id, classSchedules: { none: { active: true } } }, select: { id: true } })) await prisma.classSchedule.create({ data: { courseId: c.id, dayOfWeek: 5, startTime: "19:00", endTime: "20:30" } });
     const ctx2 = await ctxFor(T, { width: 1280, height: 900 });
     const p2 = await ctx2.newPage(); watch(p2);
     await p2.goto(`${BASE}/lop-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
