@@ -13,8 +13,9 @@ import type { SessionPayload } from "@/lib/session";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { notify } from "@/lib/notify";
 import { computeMonthlyFee, type SubjectFeeInput } from "@/lib/tuition";
-import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, normalizeFeeMode, percentAmount } from "@/lib/tuitionFee";
+import { FEE_MODE_LEGACY, composeFinalAmount, groupChargeLines, percentAmount } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, ensureCourseCharges, loadUninvoicedCharges, moneyPathsBlocked } from "@/lib/feeChargeServer";
+import { effectiveFeeModeForMonth } from "@/lib/feeModeFloor";
 import {
   INVOICE_STATUS, INVOICE_STATUS_LABEL, PARENT_VISIBLE_STATUSES, OPEN_STATUSES, buildInvoiceQrUrl, buildTransferContent,
   bankName, generateInvoiceCode, remainingOf, statusAfterPayment, type InvoiceStatus,
@@ -111,10 +112,16 @@ export async function issueInvoice(opts: {
       });
 
       // HP-14: lớp tạo sau có thể tính theo buổi/giờ/khoá (Course.feeMode). Lớp cũ (mặc định) đi ĐÚNG đường cũ bên dưới.
-      const legacyEnrollments = enrollments.filter(e => normalizeFeeMode(e.course.feeMode) === FEE_MODE_LEGACY);
+      // HOCPHI-THEO-BUOI D1 (chủ duyệt 16/11): hệ phí xét THEO THÁNG — lớp đã chuyển sang kiểu mới mà tháng lập phiếu đứng trước mốc chuyển
+      // vẫn tính theo MonthlyCourseFee (không mất học phí tháng cũ). Lớp không có mốc (tạo mới từ đầu) ⇒ effectiveFeeModeForMonth trả nguyên feeMode.
+      const classRates = await tx.courseFeeRate.findMany({ where: { courseId: { in: enrollments.map(e => e.courseId) } }, select: { courseId: true, effectiveFrom: true } });
+      const ratesByCourse = new Map<string, { effectiveFrom: string }[]>();
+      for (const r of classRates) ratesByCourse.set(r.courseId, [...(ratesByCourse.get(r.courseId) ?? []), r]);
+      const monthMode = (e: (typeof enrollments)[number]) => effectiveFeeModeForMonth(e.course.feeMode, ratesByCourse.get(e.courseId) ?? [], yearMonth);
+      const legacyEnrollments = enrollments.filter(e => monthMode(e) === FEE_MODE_LEGACY);
       const hasNewMode = legacyEnrollments.length < enrollments.length;
       if (hasNewMode && moneyPathsBlocked()) return { ok: false, reason: PREVIEW_BLOCKED_MESSAGE } as IssueResult;
-      if (hasNewMode) await ensureCourseCharges(tx, { tutorId, studentId, yearMonth, now: new Date(), courses: enrollments.map(e => e.course) });
+      if (hasNewMode) await ensureCourseCharges(tx, { tutorId, studentId, yearMonth, now: new Date(), courses: enrollments.filter(e => monthMode(e) !== FEE_MODE_LEGACY).map(e => e.course) });
       const chargeRows = hasNewMode || !moneyPathsBlocked()
         ? await loadUninvoicedCharges(tx, { tutorId, studentId, yearMonth, lock: true })
         : [];

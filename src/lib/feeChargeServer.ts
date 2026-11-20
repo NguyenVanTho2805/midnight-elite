@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { isClosed } from "@/lib/sessionBook";
+import { effectiveFeeModeForMonth } from "@/lib/feeModeFloor";
 import {
   FEE_RATE_FROM_START, courseFee, isChargeableStatus, isNewFeeMode, normalizeFeeMode, planReprice, sessionFee,
   type ChargeLite, type ClassRate, type FeeMode, type FeeSetup, type RepricePlan, type StudentRate,
@@ -49,7 +50,7 @@ export async function unitSessionPrice(db: Db, courseId: string, studentId: stri
 
 // ─── Chốt buổi → dòng phí theo buổi (HP-14; chủ chốt 24/10/2026: CHỐT BUỔI là điều kiện sinh phí) ─────────────────────────
 export interface SyncResult {
-  skipped?: "preview" | "mode" | "open"; created: number; updated: number; removed: number;
+  skipped?: "preview" | "mode" | "open" | "before_start"; created: number; updated: number; removed: number;
   /** Số dòng đã nằm trong phiếu (đóng băng, không đổi). */
   locked: number;
   /** Trong số `locked`: dòng mà điểm danh hiện tại sẽ cho số khác (hoặc không còn tính) — gia sư cần biết để xử lý tay trên phiếu. */
@@ -81,9 +82,12 @@ export async function syncSessionCharges(tx: Tx, a: {
   const tutorId = course.ownerId ?? a.by;
   const dateKey = vnDateKeyOf(a.sessionDate);
   const yearMonth = dateKey.slice(0, 7);
+  // HOCPHI-THEO-BUOI D1 (chủ duyệt 16/11): lớp CHUYỂN từ cách cũ sang theo buổi có mốc tháng (CourseFeeRate đầu tiên = "S-01"). Buổi chốt TRƯỚC mốc
+  // thuộc hệ phí cũ (MonthlyCourseFee) ⇒ không sinh FeeCharge, nếu không em bị tính hai lần cho cùng tháng. Lớp tạo mới (mốc 2000-01-01) không đổi gì.
+  const classRates = await ratesOf(tx, a.courseId);
+  if (effectiveFeeModeForMonth(course.feeMode, classRates, yearMonth) !== mode) return { ...NO_SYNC, skipped: "before_start" };
   const userIds = a.items.map(i => i.userId);
-  const [classRates, stuRates, records] = await Promise.all([
-    ratesOf(tx, a.courseId),
+  const [stuRates, records] = await Promise.all([
     studentRatesOf(tx, a.courseId, userIds),
     tx.attendanceRecord.findMany({ where: { sessionId: a.sessionId, userId: { in: userIds } }, select: { id: true, userId: true } }),
   ]);

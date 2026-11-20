@@ -108,6 +108,8 @@ export default function BuoiChiTiet({ courseId, dateKey, perSessionFee = false, 
     const c = r.data.charges;
     const detail = !c || c.skipped === "mode" ? undefined
       : c.skipped === "preview" ? "Bản xem trước không tính học phí."
+      // HOCPHI-THEO-BUOI D1: buổi trước tháng lớp chuyển sang tính theo buổi — học phí tháng đó vẫn theo số buổi tháng, không phải "chưa có em nào có mặt".
+      : c.skipped === "before_start" ? "Buổi này thuộc tháng trước khi lớp tính theo buổi, học phí tính theo số buổi của tháng đó."
       : c.created + c.updated > 0 ? `Đã tính học phí cho ${c.created + c.updated} em.` : "Chưa có em nào có mặt hoặc đi muộn nên chưa có khoản học phí.";
     notify.ok(detail ? `Đã ghi: buổi đã dạy xong. ${detail}` : "Đã ghi: buổi đã dạy xong.");
   }

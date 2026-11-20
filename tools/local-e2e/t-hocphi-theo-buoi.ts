@@ -1,7 +1,7 @@
 // HOCPHI-THEO-BUOI mục 8 — API thật: mặc định theo buổi khi tạo lớp, quyền đặt quy tắc (gia sư / quản trị ghi đè), AuditLog + thông báo, luật tính,
 // lớp có hai hệ phí (phần B). Có ca phá cố ý. Cần máy chủ dev (BASE) + DB test (wipe() xoá sạch).
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-hocphi-theo-buoi.ts
-// Ca đánh dấu [D1] cần sửa invoiceServer/feeChargeServer (tệp khóa, mục 10 D1 của đặc tả): nếu chưa mở khóa thì đỏ ĐÚNG như dự kiến — không phải lỗi bài.
+// Ca đánh dấu [D1] cần sửa invoiceServer/feeChargeServer (tệp khóa, mục 10 D1 của đặc tả). Chủ duyệt D1 16/11 (nhánh claude/hocphi-d1) — từ đó các ca [D1] phải XANH.
 import { prisma } from "@/lib/prisma";
 import { addDaysKey, vnDateKeyOf } from "@/lib/classSessions";
 import { issueInvoice } from "@/lib/invoiceServer";
@@ -198,7 +198,7 @@ const notifs = (userId: string, type = "course_fee_override") => prisma.notifica
   const curCharges = await charges({ courseId: c6.id });
   check("[D1] issueInvoice tháng mốc S dùng FeeCharge: dòng 100.000 vào phiếu S, đúng 1 phiếu (em, S)", (invCur as any).ok !== false && curCharges[0]?.invoiceId !== null && (await prisma.tuitionInvoice.count({ where: { studentId: S1.id, yearMonth: S } })) === 1, { invCur, curCharges });
   const invDup = await issueInvoice({ tutorId: A.id, studentId: S1.id, yearMonth: S });
-  check("lập phiếu lần hai cùng (em, tháng) không tạo phiếu thứ hai", (await prisma.tuitionInvoice.count({ where: { studentId: S1.id, yearMonth: S } })) === 1 && (invDup as any).ok !== true || (await prisma.tuitionInvoice.count({ where: { studentId: S1.id, yearMonth: S } })) === 1);
+  check("lập phiếu lần hai cùng (em, tháng) không tạo phiếu thứ hai", (invDup as any).ok !== true && (await prisma.tuitionInvoice.count({ where: { studentId: S1.id, yearMonth: S } })) === 1, invDup); // 16/11: trước đây `A && B || C` nên ca gần như luôn đạt nhờ C
   const allCharges = await prisma.feeCharge.findMany({ where: { studentId: S1.id, courseId: c6.id } });
   check("mỗi FeeCharge của lớp chỉ nằm trong tối đa 1 phiếu và không dòng nào hai lần (recordId duy nhất)", new Set(allCharges.map(c => c.recordId)).size === allCharges.length);
   // [D1] syncSessionCharges: buổi chốt TRƯỚC mốc của lớp đã chuyển không được sinh FeeCharge.
