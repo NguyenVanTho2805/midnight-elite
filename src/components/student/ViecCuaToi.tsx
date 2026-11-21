@@ -51,7 +51,7 @@ function CanLamPage() {
     <section aria-labelledby="vc-giao" className="mt-10">
       <h2 id="vc-giao" className={`${H2} pb-2`}>Đề thi được giao</h2>
       {as.error && !as.data ? <ErrorStrip message="Không tải được danh sách đề được giao." onRetry={as.load} />
-        : as.data && <AssignmentList items={as.data.items} serverNow={as.data.serverNow} emptyLink={false} />}
+        : as.data && <AssignmentList items={as.data.items} serverNow={as.data.serverNow} emptyLink={false} quiet={!!cards?.some(c => c.primary)} />}
     </section>
   );
 

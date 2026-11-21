@@ -16,10 +16,8 @@ const overflowX = (pg: Page) => pg.evaluate(() => document.documentElement.scrol
 const H = 3_600_000, D = 24 * H;
 const RAIL = "Module của học sinh";
 // Nút chính (navy) ĐANG HIỆN trong nội dung trang, KHÔNG tính dock (bản sao của nút chính) và thanh bên.
-const primaries = (pg: Page) => pg.evaluate(() => [...document.querySelectorAll("main a, main button")].filter(e => {
-  const r = e.getBoundingClientRect();
-  return r.width > 0 && r.height > 0 && !e.closest("[data-nop-dock]") && (e.getAttribute("class") ?? "").includes("bg-[var(--kin-nhan-nen)]");
-}).map(e => (e as HTMLElement).innerText.trim()));
+const primaries = (pg: Page) => pg.evaluate(`[...document.querySelectorAll("main a, main button")].filter(e => e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0
+  && !e.closest("[data-nop-dock]") && (e.getAttribute("class") || "").includes("bg-[var(--kin-nhan-nen)]")).map(e => e.innerText.trim())`) as Promise<string[]>;
 const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").evaluateAll(els => els.map(e => ({ t: (e as HTMLElement).innerText.trim(), svg: !!e.querySelector("svg[aria-hidden=true]") })));
 
 (async () => {
@@ -88,7 +86,7 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   check("h1 = tên lớp; dòng đầu trang có tên cô", await pg.getByRole("heading", { level: 1, name: "Toán 9 · Lớp thử A" }).isVisible() && /Cô Lan \(thử\)/.test(await pg.locator("[data-dau-lop]:visible").innerText()));
   check("vạch màu lớp cao 4px", Math.round((await pg.locator("[data-vach-lop]:visible").boundingBox())?.height ?? 0) === 4);
   check("không còn dải tab Nội dung / Video / Kết quả", await pg.getByRole("tab").count() === 0 && await pg.getByRole("tablist").count() === 0);
-  const order = await pg.evaluate(() => { const y = (s: string) => document.querySelector(s)?.getBoundingClientRect().top ?? -1; return { canLam: y("[data-lop-can-lam]"), ganDay: y("[data-lop-gan-day]") }; });
+  const order = await pg.evaluate(`({ canLam: document.querySelector("[data-lop-can-lam]")?.getBoundingClientRect().top ?? -1, ganDay: document.querySelector("[data-lop-gan-day]")?.getBoundingClientRect().top ?? -1 })`) as { canLam: number; ganDay: number };
   check("'Cần làm' nằm TRÊN 'Buổi gần đây'", order.canLam >= 0 && order.canLam < order.ganDay, order);
   const cards = pg.locator("[data-lop-can-lam] [data-can-lam-the]:visible");
   check("Cần làm có 3 thẻ của lớp này (2 bài tập + 1 kiểm tra), không lẫn bài lớp Vật lý", await cards.count() === 3 && !(await pg.locator("[data-lop-can-lam]").innerText()).includes("Bài tập chương 1"), await cards.count());
@@ -106,8 +104,8 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   const rows = pg.locator("[data-lop-gan-day] [data-kin-list-row]:visible");
   const rowH = await rows.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
   check("Buổi gần đây: hàng mảnh ≥ 56px, tối đa 5 hàng", rowH.length >= 4 && rowH.length <= 5 && rowH.every(h => h >= 56), rowH);
-  const firstRow = await rows.first().innerText();
-  check("hàng đầu = bài mới nhất ('Hệ phương trình bậc nhất'), dòng phụ có ngày, 'Video 42 phút', '2 tài liệu', 'Bài tập'", /Hệ phương trình bậc nhất/.test(firstRow) && /Video 42 phút/.test(firstRow) && /2 tài liệu/.test(firstRow) && /Bài tập/.test(firstRow) && /(Thứ \S+|Chủ nhật) \d\d\/\d\d/.test(firstRow), firstRow);
+  const firstRow = await pg.locator("[data-lop-gan-day] [data-lesson-row]:visible").first().innerText(); // bản ghi tạo "hôm nay" nên đứng trên mọi bài
+  check("bài đầu = bài mới nhất ('Hệ phương trình bậc nhất'), dòng phụ có ngày, 'Video 42 phút', '2 tài liệu', 'Bài tập'", /Hệ phương trình bậc nhất/.test(firstRow) && /Video 42 phút/.test(firstRow) && /2 tài liệu/.test(firstRow) && /Bài tập/.test(firstRow) && /(Thứ \S+|Chủ nhật) \d\d\/\d\d/.test(firstRow), firstRow);
   check("bài đã chấm ghi 'Đã chấm 8,5/10' ngay trong hàng", /Đã chấm 8,5\/10/.test(await pg.locator("[data-lesson-row='l-3']:visible").innerText()));
   check("bản ghi buổi học nằm trong Buổi gần đây", await pg.locator("[data-lop-gan-day] [data-recording-row-ngan]:visible").count() === 1);
   check("bài nháp không hiện; hàng là liên kết thật tới trang bài", await pg.getByText("Bài nháp không được thấy").count() === 0 && (await pg.locator("[data-lesson-row='l-4'] a").getAttribute("href")) === "/student/bai-giang/l-4");
@@ -124,11 +122,11 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   await pg.waitForFunction(() => document.querySelector("[data-nop-dock]")?.getAttribute("data-nop-dock") === "hien", null, { timeout: 10000 }).catch(() => {});
   const dock = pg.locator("[data-nop-dock]");
   check("cuộn qua thẻ: dock hiện, ghi tên bài hạn gần nhất", (await dock.getAttribute("data-nop-dock")) === "hien" && /Nộp Bài tập buổi 4/.test(await dock.innerText()));
-  const geo = await pg.evaluate(() => {
-    const d = document.querySelector("[data-nop-dock] > div")!.getBoundingClientRect(), bar = [...document.querySelectorAll("nav")].find(n => n.getBoundingClientRect().top > innerHeight - 80 && n.getBoundingClientRect().height > 0)!.getBoundingClientRect();
+  const geo = await pg.evaluate(`(() => {
+    const d = document.querySelector("[data-nop-dock] > div").getBoundingClientRect(), bar = [...document.querySelectorAll("nav")].find(n => n.getBoundingClientRect().top > innerHeight - 80 && n.getBoundingClientRect().height > 0).getBoundingClientRect();
     const last = [...document.querySelectorAll("main a, main button, main p, main li")].filter(e => !e.closest("[data-nop-dock]") && e.getBoundingClientRect().height > 0).map(e => e.getBoundingClientRect().bottom);
-    return { gap: Math.round(bar.top - d.bottom), lastBottom: Math.round(Math.max(...last)), dockTop: Math.round(d.top), barH: Math.round(bar.height), btn: Math.round(document.querySelector("[data-nop-dock] button")!.getBoundingClientRect().height) };
-  });
+    return { gap: Math.round(bar.top - d.bottom), lastBottom: Math.round(Math.max(...last)), dockTop: Math.round(d.top), barH: Math.round(bar.height), btn: Math.round(document.querySelector("[data-nop-dock] button").getBoundingClientRect().height) };
+  })()`) as { gap: number; lastBottom: number; dockTop: number; barH: number; btn: number };
   check("dock cách thanh dưới ≥ 12px, không che hàng cuối (trang chừa padding), nút ≥ 48px", geo.gap >= 12 && geo.lastBottom <= geo.dockTop && geo.btn >= 48, geo);
   check("thanh dưới cao 64px", geo.barH === 64, geo);
   await snap(pg, "hs-trang-lop-390-dock");
