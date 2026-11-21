@@ -166,8 +166,9 @@ export async function POST(req: NextRequest) {
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
     data.ownerId = auth.userId;
     // SCL-A (P1-4): tên gia sư = tên thật của người tạo lớp (cùng nguồn với màn vào lớp: owner.name), không để trống / tên giữ chỗ "KiN".
+    //   Chỉ vai gia sư: khoá học trung tâm (admin_super / admin_content) cố ý mang tên "KiN" — không thay bằng tên cá nhân người tạo.
     const instr = typeof data.instructor === "string" ? data.instructor.trim() : "";
-    if (!instr || instr.toLowerCase() === "kin") {
+    if (auth.adminRole === "teacher" && (!instr || instr.toLowerCase() === "kin")) {
       const me = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
       const nm = me?.name?.trim() ?? "";
       data.instructor = nm;

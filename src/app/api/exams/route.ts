@@ -99,7 +99,9 @@ export async function GET(req: NextRequest) {
       enrolled = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
       granted = new Set(acc.map(a => a.examId));
     }
-    const visible = sessionIsAdmin ? exams : exams.filter(e => granted.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolled));
+    // SCL-A (P2-7): khách (activeGuest, không đăng nhập) không thuộc lớp nào → đề gắn lớp chỉ hiện khi thu phí (đường xin quyền vào), và không kèm link Azota.
+    const guestHidden = (e: { courseId: string | null; price: number | null }) => activeGuestOnly && !!e.courseId && !((e.price ?? 0) > 0);
+    const visible = sessionIsAdmin ? exams : exams.filter(e => !guestHidden(e) && (granted.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolled)));
 
     // Không bao giờ trả password thô qua API — chỉ báo có/không có mật khẩu.
     return NextResponse.json(
@@ -109,6 +111,7 @@ export async function GET(req: NextRequest) {
         ...(sessionIsAdmin ? { variantNo, variantOfId, blueprintId } : {}),
         hasQuestions: _count.examQuestions > 0,
         courseName: course?.name ?? null,
+        ...(activeGuestOnly && e.courseId ? { azotaUrl: null } : {}),
       }))
     );
   } catch (e) {

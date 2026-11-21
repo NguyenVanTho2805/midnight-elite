@@ -5,6 +5,7 @@
 //   - selfScoreError: bỏ `exam.isDraft` → ca "nháp" đỏ; so với 150 thay vì exam.totalPoints → ca "vượt tổng điểm đề" đỏ.
 //   - boardRowFor: trả nguyên `row` → ca "không userId" đỏ.
 //   - planClassFix: bỏ `policy !== "open"` → ca "lớp open giữ công khai" đỏ.
+//   - (rà soát) canSeeClassExam: trả lại canWriteAttempt → ca "pending_consent được xem" đỏ; planClassFix: bỏ dòng lọc ownerAdminRole → ca "khoá trung tâm" đỏ.
 import { check, section, done } from "./h";
 import { canSeeClassExam, selfScoreError, boardRowFor, type ClassExamFacts } from "@/lib/examResultRules";
 import { planClassFix } from "@/lib/classPrivacyFix";
@@ -17,7 +18,8 @@ section("canSeeClassExam");
 check("đề không lớp: học sinh bất kỳ xem được", canSeeClassExam(S(), F({ courseId: null })));
 check("học sinh đang học (active) → được", canSeeClassExam(S(), F({ enrollment: { status: "active" } })));
 check("học sinh lớp khác (không ghi danh) → không", !canSeeClassExam(S(), F()));
-check("học sinh đã nghỉ (suspended) / chờ đồng ý → không", !canSeeClassExam(S(), F({ enrollment: { status: "suspended" } })) && !canSeeClassExam(S(), F({ enrollment: { status: "pending_consent" } })));
+check("học sinh đã nghỉ (suspended) → không", !canSeeClassExam(S(), F({ enrollment: { status: "suspended" } })));
+check("học sinh chờ phụ huynh đồng ý (pending_consent) → được XEM (luật xem viewBlockKind, chủ chọn 06/11)", canSeeClassExam(S(), F({ enrollment: { status: "pending_consent" } })));
 check("đề thu phí + khách đã được duyệt → được; đề miễn phí + guest access → không", canSeeClassExam(S(), F({ price: 50000, hasGuestAccess: true })) && !canSeeClassExam(S(), F({ hasGuestAccess: true })));
 check("quản trị trung tâm → được", canSeeClassExam({ userId: "A", role: "admin", adminRole: "admin_super" }, F()) && canSeeClassExam({ userId: "A", role: "admin", adminRole: "admin_content" }, F()));
 check("chủ lớp, chủ đề, đồng giảng → được", canSeeClassExam(T("T2"), F()) && canSeeClassExam(T("T1"), F()) && canSeeClassExam(T("T9"), F({ isHelper: true })));
@@ -43,16 +45,18 @@ check("người được xem tên đầy đủ: giữ userId và tên thật", (
 
 section("planClassFix");
 const plan = planClassFix([
-  { id: "a", name: "A", status: true, joinPolicy: null, instructor: "KiN", ownerName: "Cô Lan" },
-  { id: "b", name: "B", status: true, joinPolicy: "open", instructor: "Cô Hà", ownerName: "Cô Hà" },
-  { id: "c", name: "C", status: true, joinPolicy: "invite", instructor: "Thầy Nam", ownerName: "Thầy Nam" },
-  { id: "d", name: "D", status: false, joinPolicy: "approve", instructor: "Thầy Nam", ownerName: "Thầy Nam" },
-  { id: "e", name: "E", status: false, joinPolicy: "approve", instructor: " ", ownerName: null },
+  { id: "a", name: "A", status: true, joinPolicy: null, instructor: "KiN", ownerName: "Cô Lan", ownerAdminRole: "teacher" },
+  { id: "b", name: "B", status: true, joinPolicy: "open", instructor: "Cô Hà", ownerName: "Cô Hà", ownerAdminRole: "teacher" },
+  { id: "c", name: "C", status: true, joinPolicy: "invite", instructor: "Thầy Nam", ownerName: "Thầy Nam", ownerAdminRole: "teacher" },
+  { id: "d", name: "D", status: false, joinPolicy: "approve", instructor: "Thầy Nam", ownerName: "Thầy Nam", ownerAdminRole: "teacher" },
+  { id: "e", name: "E", status: false, joinPolicy: "approve", instructor: " ", ownerName: null, ownerAdminRole: "teacher" },
+  { id: "f", name: "F", status: true, joinPolicy: null, instructor: "KiN", ownerName: "Quản trị", ownerAdminRole: "admin_super" },
 ]);
 const of = (id: string) => plan.find(p => p.id === id)?.data;
 check("joinPolicy null → approve + ẩn + tên chủ lớp thay 'KiN'", JSON.stringify(of("a")) === JSON.stringify({ joinPolicy: "approve", status: false, instructor: "Cô Lan", teacherAvatar: "C" }), of("a"));
 check("lớp open giữ công khai, không đổi gì", of("b") === undefined, of("b"));
 check("lớp invite đang công khai → ẩn", JSON.stringify(of("c")) === JSON.stringify({ status: false }), of("c"));
+check("khoá học trung tâm (chủ admin_super) → không đụng (giữ công khai, tên KiN)", of("f") === undefined, of("f"));
 check("lớp đã riêng, có tên → không đổi; không có chủ → không bịa tên", of("d") === undefined && of("e") === undefined, [of("d"), of("e")]);
 
 void done();

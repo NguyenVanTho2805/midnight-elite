@@ -110,7 +110,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnType<typeof requirePermission>>) {
   if (!("userId" in auth)) return auth;
-  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true, tag: true } });
+  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true, tag: true, joinPolicy: true } });
   if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
   if (!ownsResource(auth, existing.ownerId)) {
     return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
@@ -176,6 +176,16 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
       }
     }
     data.joinPolicy = jp.value ?? null;
+  }
+
+  // SCL-A (P1-3, P1-4, Q10): lớp của gia sư chỉ công khai khi "Vào ngay" (open) — status luôn suy từ cách vào lớp SAU khi sửa, bỏ status client gửi.
+  //   Đổi open → duyệt/mã mời thì ẩn khỏi trang công khai; ngược lại thì hiện (để /join chạy). Tên gia sư trống / giữ chỗ "KiN" thì bỏ qua (giữ tên thật).
+  if (auth.adminRole === "teacher") {
+    if ("joinPolicy" in data || "status" in data) data.status = ("joinPolicy" in data ? data.joinPolicy : existing.joinPolicy) === "open";
+    if ("instructor" in data) {
+      const instr = typeof data.instructor === "string" ? data.instructor.trim() : "";
+      if (!instr || instr.toLowerCase() === "kin") { delete data.instructor; delete data.teacherAvatar; }
+    }
   }
 
   const course = await prisma.course.update({ where: { id }, data });

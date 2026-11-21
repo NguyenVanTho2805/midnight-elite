@@ -2,7 +2,9 @@
 //   P1-2  POST /api/exam-results: học sinh lớp khác ghi điểm · vượt tổng điểm đề · đề nháp / đề tắt · điểm tự khai vào báo cáo tháng (Q5: chờ duyệt).
 //   P2-7  GET /api/exam-results?examId= và GET /api/exams/[id]: người ngoài lớp xem được; học sinh nhận userId.
 //   P1-3/4 POST /api/courses (gia sư): lớp không "open" tự công khai; tên gia sư "KiN".
-//   P2-8  Khoá tài khoản / đổi mật khẩu: cookie cũ vẫn đọc được.
+//   P2-8  Khoá tài khoản / đổi mật khẩu / xoá tài khoản: cookie cũ vẫn đọc được.
+//   Rà soát: PATCH/PUT /api/courses/[id] (gia sư) đổi cách vào lớp phải kéo theo status; khoá trung tâm giữ "KiN"; học sinh pending_consent xem được đề,
+//   suspended nhận đúng mã; điểm chờ duyệt không vào bảng xếp hạng chung; khách GET /api/exams?activeGuest=true không thấy đề gắn lớp.
 // Chạy: source tools/local-e2e/env.sh && TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/t-scl-a-api.ts
 import { prisma } from "@/lib/prisma";
 import { api, cookieFor, mkUser, mkTutor, mkSuper, mkCourse, wipe, check, section, done, BASE } from "./h";
@@ -76,6 +78,45 @@ async function main() {
   const d2 = await prisma.course.findUnique({ where: { id: "scl-a-mo" } });
   check("lớp 'Vào ngay' (miễn phí) → công khai", c2.status === 201 && d2?.status === true, [c2.status, c2.json?.error, d2?.status]);
 
+  section("Rà soát · PATCH/PUT /api/courses/[id] (gia sư): status theo cách vào lớp");
+  const st = async (id: string) => (await prisma.course.findUnique({ where: { id } }))?.status;
+  const p1 = await api("PATCH", "/api/courses/scl-a-mo", { as: T, body: { joinPolicy: "approve" } });
+  check("PATCH open → approve: lớp thành RIÊNG (status false)", p1.status === 200 && (await st("scl-a-mo")) === false, [p1.status, p1.json?.error]);
+  const p2 = await api("PATCH", "/api/courses/scl-a-mo", { as: T, body: { joinPolicy: "open" } });
+  check("PATCH approve → open: lớp thành công khai (status true) để /join chạy", p2.status === 200 && (await st("scl-a-mo")) === true, [p2.status, p2.json?.error]);
+  const p3 = await api("PUT", "/api/courses/scl-a-duyet", { as: T, body: { status: true } });
+  check("PUT status:true trên lớp duyệt → bị bỏ qua (vẫn false)", p3.status === 200 && (await st("scl-a-duyet")) === false, [p3.status, p3.json?.error]);
+  const p4 = await api("PUT", "/api/courses/scl-a-duyet", { as: T, body: { instructor: "KiN", teacherAvatar: "K" } });
+  const d4 = await prisma.course.findUnique({ where: { id: "scl-a-duyet" } });
+  check("PUT instructor 'KiN' → bỏ qua, giữ tên thật", p4.status === 200 && d4?.instructor === "Cô Lan Chủ Lớp" && d4.teacherAvatar === "C", [p4.status, d4?.instructor]);
+  const sc = await api("POST", "/api/courses", { as: SA, body: { id: "scl-a-trung-tam", name: "TT", adminName: "TT", shortTitle: "TT", category: "Toán", instructor: "KiN", teacherAvatar: "K", openDate: "01/12/2026", types: ["Video"], bg: "var(--kin-chu-phu)", price: 0, lessons: 0, hours: 0, status: true } });
+  const dsc = await prisma.course.findUnique({ where: { id: "scl-a-trung-tam" } });
+  check("quản trị tạo khoá trung tâm tên 'KiN' → giữ 'KiN', công khai như cũ", sc.status === 201 && dsc?.instructor === "KiN" && dsc.status === true, [sc.status, sc.json?.error, dsc?.instructor]);
+
+  section("Rà soát · pending_consent / suspended xem chi tiết đề");
+  const PC = await mkUser({ name: "Em Chờ Phụ Huynh" }), SU = await mkUser({ name: "Em Đã Nghỉ" });
+  await prisma.enrollment.create({ data: { userId: PC.id, courseId: C.id, status: "pending_consent" } });
+  await prisma.enrollment.create({ data: { userId: SU.id, courseId: C.id, status: "suspended" } });
+  const epc = await api("GET", E, { as: PC }), esu = await api("GET", E, { as: SU }), ex2 = await api("GET", E, { as: X });
+  check("pending_consent: 200 (luật xem 06/11 không chặn chờ đồng ý)", epc.status === 200, [epc.status, epc.json]);
+  check("suspended: 403 kèm mã enrollment_suspended; không ghi danh: 403 kèm enrollment_removed", esu.status === 403 && esu.json?.code === "enrollment_suspended" && !!esu.json?.error && ex2.status === 403 && ex2.json?.code === "enrollment_removed", [esu.json, ex2.json]);
+
+  section("Rà soát · bảng xếp hạng chung bỏ điểm chờ duyệt");
+  const names = async () => ((await api("GET", "/api/leaderboard", { as: T })).json as { name: string }[]).map(r => r.name);
+  const n0 = await names();
+  check("điểm tự khai chờ duyệt KHÔNG lên /api/leaderboard", !n0.includes("Em Trong Lớp") && !n0.includes("Em Lớp Khác"), n0);
+  await prisma.examResult.updateMany({ where: { userId: S.id }, data: { pendingReview: false } });
+  const n1 = await names();
+  check("ĐỐI CHỨNG: duyệt xong thì lên bảng", n1.includes("Em Trong Lớp"), n1);
+
+  section("Rà soát · khách GET /api/exams?activeGuest=true");
+  await prisma.exam.update({ where: { id: "az-lop" }, data: { activeGuest: true } });
+  await mkExam("az-lop-phi", { ownerId: T.id, courseId: C.id, totalPoints: 10, price: 50000, activeGuest: true });
+  const gl = await api("GET", "/api/exams?activeGuest=true");
+  const ids = ((gl.json ?? []) as { id: string }[]).map(e => e.id);
+  const paid = ((gl.json ?? []) as { id: string; azotaUrl: string | null }[]).find(e => e.id === "az-lop-phi");
+  check("đề lớp miễn phí không hiện cho khách; đề lớp thu phí hiện nhưng không link Azota", gl.status === 200 && !ids.includes("az-lop") && !!paid && !paid.azotaUrl, [gl.status, ids, paid]);
+
   section("P2-8 · khoá tài khoản / đổi mật khẩu thu hồi phiên cũ");
   const K = await mkUser({ name: "Em Bị Khoá" });
   const kc = await cookieFor(K);
@@ -98,9 +139,17 @@ async function main() {
   const fr = await raw("GET", "/api/auth/me", fresh);
   check("cookie vừa cấp lại vẫn đăng nhập", fr.json?.id === P.id, fr.text.slice(0, 120));
 
+  const DEL = await mkUser({ name: "Em Bị Xoá" });
+  const dc = await cookieFor(DEL);
+  const dl = await api("POST", `/api/admin/students/${DEL.id}/xoa-tai-khoan`, { as: SA });
+  const dme = await raw("GET", "/api/auth/me", dc);
+  check("xoá tài khoản → cookie cũ ở yêu cầu ĐỌC thành chưa đăng nhập (null)", dl.status === 200 && dl.json?.ok === true && dme.json === null, [dl.status, dl.json, dme.text.slice(0, 120)]);
+
   section("Script dữ liệu scripts/scl-an-lop-cong-khai.ts (xem trước / --apply)");
   const oldC = await mkCourse(T.id, { name: "Lớp cũ lỡ công khai" });
   await prisma.course.update({ where: { id: oldC.id }, data: { status: true, joinPolicy: null, instructor: "KiN" } });
+  const centre = await mkCourse(SA.id, { name: "Khoá trung tâm cũ" });
+  await prisma.course.update({ where: { id: centre.id }, data: { status: true, joinPolicy: null, instructor: "KiN" } });
   const run = (...a: string[]) => { const r = spawnSync("npx", ["tsx", "scripts/scl-an-lop-cong-khai.ts", ...a], { encoding: "utf8", env: process.env }); return { code: r.status, out: r.stdout + r.stderr }; };
   const db = (await prisma.$queryRawUnsafe<{ db: string }[]>(`select current_database()::text as db`))[0].db;
   const pv = run();
@@ -111,6 +160,8 @@ async function main() {
   const ap = run("--apply", "--xac-nhan", db);
   const fixed = await prisma.course.findUnique({ where: { id: oldC.id } });
   const mo = await prisma.course.findUnique({ where: { id: "scl-a-mo" } });
+  const cen = await prisma.course.findUnique({ where: { id: centre.id } });
+  check("--apply KHÔNG đụng khoá trung tâm (chủ admin_super): giữ công khai, joinPolicy null, tên KiN", cen?.status === true && cen.joinPolicy === null && cen.instructor === "KiN" && !pv.out.includes(centre.id), [cen?.status, cen?.joinPolicy, cen?.instructor]);
   check("--apply đúng tên DB → lớp cũ: approve, ẩn, tên chủ lớp; lớp 'open' giữ công khai", ap.code === 0 && fixed?.joinPolicy === "approve" && fixed.status === false && fixed.instructor === "Cô Lan Chủ Lớp" && mo?.status === true, [ap.code, fixed?.joinPolicy, fixed?.status, fixed?.instructor, mo?.status]);
 
   await done();

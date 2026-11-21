@@ -1,6 +1,6 @@
 // SCL-A (P1-2, P2-7) — luật THUẦN cho điểm đề: ai xem được bảng điểm / chi tiết đề gắn lớp, điểm tự khai hợp lệ, dòng bảng điểm trả cho người xem.
 // Không DB. Phần đọc DB ở src/lib/examResultAccessServer.ts. Test: tools/local-e2e/t-scl-a-lib.ts.
-import { canWriteAttempt } from "@/lib/attemptAccess";
+import { viewBlockKind } from "@/lib/attemptAccess";
 
 export interface ClassExamViewer {
   userId: string;
@@ -18,7 +18,8 @@ export interface ClassExamFacts {
   hasGuestAccess: boolean;
 }
 
-/** Đề gắn lớp chỉ cho người trong lớp: quản trị, chủ lớp, chủ đề, đồng giảng đang hiệu lực, học sinh đang học (đề thu phí: khách đã được duyệt). Đề không lớp: ai đăng nhập cũng được. */
+/** Đề gắn lớp chỉ cho người trong lớp: quản trị, chủ lớp, chủ đề, đồng giảng đang hiệu lực; học sinh theo luật XEM viewBlockKind (chủ chọn 06/11:
+ *  đang học hoặc chờ phụ huynh đồng ý được xem, đã nghỉ / không còn ghi danh thì không; đề thu phí: khách đã được duyệt). Đề không lớp: ai đăng nhập cũng được. */
 export function canSeeClassExam(v: ClassExamViewer, f: ClassExamFacts): boolean {
   if (!f.courseId) return true;
   if (v.role === "admin") {
@@ -26,7 +27,7 @@ export function canSeeClassExam(v: ClassExamViewer, f: ClassExamFacts): boolean 
     if (v.adminRole !== "teacher") return false;
     return f.courseOwnerId === v.userId || f.examOwnerId === v.userId || f.isHelper;
   }
-  return canWriteAttempt({ courseId: f.courseId, price: f.price, enrollment: f.enrollment, hasGuestAccess: f.hasGuestAccess });
+  return viewBlockKind({ courseId: f.courseId, price: f.price, enrollment: f.enrollment, hasGuestAccess: f.hasGuestAccess }) === null;
 }
 
 /** Lỗi của điểm TỰ KHAI (đề Azota), hoặc null nếu nhận được. Đề phải đang mở, không nháp; điểm trong [0, tổng điểm của đề]. */

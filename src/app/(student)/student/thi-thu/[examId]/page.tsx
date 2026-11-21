@@ -75,6 +75,14 @@ function ExamRoomPage() {
       </div>,
     );
   }
+  if (d.classBlock) {
+    return wrap(
+      <div data-lop-chan className="text-center py-14 space-y-4">
+        <p className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>{d.classBlock}</p>
+        <div className="flex flex-col items-center gap-2"><ExitLink /></div>
+      </div>,
+    );
+  }
   if (phase === "error" || !exam) {
     return wrap(
       <div className="text-center py-14 space-y-4">

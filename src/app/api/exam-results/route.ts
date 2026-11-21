@@ -8,7 +8,7 @@ import { rootIdOfExam } from "@/lib/examVariantServer";
 import { maskName } from "@/lib/lookupPrivacy";
 import { canSeeFullStudentNames } from "@/lib/examBoardPrivacy";
 import { boardRowFor, selfScoreError } from "@/lib/examResultRules";
-import { mayViewClassExam } from "@/lib/examResultAccessServer";
+import { classExamViewBlock } from "@/lib/examResultAccessServer";
 import { canWriteAttempt } from "@/lib/attemptAccess";
 
 /** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
@@ -74,7 +74,8 @@ export async function GET(req: Request) {
 
     // SCL-A (P2-7): đề gắn lớp — chỉ người trong lớp xem bảng điểm (lớp khác 403). Đề không tồn tại vẫn trả [] như cũ.
     const meta = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true, ownerId: true, courseId: true, price: true, course: { select: { ownerId: true } } } });
-    if (meta && !(await mayViewClassExam(session, meta))) return NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 });
+    const viewBlock = meta ? await classExamViewBlock(session, meta) : null;
+    if (viewBlock) return NextResponse.json(viewBlock, { status: 403 });
 
     // QZ-11: chưa được công bố thì không xem bảng điểm của đề có tự luận (điểm còn dở dang).
     if (!resultVisibility(await loadPublishState(examId, session.userId), true).showScore) return NextResponse.json([]);
