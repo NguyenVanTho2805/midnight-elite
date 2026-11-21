@@ -30,8 +30,11 @@ export function useNotifications() {
 
   useEffect(() => {
     refetch().finally(() => setLoading(false));
-    const interval = setInterval(refetch, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    // SCL-H: tab ẩn thì không hỏi (điện thoại để KiN chạy nền không tốn pin/mạng); quay lại tab thì hỏi ngay một lần.
+    const interval = setInterval(() => { if (document.visibilityState === "visible") void refetch(); }, POLL_INTERVAL);
+    const onVisible = () => { if (document.visibilityState === "visible") void refetch(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
   }, [refetch]);
 
   function markAsRead(id: string) {

@@ -9,6 +9,7 @@ import type { ScheduleEvent } from "@/lib/studentSchedule";
 import { dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinStatus } from "@/components/kin/Status";
+import { fetchStudentWork } from "@/lib/studentWorkClient";
 
 const WEEKDAY_FULL = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 export const dmOfKey = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
@@ -21,21 +22,20 @@ export function dayTitle(key: string): string {
   return `${WEEKDAY_FULL[dayOfWeekOfKey(key)]} · ${dmOfKey(key)}`;
 }
 
-/** Tải việc của tôi + lịch (buổi học, hạn nộp, buổi thi). Lỗi riêng từng nguồn: `error` (việc), `eventsError` (lịch). */
+/** Tải việc của tôi + lịch (buổi học, hạn nộp, buổi thi) — một yêu cầu; lỗi thì cả `error` (việc) lẫn `eventsError` (lịch) cùng bật. */
 export function useStudentWork() {
   const [items, setItems] = useState<StudentTodoItem[] | null>(null);
   const [events, setEvents] = useState<ScheduleEvent[] | null>(null);
   const [error, setError] = useState(false);
   const [eventsError, setEventsError] = useState(false);
+  // SCL-H: việc + lịch về trong MỘT phản hồi (fetchStudentWork, dùng chung với số việc của vỏ) — không còn gọi /api/schedule riêng.
   const load = useCallback(() => {
-    fetch("/api/student/viec-cua-toi", { credentials: "same-origin", cache: "no-store" })
-      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setItems(Array.isArray(d.items) ? d.items : []); setError(false); })
-      .catch(() => setError(true));
-    fetch("/api/schedule", { credentials: "same-origin", cache: "no-store" })
-      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setEvents(Array.isArray(d.events) ? d.events : []); setEventsError(false); })
-      .catch(() => setEventsError(true));
+    fetchStudentWork()
+      .then(d => {
+        setItems(Array.isArray(d.items) ? d.items : []); setError(false);
+        setEvents(Array.isArray(d.events) ? d.events : []); setEventsError(false);
+      })
+      .catch(() => { setError(true); setEventsError(true); });
   }, []);
   useEffect(() => {
     load();

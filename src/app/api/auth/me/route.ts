@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createSession, deleteSession, getSession, renewSessionIfDue, type SessionPayload } from "@/lib/session";
 import { isAdminSession, isPastMaxAge } from "@/lib/sessionPolicy";
 import { prisma } from "@/lib/prisma";
-import { tutorApplicationStatus } from "@/lib/tutorProfile";
+import { AUTH_ME_SELECT, publicAuthUser } from "@/lib/authUserServer";
 
 export async function GET() {
   const session = await getSession();
@@ -10,7 +10,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, adminRole: true, phone: true, parentPhone: true, parentName: true, school: true, highSchool: true, city: true, studentId: true, facebookUrl: true, zaloPhone: true, emailVerified: true, banned: true, phoneVerifiedAt: true, tutorAppliedAt: true, tutorVerified: true, tutorRejectedAt: true },
+    select: AUTH_ME_SELECT,
   });
   if (!user) return NextResponse.json(null);
   // Mốc thu hồi (chiếm lại / đặt lại mật khẩu / xác minh email) đã được getSession() kiểm cho yêu cầu GET này (getSessionChecked) → ở đây không kiểm lại.
@@ -37,10 +37,7 @@ export async function GET() {
   // Phiên 30 ngày của gia sư/học sinh gia hạn mỗi lần dùng (tối đa 1 lần/24 giờ). Tài khoản bị khoá không được gia hạn.
   if (!user.banned) await renewSessionIfDue(effective);
 
-  // NC2-029: chỉ MỘT cờ cho chính người dùng này — "đã nộp đơn gia sư, chưa được duyệt, chưa bị từ chối" (vẫn là role học viên). Không trả ngày/lý do.
-  const { banned: _banned, phoneVerifiedAt, tutorAppliedAt, tutorVerified, tutorRejectedAt, ...publicUser } = user;
-  void _banned;
-  const tutorPending = user.role === "student" && !user.adminRole && tutorApplicationStatus({ tutorAppliedAt, tutorVerified, tutorRejectedAt }) === "pending";
+  // NC2-029: chỉ MỘT cờ cho chính người dùng này (tutorPending) — xem publicAuthUser (src/lib/authUserServer.ts, dùng chung với vỏ học sinh).
   // sessionRefreshed: báo cho trình duyệt dựng lại phần máy chủ (vỏ gia sư đọc cookie) ngay lần tải này.
-  return NextResponse.json({ ...publicUser, phoneVerified: phoneVerifiedAt !== null, tutorPending, ...(roleSynced ? { sessionRefreshed: true } : {}) });
+  return NextResponse.json({ ...publicAuthUser(user), ...(roleSynced ? { sessionRefreshed: true } : {}) });
 }
