@@ -34,9 +34,10 @@ export function effectivePolicy(stored: string | null | undefined): JoinPolicy {
 }
 
 /** SCL Q7 (21/11/2026): chính sách khi học sinh DÙNG MÃ và khi gia sư xem ô "Cách vào lớp". Lớp cũ chưa từng chọn (null) ⇒ "approve": mã lộ ra ngoài không
- *  còn cho người lạ vào thẳng lớp, mà thành yêu cầu chờ gia sư duyệt. Chuỗi lạ vẫn như effectivePolicy. Trang công khai và nút "Vào lớp" KHÔNG dùng hàm này. */
-export function redeemPolicy(stored: string | null | undefined): JoinPolicy {
-  return stored == null ? "approve" : effectivePolicy(stored);
+ *  còn cho người lạ vào thẳng lớp, mà thành yêu cầu chờ gia sư duyệt. Chuỗi lạ vẫn như effectivePolicy. Trang công khai và nút "Vào lớp" KHÔNG dùng hàm này.
+ *  Chỉ khi CHỦ lớp là gia sư đã duyệt: lớp quản trị tạo (chủ là admin) không có ai duyệt được (requireCourseTutor chỉ nhận gia sư chủ lớp), nên giữ "invite_only". */
+export function redeemPolicy(stored: string | null | undefined, ownerIsTeacher: boolean): JoinPolicy {
+  return stored == null && ownerIsTeacher ? "approve" : effectivePolicy(stored);
 }
 
 export type JoinStatus = "pending" | "approved" | "rejected" | "cancelled";

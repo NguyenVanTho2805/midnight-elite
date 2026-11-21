@@ -23,7 +23,7 @@ import { getSession } from "@/lib/session";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { logAction } from "@/lib/auditLog";
 import { canSelfEnroll, ENROLL_NOT_STUDENT_MESSAGE, ENROLL_TUTOR_PENDING_MESSAGE } from "@/lib/enrollEligibility";
-import { isApplicant } from "@/lib/tutorGate";
+import { isApplicant, isTeacher } from "@/lib/tutorGate";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
 import { redeemPolicy, redeemOutcome, INVITE_LOOKUP_LIMIT } from "@/lib/joinRequest";
 import { limitOrBlock } from "@/lib/rate-limit";
@@ -82,12 +82,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const course = await prisma.course.findUnique({
     where:  { id: inv!.courseId },
-    select: { id: true, name: true, classStatus: true, capacity: true, ownerId: true, joinPolicy: true },
+    select: { id: true, name: true, classStatus: true, capacity: true, ownerId: true, joinPolicy: true, owner: { select: { role: true, adminRole: true } } },
   });
   if (!course) return NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 });
 
   // Mã cá nhân của người khác: từ chối TRƯỚC mọi thứ khác (không lộ lớp, không tăng lượt, không tạo yêu cầu).
-  const outcome = redeemOutcome({ policy: redeemPolicy(course.joinPolicy), invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
+  const outcome = redeemOutcome({ policy: redeemPolicy(course.joinPolicy, isTeacher(course.owner)), invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
   if (outcome.action === "deny") return NextResponse.json({ error: outcome.error }, { status: outcome.status });
 
   // Đã đăng ký rồi — không cần redeem nữa, trả 200 idempotent để UI hiển thị

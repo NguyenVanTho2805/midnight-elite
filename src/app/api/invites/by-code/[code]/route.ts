@@ -12,6 +12,7 @@ import { isNextResponse } from "@/lib/auth-guard";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { showsSharedTuitionTiers, tuitionPreview } from "@/lib/invitePreview";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
+import { isTeacher } from "@/lib/tutorGate";
 import { redeemPolicy, isFreeClass, redeemOutcome, INVITE_LOOKUP_LIMIT } from "@/lib/joinRequest";
 import { limitOrBlock } from "@/lib/rate-limit";
 import { loadFeeRateCourseIds, requireStudentForJoin } from "@/lib/enrollServer";
@@ -43,13 +44,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     select: {
       id: true, name: true, shortTitle: true, category: true,
       classStatus: true, capacity: true, joinPolicy: true, price: true, tag: true, feeMode: true,
-      owner: { select: { id: true, name: true } },
+      owner: { select: { id: true, name: true, role: true, adminRole: true } },
     },
   });
   if (!course) return NextResponse.json({ status: "invalid", error: "Lớp không còn tồn tại" });
 
   // BU-01: mã cá nhân của người khác — chỉ báo "gắn với tài khoản khác", KHÔNG trả tên lớp / gia sư / lịch.
-  const policy = redeemPolicy(course.joinPolicy);
+  const policy = redeemPolicy(course.joinPolicy, isTeacher(course.owner));
   const outcome = redeemOutcome({ policy, invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
   if (outcome.action === "deny") return NextResponse.json({ status: "invalid", reason: outcome.status, error: outcome.error });
 

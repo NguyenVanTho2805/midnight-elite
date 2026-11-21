@@ -3,7 +3,7 @@
 //   P2-9: tra mã / dùng mã bị giới hạn tần suất theo tài khoản (429).
 //   P2-20: hàng chờ gộp /lop-cua-toi/xin-vao-lop chỉ có lớp của chính gia sư; duyệt bằng form kèm ve=hang-cho ⇒ 303 về hàng chờ; em vào lớp.
 //   P2-17: đăng ký học sinh chỉ cần họ tên + email + mật khẩu và đăng nhập được ngay (chưa xác thực email).
-import { BASE, mkUser, mkTutor, mkCourse, api, wipe, check, section, done } from "./h";
+import { BASE, mkUser, mkTutor, mkSuper, mkCourse, api, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { INVITE_LOOKUP_LIMIT } from "@/lib/joinRequest";
 
@@ -24,6 +24,19 @@ const form = (o: Record<string, string>) => ({ raw: new URLSearchParams(o).toStr
   check("xem trước báo joinPolicy=approve (nút thành 'Gửi yêu cầu')", pv.json?.joinPolicy === "approve", pv.json);
   const rd = await api("POST", `/api/invites/${ens.json.code}/redeem`, { as: S });
   check("CA PHÁ: redeem ⇒ pending, KHÔNG có Enrollment", rd.status === 200 && rd.json?.pending === true && (await prisma.enrollment.count({ where: { userId: S.id, courseId: LEGACY.id } })) === 0, rd.json);
+
+  section("Q7 (sửa rà soát): lớp quản trị tạo, joinPolicy null — không ai duyệt được nên mã vẫn cho vào thẳng");
+  const A = await mkSuper("Quản trị E");
+  const ADMC = await mkCourse(A.id, { name: "Lớp quản trị tạo", joinPolicy: null });
+  const aEns = await api("POST", `/api/courses/${ADMC.id}/invites`, { as: A, body: { ensure: true } });
+  check("quản trị có mã lớp", aEns.status === 201 && typeof aEns.json?.code === "string", aEns);
+  const SA = await mkUser({ name: "Em Lớp Quản Trị" });
+  const aPv = await api("GET", `/api/invites/by-code/${aEns.json.code}`, { as: SA });
+  check("xem trước báo joinPolicy=invite_only (nút 'Vào lớp')", aPv.json?.joinPolicy === "invite_only", aPv.json);
+  const aRd = await api("POST", `/api/invites/${aEns.json.code}/redeem`, { as: SA });
+  check("CA PHÁ: redeem ⇒ vào thẳng (Enrollment), KHÔNG kẹt yêu cầu chờ duyệt",
+    aRd.status === 200 && !aRd.json?.pending && (await prisma.enrollment.count({ where: { userId: SA.id, courseId: ADMC.id } })) === 1
+      && (await prisma.classJoinRequest.count({ where: { userId: SA.id, courseId: ADMC.id, status: "pending" } })) === 0, aRd.json);
 
   section("Q7: Đổi mã một chạm");
   const rot = await api("POST", `/api/courses/${LEGACY.id}/invites`, { as: T, body: { rotate: true } });
