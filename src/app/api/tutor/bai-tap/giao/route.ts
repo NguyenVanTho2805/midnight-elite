@@ -2,7 +2,8 @@
 // GET  → { courses, quizzes }: lớp người này giao bài được (Chủ nhiệm mọi lớp, gia sư lớp mình làm chủ) + quiz CỦA MÌNH đã phát hành (đề gốc, bản đang dùng).
 // POST (JSON) { kind: "bai-tap", courseId, title, documents?, dueDate? } → tạo bài tập nộp tệp trong MỘT mục mới (đã đăng) của lớp, tệp đề đã tải lên KiN;
 //      { kind: "quiz", courseId, examId } → gắn quiz có sẵn vào lớp (cùng mã đề con). Quiz đã có lượt làm ở lớp khác ⇒ 409.
-// Quyền: courseAccess `content.edit.own` (bài tập) / `quiz.assign` (quiz). Trả { ok, href } để trang chuyển về sổ điểm của lớp.
+// Quyền: courseAccess `content.edit.any` (bài tập: mục mới nằm ở chương KHÔNG nhóm, mà bộ môn chỉ soạn trong nhóm của mình — canEditChapter(.., null) = false,
+// nên đòi `.any` = chủ / quản trị / đồng giảng, cùng luật POST /api/chapters/[id]/lessons) / `quiz.assign` (quiz). Trả { ok, href } để trang chuyển về sổ điểm của lớp.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionChecked } from "@/lib/session";
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
   const p = parseGiaoInput(body, isValidDateKey);
   if (!p.ok) return bad(400, p.error);
   const v = p.v;
-  const acc = await requireCourseAccess(v.courseId, v.kind === "quiz" ? "quiz.assign" : "content.edit.own");
+  const acc = await requireCourseAccess(v.courseId, v.kind === "quiz" ? "quiz.assign" : "content.edit.any");
   if (!acc.ok) return acc.res;
   const href = `/lop-cua-toi/so-diem?lop=${encodeURIComponent(v.courseId)}&ghi=da-giao`;
 

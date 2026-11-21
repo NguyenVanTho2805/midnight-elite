@@ -126,6 +126,7 @@ export async function POST(req: Request) {
     }
   }
   const points = Math.round(exam.totalPoints); // cột ExamResult.totalPoints là Int
+  const pendingReview = !!exam.courseId;
 
   // Upsert + tăng participants (chỉ lần nộp đầu) trong cùng 1 transaction để tránh race condition
   const result = await prisma.$transaction(async (tx) => {
@@ -135,9 +136,10 @@ export async function POST(req: Request) {
 
     const r = await tx.examResult.upsert({
       where:  { userId_examId: { userId: session.userId, examId } },
-      // Q5: điểm tự khai luôn ở trạng thái chờ gia sư duyệt (khai lại cũng phải duyệt lại); chưa duyệt thì không vào báo cáo tháng.
-      create: { userId: session.userId, examId, score, totalPoints: points, pendingReview: true },
-      update: { score, totalPoints: points, completedAt: new Date(), pendingReview: true },
+      // Q5: điểm tự khai ở đề GẮN LỚP chờ chủ lớp / Chủ nhiệm duyệt (khai lại cũng phải duyệt lại); chưa duyệt thì không vào báo cáo tháng.
+      // Đề không gắn lớp không có ai duyệt (route duyệt cần lớp) ⇒ không chờ, như trước Q5 (không có báo cáo phụ huynh nào đọc đề này).
+      create: { userId: session.userId, examId, score, totalPoints: points, pendingReview },
+      update: { score, totalPoints: points, completedAt: new Date(), pendingReview },
     });
 
     if (!existing) {
@@ -150,6 +152,6 @@ export async function POST(req: Request) {
     return r;
   });
 
-  // SCL-C (Q5): điểm vừa khai đang chờ gia sư duyệt ⇒ chưa có hạng (bảng xếp hạng chỉ tính điểm đã duyệt).
-  return NextResponse.json({ ...result, rank: null });
+  // SCL-C (Q5): điểm vừa khai đang chờ gia sư duyệt ⇒ chưa có hạng (bảng xếp hạng chỉ tính điểm đã duyệt). Đề không lớp ⇒ hạng ngay.
+  return NextResponse.json({ ...result, rank: pendingReview ? null : await rankOf(examId, score) });
 }

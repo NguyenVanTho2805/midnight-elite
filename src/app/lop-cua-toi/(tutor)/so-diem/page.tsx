@@ -13,6 +13,7 @@ import { KinCallout } from "@/components/kin/Callout";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus, type StatusTone } from "@/components/kin/Status";
 import { kinButtonClass } from "@/components/kin/buttonClass";
+import { TuChoiButton } from "./TuChoiButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +35,24 @@ function CellView({ c }: { c: GradeCell }) {
         </form>
       )}
       {c.state === "cho-duyet" && c.resultId && (
-        <form method="post" action="/api/tutor/so-diem/duyet" className="flex flex-wrap gap-2 items-center" data-duyet>
-          <input type="hidden" name="resultId" value={c.resultId} />
-          <button type="submit" name="action" value="duyet" className={kinButtonClass("primary")}>Duyệt</button>
-          <input name="score" inputMode="decimal" defaultValue={c.score === null ? "" : fmtScore(c.score)} aria-label="Điểm sửa" className={SCORE_FIELD} />
-          <button type="submit" name="action" value="sua" className={kinButtonClass("secondary")}>Sửa điểm</button>
-          <button type="submit" name="action" value="tu-choi" className={kinButtonClass("danger")}>Từ chối</button>
-        </form>
+        // Ba form riêng: Enter trong ô "Điểm sửa" chỉ gửi được "Sửa điểm" (chung form thì nút đầu — Duyệt — được gửi, số vừa gõ bị bỏ).
+        <div className="flex flex-wrap gap-2 items-center" data-duyet>
+          <form method="post" action="/api/tutor/so-diem/duyet" data-duyet-sua className="flex gap-2 items-center">
+            <input type="hidden" name="resultId" value={c.resultId} />
+            <input type="hidden" name="action" value="sua" />
+            <input name="score" inputMode="decimal" required defaultValue={c.score === null ? "" : fmtScore(c.score)} aria-label="Điểm sửa" className={SCORE_FIELD} />
+            <button type="submit" className={kinButtonClass("secondary")}>Sửa điểm</button>
+          </form>
+          <form method="post" action="/api/tutor/so-diem/duyet" data-duyet-ok>
+            <input type="hidden" name="resultId" value={c.resultId} />
+            <button type="submit" name="action" value="duyet" className={kinButtonClass("primary")}>Duyệt</button>
+          </form>
+          <form method="post" action="/api/tutor/so-diem/duyet" data-duyet-tu-choi>
+            <input type="hidden" name="resultId" value={c.resultId} />
+            <input type="hidden" name="action" value="tu-choi" />
+            <TuChoiButton />
+          </form>
+        </div>
       )}
     </div>
   );

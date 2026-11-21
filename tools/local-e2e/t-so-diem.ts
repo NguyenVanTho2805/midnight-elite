@@ -104,6 +104,24 @@ async function main() {
   check("lớp em không học → rỗng", ((await api("GET", `/api/student/ket-qua?courseId=${x1.id}`, { as: s2 })).json.classes as any[]).length === 0);
   check("gia sư gọi API học sinh → 403", (await api("GET", "/api/student/ket-qua", { as: T })).status === 403);
 
+  section("Rà soát · đồng giảng / bộ môn; đề không gắn lớp");
+  const CO = await mkTutor("Cô Đồng Giảng"), BM = await mkTutor("Thầy Bộ Môn");
+  await prisma.courseTeacher.create({ data: { courseId: c1.id, userId: CO.id, role: "co_teacher", status: "active", invitedBy: T.id } });
+  await prisma.courseTeacher.create({ data: { courseId: c1.id, userId: BM.id, role: "subject_teacher", status: "active", invitedBy: T.id, subjects: ["Lý"] } });
+  const nBt = await prisma.assignment.count();
+  check("bộ môn giao bài tập vào lớp (chương không nhóm) → 403, không tạo gì", (await api("POST", "/api/tutor/bai-tap/giao", { as: BM, body: { kind: "bai-tap", courseId: c1.id, title: "Lén" } })).status === 403 && (await prisma.assignment.count()) === nBt);
+  check("đồng giảng giao bài tập → 200 (content.edit.any)", (await api("POST", "/api/tutor/bai-tap/giao", { as: CO, body: { kind: "bai-tap", courseId: c1.id, title: "Bài đồng giảng" } })).status === 200);
+  check("đồng giảng mở sổ điểm (score.write) → 403", (await api("GET", `/api/tutor/so-diem?courseId=${c1.id}`, { as: CO })).status === 403);
+  await api("POST", "/api/exam-results", { as: s2, body: { examId: "az-c1", score: 4 } });
+  const r3 = await prisma.examResult.findUniqueOrThrow({ where: { userId_examId: { userId: s2.id, examId: "az-c1" } } });
+  check("đồng giảng / bộ môn Duyệt → 403, vẫn chờ duyệt", (await api("POST", "/api/tutor/so-diem/duyet", { as: CO, ...form({ resultId: r3.id, action: "duyet" }) })).status === 403
+    && (await api("POST", "/api/tutor/so-diem/duyet", { as: BM, ...form({ resultId: r3.id, action: "duyet" }) })).status === 403
+    && (await prisma.examResult.findUnique({ where: { id: r3.id } }))?.pendingReview === true);
+  await mkExam("az-free", { ownerId: T.id, azotaUrl: "https://azota.vn/z" });
+  const fr = await api("POST", "/api/exam-results", { as: s2, body: { examId: "az-free", score: 6 } });
+  check("đề KHÔNG gắn lớp: tự khai → không chờ duyệt (không ai duyệt được), có hạng ngay", fr.status === 200 && fr.json.pendingReview === false && fr.json.rank === 1, fr.json);
+  check("đề không gắn lớp: điểm lên bảng xếp hạng của đề", ((await api("GET", "/api/exam-results?examId=az-free", { as: s1 })).json ?? []).length === 1);
+
   section("Trang");
   const pg = await api("GET", `/lop-cua-toi/so-diem?lop=${c1.id}`, { as: T });
   check("gia sư mở /lop-cua-toi/so-diem (không cờ) → 200, có bảng", pg.status === 200 && pg.text.includes("data-so-diem"), pg.status);

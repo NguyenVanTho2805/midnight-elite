@@ -1,5 +1,7 @@
 // SCL-C (P2-2) — form ngắn "Giao bài": lớp (một lớp thì chọn sẵn), loại (bài tập nộp tệp | quiz có sẵn), tiêu đề, tệp đề kéo-thả (DocumentsEditor có sẵn), hạn nộp.
 // Gửi POST /api/tutor/bai-tap/giao rồi chuyển về sổ điểm của lớp. Trạng thái tải / lỗi (+ Thử lại) / rỗng đều có chữ.
+// NGOẠI LỆ quy ước POST+303 (có chủ ý): tệp đề đã tải lên nằm trong state của DocumentsEditor (client). Form POST+303 mà lỗi (tệp chưa nhận, quiz đã dùng ở lớp
+// khác…) thì trang tải lại, mất tiêu đề và danh sách tệp vừa thả ⇒ giữ fetch JSON để báo lỗi tại chỗ, không mất gì; nút luôn mở lại nhờ finally.
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
