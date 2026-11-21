@@ -137,6 +137,7 @@ export function contentTabsFor(pathname: string, tab: string | null = null, role
     label: "Quản lớp",
     tabs: [
       baiHoc,
+      { label: "Video", href: `${base}/video`, active: onSub("video") }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
       { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
       { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao") }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
       { label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") },

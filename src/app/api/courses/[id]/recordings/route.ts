@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionChecked } from "@/lib/session";
 import { suspendedBody } from "@/lib/suspendedContent";
 import { recordingAccess, listCourseRecordings } from "@/lib/classRecordingsServer";
-import { checkRecordingLink, cleanRecordingTitle, MAX_RECORDINGS_PER_COURSE } from "@/lib/classRecordings";
+import { checkRecordingLink, cleanRecordingTitle, recordingsBackPath, MAX_RECORDINGS_PER_COURSE } from "@/lib/classRecordings";
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
 
@@ -22,7 +22,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const isForm = !(req.headers.get("content-type") ?? "").includes("application/json");
-  const back = (q: string) => NextResponse.redirect(new URL(`/lop-cua-toi/${encodeURIComponent(id)}/ban-ghi?${q}`, req.url), { status: 303, headers: NO_STORE });
+  let backTo: unknown = null; // SCL-D: form ở tab Video gửi back=video
+  const back = (q: string) => NextResponse.redirect(new URL(`${recordingsBackPath(id, backTo)}?${q}`, req.url), { status: 303, headers: NO_STORE });
   const fail = (status: number, error: string) => (isForm ? back(`loi=${encodeURIComponent(error)}`) : NextResponse.json({ error }, { status, headers: NO_STORE }));
 
   const { session } = await getSessionChecked();
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let body: Record<string, unknown>;
   if (isForm) { const fd = await req.formData().catch(() => null); body = fd ? Object.fromEntries(fd.entries()) : {}; }
   else body = await req.json().catch(() => ({}));
+  backTo = body.back;
 
   const title = cleanRecordingTitle(body.title);
   if (!title.ok) return fail(400, title.error);

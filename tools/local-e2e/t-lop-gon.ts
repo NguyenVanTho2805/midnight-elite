@@ -164,7 +164,7 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const dd = await api("GET", `${QL}/${idA}/diem-danh`, { as: A });
   check("diem-danh → 200, có 'Lịch sử buổi học', không chuyển hướng", dd.status === 200 && go(dd).to === null && dd.text.includes("Lịch sử buổi học"), [dd.status]);
   section("2b. Một đầu lớp, MỘT dải tab (5 tab đúng thứ tự, LOI-02 + TB-LOP), không breadcrumb quản trị — trên mọi trang của chủ lớp (kể cả …/lich-hoc mở bằng link)");
-  const ORDER = ["Bài học", "Học sinh", "Thông báo", "Điểm danh", "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+  const ORDER = ["Bài học", "Video", "Học sinh", "Thông báo", "Điểm danh", "Cài đặt"]; // SCL-D thêm Video // TB-LOP (17/11/2026) thêm Thông báo
   for (const p of [``, `/hoc-vien`, `/thong-bao`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
     const r = await api("GET", `${QL}/${idA}${p}`, { as: A });
     const strip = /<nav[^>]*aria-label="Trang của[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(r.text)?.[1] ?? "";

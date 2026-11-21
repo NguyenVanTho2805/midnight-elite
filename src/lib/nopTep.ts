@@ -156,7 +156,7 @@ export const NOP_TEP_ERRORS: Record<NopTepErrorCode, string> = {
   bad_ext: "Tệp này không phải Word hoặc PDF. Hãy lưu thành .docx hoặc .pdf rồi chọn lại.",
   too_big: "Tệp lớn hơn 10 MB. Hãy nén ảnh trong bài hoặc chia nhỏ tệp.",
   empty: "Tệp rỗng, không tải lên được.",
-  blocked_image: "KiN không nhận ảnh làm bài. Hãy chụp vào tài liệu Word/PDF hoặc nộp bằng link Azota.",
+  blocked_image: "KiN không nhận ảnh rời. Ảnh bài làm cần gộp thành một tệp PDF trước khi nộp (học sinh: nút \"Chụp ảnh bài làm\").",
   blocked_video: "KiN không nhận video làm bài. Hãy nộp bằng tệp Word hoặc PDF.",
   blocked_exec: "KiN không nhận tệp chương trình hoặc mã lệnh. Hãy nộp bằng tệp Word hoặc PDF.",
   blocked_macro_ext: "Tệp có macro nên không nhận. Hãy lưu thành .docx thường rồi chọn lại.",

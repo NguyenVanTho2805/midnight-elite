@@ -105,7 +105,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   const zone = p1.locator(`${BOX} [data-nop-tep-vung-tha]`);
   check("vùng thả là <button> thật, cao ≥160px ở 1280", (await zone.evaluate(e => e.tagName)) === "BUTTON" && (((await zone.boundingBox())?.height ?? 0) >= 160));
   const cap = (await p1.locator(`${BOX} [data-nop-tep-chu-thich]`).textContent()) ?? "";
-  check("chú thích: Word hoặc PDF, dưới 10 MB, không nhận ảnh/video, lưu 60 ngày", /Word hoặc PDF, dưới 10 MB\. Không nhận ảnh hay video\. Tệp được lưu 60 ngày rồi tự xoá\./.test(cap), cap);
+  check("chú thích: Word hoặc PDF, dưới 10 MB, ảnh gộp thành PDF trên máy, không nhận video, lưu 60 ngày (SCL-D Q3)", /Word hoặc PDF, dưới 10 MB\. Ảnh chụp bài làm được gộp thành một tệp PDF ngay trên máy bạn.*Không nhận video\. Tệp được lưu 60 ngày rồi tự xoá\./.test(cap), cap);
   check("khối cảnh báo thông tin cá nhân hiện", await p1.locator(`${BOX} [data-nop-tep-canh-bao]`).isVisible());
   check("'Nộp bài' tắt + chữ lý do 'Chọn ít nhất 1 tệp.'", await p1.locator(`${BOX} [data-nop-tep-nop]`).isDisabled() && /Chọn ít nhất 1 tệp\./.test((await p1.locator(`${BOX} [data-nop-tep-tom-tat]`).textContent()) ?? ""));
   check("còn đường nộp bằng link Azota ở phía trên (AzotaPanel không đổi)", (await p1.getByText(/azota/i).count()) > 0);
@@ -115,11 +115,12 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   section("lỗi tại chỗ, KHÔNG gọi mạng tới init: ảnh, 11 MB, đuôi lạ, .doc");
   const init = countInit(p1);
   const input = p1.locator(`${BOX} [data-nop-tep-input]`);
+  // SCL-D (Q3): ảnh thả vào ô của HỌC SINH không còn là lỗi — vào hàng "ảnh chờ gộp PDF" (không gọi mạng), Nộp bài khoá tới khi gộp xong.
   await input.setInputFiles(f("anh.png", png(), "image/png"));
-  await rows(p1).first().waitFor();
-  check("thả .png ⇒ hàng lỗi 'KiN không nhận ảnh…', có Bỏ tệp, KHÔNG có Thử lại", /KiN không nhận ảnh làm bài/.test((await p1.locator(`${BOX} [data-nop-tep-loi]`).first().textContent()) ?? "")
-    && (await rows(p1).first().getAttribute("data-trang-thai")) === "loi" && (await p1.locator(`${BOX} [data-nop-tep-bo]`).count()) === 1 && (await p1.locator(`${BOX} [data-nop-tep-thu-lai]`).count()) === 0);
-  await p1.locator(`${BOX} [data-nop-tep-bo]`).click();
+  await p1.locator(`${BOX} [data-nop-anh-dem]`).waitFor({ timeout: 10000 });
+  check("thả .png ⇒ '1 ảnh đã chọn · gộp thành một tệp PDF', không có hàng lỗi, Nộp bài khoá", /1 ảnh đã chọn/.test((await p1.locator(`${BOX} [data-nop-anh-dem]`).textContent()) ?? "")
+    && (await rows(p1).count()) === 0 && await p1.locator(`${BOX} [data-nop-tep-nop]`).isDisabled());
+  await p1.locator(`${BOX} [data-nop-anh-bo]`).click();
   await input.setInputFiles(f("to.pdf", Buffer.alloc(11 * 1024 * 1024, 1), "application/pdf"));
   await rows(p1).first().waitFor();
   check("tệp 11 MB ⇒ 'Tệp lớn hơn 10 MB…'", /Tệp lớn hơn 10 MB/.test((await p1.locator(`${BOX} [data-nop-tep-loi]`).first().textContent()) ?? ""));

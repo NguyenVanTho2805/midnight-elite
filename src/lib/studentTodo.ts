@@ -210,7 +210,7 @@ function assignmentItem(a: TodoAssignment, now: Date): StudentTodoItem | null {
       meta: `${a.courseName}${a.teacher ? ` · ${a.teacher}` : ""} giao ${dm(vnDateKeyOf(a.createdAt))} · ${remainingText(due, now)}`,
       commands,
       sections: [
-        { title: interactive ? "Làm trực tiếp trên web" : "Cách nộp", text: a.instructions?.trim() || (interactive ? "Trả lời các câu hỏi ngay trong bài." : "Nộp ảnh chụp hoặc file PDF.") },
+        { title: interactive ? "Làm trực tiếp trên web" : "Cách nộp", text: a.instructions?.trim() || (interactive ? "Trả lời các câu hỏi ngay trong bài." : "Nộp tệp Word, PDF hoặc chụp ảnh bài làm (ảnh được gộp thành một tệp PDF).") },
         { title: interactive ? "Chưa làm" : "Chưa nộp lần nào", text: interactive ? "Bài khoá lại khi hết hạn." : "Nộp lại sẽ ghi đè bản cũ." },
       ],
     },

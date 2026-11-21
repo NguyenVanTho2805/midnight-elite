@@ -7,7 +7,7 @@
 // dòng "hoặc" + nút "Chọn tệp"; danh sách tệp + Nộp bài xếp DƯỚI vùng thả (không còn hai cột); kho chưa cấu hình ⇒ tiêu đề "Kho tệp chưa bật".
 // KHÔNG đổi: giới hạn (10 MB / 3 tệp / 60 ngày), luồng tải lên / nộp (nopTepClient.ts), quy tắc trẻ em (không ảnh), vùng thả nhỏ của gia sư.
 "use client";
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { KinButton } from "@/components/kin/Button";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinCallout } from "@/components/kin/Callout";
@@ -17,6 +17,8 @@ import {
   type NopTepFileView, type NopTepLimits, type NopTepList, type NopTepMode, type NopTepScope,
 } from "./nopTepClient";
 import { nopTepSafeName } from "@/lib/nopTep";
+import { MAX_IMAGE_PAGES } from "@/lib/imagePdf";
+import { imagesToPdfFile } from "@/lib/imagePdfClient";
 
 export type { NopTepMode } from "./nopTepClient";
 
@@ -216,15 +218,16 @@ function Zone({ onFiles, compact, describedBy, disabled }: { onFiles: (f: File[]
         onDragLeave={e => { stop(e); depth.current = Math.max(0, depth.current - 1); if (depth.current === 0) setOver(false); }}
         onDragOver={stop}
         onDrop={e => { stop(e); depth.current = 0; setOver(false); if (disabled) return; const fs = Array.from(e.dataTransfer.files ?? []); if (fs.length) onFiles(fs); }}
-        className={`w-full flex flex-col items-center justify-center gap-3 px-4 py-5 text-center rounded-[var(--kin-bo-xl)] border-2 transition-colors ${compact ? "min-h-24" : "min-h-[200px] md:min-h-[240px]"} ${over
+        className={`w-full flex flex-col items-center justify-center gap-3 px-4 py-5 text-center rounded-[var(--kin-bo-xl)] border-2 transition-colors ${compact ? "min-h-24" : "min-h-24 md:min-h-[240px]"} ${over
           ? "border-solid border-[var(--kin-nhan-nen)] bg-[var(--kin-nhan-nen-nhat)]"
           : "border-dashed border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-bang)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
         {compact ? (
           <span className={`${GOC} font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : "Kéo tệp Word hoặc PDF vào đây"}</span>
         ) : (
           <>
-            <span data-nop-tep-chu-chinh="" className={`text-[length:var(--kin-co-tieu-de)] leading-6 font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : "Kéo thả tệp Word hoặc PDF vào đây"}</span>
-            <span aria-hidden className={`${GOC} ${T_MO}`}>hoặc</span>
+            {/* SCL-D (P2-1): điện thoại không kéo thả được ⇒ ô gọn (≥ 96px, không chiếm nửa màn), chữ ngắn; từ md mới là vùng thả lớn. */}
+            <span data-nop-tep-chu-chinh="" className={`${GOC} md:text-[length:var(--kin-co-tieu-de)] leading-6 font-medium ${T_CHINH}`}>{over ? "Thả tệp vào đây" : <><span className="md:hidden">Tệp Word hoặc PDF</span><span className="hidden md:inline">Kéo thả tệp Word hoặc PDF vào đây</span></>}</span>
+            <span aria-hidden className={`hidden md:inline ${GOC} ${T_MO}`}>hoặc</span>
           </>
         )}
         <span data-nop-tep-chon="" className={`${kinButtonClass("secondary")} pointer-events-none`}>Chọn tệp</span>
@@ -233,11 +236,33 @@ function Zone({ onFiles, compact, describedBy, disabled }: { onFiles: (f: File[]
   );
 }
 
-function Caption({ id, limits, extra }: { id: string; limits: NopTepLimits; extra?: string }) {
+const isImageFile = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(f.name);
+
+/** SCL-D (Q3): hai lối chọn ảnh bài làm — chụp bằng máy ảnh (capture) hoặc chọn ảnh có sẵn. Chụp nhiều lần thì ảnh cộng dồn. */
+function PhotoPicker({ onFiles, disabled }: { onFiles: (f: File[]) => void; disabled?: boolean }) {
+  const pick = (e: ChangeEvent<HTMLInputElement>) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; if (fs.length) onFiles(fs); };
+  const cls = `${kinButtonClass("secondary")} relative cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-[var(--kin-nhan-nen)] ${disabled ? "opacity-50 pointer-events-none" : ""}`;
+  return (
+    <div data-nop-anh-chon="" className="mt-3 flex flex-wrap gap-2">
+      <label className={cls}>
+        <input type="file" accept="image/*" multiple capture="environment" disabled={disabled} data-nop-anh-chup="" className="sr-only" onChange={pick} />
+        Chụp ảnh bài làm
+      </label>
+      <label className={cls}>
+        <input type="file" accept="image/*" multiple disabled={disabled} data-nop-anh-input="" className="sr-only" onChange={pick} />
+        Chọn ảnh có sẵn
+      </label>
+    </div>
+  );
+}
+
+function Caption({ id, limits, extra, photos }: { id: string; limits: NopTepLimits; extra?: string; photos?: boolean }) {
   const mb = Math.round(limits.maxBytes / (1024 * 1024));
   return (
     <p id={id} data-nop-tep-chu-thich="" className={`mt-2 ${SMALL} ${T_MO}`}>
-      {`Word hoặc PDF, dưới ${mb} MB. Không nhận ảnh hay video. Tệp được lưu ${limits.retentionDays} ngày rồi tự xoá.`}
+      {photos
+        ? `Word hoặc PDF, dưới ${mb} MB. Ảnh chụp bài làm được gộp thành một tệp PDF ngay trên máy bạn rồi mới gửi (ảnh không gửi riêng). Không nhận video. Tệp được lưu ${limits.retentionDays} ngày rồi tự xoá.`
+        : `Word hoặc PDF, dưới ${mb} MB. Không nhận ảnh hay video. Tệp được lưu ${limits.retentionDays} ngày rồi tự xoá.`}
       {` Tối đa ${limits.maxFiles} tệp.`}{extra ? ` ${extra}` : ""}
     </p>
   );
@@ -287,6 +312,10 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
 
   const limits = state.status === "ok" ? state.data.limits : FALLBACK_LIMITS;
   const uploads = useUploads(scope, limits, async (_id, key, drop) => { await load(true); drop(key); }, () => setForcedOff(true));
+  // SCL-D (Q3): ảnh bài làm chờ gộp. Ảnh ở lại trong trình duyệt; bấm "Gộp" ⇒ một tệp PDF đi đường tải lên PDF sẵn có.
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoErr, setPhotoErr] = useState<string | null>(null);
 
   // Quay lại bằng nút Back (bfcache) thì form có thể còn ở trạng thái "Đang nộp…": mở khoá và đọc lại danh sách.
   useEffect(() => {
@@ -314,10 +343,28 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
   const uploading = items.filter(i => i.state === "dang-tai" || i.state === "kiem-tra").length;
   const readyCount = drafts.length + items.filter(i => i.state === "san-sang").length;
   const composing = enabled && (!hasSub || resubmitting || drafts.length > 0 || items.length > 0);
-  const canSubmit = readyCount >= 1 && uploading === 0 && !submitting;
+  const canSubmit = readyCount >= 1 && uploading === 0 && !submitting && photos.length === 0 && !photoBusy;
   const allExpired = !legacy && submitted.length > 0 && submitted.every(f => f.expired);
   const needConfirm = hasSub && (graded || tutorFiles.length > 0);
 
+  const addPicked = (fs: File[]) => {
+    const imgs = fs.filter(isImageFile);
+    const rest = fs.filter(f => !isImageFile(f));
+    if (imgs.length) { setPhotoErr(null); setPhotos(p => [...p, ...imgs].slice(0, MAX_IMAGE_PAGES)); if (photos.length + imgs.length > MAX_IMAGE_PAGES) setPhotoErr(`Tối đa ${MAX_IMAGE_PAGES} ảnh mỗi lần gộp.`); }
+    if (rest.length) uploads.addFiles(rest, drafts.length);
+  };
+  async function mergePhotos() {
+    if (!photos.length || photoBusy) return;
+    setPhotoBusy(true); setPhotoErr(null);
+    try {
+      const pdf = await imagesToPdfFile(photos, limits.maxBytes, `bai-lam-${photos.length}-anh.pdf`);
+      if (!pdf) { setPhotoErr(`Ảnh nặng quá: gộp xong vẫn lớn hơn ${Math.round(limits.maxBytes / 1048576)} MB. Bỏ bớt ảnh rồi gộp lại.`); return; }
+      uploads.addFiles([pdf], drafts.length);
+      setPhotos([]);
+    } catch (e) {
+      setPhotoErr(e instanceof Error ? e.message : "Chưa gộp được ảnh. Thử lại.");
+    } finally { setPhotoBusy(false); }
+  }
   async function removeDraft(id: string) { await removeNopTepFile(id); await load(true); }
   async function cancelResubmit() {
     uploads.clearAll();
@@ -343,7 +390,9 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
   const trang = !enabled && !hasSub ? "tat"
     : composing ? (uploading > 0 ? "dang-tai-len" : readyCount + items.length > 0 ? "da-chon" : "trong")
     : allExpired ? "het-han" : "da-nop";
-  const hint = uploading > 0 ? "Đang tải tệp lên… Đợi xong rồi bấm Nộp bài."
+  const hint = photoBusy ? "Đang gộp ảnh thành PDF…"
+    : photos.length > 0 ? `Bấm "Gộp ${photos.length} ảnh thành PDF" trước khi nộp.`
+    : uploading > 0 ? "Đang tải tệp lên… Đợi xong rồi bấm Nộp bài."
     : readyCount === 0 ? "Chọn ít nhất 1 tệp."
     : `${readyCount} tệp sẵn sàng. Bấm Nộp bài để gửi cho gia sư.`;
 
@@ -361,8 +410,21 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
       {/* Một cột: vùng thả rộng hết thẻ → chú thích giới hạn → cảnh báo thông tin cá nhân → tệp đã chọn (tiến độ, lỗi tại chỗ) → Nộp bài. */}
       <div className="grid gap-4">
         <div>
-          <Zone onFiles={fs => uploads.addFiles(fs, drafts.length)} describedBy={capId} />
-          <Caption id={capId} limits={limits} />
+          <Zone onFiles={addPicked} describedBy={capId} />
+          <PhotoPicker onFiles={addPicked} disabled={photoBusy} />
+          <Caption id={capId} limits={limits} photos />
+          {(photos.length > 0 || photoErr) && (
+            <div data-nop-anh="" className="mt-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] px-3 py-3">
+              {photos.length > 0 && <p data-nop-anh-dem="" className={`${GOC} ${T_CHINH}`}>{photos.length} ảnh đã chọn · gộp thành một tệp PDF, mỗi ảnh một trang.</p>}
+              {photoErr && <p role="alert" data-nop-anh-loi="" className={`mt-1 ${SMALL} ${T_LOI}`}>{photoErr}</p>}
+              {photos.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <KinButton type="button" variant="primary" loading={photoBusy} loadingLabel="Đang gộp ảnh…" onClick={() => void mergePhotos()} data-nop-anh-gop="">{`Gộp ${photos.length} ảnh thành PDF`}</KinButton>
+                  <KinButton type="button" variant="ghost" disabled={photoBusy} onClick={() => { setPhotos([]); setPhotoErr(null); }} data-nop-anh-bo="">Bỏ ảnh</KinButton>
+                </div>
+              )}
+            </div>
+          )}
           <KinCallout className="mt-3"><span data-nop-tep-canh-bao="">Đừng ghi thông tin cá nhân không cần thiết vào bài (số điện thoại, địa chỉ nhà, ảnh có mặt người).</span></KinCallout>
         </div>
         <div>

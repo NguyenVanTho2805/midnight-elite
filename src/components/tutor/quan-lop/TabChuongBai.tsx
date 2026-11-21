@@ -14,8 +14,8 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { SlotLinkEditor, VideoUploadBox, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
-import type { MediaSlot } from "@/lib/mediaLink";
+import { SlotLinkEditor, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
+import { YOUTUBE_UNLISTED_NOTE, type MediaSlot } from "@/lib/mediaLink";
 import { KinButton } from "@/components/kin/Button";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinConfirm } from "@/components/kin/Confirm";
@@ -24,7 +24,7 @@ import { KinFold, KinChevron } from "@/components/kin/Fold";
 import { KinSelect } from "@/components/kin/KinSelect";
 import { baiHocHref } from "@/lib/tutorRoutes";
 import { parseVnDateTime, isoToVnParts, formatVnLessonWhen } from "@/lib/tutorLessonDate";
-import { Drawer, DrawerToggle } from "./DrawerBaiHoc";
+import { Drawer } from "./DrawerBaiHoc";
 import { DocumentsEditor, type DocItem } from "./DocumentsEditor";
 import { AssignmentEditor } from "./AssignmentEditor";
 import GiaoChoNhom, { useGiaoVienLop } from "@/components/tutor/giao-trinh/GiaoChoNhom";
@@ -334,8 +334,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
       scheduledDate: when.date, scheduledTime: when.time, status: st,
     });
     setOrigStatus(st);
-    // Khối "Thêm link" mở sẵn khi bài đã có link video / Azota.
-    setLinksOpen(videoUrls.some(u => u.trim()) || azotaUrls.some(u => u.trim()) || !!l.azotaDeadline || !!l.duration);
+    setLinksOpen(false); // SCL-D: "Tuỳ chọn khác" gập sẵn — ngăn chỉ còn Tên · Video · Tài liệu.
     setPanel({ type: "edit-lesson", sectionId, chapterId, lessonId });
   }
 
@@ -431,7 +430,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
       } else if (panel.type === "add-lesson" || panel.type === "edit-lesson") {
         if (!ls.title.trim()) { setPanelErr("Nhập tên bài học."); return; }
         const when = parseVnDateTime(ls.scheduledDate, ls.scheduledTime);
-        if (!when.ok) { setDateErr(when.error); return; }
+        if (!when.ok) { setDateErr(when.error); setLinksOpen(true); return; }
         const bad = firstBadLink(ls);
         if (bad) { setPanelErr(bad); return; }
         const documents = documentsJson();
@@ -454,12 +453,12 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
             // Máy chủ cũ bỏ qua "draft": báo thật, panel thành "Sửa bài học" để cô thấy bài đang Đã đăng.
             const got = lessonStatusOf(lesson.status);
             setStatusNote("Đã lưu bài, chưa đặt được trạng thái Nháp — bài đang Đã đăng. Cô đổi sang Ẩn nếu chưa muốn học sinh thấy.");
-            setOrigStatus(got); setLs(f => ({ ...f, status: got }));
+            setOrigStatus(got); setLs(f => ({ ...f, status: got })); setLinksOpen(true);
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
             return;
           }
           if (stayAfterAdd.current) {
-            setOrigStatus(lessonStatusOf(lesson.status));
+            setOrigStatus(lessonStatusOf(lesson.status)); setLinksOpen(true);
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
             requestAnimationFrame(() => document.querySelector("[data-bai-tap-cua-bai]")?.scrollIntoView({ block: "start", behavior: "smooth" }));
             return;
@@ -480,7 +479,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           if (err) {
             // Giữ phần đã lưu; panel ở lại (đã thành "Sửa bài học") để cô thấy câu lỗi và thử đổi lại.
             setStatusNote(`Đã lưu bài, chưa đổi được trạng thái: ${err}`);
-            setOrigStatus(from); setLs(f => ({ ...f, status: from }));
+            setOrigStatus(from); setLs(f => ({ ...f, status: from })); setLinksOpen(true);
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId });
             return;
           }
@@ -519,21 +518,13 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
     }
   }
 
-  async function toggleLessonLock(sectionId: string, chapterId: string, lessonId: string, current: boolean) {
-    const r = await fetch(`/api/lessons/${lessonId}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isLocked: !current }),
-    }).catch(() => null);
-    if (!r || !r.ok) { flash("Chưa đổi được khoá bài. Cô thử lại.", "loi"); return; }
-    setLessonLocal(sectionId, chapterId, lessonId, { isLocked: !current });
-  }
-
   // Gia sư dán nhầm ô: lấy link khỏi ô hiện tại, đưa sang ô đúng (cùng một thao tác, không gõ lại). Ô Zoom đã bỏ ⇒ không chuyển vào / ra "live".
   function moveLink(from: MediaSlot, index: number, to: MediaSlot) {
     if (from === "live" || to === "live") { flash("Không còn ô Zoom riêng.", "loi"); return; }
     const keyOf = (sl: MediaSlot) => (sl === "video" ? "videoUrls" : sl === "azota" ? "azotaUrls" : null);
     const fk = keyOf(from), tk = keyOf(to);
     if (!fk || !tk) { flash("Tài liệu hãy thả tệp vào ô Tài liệu ở trên.", "loi"); return; }
+    if (to === "azota") { flash("Link Azota không gắn vào video bài. Bỏ link này khỏi ô video.", "loi"); return; } // SCL-D: ô Azota đã ẩn
     setLs(f => {
       const src = [...f[fk]]; const [link] = src.splice(index, 1);
       const dst = [...f[tk].filter(u => u.trim()), link];
@@ -673,47 +664,18 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                 placeholder="VD: Buổi 1: Hệ phương trình" />
             </div>
 
-            <fieldset data-ngay-hoc>
-              <legend className="block text-sm font-medium text-[var(--kin-chu-chinh)] mb-1.5">Ngày học (giờ Việt Nam)</legend>
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor="ls-ngay" className="sr-only">Ngày học</label>
-                <input id="ls-ngay" type="date" className={`${FIELD} min-w-0 flex-1 basis-36`} value={ls.scheduledDate}
-                  onChange={e => { setDateErr(null); setLs(f => ({ ...f, scheduledDate: e.target.value })); }} />
-                <label htmlFor="ls-gio" className="sr-only">Giờ học</label>
-                <input id="ls-gio" type="time" className={`${FIELD} min-w-0 flex-1 basis-24`} value={ls.scheduledTime}
-                  onChange={e => { setDateErr(null); setLs(f => ({ ...f, scheduledTime: e.target.value })); }} />
-                {(ls.scheduledDate || ls.scheduledTime) && (
-                  <button type="button" className={BTN_TEXT} onClick={() => { setDateErr(null); setLs(f => ({ ...f, scheduledDate: "", scheduledTime: "" })); }}>Bỏ ngày</button>
-                )}
-              </div>
-              {dateErr && <p role="alert" data-ngay-loi className="mt-1.5 text-xs font-semibold text-[var(--kin-tt-chu-loi)]">{dateErr}</p>}
-            </fieldset>
-
-            <div>
-              <p id="ls-trang-thai-nhan" className="block text-sm font-medium text-[var(--kin-chu-chinh)] mb-1.5">Trạng thái</p>
-              <KinSelect id="ls-trang-thai" aria-labelledby="ls-trang-thai-nhan" value={ls.status} options={statusOptions}
-                onChange={v => setLs(f => ({ ...f, status: v as LessonStatusValue }))} />
-              <p className="mt-1 text-xs text-[var(--kin-chu-mo)]">
-                {ls.status === "published" ? "Học sinh của lớp thấy bài này." : ls.status === "draft" ? "Nháp · học sinh chưa thấy." : "Ẩn · học sinh không thấy."}
-                {panel.type === "edit-lesson" && origStatus === "published" && " Bài đã đăng không đưa về Nháp được — dùng Ẩn."}
-              </p>
-              {panel.type === "add-lesson" && <p data-goi-y-nhap className="mt-0.5 text-xs text-[var(--kin-chu-mo)]">Bài mới chưa muốn hiện thì chọn Nháp.</p>}
-            </div>
-
-            <DrawerToggle checked={ls.isLocked} onChange={() => setLs(f => ({ ...f, isLocked: !f.isLocked }))} label="Khoá bài (yêu cầu đăng ký)" />
-            <DrawerToggle checked={ls.isFree} onChange={() => setLs(f => ({ ...f, isFree: !f.isFree }))} label="Học thử miễn phí" />
-
-            {/* Vòng dạy thử 14/11: link YouTube là việc chính của bài — luôn hiện, không nằm trong mục gập. */}
+            {/* SCL-D (P2-3): ngăn chỉ còn 3 phần — Tên · Link YouTube · Tài liệu. Drive, Azota, Khoá bài, Học thử không còn hiện (dữ liệu cũ giữ nguyên,
+                PUT vẫn gửi lại đúng giá trị đã nạp). Ngày học, trạng thái, bài tập, ghi chú vào mục gập "Tuỳ chọn khác". */}
             <div data-video-bai>
               <SlotLinkEditor
-                label="Link video bài giảng (YouTube, Google Drive)"
+                label="Link video YouTube"
                 slot="video"
                 placeholder="https://youtube.com/watch?v=..."
                 urls={ls.videoUrls}
                 onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
                 onMove={moveLink}
-                extra={<VideoUploadBox courseId={courseSlug} onUploaded={link => setLs(f => ({ ...f, videoUrls: [...f.videoUrls.filter(u => u.trim()), link] }))} />}
               />
+              <p data-youtube-luu-y className="mt-1 text-xs text-[var(--kin-chu-mo)]">{YOUTUBE_UNLISTED_NOTE}</p>
             </div>
 
             <DocumentsEditor
@@ -725,79 +687,82 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
               onBusyChange={setUploadBusy}
             />
 
-            <div data-them-link>
-              <button type="button" onClick={() => setLinksOpen(o => !o)} aria-expanded={linksOpen} aria-controls="ls-them-link" data-open={linksOpen ? "" : undefined}
+            <div data-tuy-chon>
+              <button type="button" onClick={() => setLinksOpen(o => !o)} aria-expanded={linksOpen} aria-controls="ls-tuy-chon" data-open={linksOpen ? "" : undefined}
                 className="flex w-full min-h-11 items-center justify-between gap-2 border-b border-[var(--kin-vien-nhat)] text-left text-sm font-semibold text-[var(--kin-chu-chinh)]">
-                <span>Thêm link Azota · thời lượng</span>
+                <span>Tuỳ chọn khác: ngày học, trạng thái, bài tập, ghi chú</span>
                 <KinChevron open={linksOpen} />
               </button>
-              <KinFold open={linksOpen} id="ls-them-link">
-                <div className="space-y-4 pt-3">
-                  <SlotLinkEditor
-                    label="Link bài Azota (không bắt buộc)"
-                    slot="azota"
-                    placeholder="https://azota.vn/..."
-                    urls={ls.azotaUrls}
-                    onChange={urls => setLs(f => ({ ...f, azotaUrls: urls }))}
-                    onMove={moveLink}
-                  />
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    <span className="text-xs text-[var(--kin-chu-mo)]">Loại bài:</span>
-                    {deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls).map(t => {
-                      const tb = TYPE_BADGE[t];
-                      return <span key={t} className={CHIP} style={{ background: tb.bg, color: tb.color }}>{tb.label}</span>;
-                    })}
+              <KinFold open={linksOpen} id="ls-tuy-chon">
+                <div className="space-y-5 pt-3">
+                  <fieldset data-ngay-hoc>
+                    <legend className="block text-sm font-medium text-[var(--kin-chu-chinh)] mb-1.5">Ngày học (giờ Việt Nam)</legend>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label htmlFor="ls-ngay" className="sr-only">Ngày học</label>
+                      <input id="ls-ngay" type="date" className={`${FIELD} min-w-0 flex-1 basis-36`} value={ls.scheduledDate}
+                  onChange={e => { setDateErr(null); setLs(f => ({ ...f, scheduledDate: e.target.value })); }} />
+                      <label htmlFor="ls-gio" className="sr-only">Giờ học</label>
+                      <input id="ls-gio" type="time" className={`${FIELD} min-w-0 flex-1 basis-24`} value={ls.scheduledTime}
+                  onChange={e => { setDateErr(null); setLs(f => ({ ...f, scheduledTime: e.target.value })); }} />
+                      {(ls.scheduledDate || ls.scheduledTime) && (
+                  <button type="button" className={BTN_TEXT} onClick={() => { setDateErr(null); setLs(f => ({ ...f, scheduledDate: "", scheduledTime: "" })); }}>Bỏ ngày</button>
+                      )}
+                    </div>
+                    {dateErr && <p role="alert" data-ngay-loi className="mt-1.5 text-xs font-semibold text-[var(--kin-tt-chu-loi)]">{dateErr}</p>}
+                  </fieldset>
+
+                  <div>
+                    <p id="ls-trang-thai-nhan" className="block text-sm font-medium text-[var(--kin-chu-chinh)] mb-1.5">Trạng thái</p>
+                    <KinSelect id="ls-trang-thai" aria-labelledby="ls-trang-thai-nhan" value={ls.status} options={statusOptions}
+                      onChange={v => setLs(f => ({ ...f, status: v as LessonStatusValue }))} />
+                    <p className="mt-1 text-xs text-[var(--kin-chu-mo)]">
+                      {ls.status === "published" ? "Học sinh của lớp thấy bài này." : ls.status === "draft" ? "Nháp · học sinh chưa thấy." : "Ẩn · học sinh không thấy."}
+                      {panel.type === "edit-lesson" && origStatus === "published" && " Bài đã đăng không đưa về Nháp được — dùng Ẩn."}
+                    </p>
+                    {panel.type === "add-lesson" && <p data-goi-y-nhap className="mt-0.5 text-xs text-[var(--kin-chu-mo)]">Bài mới chưa muốn hiện thì chọn Nháp.</p>}
+                  </div>
+
+                  {hasOldZoom && (
+                    <p data-zoom-cu className="rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] px-3 py-2 text-xs text-[var(--kin-chu-mo)]">Bài này có link phòng Zoom cũ — học sinh vẫn thấy.</p>
+                  )}
+
+                  {panel.type === "edit-lesson" && ls.azotaUrls.some(u => u.trim()) && (
+                    <AzotaStatusTable lessonId={panel.lessonId} />
+                  )}
+                  <div data-bai-tap-cua-bai className="scroll-mt-4">
+                    {panel.type === "edit-lesson" ? (
+                      <AssignmentEditor lessonId={panel.lessonId} />
+                    ) : (
+                      <div className="rounded-[var(--kin-bo-md)] border border-dashed border-[var(--kin-vien-thuong)] px-3 py-3">
+                        <p className="text-sm font-semibold text-[var(--kin-chu-chinh)]">Bài tập của bài</p>
+                        <p className="mt-1 text-xs text-[var(--kin-chu-mo)]">Bài tập gắn với bài, nên cần lưu bài trước. Bấm nút dưới: bài được lưu và màn này mở sẵn phần thêm bài tập.</p>
+                        <button type="button" data-luu-them-bai-tap disabled={saving || uploadBusy || !ls.title.trim()}
+                          onClick={() => { stayAfterAdd.current = true; void savePanel(); }}
+                          className={`mt-3 ${kinButtonClass("secondary")}`}>{saving ? "Đang lưu…" : "Lưu và thêm bài tập"}</button>
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label htmlFor="ls-azota-han" className="block text-xs font-medium text-[var(--kin-chu-mo)] mb-1.5">Deadline Azota</label>
-                    <input id="ls-azota-han" type="datetime-local" className={FIELD} value={ls.azotaDeadline} onChange={e => setLs(f => ({ ...f, azotaDeadline: e.target.value }))} />
+                    <label htmlFor="ls-ghi-chu" className="block text-sm font-semibold text-[var(--kin-chu-chinh)] mb-2 pb-1 border-b border-[var(--kin-vien-nhat)]">
+                      Ghi chú cho học viên
+                    </label>
+                    <p className="text-xs text-[var(--kin-chu-mo)] mb-2">Lưu ý, hướng dẫn, hoặc thông báo hiển thị với học viên khi xem bài này.</p>
+                    <textarea
+                      id="ls-ghi-chu"
+                      className={FIELD + " resize-none py-2.5"}
+                      rows={4}
+                      placeholder="VD: Học viên cần đọc lý thuyết chương 3 trước khi làm bài này. Nộp bài trước 23:59 ngày 31/05."
+                      value={ls.adminNote}
+                      onChange={e => setLs(f => ({ ...f, adminNote: e.target.value }))}
+                    />
                   </div>
-                  <div>
-                    <label htmlFor="ls-thoi-luong" className="block text-xs font-medium text-[var(--kin-chu-mo)] mb-1.5">Thời lượng (VD: 45:00)</label>
-                    <input id="ls-thoi-luong" className={FIELD} value={ls.duration} onChange={e => setLs(f => ({ ...f, duration: e.target.value }))} placeholder="45:00" />
-                  </div>
+                  {panel.type === "edit-lesson" && (
+                    <Link href={`${baiHocHref(courseSlug)}/giao-trinh/xem/${encodeURIComponent(panel.lessonId)}`} target="_blank" rel="noopener noreferrer" data-xem-nhu-hoc-sinh
+                      className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--kin-nhan-link)] underline">Xem như học sinh ↗</Link>
+                  )}
                 </div>
               </KinFold>
             </div>
-
-            {hasOldZoom && (
-              <p data-zoom-cu className="rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)] px-3 py-2 text-xs text-[var(--kin-chu-mo)]">Bài này có link phòng Zoom cũ — học sinh vẫn thấy.</p>
-            )}
-
-            {panel.type === "edit-lesson" && ls.azotaUrls.some(u => u.trim()) && (
-              <AzotaStatusTable lessonId={panel.lessonId} />
-            )}
-            <div data-bai-tap-cua-bai className="scroll-mt-4">
-              {panel.type === "edit-lesson" ? (
-                <AssignmentEditor lessonId={panel.lessonId} />
-              ) : (
-                <div className="rounded-[var(--kin-bo-md)] border border-dashed border-[var(--kin-vien-thuong)] px-3 py-3">
-                  <p className="text-sm font-semibold text-[var(--kin-chu-chinh)]">Bài tập của bài</p>
-                  <p className="mt-1 text-xs text-[var(--kin-chu-mo)]">Bài tập gắn với bài, nên cần lưu bài trước. Bấm nút dưới: bài được lưu và màn này mở sẵn phần thêm bài tập.</p>
-                  <button type="button" data-luu-them-bai-tap disabled={saving || uploadBusy || !ls.title.trim()}
-                    onClick={() => { stayAfterAdd.current = true; void savePanel(); }}
-                    className={`mt-3 ${kinButtonClass("secondary")}`}>{saving ? "Đang lưu…" : "Lưu và thêm bài tập"}</button>
-                </div>
-              )}
-            </div>
-            <div>
-              <label htmlFor="ls-ghi-chu" className="block text-sm font-semibold text-[var(--kin-chu-chinh)] mb-2 pb-1 border-b border-[var(--kin-vien-nhat)]">
-                Ghi chú cho học viên
-              </label>
-              <p className="text-xs text-[var(--kin-chu-mo)] mb-2">Lưu ý, hướng dẫn, hoặc thông báo hiển thị với học viên khi xem bài này.</p>
-              <textarea
-                id="ls-ghi-chu"
-                className={FIELD + " resize-none py-2.5"}
-                rows={4}
-                placeholder="VD: Học viên cần đọc lý thuyết chương 3 trước khi làm bài này. Nộp bài trước 23:59 ngày 31/05."
-                value={ls.adminNote}
-                onChange={e => setLs(f => ({ ...f, adminNote: e.target.value }))}
-              />
-            </div>
-            {panel.type === "edit-lesson" && (
-              <Link href={`${baiHocHref(courseSlug)}/giao-trinh/xem/${encodeURIComponent(panel.lessonId)}`} target="_blank" rel="noopener noreferrer" data-xem-nhu-hoc-sinh
-                className="inline-flex min-h-11 items-center text-sm font-medium text-[var(--kin-nhan-link)] underline">Xem như học sinh ↗</Link>
-            )}
           </>
         )}
       </Drawer>
@@ -953,14 +918,6 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                                       <div className="flex flex-wrap items-center gap-1">
                                         <button type="button" onClick={() => openQuickEdit(section.id, chapter.id, lesson)} className={BTN_TEXT}>Sửa nhanh</button>
                                         <button type="button" onClick={() => openEditLesson(section.id, chapter.id, lesson.id)} className={BTN_TEXT} aria-label={`Chi tiết bài ${lesson.title}`}>Chi tiết…</button>
-                                        <button type="button" onClick={() => void toggleLessonLock(section.id, chapter.id, lesson.id, lesson.isLocked)}
-                                          className={ICON_BTN} aria-label={lesson.isLocked ? `Mở khoá bài ${lesson.title}` : `Khoá bài ${lesson.title}`} aria-pressed={lesson.isLocked}
-                                          style={{ color: lesson.isLocked ? "var(--kin-chu-mo)" : "var(--kin-nhan-link)" }}>
-                                          <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
-                                            <rect x="3" y="7.5" width="10" height="6.5" rx="1.2"/>
-                                            <path d={lesson.isLocked ? "M5.5 7.5V5.5a2.5 2.5 0 015 0v2" : "M5.5 7.5V5.5a2.5 2.5 0 015 0"}/>
-                                          </svg>
-                                        </button>
                                         <LessonMenu title={lesson.title} disabled={saving}
                                           onCopy={() => void duplicateLesson(section.id, chapter.id, lesson.id)}
                                           onDelete={() => setDel({ kind: "lesson", sectionId: section.id, chapterId: chapter.id, lessonId: lesson.id, label: lesson.title })} />

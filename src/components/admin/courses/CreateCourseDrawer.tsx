@@ -397,7 +397,7 @@ export function CreateCourseDrawer({ open, onClose, onCreated, showToast }: {
               <p className="text-sm font-medium text-gray-700">Hiển thị trên website</p>
               <p className="text-xs text-gray-400">Tắt để lưu nháp, không hiện với học viên</p>
             </div>
-            <Toggle checked={form.status} onChange={() => set("status", !form.status)} />
+            <Toggle checked={form.status} onChange={() => set("status", !form.status)} label="Hiển thị trên website" />
           </div>
 
           {/* Preview */}
