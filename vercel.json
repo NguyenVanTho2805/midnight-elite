@@ -9,6 +9,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/expire-tutor-subscriptions",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/cron/het-han-tep-nop-bai",
       "schedule": "30 18 * * *"
     },

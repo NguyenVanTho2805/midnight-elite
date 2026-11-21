@@ -242,4 +242,15 @@ section("HP-BO (17/11/2026): API GHI của học phí đóng khi HOC_PHI tắt")
   check("có ?tham số / / cuối vẫn nhận đúng", blockedApiFeature("/api/tutor/invoices/?x=1", "POST", OFF) === "HOC_PHI");
 }
 
+section("SCL F1: tên biến cũ DIEM_CHUAN vẫn mở /tra-cuu");
+{
+  const saved = { n: process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU, o: process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN };
+  delete process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU; process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN = "1";
+  const oldOnly = readFeatureEnv().TRA_CUU;
+  process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU = "0";
+  const newWins = readFeatureEnv().TRA_CUU;
+  for (const [k, v] of [["NEXT_PUBLIC_KIN_MO_TRA_CUU", saved.n], ["NEXT_PUBLIC_KIN_MO_DIEM_CHUAN", saved.o]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  check("chỉ đặt NEXT_PUBLIC_KIN_MO_DIEM_CHUAN=1 → TRA_CUU mở; đặt tên mới thì tên mới thắng", oldOnly === "1" && newWins === "0", { oldOnly, newWins });
+}
+
 done();

@@ -54,12 +54,14 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: bốn tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: năm tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
-  // SCL F1 (P2-28): english-voa, article-publish đã xoá cùng phần của chúng; expire-tutor-subscriptions, pro-renewal-reminders (phần KINH_DOANH đang ẩn)
-  // rút khỏi vercel.json, GIỮ route — bật lại Kinh doanh thì thêm lại hai dòng ở đây và ở vercel.json (t-adm-003-lib so hai chiều).
+  // SCL F1: expire-tutor-subscriptions GIỮ — gói VIP gia sư (không phải Pro) cần chuyển sang "expired", không thì chặn xoá tài khoản (accountDelete).
+  { key: "expire-tutor-subscriptions", label: "Hết hạn gói VIP gia sư", path: "/api/cron/expire-tutor-subscriptions", schedule: "Mỗi ngày 08:00 giờ VN", maxGapHours: 36 },
+  // SCL F1 (P2-28): english-voa, article-publish đã xoá cùng phần của chúng; pro-renewal-reminders (phần KINH_DOANH đang ẩn)
+  // rút khỏi vercel.json, GIỮ route — bật lại Kinh doanh thì thêm lại dòng ở đây và ở vercel.json (t-adm-003-lib so hai chiều).
   // BU-HS-NOP-TEP: dọn tệp nộp bài hết hạn 60 ngày. Mặc định CHẠY KHÔ (đường dẫn không có ?xoa=1); chuyển sang xoá thật là commit riêng, kèm đổi `path` ở đây và ở vercel.json.
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04

@@ -34,7 +34,8 @@ export function readFeatureEnv(): FeatureEnv {
     LICH: process.env.NEXT_PUBLIC_KIN_MO_LICH,
     THU_VIEN: process.env.NEXT_PUBLIC_KIN_MO_THU_VIEN,
     COIN: process.env.NEXT_PUBLIC_KIN_MO_COIN,
-    TRA_CUU: process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU,
+    // SCL F1: tên cũ NEXT_PUBLIC_KIN_MO_DIEM_CHUAN vẫn được đọc khi chưa đặt tên mới, để /tra-cuu không tự đóng trên máy đã đặt biến cũ.
+    TRA_CUU: process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU ?? process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN,
     HOC_PHI: process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI,
     KINH_DOANH: process.env.NEXT_PUBLIC_KIN_MO_KINH_DOANH,
     DIEM_DANH: process.env.NEXT_PUBLIC_KIN_MO_DIEM_DANH,
