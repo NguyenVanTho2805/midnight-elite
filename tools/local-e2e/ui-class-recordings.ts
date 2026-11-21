@@ -66,16 +66,19 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const sctx = await ctxFor(S, { width: w, height: h });
     const sp = await sctx.newPage(); watch(sp);
     await sp.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await sp.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 }); // LOI-03: khối "Tài liệu & bản ghi" nay nằm trong tab Tổng quan
+    // SCL-D: bản ghi nay ở tab "Video" (cùng video bài giảng); tài liệu đính kèm bài vẫn ở Tổng quan.
+    await sp.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
     await sp.locator("[data-materials-tab]").waitFor({ timeout: 60000 });
-    await sp.locator("[data-recording-row]").first().waitFor({ timeout: 60000 });
-    const body = await sp.locator("[data-materials-tab]").innerText();
+    const mats = await sp.locator("[data-materials-tab]").innerText();
+    await sp.getByRole("tab", { name: "Video" }).click();
+    await sp.locator("[data-video-tab] [data-recording-row]").first().waitFor({ timeout: 60000 });
+    const body = await sp.locator("[data-video-tab]").innerText();
     check("thấy bản ghi theo buổi: 'Buổi 16/10/2026' + nguồn YouTube + 'có thể cần quyền truy cập'", /Buổi 16\/10\/2026/.test(body) && /YouTube/.test(body) && /có thể cần quyền truy cập/.test(body), body.slice(0, 400));
-    check("có tài liệu đính kèm bài (dinh-ly-vi-et.pdf)", /dinh-ly-vi-et\.pdf/.test(body));
-    check("chữ trung thực: KiN chỉ lưu link, không biết đã mở chưa", /KiN chỉ lưu liên kết/.test(body) && /không biết bạn đã mở/.test(body));
+    check("có tài liệu đính kèm bài (dinh-ly-vi-et.pdf) ở Tổng quan", /dinh-ly-vi-et\.pdf/.test(mats));
+    check("chữ trung thực: bản ghi là link gia sư chia sẻ, KiN không biết đã xem chưa", /link gia sư chia sẻ/.test(body) && /không biết bạn đã xem/.test(body));
     check("không có số giả: không 'lượt xem', không 'Thiết bị 1/2'", !/lượt xem|Thiết bị 1\/2/.test(await sp.locator("body").innerText()));
-    const sopen = sp.locator("[data-recording-row] a").first();
-    check("Mở ↗: tab mới, rel an toàn, cao ≥ 44px", (await sopen.getAttribute("target")) === "_blank" && /noopener/.test((await sopen.getAttribute("rel")) ?? "") && ((await sopen.boundingBox())?.height ?? 0) >= 44);
+    const sopen = sp.locator("[data-video-tab] [data-recording-row] button").first();
+    check("YouTube: nút 'Xem' ≥ 44px phát ngay qua youtube-nocookie (SCL-D, Q4)", ((await sopen.boundingBox())?.height ?? 0) >= 44 && await (async () => { await sopen.click(); return /youtube-nocookie\.com\/embed\//.test((await sp.locator("iframe[data-ban-ghi-video]").getAttribute("src")) ?? ""); })());
     check("không tràn ngang", (await overflow(sp)) <= 0, await overflow(sp));
     await shot(sp, `recordings-student-${label}`);
     await sctx.close();

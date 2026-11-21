@@ -213,7 +213,7 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
             <input className={inp} value={form.openDate} onChange={e => setForm(f => ({ ...f, openDate: e.target.value }))} />
           </div>
           <div className="flex items-center gap-3 py-2">
-            <Toggle checked={form.active} onChange={() => setForm(f => ({ ...f, active: !f.active }))} />
+            <Toggle checked={form.active} onChange={() => setForm(f => ({ ...f, active: !f.active }))} label="Hiển thị lớp" />
             <span className="text-sm text-gray-600">{form.active ? "Đang hiển thị" : "Ẩn"}</span>
           </div>
         </div>

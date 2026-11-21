@@ -220,9 +220,11 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const order = await card.evaluate(e => { const kids = [...e.children]; return { second: kids[1]?.hasAttribute("data-nop-tep") ?? false, guideAfter: (() => { const g = e.querySelector("[data-bai-tap-huong-dan]"), z = e.querySelector("[data-nop-tep]"); return !!g && !!z && !!(z.compareDocumentPosition(g) & Node.DOCUMENT_POSITION_FOLLOWING); })() }; });
     check("thẻ bài tập: ngay sau tiêu đề + hạn là khối nộp tệp; hướng dẫn / đề bài nằm SAU", order.second && order.guideAfter, order);
     const zb = await zone.boundingBox(), cardB = await card.boundingBox();
-    check(`vùng thả là <button>, cao ≥ 200px, rộng gần hết thẻ`, (await zone.evaluate(e => e.tagName)) === "BUTTON" && !!zb && zb.height >= 200 && !!cardB && zb.width >= cardB.width - 2 * 24, { zb, cardB });
-    check("chữ 'Kéo thả tệp Word hoặc PDF vào đây' + 'hoặc' + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
-      /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText()) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44
+    // SCL-D (P2-1): dưới 768px ô thả gọn (≥ 96px, chữ "Tệp Word hoặc PDF"), từ 768px mới là vùng thả lớn.
+    const phone = w < 768;
+    check(`vùng thả là <button>, cao ${phone ? "96–211px (gọn trên điện thoại)" : "≥ 200px"}, rộng gần hết thẻ`, (await zone.evaluate(e => e.tagName)) === "BUTTON" && !!zb && (phone ? zb.height >= 96 && zb.height <= 211 : zb.height >= 200) && !!cardB && zb.width >= cardB.width - 2 * 24, { zb, cardB });
+    check("chữ ô thả (máy tính: 'Kéo thả… vào đây' + 'hoặc'; điện thoại: 'Tệp Word hoặc PDF') + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
+      (phone ? /Tệp Word hoặc PDF/.test(await zone.innerText()) : /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText())) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44
       && /dưới 10 MB.*60 ngày.*Tối đa 3 tệp/.test(await card.locator("[data-nop-tep-chu-thich]").innerText()));
     // Rà soát lượt 1 (P2): cảnh báo thông tin cá nhân phải đọc được TRƯỚC khi chọn tệp / nộp — ngay dưới chú thích, TRÊN nút Nộp bài (thứ tự DOM + toạ độ y).
     const warn = card.locator("[data-nop-tep-canh-bao]"), nopBtn = card.locator("[data-nop-tep-nop]");

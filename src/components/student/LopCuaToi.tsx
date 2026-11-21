@@ -9,6 +9,7 @@
 // Giữ từ trước: NC2-041 (đổi lớp; đếm bài theo ID lớp), NC2-042 (bản ghi theo THÁNG, gập/mở), rà soát 28/10 (Content dựng lại theo ID lớp — phản hồi chậm của lớp trước
 // không lọt sang; lỗi tải danh sách lớp là LỖI, không phải "chưa vào lớp"), MD-07/SV-03 (Tài liệu & bản ghi gộp 3 nguồn của chính lớp), lớp đã nghỉ → SuspendedNotice.
 // BỎ vì chưa có dữ liệu thật: "Liên hệ cô …", "Hoạt động buổi học", "n học sinh", dung lượng tệp, "Học trực tuyến", "Đánh giá".
+// SCL-D (P2-4, Q4): tab "Video" gộp video bài giảng (bài có link video, phát ở trang bài bằng youtube-nocookie) và bản ghi buổi học (YouTube xem ngay tại chỗ, nocookie).
 // TB-LOP (17/11/2026): thêm tab "Thông báo" (tin một chiều của gia sư, components/student/ThongBaoHocSinh). ?tab=thong-bao (link từ thông báo) mở thẳng tab này.
 "use client";
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useProgress } from "@/hooks/useProgress";
 import { groupRecordingsBySession, groupRecordingsByMonth, type RecordingMonthGroup } from "@/lib/classRecordings";
-import { planDocumentPreview } from "@/lib/mediaLink";
+import { classifyMediaLink, firstPlayableVideo, planDocumentPreview } from "@/lib/mediaLink";
 import { viewerHref } from "@/lib/library";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { parseMaterials } from "@/components/media/StudentLessonPanels";
@@ -42,7 +43,7 @@ import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTie
 
 interface Lesson {
   id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null;
-  status?: string | null; azotaUrl?: string | null; scheduledAt?: string | null; _count?: { assignments?: number }; order?: number;
+  status?: string | null; azotaUrl?: string | null; scheduledAt?: string | null; _count?: { assignments?: number }; order?: number; videoUrl?: string | null;
 }
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
 interface RecData { recordings: Rec[]; sessions: { id: string; dateKey: string }[] }
@@ -54,6 +55,7 @@ const GOC = "text-[length:var(--kin-co-goc)]";
 /** NC2-042: bản ghi theo tháng; bấm tiêu đề tháng để thu gọn / mở. Tháng mới nhất mở sẵn, các tháng cũ gập lại. */
 function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [playing, setPlaying] = useState<string | null>(null);
   return (
     <div data-recording-months>
       {months.map((m, idx) => {
@@ -71,12 +73,26 @@ function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) 
             <KinFold open={isOpen} id={panelId}>
               <ul>
                 {m.items.map(({ rec: r, sessionDateKey }) => (
-                  <li key={r.id} data-recording-row className="flex items-start justify-between gap-3 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
+                  <li key={r.id} data-recording-row className="flex flex-wrap items-start justify-between gap-3 px-[var(--kin-kc-6)] py-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)]">
                     <div className="min-w-0 flex-1">
                       <p className="text-[var(--kin-chu-chinh)] break-words">{r.title}</p>
                       <p className="mt-1 text-[var(--kin-chu-mo)]">{sessionDateKey ? `Buổi ${dmy(sessionDateKey)}` : "Chưa gắn buổi"} · {REC_KIND[r.kind] ?? "Liên kết ngoài"} · có thể cần quyền truy cập</p>
                     </div>
-                    <a href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Mở bản ghi ${r.title}`} className={kinButtonClass("secondary")}>Mở ↗</a>
+                    {(() => {
+                      // Q4: YouTube xem NGAY tại đây qua youtube-nocookie (địa chỉ nhúng do KiN dựng lại từ mã video, không dùng nguyên link). Nguồn khác mở tab mới.
+                      const info = r.kind === "youtube" ? classifyMediaLink(r.url) : null;
+                      if (!info?.ok || info.kind !== "youtube" || !info.embedUrl) return <a href={r.url} target="_blank" rel="noopener noreferrer" aria-label={`Mở bản ghi ${r.title}`} className={kinButtonClass("secondary")}>Mở ↗</a>;
+                      return <button type="button" aria-expanded={playing === r.id} aria-label={`${playing === r.id ? "Ẩn" : "Xem"} bản ghi ${r.title}`} onClick={() => setPlaying(p => (p === r.id ? null : r.id))} className={kinButtonClass("secondary")}>{playing === r.id ? "Ẩn" : "Xem"}</button>;
+                    })()}
+                    {playing === r.id && (() => {
+                      const info = classifyMediaLink(r.url);
+                      return info.ok && info.embedUrl ? (
+                        <div className="basis-full relative w-full" style={{ paddingBottom: "56.25%" }}>
+                          <iframe title={`Bản ghi ${r.title}`} data-ban-ghi-video src={info.embedUrl} className="absolute inset-0 w-full h-full border-0 rounded-[var(--kin-bo-md)]" loading="lazy" referrerPolicy="strict-origin-when-cross-origin"
+                            sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen; picture-in-picture" allowFullScreen />
+                        </div>
+                      ) : null;
+                    })()}
                   </li>
                 ))}
               </ul>
@@ -91,8 +107,8 @@ interface Chapter { id: string; title: string; order: number; isImplicit?: boole
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
-type Tab = "tong-quan" | "noi-dung" | "ket-qua" | "thong-bao";
-const TAB_KEYS: Tab[] = ["tong-quan", "noi-dung", "ket-qua", "thong-bao"];
+type Tab = "tong-quan" | "noi-dung" | "video" | "ket-qua" | "thong-bao";
+const TAB_KEYS: Tab[] = ["tong-quan", "noi-dung", "video", "ket-qua", "thong-bao"];
 
 /** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]): /api/courses/[id] chỉ sắp theo `order`, khi hoà `order` thứ tự có thể khác
  *  ⇒ "Học tiếp" và x/y ở trang lớp lệch thư viện. Trả BẢN SAO, không đổi mảng gốc. */
@@ -211,6 +227,7 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
   const tabs = [
     { key: "tong-quan" as const, label: "Tổng quan" },
     { key: "noi-dung" as const, label: "Nội dung" },
+    { key: "video" as const, label: "Video" },
     ...(isEnrolled ? [{ key: "ket-qua" as const, label: "Kết quả" }] : []),
     { key: "thong-bao" as const, label: "Thông báo" },
   ];
@@ -300,21 +317,6 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
         </div>
       </section>
       <section aria-label="Tài liệu và bản ghi" data-materials-tab className="space-y-8">
-        <div>
-          <KinSectionHead title="Bản ghi các buổi học" aside={typeof recs === "object" && recs ? `${recs.recordings.length} bản ghi` : undefined} />
-          {!isEnrolled ? (
-            <KinEmptyState title="Bản ghi dành cho học sinh của lớp">Vào lớp bằng mã mời của gia sư để xem bản ghi các buổi học.</KinEmptyState>
-          ) : recs === null ? (
-            <p role="status" className={`py-6 ${GOC} text-[var(--kin-chu-mo)]`}>Đang tải bản ghi…</p>
-          ) : recs === "loi" ? (
-            <div className="pt-4"><ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} /></div>
-          ) : recs.recordings.length === 0 ? (
-            <KinEmptyState title="Chưa có bản ghi nào">Khi gia sư dán link bản ghi sau buổi học, nó sẽ hiện ở đây.</KinEmptyState>
-          ) : (
-            <RecordingMonths months={groupRecordingsByMonth(groupRecordingsBySession(recs.recordings.map(r => ({ ...r, createdAt: new Date(r.createdAt) })), recs.sessions))} />
-          )}
-          <KinCallout title="Mở ở dịch vụ bên ngoài" className="mt-4">KiN chỉ lưu liên kết bản ghi do gia sư chia sẻ. KiN không có dịch vụ phát trực tiếp hay ghi hình tích hợp, và không biết bạn đã mở bản ghi hay chưa.</KinCallout>
-        </div>
         {(() => {
           const mats = allLessons.flatMap(l => parseMaterials(l.documents).map(m => ({ lesson: l, m })));
           return mats.length > 0 && (
@@ -356,6 +358,35 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
     </div>
   );
 
+  const videoLessons = allLessons.filter(l => ids.includes(l.id) && firstPlayableVideo(l.videoUrl) !== null);
+  const videoTab = (
+    <section aria-label="Video của lớp" data-video-tab className="space-y-8">
+      <div>
+        <KinSectionHead title="Video bài giảng" aside={`${videoLessons.length} video`} />
+        {!isEnrolled ? (
+          <KinEmptyState title="Video dành cho học sinh của lớp">Vào lớp bằng mã mời của gia sư để xem video bài giảng.</KinEmptyState>
+        ) : videoLessons.length === 0 ? (
+          <KinEmptyState title="Chưa có video bài giảng">Khi gia sư gắn video vào bài, nó sẽ hiện ở đây.</KinEmptyState>
+        ) : <>{tableHead}<ul data-video-bai-list>{videoLessons.map(lessonRow)}</ul></>}
+      </div>
+      <div>
+        <KinSectionHead title="Bản ghi các buổi học" aside={typeof recs === "object" && recs ? `${recs.recordings.length} bản ghi` : undefined} />
+        {!isEnrolled ? (
+          <KinEmptyState title="Bản ghi dành cho học sinh của lớp">Vào lớp bằng mã mời của gia sư để xem bản ghi các buổi học.</KinEmptyState>
+        ) : recs === null ? (
+          <p role="status" className={`py-6 ${GOC} text-[var(--kin-chu-mo)]`}>Đang tải bản ghi…</p>
+        ) : recs === "loi" ? (
+          <div className="pt-4"><ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} /></div>
+        ) : recs.recordings.length === 0 ? (
+          <KinEmptyState title="Chưa có bản ghi nào">Khi gia sư dán link bản ghi sau buổi học, nó sẽ hiện ở đây.</KinEmptyState>
+        ) : (
+          <RecordingMonths months={groupRecordingsByMonth(groupRecordingsBySession(recs.recordings.map(r => ({ ...r, createdAt: new Date(r.createdAt) })), recs.sessions))} />
+        )}
+        <KinCallout title="Bản ghi là link gia sư chia sẻ" className="mt-4">Bản ghi YouTube xem được ngay ở đây; nguồn khác mở ở tab mới. KiN không biết bạn đã xem bản ghi hay chưa.</KinCallout>
+      </div>
+    </section>
+  );
+
   const contentTab = sections.length === 0 || ids.length === 0 ? (
     <KinEmptyState title="Lớp chưa có bài học nào">Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.</KinEmptyState>
   ) : (
@@ -374,7 +405,7 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
       <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         <KinTabs tabs={tabs} value={tab} onChange={pickTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
         <div role="tabpanel" id="lop-panel" aria-labelledby={`lop-tab-${tab}`} className="pt-6">
-          {tab === "noi-dung" ? contentTab : tab === "ket-qua" && isEnrolled ? <KetQua courseId={courseId} /> : tab === "thong-bao" ? <ThongBaoHocSinh courseId={courseId} enrolled={isEnrolled} /> : overview}
+          {tab === "noi-dung" ? contentTab : tab === "video" ? videoTab : tab === "ket-qua" && isEnrolled ? <KetQua courseId={courseId} /> : tab === "thong-bao" ? <ThongBaoHocSinh courseId={courseId} enrolled={isEnrolled} /> : overview}
         </div>
       </div>
       {(showSessions || showMyClasses) && <aside aria-label="Lịch và các lớp của bạn" data-lop-aside className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">

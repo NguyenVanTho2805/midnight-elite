@@ -7,7 +7,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin/Button";
-import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
+import { DOCUMENT_STORAGE_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
 import { MAX_DOCUMENTS_PER_LESSON, formatMegabytes } from "@/lib/mediaStorage";
 import type { GtConfig } from "@/lib/giaoTrinh";
 import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLenTep";
@@ -122,7 +122,7 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
 
   return (
     <div data-tai-lieu>
-      <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">Tài liệu</p>
+      <p className="text-sm font-semibold text-[var(--kin-chu-chinh)] mb-3 pb-1 border-b border-[var(--kin-vien-nhat)]">Tài liệu</p>
 
       {(docs.length > 0 || up.queue.length > 0) && (
         <div className="space-y-2 mb-3">
@@ -173,7 +173,7 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
         hint={ready && d ? `${d.exts.map(x => x.toUpperCase()).join(", ")} · tối đa ${formatMegabytes(d.maxBytes)} mỗi tệp · tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu mỗi bài` : undefined} />
 
       {/* MD-11: chữ cam kết bản quyền (CẦN LUẬT SƯ DUYỆT — xem COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW). */}
-      <p data-copyright-notice className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {COPYRIGHT_NOTICE}</p>
+      <p data-copyright-notice className="text-xs mt-3" style={{ color: "var(--kin-chu-mo)" }}>Khi thêm tài liệu hoặc link, bạn xác nhận: {COPYRIGHT_PLEDGE_LABEL} {DOCUMENT_STORAGE_NOTICE}</p>
       {docs.length === 0 && up.queue.length === 0 && (
         <p className="text-xs text-gray-400 mt-2 text-center">Chưa có tài liệu đính kèm.</p>
       )}

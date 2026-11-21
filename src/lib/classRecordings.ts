@@ -14,6 +14,9 @@ export const COPYRIGHT_PLEDGE_LABEL =
   "Tôi là người tạo ra nội dung này, hoặc tôi có quyền chia sẻ nó với học sinh của lớp. Tôi không dán link chứa hình ảnh hay giọng nói của học sinh nếu chưa có sự đồng ý phù hợp.";
 export const COPYRIGHT_NOTICE =
   "KiN chỉ lưu đường link bạn dán, không lưu tệp và không kiểm tra bản quyền thay bạn. Nếu có khiếu nại về nội dung, KiN có thể gỡ link khỏi lớp; bạn chịu trách nhiệm về quyền chia sẻ nội dung này.";
+/** SCL-D (P2-5): câu đúng sự thật cho Ô TẢI TỆP (tài liệu bài): tệp LƯU trên kho KiN, mỗi lần mở đều kiểm quyền. COPYRIGHT_NOTICE ở trên chỉ đúng cho link dán (bản ghi). */
+export const DOCUMENT_STORAGE_NOTICE =
+  "Tệp bạn tải lên được lưu trên kho của KiN, ở chế độ riêng tư: mỗi lần mở, KiN kiểm quyền và chỉ học sinh của lớp, bạn và người quản lý lớp mở được. Link bạn dán thì KiN chỉ lưu đường link. KiN không kiểm tra bản quyền thay bạn; nếu có khiếu nại về nội dung, KiN có thể gỡ tệp khỏi lớp, và bạn chịu trách nhiệm về quyền chia sẻ nội dung này.";
 /** Đánh dấu cho người rà soát: chữ ở trên chưa qua luật sư. Không hiện cho người dùng cuối. */
 export const COPYRIGHT_TEXT_NEEDS_LAWYER_REVIEW = true;
 
@@ -34,6 +37,12 @@ export function checkRecordingLink(raw: string | null | undefined): RecordingLin
       : "Chỉ nhận link bản ghi từ YouTube, Google Drive, Vimeo hoặc Zoom cloud.");
   }
   return { ok: true, error: null, warning: slot.warning ?? info.warning, url: info.url, kind: info.kind as MediaKind, label: info.label };
+}
+
+/** SCL-D: trang 303 quay về sau khi dán / gỡ bản ghi. Chỉ hai đích (danh sách trắng): tab "Video" của lớp gia sư (`back=video`) hoặc trang Bản ghi cũ. */
+export function recordingsBackPath(courseId: string, back: unknown): string {
+  const id = encodeURIComponent(courseId);
+  return back === "video" ? `/lop-cua-toi/quan-lop/${id}/video` : `/lop-cua-toi/${id}/ban-ghi`;
 }
 
 /** Tên bản ghi: bỏ ký tự điều khiển, gộp khoảng trắng; 1..120 ký tự. */

@@ -35,13 +35,15 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
   // DG (14/11/2026): mục "Học phí" ẩn khi cờ HOC_PHI tắt (mặc định); mở thẳng ?muc=hoc-phi thì hiện mục đầu (Thông tin). Không đụng LopHocPhi / LopPhiKhac (TIỀN).
   // SCL-B: Chủ nhiệm không có mục Học phí / Học online (API chỉ của gia sư chủ lớp ⇒ 403); một dòng chỉ sang trang quản trị thay vào.
   const adminOnly: MucCaiDat[] = d.centerAdmin ? ["hoc-phi", "hoc-online"] : [];
-  const mucs = MUC_CAI_DAT.filter(m => (m !== "hoc-phi" || featureOn("HOC_PHI")) && !adminOnly.includes(m));
+  // SCL-D (P2-4): "Bản ghi" chuyển sang tab Video của lớp; ?muc=ban-ghi cũ vẫn hiện lối sang đó (không vào dải mục).
+  const mucs = MUC_CAI_DAT.filter(m => (m !== "hoc-phi" || featureOn("HOC_PHI")) && !adminOnly.includes(m) && m !== "ban-ghi");
+  const oldBanGhi = d.muc === "ban-ghi";
   const muc: MucCaiDat = mucs.includes(d.muc) ? d.muc : "thong-tin";
   return (
     <div data-cai-dat-tab className="min-w-0 max-w-5xl">
       <MucNav label="Mục của Cài đặt" items={mucs.map(m => ({ key: m, label: LABEL[m], href: mucHref(m), active: muc === m }))} />
 
-      {muc === "thong-tin" && <QuanLopCourse courseId={d.courseId} view="cai-dat" />}
+      {muc === "thong-tin" && !oldBanGhi && <QuanLopCourse courseId={d.courseId} view="cai-dat" />}
 
       {muc === "hoc-phi" && (
         <div className="space-y-[var(--kin-cach-muc)]">
@@ -65,9 +67,9 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
         </div>
       )}
 
-      {muc === "ban-ghi" && (
-        <OpenPage title="Bản ghi của lớp" href={`/lop-cua-toi/${encodeURIComponent(d.courseId)}/ban-ghi`} action="Mở bản ghi của lớp"
-          note="Dán link bản ghi sau buổi học, gắn vào đúng buổi, và xem em nào đã xem video bài giảng của lớp." />
+      {oldBanGhi && (
+        <OpenPage title="Bản ghi đã chuyển sang tab Video" href={`${classBase(d.courseId)}/video`} action="Mở tab Video"
+          note="Video bài giảng và bản ghi buổi học giờ ở chung tab Video của lớp." />
       )}
 
       {/* DG-HOC-ONLINE: link Google Meet chung của lớp + email nhắc học sinh trước giờ học. */}

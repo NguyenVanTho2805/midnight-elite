@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useModalDialog } from "@/components/kin/useModalDialog";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
@@ -517,6 +518,8 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const params = React.use(paramsPromise);
   const router = useRouter();
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const outlineRef = useRef<HTMLDivElement>(null);
+  const outlineTrap = useModalDialog(outlineOpen, outlineRef, () => setOutlineOpen(false));
   const [sidebarOpen, setSidebarOpen] = useState(true);
   // ?nop=<mã> là đích của 303 sau khi bấm "Nộp bài": mở thẳng tab Bài tập và đọc kết quả (mã, không phải chữ người dùng).
   const [nopCode] = useState<string | null>(() => (typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("nop")));
@@ -818,14 +821,16 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         </button>
       </div>
 
+      {/* SCL-D (P2-34): tờ "Nội dung khóa học" là hộp thoại thật — Escape đóng, Tab không lọt ra ngoài, trả tiêu điểm về nút mở. */}
       {outlineOpen && (
         <div className="xl:hidden fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOutlineOpen(false)} />
-          <div className="relative rounded-t-3xl p-4 max-h-[75vh] flex flex-col"
+          <div className="absolute inset-0 bg-[var(--kin-phu-hop)]" onClick={() => setOutlineOpen(false)} />
+          <div ref={outlineRef} role="dialog" aria-modal="true" aria-labelledby="bg-outline-title" tabIndex={-1} onKeyDown={outlineTrap} data-outline-sheet
+            className="relative rounded-t-3xl p-4 max-h-[75vh] flex flex-col outline-none"
             style={{ background: "var(--kin-nen-trang)", borderTop: "1px solid var(--kin-vien-thuong)" }}>
             <div className="flex items-center justify-between mb-1">
-              <p className="font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nội dung khóa học</p>
-              <button onClick={() => setOutlineOpen(false)} className="min-h-11 min-w-11 px-2 text-sm font-semibold" style={{ color: "var(--kin-chu-mo)" }}>✕ Đóng</button>
+              <h2 id="bg-outline-title" className="font-extrabold" style={{ color: "var(--kin-chu-chinh)" }}>Nội dung khóa học</h2>
+              <button type="button" onClick={() => setOutlineOpen(false)} className="min-h-11 min-w-11 px-2 text-sm font-semibold" style={{ color: "var(--kin-chu-mo)" }}>✕ Đóng</button>
             </div>
             <div className="overflow-y-auto flex-1">
               <LeftCourseSidebar

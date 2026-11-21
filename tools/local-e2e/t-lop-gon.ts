@@ -20,6 +20,7 @@
 // LOI-02 (11/11/2026): kỳ vọng đổi theo docs/kin/phong-ban/dac-ta/LOI-02.md A2–A5 — gốc lớp (không ?tab=, ?tab=chuong-bai | giao-trinh | lạ) = thân "Bài học", KHÔNG chuyển hướng;
 //   …/giao-trinh là route.ts 307 + no-store về gốc (bỏ hết query); dải tab chủ lớp "Bài học · Học sinh · Điểm danh · Cài đặt"; đồng giảng / bộ môn chỉ "Bài học".
 //   /lop-cua-toi/<id> (chủ lớp, không tab / tab lạ) → 307 về gốc lớp (legacyClassTarget).
+import { featureOn } from "@/lib/features";
 import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, BASE, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
@@ -164,7 +165,7 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
   const dd = await api("GET", `${QL}/${idA}/diem-danh`, { as: A });
   check("diem-danh → 200, có 'Lịch sử buổi học', không chuyển hướng", dd.status === 200 && go(dd).to === null && dd.text.includes("Lịch sử buổi học"), [dd.status]);
   section("2b. Một đầu lớp, MỘT dải tab (5 tab đúng thứ tự, LOI-02 + TB-LOP), không breadcrumb quản trị — trên mọi trang của chủ lớp (kể cả …/lich-hoc mở bằng link)");
-  const ORDER = ["Bài học", "Học sinh", "Thông báo", "Điểm danh", "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+  const ORDER = ["Bài học", "Video", "Học sinh", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // SCL-D thêm Video // TB-LOP (17/11/2026) thêm Thông báo
   for (const p of [``, `/hoc-vien`, `/thong-bao`, `/diem-danh`, `/lich-hoc`, `?tab=chuong-bai`, `?tab=cai-dat`]) {
     const r = await api("GET", `${QL}/${idA}${p}`, { as: A });
     const strip = /<nav[^>]*aria-label="Trang của[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(r.text)?.[1] ?? "";

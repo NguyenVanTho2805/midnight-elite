@@ -216,7 +216,7 @@ export function LessonVideo(props: Props) {
   return (
     <div className="space-y-3">
       {player}
-      {main.warning && main.kind !== "upload" && <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>{main.warning}</p>}
+      {/* SCL-D (Q4): lời dặn "Không công khai / Riêng tư" là việc của gia sư (hiện ở ô dán link) — không hiện cho học sinh. */}
       {others.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Video khác của bài">
           {others.map((o, i) => (
