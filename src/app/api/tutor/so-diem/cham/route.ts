@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAssignmentAccess } from "@/lib/courseAccessServer";
 import { logAction } from "@/lib/auditLog";
-import { parseScoreInput } from "@/lib/soDiem";
+import { parseScoreInput, soDiemBack } from "@/lib/soDiem";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   const acc = await requireAssignmentAccess(s.assignmentId, "grade");
   if (!acc.ok) return acc.res;
   const courseId = s.assignment.lesson.chapter.section.courseId;
-  const go = (ghi: string) => NextResponse.redirect(new URL(`/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`, req.url), { status: 303, headers: NO_STORE });
+  // SCL-G-SD: form trong hộp "bài nộp" gửi kèm mo=<ô> ⇒ điểm sai mở lại đúng ô, chấm xong mở bài kế.
+  const go = (ghi: string) => NextResponse.redirect(new URL(soDiemBack(courseId, ghi, fd?.get("mo")), req.url), { status: 303, headers: NO_STORE });
   const score = parseScoreInput(fd?.get("score"), s.assignment.maxPoints);
   if (score === null) return go("diem-sai");
   await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { score, gradedAt: new Date(), gradedBy: acc.session.userId } });

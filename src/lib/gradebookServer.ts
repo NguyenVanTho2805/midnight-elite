@@ -6,6 +6,7 @@ import { dropHeldResults } from "@/lib/examHold";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { isCenterAdmin, type GateSession } from "@/lib/tutorGate";
 import { assignmentCell, examCell, type Cell, type Column } from "@/lib/soDiem";
+import { vnDateKeyOf } from "@/lib/classSessions";
 
 export const GRADEBOOK_MAX_STUDENTS = 200;
 const MAX_COLUMNS = 60;
@@ -22,16 +23,21 @@ async function loadGrid(courseId: string, userIds: string[], learner: boolean): 
   const [assignments, exams] = await Promise.all([
     prisma.assignment.findMany({
       where: { mode: { not: "azota" }, lesson: { ...(learner ? PUBLISHED_ONLY : {}), chapter: { section: { courseId } } } },
-      select: { id: true, title: true, maxPoints: true }, orderBy: { createdAt: "asc" }, take: MAX_COLUMNS,
+      select: { id: true, title: true, maxPoints: true, dueDate: true }, orderBy: { createdAt: "asc" }, take: MAX_COLUMNS,
     }),
     prisma.exam.findMany({
       where: { courseId, isDraft: false, supersededById: null, variantOfId: null, ...(learner ? { active: true } : {}) },
-      select: { id: true, title: true, totalPoints: true, _count: { select: { examQuestions: true } } }, orderBy: { createdAt: "asc" }, take: MAX_COLUMNS,
+      select: { id: true, title: true, totalPoints: true, date: true, _count: { select: { examQuestions: true } } }, orderBy: { createdAt: "asc" }, take: MAX_COLUMNS,
     }),
   ]);
+  // Đầu cột (SCL-G-SD): bài tập "Hạn dd/mm" (giờ VN), đề "Ngày dd/mm" (Exam.date là chữ "dd/mm/yyyy"; dạng khác thì bỏ, không đoán).
+  const ddmm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
   const columns: Column[] = [
-    ...assignments.map(a => ({ id: a.id, kind: "bai-tap" as const, title: a.title, max: a.maxPoints })),
-    ...exams.map(e => ({ id: e.id, kind: e._count.examQuestions > 0 ? "quiz" as const : "azota" as const, title: e.title, max: e.totalPoints })),
+    ...assignments.map(a => ({ id: a.id, kind: "bai-tap" as const, title: a.title, max: a.maxPoints, dueAt: a.dueDate?.toISOString() ?? null, dueLabel: a.dueDate ? `Hạn ${ddmm(vnDateKeyOf(a.dueDate))}` : null })),
+    ...exams.map(e => ({
+      id: e.id, kind: e._count.examQuestions > 0 ? "quiz" as const : "azota" as const, title: e.title, max: e.totalPoints,
+      dueLabel: /^\d{2}\/\d{2}\//.test(e.date) ? `Ngày ${e.date.slice(0, 5)}` : null,
+    })),
   ];
   const examIds = exams.map(e => e.id);
   const [subs, results, attempts] = await Promise.all([
@@ -80,4 +86,9 @@ export async function loadStudentResults(userId: string, courseId: string | null
     out.push({ courseId: course.id, courseName: course.name, items: columns.map(c => { const x = mine[c.id]; return { ...c, state: x.state, label: x.label, score: x.score }; }) });
   }
   return out;
+}
+
+/** Hộp "bài nộp" của sổ điểm: tệp / link / "đã làm xong" của MỘT bài nộp. Chỉ gọi với mã lấy từ chính sổ điểm của lớp đã kiểm quyền. */
+export async function loadSubmissionBrief(submissionId: string) {
+  return prisma.assignmentSubmission.findUnique({ where: { id: submissionId }, select: { id: true, assignmentId: true, fileUrl: true, fileName: true, kind: true, submittedAt: true, comment: true } });
 }
