@@ -91,14 +91,16 @@ check("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1 → 'Ngân hàng câu hỏi' 
 check("/lop-cua-toi/de-thi/ngan-hang-de-thi → 'Tệp đề gốc' sáng; href các tab là đường gia sư", (() => { const g = contentTabsFor("/lop-cua-toi/de-thi/ngan-hang-de-thi")!; return g.tabs.find(t => t.active)?.label === "Tệp đề gốc" && g.tabs.every(t => t.href.startsWith("/lop-cua-toi/de-thi")); })());
 
 section("SCL F1 — Điểm danh theo cờ");
-check("cờ DIEM_DANH tắt: không tab Điểm danh (route …/diem-danh đang bị chặn)", ddOffTabs === "Bài học · Video · Học sinh · Thông báo · Cài đặt", ddOffTabs);
+check("cờ DIEM_DANH tắt: không tab Điểm danh (route …/diem-danh đang bị chặn)", ddOffTabs === "Bài học · Học sinh · Điểm · Video · Thông báo · Cài đặt", ddOffTabs);
 
 section("LOI-02 A2 — dải 5 tab của chủ lớp (TB-LOP thêm Thông báo)");
 const Q = "/lop-cua-toi/quan-lop/toan-9";
 const lit = (p: string, tab: string | null = null, role: Parameters<typeof contentTabsFor>[2] = null) => contentTabsFor(p, tab, role)?.tabs.filter(t => t.active).map(t => t.label).join(",") ?? "<null>";
 const ql = contentTabsFor(Q);
-check("gốc trần → nhóm 'Quản lớp', ĐÚNG 6 tab theo thứ tự Bài học · Video · Học sinh · Thông báo · Điểm danh · Cài đặt (TB-LOP, SCL-D)", ql?.label === "Quản lớp" && ql.tabs.map(t => t.label).join(" · ") === "Bài học · Video · Học sinh · Thông báo · Điểm danh · Cài đặt", ql);
-check("href: Bài học = gốc lớp (không query) · Học sinh /hoc-vien · Thông báo /thong-bao · Điểm danh /diem-danh · Cài đặt ?tab=cai-dat", ql?.tabs.map(t => t.href).join(" ") === `${Q} ${Q}/video ${Q}/hoc-vien ${Q}/thong-bao ${Q}/diem-danh ${Q}?tab=cai-dat`, ql?.tabs.map(t => t.href));
+// SCL-G-GS (§3.4): "Bài học / Học sinh / Điểm" trên dải (Điểm = sổ điểm của lớp); Video · Thông báo · Điểm danh · Cài đặt là `more` (nút "Khác" của dải).
+check("gốc trần → nhóm 'Quản lớp', ĐÚNG 7 tab theo thứ tự Bài học · Học sinh · Điểm · Video · Thông báo · Điểm danh · Cài đặt (SCL-G-GS)", ql?.label === "Quản lớp" && ql.tabs.map(t => t.label).join(" · ") === "Bài học · Học sinh · Điểm · Video · Thông báo · Điểm danh · Cài đặt", ql);
+check("href: Bài học = gốc lớp · Học sinh /hoc-vien · Điểm = sổ điểm ?lop= · Video · Thông báo · Điểm danh · Cài đặt ?tab=cai-dat", ql?.tabs.map(t => t.href).join(" ") === `${Q} ${Q}/hoc-vien /lop-cua-toi/so-diem?lop=toan-9 ${Q}/video ${Q}/thong-bao ${Q}/diem-danh ${Q}?tab=cai-dat`, ql?.tabs.map(t => t.href));
+check("SCL-G-GS: chỉ 3 tab đầu nằm trên dải, còn lại vào 'Khác' (more)", ql?.tabs.filter(t => !t.more).map(t => t.label).join(" · ") === "Bài học · Học sinh · Điểm" && ql.tabs.slice(3).every(t => t.more), ql?.tabs);
 check("phá: dải KHÔNG còn nhãn 'Giáo trình', 'Lịch học', 'Bài tập' (ở mọi trang của lớp, mọi vai)", [[Q, null], [Q, "chuong-bai"], [Q, "lich-hoc"], [`${Q}/lich-hoc`, null], [`${Q}/giao-trinh`, null], [`${Q}/hoc-vien`, null]].every(([p, t]) => ["owner", "admin", "co_teacher", "subject_teacher", null].every(r => !contentTabsFor(p as string, t, r as any)?.tabs.some(x => ["Giáo trình", "Lịch học", "Bài tập", "Bài tập tự nộp"].includes(x.label)))));
 // Bảng A2 + A4: [đường, ?tab=, tab sáng]
 const rows: [string, string | null, string][] = [
@@ -126,10 +128,10 @@ const rows: [string, string | null, string][] = [
   [`${Q}/thong-baox`, null, ""],
 ];
 for (const [p, t, want] of rows) check(`${p.replace(Q, "<lớp>") || "<lớp>"}${t !== null ? `?tab=${t}` : ""} → sáng: ${want || "(không tab nào)"}`, lit(p, t) === want, lit(p, t));
-check("…/lich-hoc: dải VẪN hiện (6 tab, SCL-D thêm Video) dù không tab nào sáng", contentTabsFor(`${Q}/lich-hoc`)?.tabs.length === 6);
+check("…/lich-hoc: dải VẪN hiện (7 tab) dù không tab nào sáng", contentTabsFor(`${Q}/lich-hoc`)?.tabs.length === 7);
 check("phá: mọi hàng của bảng có nhiều nhất MỘT tab sáng", rows.every(([p, t]) => (contentTabsFor(p, t)?.tabs.filter(x => x.active).length ?? 0) <= 1));
 // Đường của lớp có id ".." luôn là classBase("..") = …/%252E%252E (trình duyệt đã chuẩn hoá "%2E%2E" trước khi tới đây, nên không có pathname đó).
-check("phá: lớp id '..' / '.' (qua classBase) — dải không trỏ ra ngoài quan-lop", ["..", "."].map(id => classBase(id).split("/").pop()!).every(id => contentTabsFor(`/lop-cua-toi/quan-lop/${id}`)?.tabs.every(t => new URL(t.href, "https://x.vn").pathname.startsWith("/lop-cua-toi/quan-lop/"))));
+check("phá: lớp id '..' / '.' (qua classBase) — dải không trỏ ra ngoài quan-lop (Điểm = sổ điểm, lớp ở ?lop= đã mã hoá)", ["..", "."].map(id => classBase(id).split("/").pop()!).every(id => contentTabsFor(`/lop-cua-toi/quan-lop/${id}`)?.tabs.every(t => { const u = new URL(t.href, "https://x.vn"); return t.label === "Điểm" ? u.pathname === "/lop-cua-toi/so-diem" : u.pathname.startsWith("/lop-cua-toi/quan-lop/"); })));
 check("tao-moi, danh sách lớp, trang khác → không dải tab", contentTabsFor("/lop-cua-toi/quan-lop/tao-moi/giao-trinh") === null && contentTabsFor("/lop-cua-toi/quan-lop/tao-moi") === null && contentTabsFor("/lop-cua-toi/quan-lop") === null && contentTabsFor("/lop-cua-toi/lich") === null && contentTabsFor("/admin/thi-thu") === null);
 
 section("LOI-02 A3 — đồng giảng / giáo viên bộ môn chỉ có 'Bài học'");
@@ -137,7 +139,7 @@ for (const r of ["co_teacher", "subject_teacher"] as const) {
   check(`${r}: dải đúng MỘT tab 'Bài học' trỏ gốc lớp`, contentTabsFor(Q, null, r)?.tabs.map(t => `${t.label}|${t.href}`).join() === `Bài học|${Q}`, contentTabsFor(Q, null, r));
   check(`${r}: gốc / giao-trinh/xem → 'Bài học' sáng; /lich-hoc (mở bằng link) → không sáng`, lit(Q, null, r) === "Bài học" && lit(`${Q}/giao-trinh/xem/l1`, null, r) === "Bài học" && lit(`${Q}/lich-hoc`, null, r) === "");
 }
-check("owner / admin / không vai → 6 tab (SCL-D thêm Video)", (["owner", "admin", null, undefined] as const).every(r => contentTabsFor(Q, null, r)?.tabs.length === 6));
+check("owner / admin / không vai → 7 tab", (["owner", "admin", null, undefined] as const).every(r => contentTabsFor(Q, null, r)?.tabs.length === 7));
 
 section("TUT-lich-keo-tha — trang khung giờ kéo-thả vẫn còn (mở bằng link)");
 check("toAdminPath(/lich-hoc) → /admin/khoa-hoc/<id>?tab=lich-hoc; giữ query khác", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc") === "/admin/khoa-hoc/toan-9?tab=lich-hoc" && toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1") === "/admin/khoa-hoc/toan-9?x=1&tab=lich-hoc", toAdminPath("/lop-cua-toi/quan-lop/toan-9/lich-hoc?x=1"));

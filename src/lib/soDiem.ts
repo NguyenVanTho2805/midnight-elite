@@ -99,7 +99,9 @@ export function queueAfter(queue: string[], cur: string, rows: { studentId: stri
 }
 
 /** Chỗ quay về sau POST (303): điểm sai ⇒ mở lại đúng ô đó; chấm xong ⇒ mở bài kế (&tiep=1); việc khác ⇒ đóng hộp. `mo` rác bị bỏ. */
-export function soDiemBack(courseId: string, ghi: string, mo: unknown): string {
+export function soDiemBack(courseId: string, ghi: string, mo: unknown, ve?: unknown): string {
+  // SCL-G-GS: chấm/duyệt từ Hộp việc (điện thoại) gửi ve=hop-viec ⇒ về lại Hộp việc. Chỉ đúng một giá trị, không nhận đường tuỳ ý.
+  if (ve === "hop-viec") return `/lop-cua-toi/hop-viec?ghi=${ghi}`;
   const base = `/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`;
   if (!isCellKey(mo)) return base;
   return ghi === "diem-sai" ? `${base}&mo=${mo}` : ghi === "da-cham" ? `${base}&mo=${mo}&tiep=1` : base;

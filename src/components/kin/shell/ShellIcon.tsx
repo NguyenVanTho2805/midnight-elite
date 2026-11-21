@@ -16,6 +16,7 @@ const P: Record<string, ReactNode> = {
   "hoc-phi": <><rect x="3" y="5.5" width="16" height="11.5" rx="2" /><path d="M3 9.5h16M6.5 14h3" /></>,
   "cai-dat": <><circle cx="11" cy="11" r="2.8" /><path d="M11 3.5v2.2M11 16.3v2.2M18.5 11h-2.2M5.7 11H3.5M16.3 5.7l-1.6 1.6M7.3 14.7l-1.6 1.6M16.3 16.3l-1.6-1.6M7.3 7.3 5.7 5.7" /></>,
   "hop-thu": <><rect x="3" y="5.5" width="16" height="11.5" rx="2" /><path d="m3.5 7 7.5 5.5L18.5 7" /></>,
+  them: <><path d="M11 4.5v13M4.5 11h13" /></>,
   "bai-kt": <><rect x="4.5" y="3.5" width="13" height="16" rx="2" /><path d="m8 11 2 2 4-4.5M8 16h6" /></>,
 };
 

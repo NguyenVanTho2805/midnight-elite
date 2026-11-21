@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const fd = await req.formData().catch(() => null);
   // SCL-G-SD: mo=<ô> từ hộp "bài nộp" ⇒ điểm sửa sai thì mở lại đúng ô; xong thì đóng hộp.
   const back = (req: NextRequest, courseId: string, ghi: string) =>
-    NextResponse.redirect(new URL(soDiemBack(courseId, ghi, fd?.get("mo")), req.url), { status: 303, headers: NO_STORE });
+    NextResponse.redirect(new URL(soDiemBack(courseId, ghi, fd?.get("mo"), fd?.get("ve")), req.url), { status: 303, headers: NO_STORE });
   const resultId = fd?.get("resultId"), action = fd?.get("action");
   if (typeof resultId !== "string" || !resultId || resultId.length > 100 || !isReviewAction(action)) return NextResponse.json({ error: "Thiếu điểm cần duyệt" }, { status: 400, headers: NO_STORE });
   const r = await prisma.examResult.findUnique({ where: { id: resultId }, select: { id: true, userId: true, examId: true, score: true, pendingReview: true, exam: { select: { courseId: true, totalPoints: true } } } });

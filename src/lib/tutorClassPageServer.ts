@@ -2,6 +2,8 @@
 // 404 không có lớp → 403 người lạ của courseAccessServer.loadCourseAccess) và dữ liệu cho tab Học sinh / Cài đặt / Điểm danh, TÁCH từ trang cũ
 // src/app/lop-cua-toi/[courseId]/page.tsx (khối dành cho chủ lớp). Không viết INSERT nào; không đụng tiền (feeMode chỉ được ĐỌC để truyền cho LopHocPhi như trước).
 // Hàm thuần (đường, mục con) nằm ở tutorClassRoutes.ts.
+import { classAccentFor } from "@/lib/classColor";
+import { scheduleText } from "@/lib/lopViec";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session";
@@ -21,6 +23,8 @@ export type ClassViewRole = "owner" | "co_teacher" | "subject_teacher";
 /** Đầu lớp: một lần cho mọi tab (ClassHead). Chỉ SỐ học sinh, không tên. */
 export interface ClassHeadData {
   id: string; name: string; category: string; classStatus: string; hidden: boolean; studentCount: number;
+  /** SCL-G-GS: màu lớp (token --kin-*, chỉ trang trí vạch 4px đầu lớp). */
+  color: string;
 }
 export type ClassGate =
   | { ok: true; role: ClassViewRole; head: ClassHeadData; centerAdmin: boolean }
@@ -34,11 +38,21 @@ export async function loadClassHead(session: SessionPayload, courseId: string): 
   const acc = await loadCourseAccess(session, courseId);
   if (!acc.ok) return { ok: false, reason: acc.res.status === 404 ? "not_found" : "forbidden" };
   const [c, studentCount] = await Promise.all([
-    prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, category: true, classStatus: true, status: true } }),
+    prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, category: true, classStatus: true, status: true, calendarColor: true } }),
     prisma.enrollment.count({ where: { courseId, status: "active" } }),
   ]);
   if (!c) return { ok: false, reason: "not_found" };
-  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, centerAdmin: acc.role === "admin", head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
+  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, centerAdmin: acc.role === "admin", head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount, color: classAccentFor(c.id, c.calendarColor) } };
+}
+
+/** SCL-G-GS (bản chốt 731): dòng phụ đầu lớp "Cô Lan · Thứ Ba, Thứ Năm, 19:00 · 12 học sinh · Mã lớp KIN-T9A". Mã lớp chỉ cho chủ lớp (`withCode`). Chỉ layout gọi. */
+export async function loadClassHeadMeta(courseId: string, withCode: boolean): Promise<{ teacher: string | null; schedule: string | null; code: string | null }> {
+  const [c, slots, code] = await Promise.all([
+    prisma.course.findUnique({ where: { id: courseId }, select: { owner: { select: { name: true } } } }),
+    prisma.classSchedule.findMany({ where: { courseId, active: true }, select: { dayOfWeek: true, startTime: true } }),
+    withCode ? prisma.classInvite.findFirst({ where: { courseId, revoked: false, kind: "class", maxUses: null, expiresAt: null }, orderBy: { createdAt: "asc" }, select: { code: true } }) : null,
+  ]);
+  return { teacher: c?.owner?.name ?? null, schedule: scheduleText(slots), code: code?.code ?? null };
 }
 
 export interface ClassPageGate {

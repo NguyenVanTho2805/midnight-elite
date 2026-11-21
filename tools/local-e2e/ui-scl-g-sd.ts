@@ -34,6 +34,8 @@ function pure() {
   check("soDiemBack: không mo ⇒ như cũ; lỗi điểm ⇒ mở lại ô; xong ⇒ tiep=1; mo rác bị bỏ",
     soDiemBack("L", "da-cham", null) === "/lop-cua-toi/so-diem?lop=L&ghi=da-cham" && soDiemBack("L", "diem-sai", "s1~a") === "/lop-cua-toi/so-diem?lop=L&ghi=diem-sai&mo=s1~a"
     && soDiemBack("L", "da-cham", "s1~a").endsWith("&tiep=1") && soDiemBack("L", "da-cham", "x&y=1~a") === "/lop-cua-toi/so-diem?lop=L&ghi=da-cham");
+  check("soDiemBack: ve=hop-viec ⇒ về Hộp việc; ve lạ bị bỏ",
+    soDiemBack("L", "da-duyet", null, "hop-viec") === "/lop-cua-toi/hop-viec?ghi=da-duyet" && soDiemBack("L", "da-duyet", null, "/x") === "/lop-cua-toi/so-diem?lop=L&ghi=da-duyet");
   const m = gradebookCsvMatrix(cols, [{ name: "Em A", cells: { a: c("da-cham", 8, 10), b: c("cho-duyet", 15, 20) } }], new Date());
   check("CSV: đầu cột có hạn + thang, ô Chờ duyệt ghi rõ, Trung bình không tính Chờ duyệt", m[0].join("|") === "Học sinh|A · Hạn 01/01 · /10|B · /20|Trung bình /10" && m[1].join("|") === "Em A|8,0|Chờ duyệt · 15,0|8,0", m);
 }

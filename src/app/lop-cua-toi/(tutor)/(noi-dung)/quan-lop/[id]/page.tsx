@@ -15,6 +15,9 @@ import { classBase, classPageDecision, coTeacherClassHref } from "@/lib/tutorCla
 import CaiDatTab from "@/components/tutor/CaiDatTab";
 import QuanLopCourse from "@/components/tutor/quan-lop/QuanLopCourse";
 import GiaoTrinh from "@/components/tutor/giao-trinh/GiaoTrinh";
+import CanXuLyLop from "@/components/tutor/quan-lop/CanXuLyLop";
+import { loadClassTodos, loadLessonStats } from "@/lib/lopViecServer";
+import { emptyTodo } from "@/lib/lopViec";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +36,9 @@ export default async function QuanLopPage({ params, searchParams }: { params: Pr
   if (d.tab === "bai-hoc") {
     // LOI-07: ô tải tệp lên KiN chỉ cho CHỦ lớp (/api/media/document/init so ownerId, 403 với đồng giảng / bộ môn) ⇒ người ở nhánh này chỉ dán link.
     if (gate.role !== "owner") return <GiaoTrinh courseId={id} embedded canUploadFiles={false} />;
-    return <QuanLopCourse courseId={id} view="bai-hoc" />;
+    // SCL-G-GS (§2.2): khối "Cần bạn xử lý" + cột "Nộp x/y" của từng bài. Lỗi DB ⇒ trang vẫn mở, không khối / không cột.
+    const [todos, stats] = await Promise.all([loadClassTodos([id], new Date(), session.userId).catch(() => null), loadLessonStats(id).catch(() => ({}))]);
+    return <QuanLopCourse courseId={id} view="bai-hoc" stats={stats} todo={todos && <CanXuLyLop t={todos.get(id) ?? emptyTodo(id)} />} />;
   }
   if (gate.role !== "owner") redirect(classBase(id)); // Cài đặt chỉ của chủ lớp: đồng giảng về "Bài học" của họ
   const settings = await loadClassSettings(id, sp);

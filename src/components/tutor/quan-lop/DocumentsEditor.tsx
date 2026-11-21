@@ -4,9 +4,11 @@
 // LOI-02 bỏ hộp "Hoặc dán link tài liệu" và dòng hướng dẫn Drive. Tài liệu CŨ dạng link Drive trong JSON vẫn hiện (tên + đường), đổi thứ tự và xoá được. Không đổi hợp đồng Lesson.documents.
 // Kho tắt (document.enabled=false) ⇒ ô thả nói "Kho tệp chưa bật — chủ cần cấu hình." (KHÔNG hiện document.reason — câu đó bảo dán link Drive, lối đã bỏ); panel vẫn lưu được các ô khác.
 // Tệp sai loại / quá cỡ / video ⇒ báo ngay tại hàng, KHÔNG có yêu cầu mạng (routeInput ở trình duyệt). Không đọc config.video.
+// SCL-G-GS (QUYET-DINH §2.2): mỗi tệp ghi dung lượng (tệp tải lên từ nay lưu thêm `size` trong JSON; tệp cũ không có thì ghi nguồn) và gỡ bằng chữ "Gỡ" có hỏi lại (KinConfirm).
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KinButton } from "@/components/kin/Button";
+import { KinConfirm } from "@/components/kin/Confirm";
 import { DOCUMENT_STORAGE_NOTICE, COPYRIGHT_PLEDGE_LABEL } from "@/lib/classRecordings";
 import { MAX_DOCUMENTS_PER_LESSON, formatMegabytes } from "@/lib/mediaStorage";
 import type { GtConfig } from "@/lib/giaoTrinh";
@@ -14,7 +16,7 @@ import { useTaiLenTep, canRetryEntry } from "@/components/tutor/upload/useTaiLen
 import { OThaTep, type OThaTrangThai } from "@/components/tutor/upload/OThaTep";
 import { useCamKetBanQuyen } from "@/components/tutor/upload/useCamKetBanQuyen";
 
-export interface DocItem { name: string; url: string; type?: string }
+export interface DocItem { name: string; url: string; type?: string; /** Byte (chỉ tệp tải lên KiN từ SCL-G-GS). */ size?: number }
 
 export function detectType(url: string, name: string): string {
   if (/docs\.google\.com\/document/i.test(url))      return "doc";
@@ -65,6 +67,7 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
   const [problem, setProblem] = useState<string | null>(null);
   const [pledge, setPledgeSaved] = useCamKetBanQuyen();
   const [cfg, setCfg] = useState<Cfg>({ state: "loading" });
+  const [ask, setAsk] = useState<number | null>(null);
 
 
   // Một lần cho cả ngăn: kho tệp bật hay tắt (chỉ đọc khối document, không đọc video).
@@ -87,7 +90,7 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
     courseId, config: upCfg, pledge,
     onUploaded: (link, name, meta) => {
       if (parseDocs(latest.current).length >= MAX_DOCUMENTS_PER_LESSON) return { ok: false, error: `Mỗi bài tối đa ${MAX_DOCUMENTS_PER_LESSON} tài liệu.` };
-      append({ name, url: link, type: detectType(link, name) });
+      append({ name, url: link, type: detectType(link, name), size: meta.size });
       onAssetUploaded?.(meta.assetId);
       return { ok: true };
     },
@@ -127,18 +130,18 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
       {(docs.length > 0 || up.queue.length > 0) && (
         <div className="space-y-2 mb-3">
           {docs.map((doc, i) => (
-            <div key={`doc-${i}`} data-tai-lieu-hang className="flex items-center gap-2 p-2.5 rounded-lg border border-gray-100 bg-gray-50">
+            <div key={`doc-${i}`} data-tai-lieu-hang className="flex items-center gap-2 p-2.5 rounded-lg border border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-bang)]">
               <DocBadge type={detectType(doc.url, doc.name)} />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-800 truncate">{doc.name}</p>
-                <p className="text-xs text-gray-400 truncate">{KIN_FILE_RE.test(doc.url) ? "Tệp tải lên KiN" : doc.url}</p>
+                <p className="text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-chu-chinh)] truncate">{doc.name}</p>
+                <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] truncate tabular-nums">{KIN_FILE_RE.test(doc.url) ? (typeof doc.size === "number" ? `${formatMegabytes(doc.size)} · Tệp tải lên KiN` : "Tệp tải lên KiN") : doc.url}</p>
               </div>
               <button type="button" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Đưa "${doc.name}" lên trên`}
                 className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▲</button>
               <button type="button" onClick={() => move(i, 1)} disabled={i === docs.length - 1} aria-label={`Đưa "${doc.name}" xuống dưới`}
                 className="text-xs px-2 rounded flex-shrink-0 disabled:opacity-30" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-chu-mo)" }}>▼</button>
-              <button type="button" onClick={() => remove(i)} aria-label={`Bỏ "${doc.name}"`}
-                className="text-xs px-2 rounded flex-shrink-0" style={{ minHeight: 44, minWidth: 44, color: "var(--kin-tt-chu-loi)" }}>✕</button>
+              <button type="button" onClick={() => setAsk(i)} aria-label={`Gỡ "${doc.name}"`}
+                className="text-[length:var(--kin-co-goc)] font-medium px-2 rounded flex-shrink-0 text-[var(--kin-nhan-link)] hover:bg-[var(--kin-nen-re-chuot)]" style={{ minHeight: 44, minWidth: 44 }}>Gỡ</button>
             </div>
           ))}
           {up.queue.filter(e => e.state !== "done").map(e => (
@@ -164,6 +167,10 @@ export function DocumentsEditor({ value, onChange, courseId, canUpload, onAssetU
           ))}
         </div>
       )}
+
+      <KinConfirm open={ask !== null} title="Gỡ tài liệu này?" confirmLabel="Gỡ"
+        message={ask !== null && docs[ask] ? <>Gỡ <strong>&quot;{docs[ask].name}&quot;</strong> khỏi bài. Học sinh sẽ không thấy tài liệu này nữa.</> : null}
+        onConfirm={() => { if (ask !== null) remove(ask); setAsk(null); }} onCancel={() => setAsk(null)} />
 
       {/* DG (14/11/2026, vòng dạy thật): câu báo (chưa tích cam kết, quá số tệp) đứng NGAY TRÊN ô thả — trước đây nằm dưới đoạn pháp lý dài, gia sư thả tệp
           xong không thấy gì xảy ra. */}

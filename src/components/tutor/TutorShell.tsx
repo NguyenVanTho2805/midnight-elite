@@ -26,11 +26,16 @@ import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 import { landingPath, TUTOR_HOME_NO_INBOX } from "@/lib/landing";
 import { ADMIN_HOST } from "@/lib/hostRouting";
+import { classBase } from "@/lib/tutorClassRoutes";
+import { groupByOwner, withMobileInbox } from "@/lib/lopViec";
+
+/** SCL-G-GS: Hộp việc dạy học (chờ chấm · chờ duyệt · xin vào lớp, gom mọi lớp). KHÔNG theo cờ HOP_VIEC — cờ đó là Hộp việc cũ có học phí ở /lop-cua-toi. */
+export const TUTOR_INBOX_PATH = "/lop-cua-toi/hop-viec";
+/** Một lớp trên thanh "Lớp của bạn" (lấy ở máy chủ: src/lib/lopViecServer.ts loadRailClasses). */
+export interface ShellClass { id: string; name: string; color: string; students: number; ownerName?: string | null }
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
-/** 4 tab của thanh dưới điện thoại theo Figma 299:116033 (Hộp việc · Lịch · Lớp · Học phí). DG (14/11/2026): module nào ẩn theo cờ thì nhường chỗ cho
- *  module kế tiếp trong danh sách ưu tiên (Bài tập, Thư viện) — điện thoại không chỉ còn mỗi "Lớp". Đủ module thì vẫn đúng 4 tab Figma. */
-const MOBILE_ORDER = ["hop-viec", "lich", "lop", "hoc-phi", "bai-kt", "thu-vien"];
+// SCL-G-GS: thanh dưới điện thoại là 3 mục cố định (Hộp việc / Lớp / Tôi) — trước đây 4 tab theo Figma 299:116033.
 // BU-00 bước 3 (31/10/2026): trang đề thi / ngân hàng / quản lớp của gia sư nằm ở /lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* (bí danh của
 // /admin/thi-thu*, /admin/khoa-hoc* — src/lib/tutorRoutes.ts), chạy trong chính vỏ này; gia sư không còn vào /admin/* (proxy 307 sang bí danh).
 
@@ -64,8 +69,12 @@ const PENDING_ITEMS: ModuleItem[] = [
 ];
 
 export default function TutorShell({
-  modules, badges, pending = false, manage, children,
+  modules, badges, pending = false, manage, classes, inbox, children,
 }: {
+  /** SCL-G-GS: lớp cho nhóm "Lớp của bạn" của thanh rộng (Chủ nhiệm: mọi lớp, nhóm theo gia sư). Vắng (trang khách) = không vẽ nhóm. */
+  classes?: ShellClass[];
+  /** Số việc cần ra tay của Hộp việc (badge). */
+  inbox?: number;
   /** Module tuỳ chọn gia sư đã bật. `undefined` = chưa chọn = đủ module (BU-00); `[]` = chế độ gọn tường minh. */
   modules?: OptionalTutorModule[];
   /** Số việc đang chờ theo module (chỉ đếm việc cần gia sư ra tay). */
@@ -89,7 +98,6 @@ export default function TutorShell({
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
   // Module ẩn theo CỜ không tính: gia sư không bật lại được ở Cài đặt nên không mời "Thêm module".
   const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => tutorModuleAllowed(k) && !visible.some(m => m.key === k)).length;
-  const mobileKeys = new Set(MOBILE_ORDER.filter(k => visible.some(m => m.key === k)).slice(0, 4));
   const home = head ? TUTOR_HOME_NO_INBOX : landingPath("admin", "teacher");
   const homeLabel = head ? "KiN — Lớp của trung tâm" : featureOn("HOP_VIEC") ? "KiN — Hộp việc của gia sư" : "KiN — Lớp của gia sư";
 
@@ -117,7 +125,7 @@ export default function TutorShell({
       : m.key === "bai-kt" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/de-thi")   // trang Bài tập + đề thi, ngân hàng câu hỏi, ngân hàng đề (cùng một họ "bài kiểm tra")
       : m.key === "lop" ? isUnder(pathname, m.href) || isUnder(pathname, "/lop-cua-toi/quan-lop")  // quản lớp / điểm danh / học viên của lớp
       : isUnder(pathname, m.href),
-    desktopOnly: !mobileKeys.has(m.key),
+    desktopOnly: true,
   }));
   // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp khi Lớp bật. B6 GS-09 (08/11/2026): KHÔNG còn phụ thuộc module Lớp — tắt Lớp vẫn thấy Học sinh
   // (đứng cuối các module), vì Yêu cầu tìm gia sư và hồ sơ học sinh vào từ đó. Trang riêng của gia sư (/lop-cua-toi/hoc-sinh), không dùng /admin/hoc-sinh.
@@ -129,26 +137,42 @@ export default function TutorShell({
     : [...mods, studentItem];
   // Thanh RỘNG (Figma "Điều hướng"): "Làm việc hằng ngày" = các module đang bật (trừ Học phí); Học phí đứng chung nhóm "Tiền" với Doanh thu; các nhóm còn lại là chính
   // danh sách của bảng "Khác". Module bị tắt vẫn chỉ ẩn khỏi thanh (dữ liệu giữ nguyên) nên nhóm đầu có thể ngắn hơn Figma.
-  const asNav = (m: ModuleItem): NavItem => ({ key: m.key, label: m.label, href: m.href ?? "/lop-cua-toi", icon: m.icon, active: m.active, badge: m.badge });
+  // SCL-G-GS (QUYET-DINH §3.4): "Hộp việc" đầu thanh; Hộp việc cũ theo cờ HOP_VIEC (module "hop-viec", có học phí) còn bật thì thanh máy tính giữ mục cũ, không nhân đôi.
+  const inboxItem: ModuleItem = { key: "viec-lop", label: "Hộp việc", href: TUTOR_INBOX_PATH, icon: "hop-thu", badge: inbox, active: pathname === TUTOR_INBOX_PATH };
+  const onClass = (classes ?? []).find(c => isUnder(pathname, classBase(c.id)));
+  const classNav: NavItem[] = (classes ?? []).map(c => ({ key: `lop-${c.id}`, label: c.name, href: classBase(c.id), icon: "lop", dot: c.color, count: c.students, ownerName: c.ownerName, active: c === onClass }));
+  const newClass: NavItem = { key: "tao-lop", label: "Tạo lớp mới", href: "/lop-cua-toi/lop/tao", icon: "them", active: pathname === "/lop-cua-toi/lop/tao" };
+  const classGroups: NavGroup[] = !classes ? [] : head
+    ? [...groupByOwner(classNav).map(g => ({ title: g.title, items: g.items, classes: true })), ...(classNav.length ? [] : [{ title: "Lớp của trung tâm", items: [], classes: true }])]
+    : [{ title: "Lớp của bạn", items: [...classNav, newClass], classes: true }];
+  // Trên thanh rộng, lớp đang mở sáng ở nhóm "Lớp của bạn" ⇒ mục "Lớp" không sáng thêm (chỉ một mục aria-current).
+  const asNav = (m: ModuleItem): NavItem => ({ key: m.key, label: m.label, href: m.href ?? "/lop-cua-toi", icon: m.icon, active: m.key === "lop" && onClass ? false : m.active, badge: m.badge });
+  const oldInbox = withStudents.some(m => m.key === "hop-viec");
+  const daily = [...(oldInbox ? [] : [inboxItem]), ...withStudents];
   const [dayTeach, money, intro, account] = groups.map(moreToNavGroup);
-  const wide: NavGroup[] = head ? [{ title: "Dạy học", items: withStudents.map(asNav) }, dayTeach].filter(g => g.items.length > 0) : [
-    { title: "Làm việc hằng ngày", items: withStudents.filter(m => m.key !== "hoc-phi").map(asNav) },
+  const wide: NavGroup[] = head ? [{ title: "Dạy học", items: daily.map(asNav) }, ...classGroups, dayTeach].filter(g => g.items.length > 0 || g.classes) : [
+    { title: "Làm việc hằng ngày", items: daily.filter(m => m.key !== "hoc-phi").map(asNav) },
+    ...classGroups,
     dayTeach,
     { title: money.title, items: [...withStudents.filter(m => m.key === "hoc-phi").map(asNav), ...money.items] },
     intro,
     account,
   ].filter(g => g.items.length > 0);
+  // SCL-G-GS (QUYET-DINH §3.4, gia sư điện thoại): thanh dưới ĐÚNG 3 mục Hộp việc / Lớp / Tôi; các module còn lại vào qua "Tôi" (bảng Khác, nhóm "Dạy học" chỉ điện thoại).
   const items: ModuleItem[] = [
-    ...withStudents,
-    // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản). B3: "Khác" lên thanh dưới điện thoại qua mobileMore.
+    ...withMobileInbox(daily, inboxItem),
+    // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản).
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
+    { key: "lop-m", label: "Lớp", href: "/lop-cua-toi/lop", icon: "lop", active: isUnder(pathname, "/lop-cua-toi/lop") || isUnder(pathname, "/lop-cua-toi/quan-lop") || isUnder(pathname, "/lop-cua-toi/so-diem"), mobileOnly: true },
+    { key: "toi", label: "Tôi", icon: "nguoi", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, mobileOnly: true },
   ];
+  const mobileTeach: MoreGroup[] = [{ title: "Làm việc hằng ngày", links: daily.filter(m => m.key !== "viec-lop" && m.key !== "lop" && m.href).map(m => ({ label: m.label, href: m.href!, icon: m.icon })) }].filter(g => g.links.length > 0);
 
   return (
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
       <KinSkipLink />
-      <ModuleRail roleLabel={head ? "CHỦ NHIỆM" : "GIA SƯ"} ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
+      <ModuleRail roleLabel={head ? "CHỦ NHIỆM" : "GIA SƯ"} ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore}
         home={{ href: home, label: homeLabel }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
@@ -178,7 +202,7 @@ export default function TutorShell({
         {children}
       </div>
 
-      {moreOpen && <MorePanel id="khac-bang" groups={panelGroups} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+      {moreOpen && <MorePanel id="khac-bang" groups={panelGroups} mobileGroups={mobileTeach} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }

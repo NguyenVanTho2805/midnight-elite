@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
   const acc = await requireAssignmentAccess(s.assignmentId, "grade");
   if (!acc.ok) return acc.res;
   const courseId = s.assignment.lesson.chapter.section.courseId;
-  // SCL-G-SD: form trong hộp "bài nộp" gửi kèm mo=<ô> ⇒ điểm sai mở lại đúng ô, chấm xong mở bài kế.
-  const go = (ghi: string) => NextResponse.redirect(new URL(soDiemBack(courseId, ghi, fd?.get("mo")), req.url), { status: 303, headers: NO_STORE });
+  // SCL-G-SD: form trong hộp "bài nộp" gửi kèm mo=<ô> ⇒ điểm sai mở lại đúng ô, chấm xong mở bài kế; ve=hop-viec ⇒ về Hộp việc.
+  const go = (ghi: string) => NextResponse.redirect(new URL(soDiemBack(courseId, ghi, fd?.get("mo"), fd?.get("ve")), req.url), { status: 303, headers: NO_STORE });
   const score = parseScoreInput(fd?.get("score"), s.assignment.maxPoints);
   if (score === null) return go("diem-sai");
   await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { score, gradedAt: new Date(), gradedBy: acc.session.userId } });
