@@ -165,6 +165,16 @@ export async function POST(req: NextRequest) {
 
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
     data.ownerId = auth.userId;
+    // SCL-A (P1-4): tên gia sư = tên thật của người tạo lớp (cùng nguồn với màn vào lớp: owner.name), không để trống / tên giữ chỗ "KiN".
+    const instr = typeof data.instructor === "string" ? data.instructor.trim() : "";
+    if (!instr || instr.toLowerCase() === "kin") {
+      const me = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      const nm = me?.name?.trim() ?? "";
+      data.instructor = nm;
+      data.teacherAvatar = nm.charAt(0).toUpperCase();
+    }
+    // SCL-A (P1-3, Q10): lớp của gia sư là riêng — chỉ lớp "Vào ngay" (open) hiện ở trang công khai, bất kể client gửi gì.
+    if (auth.adminRole === "teacher") data.status = data.joinPolicy === "open";
 
     // adminId trong transaction để tránh race condition giữa hai POST đồng thời
     const course = await prisma.$transaction(async (tx) => {

@@ -78,7 +78,7 @@ export async function loadStudentMonth(tutorId: string, studentId: string, yearM
       select: { id: true, dueDate: true, lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } },
     }),
     prisma.examResult.findMany({
-      where: { userId: studentId, exam: { courseId: { in: courseIds } } },
+      where: { userId: studentId, pendingReview: false, exam: { courseId: { in: courseIds } } },   // SCL-A (Q5): điểm tự khai chưa duyệt không vào báo cáo phụ huynh
       select: { userId: true, examId: true, score: true, totalPoints: true, completedAt: true, exam: { select: { courseId: true } } },
     }),
     prisma.classSessionChange.findMany({

@@ -75,7 +75,7 @@ section("2-4 · mã đề: số lượt theo nhóm, chia mã ổn định, gộp
   const mine = await api("GET", "/api/exam-results?mine=true", { as: V });
   check("4 · 'bài của tôi': một dòng, examId gốc", (mine.json as any[]).filter(r => r.examId === "cg2-root").length === 1 && !(mine.json as any[]).some(r => r.examId === "cg2-v2"));
   const lb = await api("GET", "/api/exam-results?examId=cg2-root", { as: V });
-  check("4 · xếp hạng theo gốc có V đúng một lần", (lb.json as any[]).filter(r => r.userId === V.id).length === 1);
+  check("4 · xếp hạng theo gốc có V đúng một lần", (lb.json as any[]).filter(r => r.isMe).length === 1);   // SCL-A: học sinh không nhận userId, dòng của mình có isMe
 
   // 5 · ẩn mã con
   const list = await api("GET", "/api/exams?active=true", { as: V });
