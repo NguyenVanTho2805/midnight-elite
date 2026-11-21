@@ -36,6 +36,7 @@ import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline, { type OutlineSection } from "@/components/student/CourseOutline";
 import ThuVienLop from "@/components/student/ThuVienLop";
 import ThongBaoHocSinh from "@/components/student/ThongBaoHocSinh";
+import KetQua from "@/components/student/KetQua"; // SCL-C (HS4): tab Kết quả
 import { featureOn, isLinkHidden } from "@/lib/features";
 import { contentSummary, giaSuLabel, hasScheduledLessonInWindow, hocTiep, hocTiepLabel, lessonMetaParts, lopProgress, orderedLessonIds, sessionsBlockState } from "@/lib/studentLop";
 
@@ -90,8 +91,8 @@ interface Chapter { id: string; title: string; order: number; isImplicit?: boole
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
 interface Course { id: string; name: string; instructor: string; category: string; hours: number; lessons: number; sections: Section[]; suspended?: { contactHref: string | null } }
 
-type Tab = "tong-quan" | "noi-dung" | "thong-bao";
-const TAB_KEYS: Tab[] = ["tong-quan", "noi-dung", "thong-bao"];
+type Tab = "tong-quan" | "noi-dung" | "ket-qua" | "thong-bao";
+const TAB_KEYS: Tab[] = ["tong-quan", "noi-dung", "ket-qua", "thong-bao"];
 
 /** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]): /api/courses/[id] chỉ sắp theo `order`, khi hoà `order` thứ tự có thể khác
  *  ⇒ "Học tiếp" và x/y ở trang lớp lệch thư viện. Trả BẢN SAO, không đổi mảng gốc. */
@@ -210,6 +211,7 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
   const tabs = [
     { key: "tong-quan" as const, label: "Tổng quan" },
     { key: "noi-dung" as const, label: "Nội dung" },
+    ...(isEnrolled ? [{ key: "ket-qua" as const, label: "Kết quả" }] : []),
     { key: "thong-bao" as const, label: "Thông báo" },
   ];
   // Buổi học sắp tới CỦA LỚP NÀY: cùng nguồn /api/schedule với trang Lịch (khung giờ tuần + buổi dời / huỷ + buổi lẻ / dạy bù), nên hai nơi không thể lệch nhau.
@@ -372,7 +374,7 @@ function Content({ courseId, initialTab }: { courseId: string; initialTab: Tab }
       <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2">
         <KinTabs tabs={tabs} value={tab} onChange={pickTab} label="Trang lớp" tabId={k => `lop-tab-${k}`} panelId={() => "lop-panel"} />
         <div role="tabpanel" id="lop-panel" aria-labelledby={`lop-tab-${tab}`} className="pt-6">
-          {tab === "noi-dung" ? contentTab : tab === "thong-bao" ? <ThongBaoHocSinh courseId={courseId} enrolled={isEnrolled} /> : overview}
+          {tab === "noi-dung" ? contentTab : tab === "ket-qua" && isEnrolled ? <KetQua courseId={courseId} /> : tab === "thong-bao" ? <ThongBaoHocSinh courseId={courseId} enrolled={isEnrolled} /> : overview}
         </div>
       </div>
       {(showSessions || showMyClasses) && <aside aria-label="Lịch và các lớp của bạn" data-lop-aside className="min-w-0 lg:col-start-2 lg:row-start-2 space-y-8">

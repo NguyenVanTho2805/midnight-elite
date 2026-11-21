@@ -52,6 +52,8 @@ async function main() {
 
   section("P2-7 · GET bảng điểm và chi tiết đề");
   const B = "/api/exam-results?examId=az-lop";
+  // SCL-C (Q5): bảng xếp hạng của đề chỉ có điểm ĐÃ DUYỆT — duyệt điểm của S để kiểm phần quyền xem / che tên bên dưới.
+  await prisma.examResult.updateMany({ where: { examId: "az-lop" }, data: { pendingReview: false } });
   const bx = await api("GET", B, { as: X }), bt3 = await api("GET", B, { as: T3 });
   check("học sinh lớp khác / gia sư lớp khác xem bảng điểm → 403, không lộ điểm", bx.status === 403 && bt3.status === 403 && !/"score"/.test(bx.text + bt3.text), [bx.status, bt3.status]);
   const bs = await api("GET", B, { as: S });
@@ -65,8 +67,11 @@ async function main() {
   check("học sinh trong lớp, chủ lớp, quản trị: 200", es.status === 200 && et.status === 200 && esa.status === 200, [es.status, et.status, esa.status]);
   await mkExam("az-chung", { totalPoints: 150 });
   const pub = await api("POST", "/api/exam-results", { as: X, body: { examId: "az-chung", score: 120 } });
+  await prisma.examResult.updateMany({ where: { examId: "az-chung" }, data: { pendingReview: false } }); // SCL-C (Q5): chỉ điểm đã duyệt lên bảng
+  const backToPending = () => prisma.examResult.updateMany({ where: { examId: { in: ["az-lop", "az-chung"] } }, data: { pendingReview: true } }); // phần sau kiểm lại điểm CHỜ duyệt
   const pubB = await api("GET", "/api/exam-results?examId=az-chung", { as: S });
   check("đề KHÔNG gắn lớp: vẫn nộp/xem được như cũ, bảng điểm không lộ userId", pub.status === 200 && pubB.status === 200 && pubB.json?.length === 1 && pubB.json[0].isMe === false && !/userId/.test(pubB.text), [pub.status, pubB.text.slice(0, 200)]);
+  await backToPending();
 
   section("P1-3 / P1-4 · POST /api/courses (gia sư)");
   const mk = (id: string, joinPolicy: string, extra: object = {}) => api("POST", "/api/courses", { as: T, body: { id, name: id, adminName: id, shortTitle: id, category: "Toán", instructor: "KiN", teacherAvatar: "K", openDate: "01/12/2026", types: ["Video"], bg: "var(--kin-chu-phu)", price: 0, lessons: 0, hours: 0, status: true, joinPolicy, ...extra } });

@@ -7,7 +7,7 @@ import { ENROLLMENT_SUSPENDED_CODE, ENROLLMENT_REMOVED_CODE } from "@/lib/enroll
 import { examRoomApi, type GateResponse, type ReviewResponse } from "@/lib/examRoomApi";
 
 export type Phase = "loading" | "error" | "gate" | "azota" | "taking" | "done" | "review";
-export interface MyResult { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean }
+export interface MyResult { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean; pendingReview?: boolean }
 
 export function useRoomPage(examId: string) {
   const [exam, setExam] = useState<ExamFull | null>(null);

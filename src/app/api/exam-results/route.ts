@@ -11,9 +11,9 @@ import { boardRowFor, selfScoreError } from "@/lib/examResultRules";
 import { classExamViewBlock } from "@/lib/examResultAccessServer";
 import { canWriteAttempt } from "@/lib/attemptAccess";
 
-/** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
+/** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold) và đã được gia sư duyệt (SCL-C, Q5: bỏ điểm tự khai chờ duyệt). */
 async function rankOf(examId: string, score: number): Promise<number> {
-  const all = await dropHeldResults(await prisma.examResult.findMany({ where: { examId, score: { gt: score } }, select: { userId: true, examId: true } }));
+  const all = await dropHeldResults(await prisma.examResult.findMany({ where: { examId, score: { gt: score }, pendingReview: false }, select: { userId: true, examId: true } }));
   return all.length + 1;
 }
 
@@ -41,6 +41,7 @@ export async function GET(req: Request) {
       results.map(async r => {
         const vis = resultVisibility(states.get(r.examId) ?? { hasEssay: false, published: true }, true);
         if (!vis.showScore) return { ...r, score: null, rank: null, pendingManual: true };
+        if (r.pendingReview) return { ...r, rank: null, pendingManual: false }; // SCL-C (Q5): điểm tự khai chờ gia sư duyệt — chưa có hạng
         return { ...r, rank: await rankOf(r.examId, r.score), pendingManual: false };
       })
     );
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
     if (!resultVisibility(await loadPublishState(examId, session.userId), true).showScore) return NextResponse.json([]);
 
     const results = await dropHeldResults(await prisma.examResult.findMany({
-      where:   { examId },
+      where:   { examId, pendingReview: false }, // SCL-C (Q5): điểm tự khai chờ duyệt không lên bảng xếp hạng của đề
       include: { user: { select: { name: true } } },
       orderBy: { score: "desc" },
       take: 50,
@@ -149,10 +150,6 @@ export async function POST(req: Request) {
     return r;
   });
 
-  // Tính rank
-  const above = await prisma.examResult.count({
-    where: { examId, score: { gt: score } },
-  });
-
-  return NextResponse.json({ ...result, rank: above + 1 });
+  // SCL-C (Q5): điểm vừa khai đang chờ gia sư duyệt ⇒ chưa có hạng (bảng xếp hạng chỉ tính điểm đã duyệt).
+  return NextResponse.json({ ...result, rank: null });
 }

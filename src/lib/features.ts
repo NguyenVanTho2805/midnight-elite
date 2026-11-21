@@ -9,7 +9,7 @@
 //
 // DG (14/11/2026, chủ: "đơn giản hoá, chỉ giữ tính năng dạy học" — ẨN BẰNG CỜ, KHÔNG XOÁ MÃ, không đổi dữ liệu): thêm tám phần, cũng mặc định ẨN:
 //   HOC_PHI (học phí: module gia sư, phiếu của học sinh, bảng học phí lớp, mục Học phí ở Cài đặt lớp, dòng học phí ở Hộp việc, tin đẩy học phí),
-//   KINH_DOANH (doanh thu, gói KiN Pro — quản trị và gia sư), DIEM_DANH (tab Điểm danh của lớp), SO_DIEM (sổ điểm + báo cáo tháng),
+//   KINH_DOANH (doanh thu, gói KiN Pro — quản trị và gia sư), DIEM_DANH (tab Điểm danh của lớp), SO_DIEM (báo cáo tháng; sổ điểm thường trực từ SCL-C),
 //   NHAC_HOC (Nhắc học của học sinh), HOP_VIEC (Hộp việc + Tổng quan của gia sư: trang đầu gia sư thành thư viện Lớp),
 //   THI_THU_CONG_KHAI (danh sách thi thử công khai /thi-thu; đề được giao trong lớp /student/thi-thu/<mã đề> KHÔNG chặn),
 //   VAN_HANH_PHU (quản trị: phễu gia sư, số đo sản phẩm, lịch sử đánh giá, chữ trang chủ).
@@ -128,8 +128,7 @@ const PATH_RULES: readonly PathRule[] = [
   { feature: "KINH_DOANH", path: "/admin/goi-pro", sub: true, route: ["admin"] },
   // 12. Điểm danh: trang Điểm danh của lớp (kể cả bản in). Dữ liệu điểm danh, chốt buổi giữ nguyên.
   { feature: "DIEM_DANH", path: "/lop-cua-toi/quan-lop/<lớp>/diem-danh", re: /^\/lop-cua-toi\/quan-lop\/[^/]+\/diem-danh(?:\/.*)?$/, route: true },
-  // 13. Sổ điểm + báo cáo tháng.
-  { feature: "SO_DIEM", path: "/lop-cua-toi/so-diem", sub: true, route: true },
+  // 13. Báo cáo tháng gửi phụ huynh. SCL-C (21/11/2026, P1-1): Sổ điểm /lop-cua-toi/so-diem là tính năng THƯỜNG TRỰC, không còn theo cờ này.
   { feature: "SO_DIEM", path: "/lop-cua-toi/bao-cao-thang", sub: true, route: true },
   // 14. Nhắc học của học sinh.
   { feature: "NHAC_HOC", path: "/student/nhac-hoc", sub: true, route: true },
