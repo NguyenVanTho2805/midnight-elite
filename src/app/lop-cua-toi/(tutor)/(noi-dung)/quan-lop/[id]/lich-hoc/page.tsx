@@ -8,6 +8,6 @@ export const dynamic = "force-dynamic";
 
 export default async function LichHocPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await redirectIfNotTutor(await getSession(), { path: `/lop-cua-toi/quan-lop/${id}/lich-hoc`, adminTo: "/admin" });
+  await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: `/lop-cua-toi/quan-lop/${id}/lich-hoc`, adminTo: "/admin" });
   return <LichKhung courseId={id} embedded />;
 }

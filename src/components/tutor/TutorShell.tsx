@@ -23,7 +23,8 @@ import { KinCallout } from "@/components/kin/Callout";
 import { OPTIONAL_TUTOR_MODULES, shownTutorModules, tutorModuleAllowed, type OptionalTutorModule } from "@/lib/userPreferences";
 import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
-import { landingPath } from "@/lib/landing";
+import { landingPath, TUTOR_HOME_NO_INBOX } from "@/lib/landing";
+import { ADMIN_HOST } from "@/lib/hostRouting";
 
 const ICON: Record<string, string> = { "hop-viec": "hop-thu", lich: "lich", lop: "lop", "bai-kt": "bai-kt", "thu-vien": "thu-vien", "hoc-phi": "hoc-phi" };
 /** 4 tab của thanh dưới điện thoại theo Figma 299:116033 (Hộp việc · Lịch · Lớp · Học phí). DG (14/11/2026): module nào ẩn theo cờ thì nhường chỗ cho
@@ -62,7 +63,7 @@ const PENDING_ITEMS: ModuleItem[] = [
 ];
 
 export default function TutorShell({
-  modules, badges, pending = false, children,
+  modules, badges, pending = false, manage, children,
 }: {
   /** Module tuỳ chọn gia sư đã bật. `undefined` = chưa chọn = đủ module (BU-00); `[]` = chế độ gọn tường minh. */
   modules?: OptionalTutorModule[];
@@ -70,6 +71,8 @@ export default function TutorShell({
   badges: Record<string, number>;
   /** Gia sư chờ duyệt (BU-00 bước 5): thanh 3 mục, không "Khác", không số đếm, có băng chờ duyệt. */
   pending?: boolean;
+  /** SCL-B (Q1): có mặt = Chủ nhiệm (quản trị trung tâm) đứng lớp — thanh chỉ module Lớp + nhóm "Quản lý" (địa chỉ tuyệt đối sang tên miền admin, src/lib/adminNav.ts). */
+  manage?: { label: string; href: string }[];
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -80,17 +83,18 @@ export default function TutorShell({
   // LOI-01: module Lịch rời thanh khi phần Lịch đang ẩn (chỉ gỡ lối vào: /lop-cua-toi/lich vẫn chạy, Hộp việc còn dòng báo nghỉ / buổi bù / nhắc lịch trỏ vào đó).
   // Module Thư viện (/thu-vien = "Thư viện của tôi" của gia sư) KHÔNG lọc ở đây: cờ Thư viện chỉ ẩn thư viện CHUNG.
   // DG (14/11/2026): Hộp việc / Học phí rời thanh khi cờ HOP_VIEC / HOC_PHI tắt (mặc định) — cùng một chỗ quyết với Lịch (userPreferences.tutorModuleAllowed).
-  const visible = shownTutorModules({ modules });
+  const head = !!manage; // Chủ nhiệm: trang riêng của một gia sư (Hộp việc, Lịch, Học phí, Học sinh…) không mở cho vai này (tutorGate allowAdmin)
+  const visible = shownTutorModules({ modules }).filter(m => !head || m.key === "lop");
   // Số module tuỳ chọn đang ẨN = tuỳ chọn không có mặt trong `visible` (không tính từ độ dài `modules`, vì `undefined` nghĩa là đủ module).
   // Module ẩn theo CỜ không tính: gia sư không bật lại được ở Cài đặt nên không mời "Thêm module".
   const hiddenCount = OPTIONAL_TUTOR_MODULES.filter(k => tutorModuleAllowed(k) && !visible.some(m => m.key === k)).length;
   const mobileKeys = new Set(MOBILE_ORDER.filter(k => visible.some(m => m.key === k)).slice(0, 4));
-  const home = landingPath("admin", "teacher");
-  const homeLabel = featureOn("HOP_VIEC") ? "KiN — Hộp việc của gia sư" : "KiN — Lớp của gia sư";
+  const home = head ? TUTOR_HOME_NO_INBOX : landingPath("admin", "teacher");
+  const homeLabel = head ? "KiN — Lớp của trung tâm" : featureOn("HOP_VIEC") ? "KiN — Hộp việc của gia sư" : "KiN — Lớp của gia sư";
 
   // B1: Hộp việc là trang chủ duy nhất; "Tổng quan" chỉ còn trong bảng Khác khi gia sư đã tắt Hộp việc (khi đó đó là lối duy nhất tới các con số).
   const hopViecOn = visible.some(m => m.key === "hop-viec");
-  const groups: MoreGroup[] = [
+  const groups: MoreGroup[] = head ? [{ title: "Quản lý", links: manage ?? [] }] : [
     // DG: "Tổng quan" đi cùng cờ HOP_VIEC (route /lop-cua-toi/tong-quan chặn khi cờ tắt) — chỉ thêm khi gia sư TỰ tắt module Hộp việc lúc cờ đang mở.
     ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn && !isLinkHidden("/lop-cua-toi/tong-quan")
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
@@ -117,14 +121,14 @@ export default function TutorShell({
   // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp khi Lớp bật. B6 GS-09 (08/11/2026): KHÔNG còn phụ thuộc module Lớp — tắt Lớp vẫn thấy Học sinh
   // (đứng cuối các module), vì Yêu cầu tìm gia sư và hồ sơ học sinh vào từ đó. Trang riêng của gia sư (/lop-cua-toi/hoc-sinh), không dùng /admin/hoc-sinh.
   const studentItem: ModuleItem = { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", active: isUnder(pathname, "/lop-cua-toi/hoc-sinh") || isUnder(pathname, "/lop-cua-toi/yeu-cau"), desktopOnly: true };
-  const withStudents = mods.some(m => m.key === "lop")
+  const withStudents = head ? mods : mods.some(m => m.key === "lop")
     ? mods.flatMap<ModuleItem>(m => m.key === "lop" ? [m, studentItem] : [m])
     : [...mods, studentItem];
   // Thanh RỘNG (Figma "Điều hướng"): "Làm việc hằng ngày" = các module đang bật (trừ Học phí); Học phí đứng chung nhóm "Tiền" với Doanh thu; các nhóm còn lại là chính
   // danh sách của bảng "Khác". Module bị tắt vẫn chỉ ẩn khỏi thanh (dữ liệu giữ nguyên) nên nhóm đầu có thể ngắn hơn Figma.
   const asNav = (m: ModuleItem): NavItem => ({ key: m.key, label: m.label, href: m.href ?? "/lop-cua-toi", icon: m.icon, active: m.active, badge: m.badge });
   const [dayTeach, money, intro, account] = groups.map(moreToNavGroup);
-  const wide: NavGroup[] = [
+  const wide: NavGroup[] = head ? [{ title: "Dạy học", items: withStudents.map(asNav) }, dayTeach].filter(g => g.items.length > 0) : [
     { title: "Làm việc hằng ngày", items: withStudents.filter(m => m.key !== "hoc-phi").map(asNav) },
     dayTeach,
     { title: money.title, items: [...withStudents.filter(m => m.key === "hoc-phi").map(asNav), ...money.items] },
@@ -140,7 +144,7 @@ export default function TutorShell({
   return (
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
-      <ModuleRail roleLabel="GIA SƯ" ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
+      <ModuleRail roleLabel={head ? "CHỦ NHIỆM" : "GIA SƯ"} ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
         home={{ href: home, label: homeLabel }} footnote="Miễn phí ra mắt" />
 
       <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
@@ -154,14 +158,16 @@ export default function TutorShell({
             <TopDate />
             {/* HV-11: chuông thông báo (dùng lại thông báo có sẵn) + dấu hỏi trợ giúp dẫn tới trang Liên hệ hỗ trợ. */}
             <NotificationBell />
-            <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
+            {!head && <Link href="/lop-cua-toi/ho-tro" aria-label="Trợ giúp" title="Trợ giúp" data-help-link
               className="inline-flex flex-shrink-0 items-center justify-center w-11 h-11 rounded-lg border border-[var(--kin-vien-thuong)] text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-bang)] hover:text-[var(--kin-chu-chinh)] transition-colors">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <circle cx="12" cy="12" r="9.5" /><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.2-2.5 3.9" /><path d="M12 17.2h.01" />
               </svg>
-            </Link>
+            </Link>}
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
-              links={[{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }, { label: "Trang chủ KiN", href: "/" }]} />}
+              links={head
+                ? [{ label: "Trang quản trị", href: `https://${ADMIN_HOST}/admin` }, { label: "Trang chủ KiN", href: "/" }]
+                : [{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }, { label: "Trang chủ KiN", href: "/" }]} />}
           </div>
         </div>
         {children}

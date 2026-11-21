@@ -1,12 +1,13 @@
-// Truy vấn cho bảng "Lớp học" (xem tutorClassTable.ts). Chỉ ĐỌC; khoá theo chính gia sư.
+// Truy vấn cho bảng "Lớp học" (xem tutorClassTable.ts). Chỉ ĐỌC; khoá theo chính gia sư (Chủ nhiệm: mọi lớp).
 import { prisma } from "@/lib/prisma";
 import { formatScheduleRules, type TutorClassRow } from "@/lib/tutorClassTable";
 import { coverImageOf } from "@/lib/tutorClassRoutes";
 
-export async function loadTutorClassTable(tutorId: string): Promise<{ rows: TutorClassRow[]; totalStudents: number }> {
-  const own = { ownerId: tutorId };
+/** `tutorId` null = Chủ nhiệm (quản trị trung tâm, SCL-B Q1): MỌI lớp, mỗi dòng kèm gia sư phụ trách. */
+export async function loadTutorClassTable(tutorId: string | null): Promise<{ rows: TutorClassRow[]; totalStudents: number }> {
+  const own = tutorId ? { ownerId: tutorId } : {};
   const [courses, byCourse, students, rules, taught] = await Promise.all([
-    prisma.course.findMany({ where: own, select: { id: true, name: true, category: true, status: true, classStatus: true, capacity: true, bg: true }, orderBy: { createdAt: "desc" } }),
+    prisma.course.findMany({ where: own, select: { id: true, name: true, category: true, status: true, classStatus: true, capacity: true, bg: true, ownerId: true, owner: { select: { name: true } } }, orderBy: { createdAt: "desc" } }),
     prisma.enrollment.groupBy({ by: ["courseId"], where: { status: "active", course: own }, _count: { _all: true } }),
     prisma.enrollment.findMany({ where: { status: "active", course: own }, select: { userId: true }, distinct: ["userId"] }),
     prisma.classSchedule.findMany({ where: { active: true, course: own }, select: { courseId: true, dayOfWeek: true, startTime: true, endTime: true } }),
@@ -22,6 +23,7 @@ export async function loadTutorClassTable(tutorId: string): Promise<{ rows: Tuto
       schedule: formatScheduleRules(rules.filter(r => r.courseId === c.id)),
       sessionsTaught: taughtOf.get(c.id) ?? 0,
       cover: coverImageOf(c.bg), // chỉ https đã lọc (coverImageOf); chuỗi bg thô không bao giờ rời máy chủ
+      ...(tutorId ? {} : { owner: { id: c.ownerId, name: c.owner?.name ?? "" } }),
     })),
   };
 }

@@ -13,11 +13,12 @@ export type CourseAction =
   | "schedule.add.own" | "schedule.edit.own" | "schedule.edit.other" | "money.view" | "money.edit" | "attendance.export"
   | "community.post" | "community.moderate";
 
+// SCL-B (21/11/2026, Q1–Q2): người tạo lớp là "Gia sư phụ trách"; "Chủ nhiệm" là quản trị trung tâm (thấy và sửa mọi lớp).
 export const ROLE_LABEL: Record<CourseRole, string> = {
-  owner: "Chủ nhiệm",
+  owner: "Gia sư phụ trách",
   co_teacher: "Đồng giảng",
   subject_teacher: "Giáo viên bộ môn",
-  admin: "Quản trị trung tâm",
+  admin: "Chủ nhiệm",
   none: "Không thuộc lớp",
 };
 

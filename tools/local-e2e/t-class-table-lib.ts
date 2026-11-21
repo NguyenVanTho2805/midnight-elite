@@ -1,4 +1,4 @@
-import { formatScheduleRules, filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
+import { formatScheduleRules, filterClassRows, groupClassesByOwner, NO_OWNER_LABEL, type TutorClassRow } from "@/lib/tutorClassTable";
 import { check, section, done } from "./h";
 section("formatScheduleRules");
 check("không khung nào → null", formatScheduleRules([]) === null);
@@ -12,4 +12,12 @@ check("bộ lọc rỗng → đủ", filterClassRows(rows, { q: "", category: ""
 check("tìm theo tên, không phân biệt hoa thường", filterClassRows(rows, { q: " TOÁN ", category: "", status: "" }).map(x => x.id).join() === "a,c");
 check("tìm theo môn", filterClassRows(rows, { q: "vật", category: "", status: "" }).map(x => x.id).join() === "b");
 check("lọc môn + trạng thái cùng lúc", filterClassRows(rows, { q: "", category: "Toán", status: "closed" }).length === 0 && filterClassRows(rows, { q: "", category: "Toán", status: "open" }).length === 2);
+section("groupClassesByOwner (SCL-B: danh sách MỌI lớp của Chủ nhiệm)");
+// Phá cố ý: bỏ vế `(a.ownerId === null ? 1 : 0) - …` trong sort → ca "lớp chưa có chủ đứng cuối" đỏ; gộp theo tên thay vì id → ca "trùng tên" đỏ.
+const o = (id: string, ownerId: string | null, name: string): TutorClassRow => ({ ...r(id, id, "Toán", "open"), owner: { id: ownerId, name } });
+const g = groupClassesByOwner([o("x1", "u2", "Yến"), o("x2", null, ""), o("x3", "u1", "An"), o("x4", "u2", "Yến"), o("x5", "u3", "An")]);
+check("nhóm theo gia sư, xếp theo tên (vi); lớp chưa có chủ đứng cuối", g.map(x => x.ownerId).join() === "u1,u3,u2," && g[g.length - 1].ownerName === NO_OWNER_LABEL, g.map(x => [x.ownerId, x.ownerName]));
+check("giữ thứ tự lớp trong nhóm", g.find(x => x.ownerId === "u2")!.rows.map(x => x.id).join() === "x1,x4");
+check("hai gia sư trùng tên vẫn là hai nhóm (theo id)", g.filter(x => x.ownerName === "An").length === 2);
+check("không có lớp → không có nhóm", groupClassesByOwner([]).length === 0);
 done();

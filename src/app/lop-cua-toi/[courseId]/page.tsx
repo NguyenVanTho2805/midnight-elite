@@ -11,6 +11,7 @@
 //
 // Server component wrapper lấy course + role, client component render UI.
 import { redirect, notFound } from "next/navigation";
+import { isCenterAdmin } from "@/lib/tutorGate";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
@@ -55,7 +56,8 @@ export default async function LopPage({ params, searchParams }: Props) {
   // GS-LOP-GON (09/11/2026): CHỦ LỚP là gia sư thật chỉ có MỘT dải tab của lớp (…/quan-lop/<id>/*, mỗi tab một đường). Trang hộp việc 6 tab này không còn là
   // menu cạnh tranh với dải đó: chuyển hướng sang đúng tab, giữ các tham số phụ (moi, lich, them, duyet, n, ma) vì các POST 303 của tạo lớp / duyệt vào lớp /
   // thêm học sinh / mã mời trả về đây. Trang này không có loading.tsx nên redirect() ở đây là 307 thật (kiểm ở t-lop-gon). Đồng giảng, quản trị xem, học sinh: KHÔNG đổi.
-  if (isOwner && isTeacher) redirect(legacyClassTarget(courseId, sp));
+  // SCL-B (Q1): Chủ nhiệm (quản trị trung tâm) đứng lớp như chủ lớp ⇒ cùng dải tab quan-lop, không còn xem LopChiTiet ở vỏ học sinh.
+  if ((isOwner && isTeacher) || isCenterAdmin(session)) redirect(legacyClassTarget(courseId, sp));
 
   // TUT-dong-giang: gia sư không phải chủ lớp có thể là đồng giảng / giáo viên bộ môn (CourseTeacher active, đọc lại User từ DB). Người lạ vẫn 404 như cũ.
   let coRole: "co_teacher" | "subject_teacher" | null = null;

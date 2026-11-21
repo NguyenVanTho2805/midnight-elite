@@ -4,7 +4,8 @@
 // Ca phá cố ý: (1) bỏ dòng `if (role === "teacher") return [];` trong visibleModules → các ca "teacher" đỏ;
 // (2) gỡ `permission` khỏi "Lịch sử nạp Coin" → ca "admin_content không thấy Lịch sử nạp Coin" đỏ;
 // (3) thêm một module thứ năm → ca "đúng 4 module" đỏ.
-import { ADMIN_MODULES, groupSubs, matchSub, visibleModules } from "@/lib/adminNav";
+import { ADMIN_MODULES, groupSubs, matchSub, visibleModules, tutorShellManageLinks } from "@/lib/adminNav";
+import { ADMIN_HOST } from "@/lib/hostRouting";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type AdminRole, type Permission } from "@/lib/permissions";
 import { check, section, done } from "./h";
 import { COIN_VISIBLE, FEATURES, type FeatureEnv } from "@/lib/features";
@@ -75,6 +76,19 @@ for (const role of ["admin_super", "admin_content"] as const) {
   // DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — "Chữ trang chủ" nay cũng ẩn (cờ VAN_HANH_PHU), cùng Doanh thu, Gói KiN Pro (KINH_DOANH), Phễu gia sư, Số đo, Lịch sử đánh giá.
   const dgHidden = ["/admin/trang-chu", "/admin/doanh-thu", "/admin/goi-pro", "/admin/pheu", "/admin/so-do", "/admin/danh-gia"];
   check(`${role}: không thấy trang của phần ẩn (kể cả 6 trang DG); vẫn thấy Hàng chờ, Lớp, Đề thi`, [...hidden, ...dgHidden].every(h => !hs.includes(h)) && ["/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/thi-thu"].every(h => hs.includes(h)), hs);
+}
+
+section("tutorShellManageLinks (SCL-B: nhóm \"Quản lý\" trong vỏ gia sư của Chủ nhiệm)");
+// Phá cố ý: bỏ `allowed(role, s)` trong tutorShellManageLinks → ca "quản trị nội dung không thấy trang thiếu quyền" đỏ; bỏ dòng chặn vai → ca "gia sư không có nhóm" đỏ.
+{
+  const sup = tutorShellManageLinks("admin_super");
+  check("quản trị cấp 1: Gia sư · Học sinh · Hàng chờ duyệt, địa chỉ tuyệt đối sang tên miền admin",
+    sup.map(l => l.label).join("|") === "Gia sư|Học sinh|Hàng chờ duyệt" && sup.every(l => l.href.startsWith(`https://${ADMIN_HOST}/admin/`)), sup);
+  const con = tutorShellManageLinks("admin_content");
+  const subOf = (h: string) => ADMIN_MODULES.flatMap(m => m.subs).find(s => s.href === h)!;
+  check("quản trị nội dung chỉ thấy trang đủ quyền", con.every(l => { const s = subOf(l.href.replace(`https://${ADMIN_HOST}`, "")); return !s.permission || checkPermission("admin_content", s.permission); })
+    && con.length === ["/admin/gia-su", "/admin/hoc-sinh", "/admin/kiem-duyet"].filter(h => { const s = subOf(h); return !s.permission || checkPermission("admin_content", s.permission); }).length, con);
+  check("gia sư / không vai → không có nhóm Quản lý", tutorShellManageLinks("teacher").length === 0 && tutorShellManageLinks(null).length === 0);
 }
 
 done();

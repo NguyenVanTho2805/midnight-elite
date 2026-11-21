@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { isCenterAdmin } from "@/lib/tutorGate";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import type { CourseDB } from "./lessonForm";
@@ -48,11 +49,13 @@ export default function QuanLopCourse({ courseId, view }: { courseId: string; vi
     return <KinEmptyState title="Không tìm thấy lớp" action={toList}>Lớp này không còn hoặc đường dẫn bị sai. Cô chọn lại lớp ở danh sách lớp.</KinEmptyState>;
   }
   const course = phase.course;
-  // Máy chủ đã chặn người lạ; đây là lưới an toàn thứ hai (API đọc khoá là công khai): chỉ chủ lớp mới sửa được.
-  if (!user || course.ownerId !== user.id) {
+  // Máy chủ đã chặn người lạ; đây là lưới an toàn thứ hai (API đọc khoá là công khai): chỉ chủ lớp — hoặc Chủ nhiệm (quản trị trung tâm, SCL-B Q1) — mới sửa được.
+  const isOwner = !!user && course.ownerId === user.id;
+  if (!user || (!isOwner && !isCenterAdmin(user))) {
     return <KinEmptyState title="Bạn không có quyền với lớp này" action={toList}>Lớp này thuộc người khác nên KiN không hiện phần sửa của lớp.</KinEmptyState>;
   }
 
   if (view === "cai-dat") return <TabCaiDat courseSlug={course.id} course={course} />;
-  return <TabChuongBai courseSlug={course.id} initialSections={course.sections} canUpload />;
+  // Ô tải tệp lên KiN: /api/media/document/init vẫn chỉ nhận CHỦ lớp ⇒ Chủ nhiệm ở lớp của gia sư khác dán link (như đồng giảng).
+  return <TabChuongBai courseSlug={course.id} initialSections={course.sections} canUpload={isOwner} />;
 }

@@ -13,7 +13,8 @@ import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { coTeacherClassHref, mucCaiDatOf, mucHocSinhOf, type ClassQuery, type MucCaiDat, type MucHocSinh } from "@/lib/tutorClassRoutes";
 
-/** Vai của người xem trong lớp khi đã qua cổng gia sư (quản trị trung tâm không vào đường này — redirectIfNotTutor đã đưa đi). */
+/** Vai của người xem trong lớp khi đã qua cổng gia sư. SCL-B (Q1): quản trị trung tâm (Chủ nhiệm) vào đây như "owner" — ma trận courseAccess cho vai admin
+ *  đúng tập quyền của chủ lớp, nên dùng chung mọi nhánh "owner" của trang lớp thay vì viết kiểm tra riêng. */
 export type ClassViewRole = "owner" | "co_teacher" | "subject_teacher";
 
 /** Đầu lớp: một lần cho mọi tab (ClassHead). Chỉ SỐ học sinh, không tên. */
@@ -26,18 +27,17 @@ export type ClassGate =
 
 /**
  * Cổng của mọi trang quan-lop/[id]*. Id lạ (rỗng / NUL / > 200 ký tự) và lớp không có → not_found (404); lớp của người khác → forbidden (403, KHÔNG mang tên lớp / môn);
- * chủ lớp hoặc đồng giảng / giáo viên bộ môn đang hoạt động → ok kèm đầu lớp. Quản trị trung tâm (role "admin" của loadCourseAccess) không thuộc đường này → forbidden.
+ * chủ lớp, quản trị trung tâm (như chủ lớp) hoặc đồng giảng / giáo viên bộ môn đang hoạt động → ok kèm đầu lớp.
  */
 export async function loadClassHead(session: SessionPayload, courseId: string): Promise<ClassGate> {
   const acc = await loadCourseAccess(session, courseId);
   if (!acc.ok) return { ok: false, reason: acc.res.status === 404 ? "not_found" : "forbidden" };
-  if (acc.role === "admin") return { ok: false, reason: "forbidden" };
   const [c, studentCount] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, category: true, classStatus: true, status: true } }),
     prisma.enrollment.count({ where: { courseId, status: "active" } }),
   ]);
   if (!c) return { ok: false, reason: "not_found" };
-  return { ok: true, role: acc.role, head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
+  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
 }
 
 export interface ClassPageGate {

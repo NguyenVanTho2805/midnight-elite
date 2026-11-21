@@ -140,14 +140,13 @@ const RAIL = "Module của gia sư";
   await ct.close();
 
   // ───────────────────────────── P4 ─────────────────────────────
-  section("P4. Quản trị xem thử khu học sinh có băng rõ ràng");
+  section("P4. Quản trị: /lop-cua-toi là vỏ gia sư Chủ nhiệm (SCL-B); /student/* vẫn xem thử có băng");
   const ca = await ctxFor(SA, { width: 1280, height: 900 });
   const pa = await ca.newPage(); watch(pa);
   await pa.goto(`${BASE}/lop-cua-toi`, GOTO);
-  await pa.getByRole("heading", { name: "Lớp của tôi" }).waitFor({ timeout: 90000 });
-  await pa.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
-  const pv = pa.locator("[data-admin-preview]");
-  check("quản trị cấp 1 ở /lop-cua-toi: vỏ học sinh + băng 'Đang xem thử giao diện học sinh · Về bảng quản trị' (→ /admin)", await pa.getByRole("navigation", { name: "Module của học sinh" }).count() === 1 && await pv.count() === 1 && /Đang xem thử giao diện học sinh/.test(await pv.innerText()) && await pv.getByRole("link", { name: "Về bảng quản trị" }).getAttribute("href") === "/admin");
+  await pa.waitForURL(u => u.pathname === "/lop-cua-toi/lop", { timeout: 60000 }).catch(() => {});
+  await pa.getByRole("heading", { name: "Lớp học", level: 1 }).waitFor({ timeout: 90000 });
+  check("SCL-B: quản trị cấp 1 ở /lop-cua-toi → /lop-cua-toi/lop trong vỏ gia sư (không băng xem thử)", new URL(pa.url()).pathname === "/lop-cua-toi/lop" && await pa.getByRole("navigation", { name: "Module của gia sư" }).count() === 1 && await pa.locator("[data-admin-preview]").count() === 0, pa.url());
   await pa.goto(`${BASE}/student/viec-cua-toi`, GOTO);
   await pa.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
   check("quản trị cấp 1 vào /student/viec-cua-toi vẫn được (xem thử), cũng có băng", new URL(pa.url()).pathname === "/student/viec-cua-toi" && await pa.locator("[data-admin-preview]").count() === 1);

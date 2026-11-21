@@ -121,4 +121,9 @@ check("chỉ ĐÚNG hai đường dẫn được miễn: '/manifest.webmanifest/
   ["/manifest.webmanifest/x", "/sw.js/x", "/manifest.webmanifestx", "/sw.json/x"].every(p => d(ADM, p, sup).kind === "redirect"), ["/manifest.webmanifest/x", "/sw.js/x", "/manifest.webmanifestx"].map(p => d(ADM, p, sup)));
 check("isPwaFile chỉ nhận đúng hai đường dẫn", isPwaFile("/sw.js") && isPwaFile("/manifest.webmanifest") && !isPwaFile("/sw.js/") && !isPwaFile("/Sw.js") && !isPwaFile("/manifest.json") && !isPwaFile("/icons/kin-192.png"));
 
+// SCL-B (Q1): Chủ nhiệm (quản trị cấp 1 / nội dung) ở gốc /lop-cua-toi tên miền chính → thư viện Lớp (họ không có Hộp việc riêng); gia sư / học sinh không đổi.
+// Phá cố ý: xoá dòng `if (pathname === TUTOR_ROOT && isCenter(session))` trong hostRouting.ts → ca đầu đỏ.
+check("SCL-B: Chủ nhiệm mở /lop-cua-toi → 307 /lop-cua-toi/lop (cùng tên miền)", [sup, content].every(s => eq(d(MAIN, "/lop-cua-toi", s), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/lop" })), [d(MAIN, "/lop-cua-toi", sup), d(MAIN, "/lop-cua-toi", content)]);
+check("SCL-B: học sinh ở /lop-cua-toi vẫn next", d(MAIN, "/lop-cua-toi", student).kind === "next");
+
 done();

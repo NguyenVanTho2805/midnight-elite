@@ -3,7 +3,8 @@
 //   - gia sư → vỏ GIA SƯ (TT-203): thanh module bật sẵn + số việc, lấy ở máy chủ;
 //   - gia sư CHỜ DUYỆT (role student + đơn đang chờ) → vỏ GIA SƯ dạng chờ duyệt (3 mục, băng "Hồ sơ gia sư đang chờ duyệt");
 //   - học sinh → vỏ HỌC SINH (cùng quy tắc với src/lib/signedInShell.ts);
-//   - quản trị cấp 1 / nội dung → vỏ HỌC SINH kèm băng "Đang xem thử giao diện học sinh · Về bảng quản trị";
+//   - quản trị cấp 1 / nội dung → SCL-B (21/11/2026, Q1): vỏ GIA SƯ bản "Chủ nhiệm" (module Lớp + nhóm "Quản lý" sang tên miền admin), không còn xem thử;
+//   - role admin không rõ adminRole → vỏ HỌC SINH kèm băng "Đang xem thử giao diện học sinh · Về bảng quản trị";
 //   - chưa đăng nhập → không vỏ: các trang tự chuyển sang /dang-nhap?redirect=…
 // Dùng ở (tutor)/layout.tsx và [courseId]/layout.tsx. Trước 16/10/2026 chỉ nhóm (tutor) có vỏ và chỉ cho gia sư: trang lớp /lop-cua-toi/[lớp] của CẢ HAI vai và danh sách
 // /lop-cua-toi của học sinh hiện ra trần, không còn đường đi đâu — bài rà vai học sinh bắt được, bài rà vai gia sư trước đó chỉ kiểm "vỏ sai", không kiểm "không vỏ".
@@ -14,7 +15,9 @@ import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { loadScheduleCounters } from "@/lib/reminderServer";
 import { loadTutorTodoTotal } from "@/lib/tutorDashboard";
 import { tutorApplicationStatus } from "@/lib/tutorProfile";
-import { tutorShellKind } from "@/lib/tutorGate";
+import { isCenterAdmin, tutorShellKind } from "@/lib/tutorGate";
+import { tutorShellManageLinks } from "@/lib/adminNav";
+import type { AdminRole } from "@/lib/permissions";
 import TutorShell from "@/components/tutor/TutorShell";
 import StudentFrame from "@/components/shell/StudentFrame";
 
@@ -33,7 +36,9 @@ export default async function LopCuaToiFrame({ children }: { children: ReactNode
 
   if (kind === "tutor-pending") return <TutorShell badges={{}} pending>{children}</TutorShell>;
   if (kind === "student") return <StudentFrame>{children}</StudentFrame>;
-  if (kind !== "tutor") return <StudentFrame preview>{children}</StudentFrame>; // quản trị xem thử
+  if (kind !== "tutor") return <StudentFrame preview>{children}</StudentFrame>; // quản trị không rõ cấp: xem thử
+  // Chủ nhiệm: không Hộp việc / Lịch / Học phí riêng ⇒ không số đếm; nhóm Quản lý theo quyền từng trang quản trị.
+  if (isCenterAdmin(session)) return <TutorShell badges={{}} manage={tutorShellManageLinks(session.adminRole as AdminRole)}>{children}</TutorShell>;
 
   const prefs = readPreferences(me?.preferences);
   const inboxOn = isTutorModuleVisible(prefs, "hop-viec");

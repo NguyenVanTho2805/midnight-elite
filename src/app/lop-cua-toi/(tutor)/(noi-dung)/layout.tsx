@@ -13,7 +13,7 @@ import TutorContentTabs from "@/components/tutor/TutorContentTabs";
 
 export default async function TutorContentLayout({ children }: { children: ReactNode }) {
   // Layout máy chủ không biết pathname → khách về /dang-nhap?redirect=/lop-cua-toi như trước (trang gốc /admin/… tự giữ ?redirect= đúng trang khi cần).
-  await redirectIfNotTutor(await getSession(), { path: "/lop-cua-toi", adminTo: "/admin" });
+  await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: "/lop-cua-toi", adminTo: "/admin" });
   return (
     <>
       <TutorContentTabs scope="de-thi" />
