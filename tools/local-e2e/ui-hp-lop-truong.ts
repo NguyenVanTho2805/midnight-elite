@@ -83,8 +83,6 @@ const DW = Number(process.env.DESKTOP_W ?? 1600);
   await p.getByLabel(/Tên lớp/).fill("Lớp bảng mới UI");
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("không nhập đơn giá vẫn qua được bước 1", await p.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "2");
-  await p.locator("[data-one-off]").click();
-  await p.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await p.waitForURL(/\/lop-cua-toi\/(quan-lop\/)?lop-bang-moi-ui/, { timeout: 90000 });

@@ -1,6 +1,6 @@
 // Bộ component KiN — kiểm tra tĩnh trên mã nguồn (không cần máy chủ): xuất đủ component, không còn nút đỏ viết tay,
 // không còn chữ nhỏ hơn 11,1px (sàn cỡ chữ của Figma), không còn window.confirm ở màn gia sư, token bóng/lớp phủ đủ ở cả hai nơi khai báo.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { check, section, done } from "./h";
 import { kinRequiredCheckValue, kinUncontrolledAdjust } from "@/components/kin/KinSelect";
@@ -39,8 +39,10 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("quan-tri-vien/page.tsx: không tự viết role=\"tab\"", !/role="tab"/.test(read("src/app/(admin)/admin/quan-tri-vien/page.tsx")));
   for (const f of ["src/app/lop-cua-toi/(tutor)/hoc-phi/HocPhiClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
     check(`${f.split("/").slice(-2).join("/")}: tab dùng KinTabs (không tự viết role="tab")`, /KinTabs/.test(read(f)) && !/role="tab"/.test(read(f)));
-  check("ToastProvider hiển thị bằng KinToast, có toast.warn + dòng phụ", /KinToast/.test(read("src/components/ui/Toast.tsx")) && /warn:/.test(read("src/components/ui/Toast.tsx")) && /detail/.test(read("src/components/ui/Toast.tsx")));
-  check("ConfirmModal cũ chỉ còn là lớp bọc KinConfirm", /KinConfirm/.test(read("src/components/ui/ConfirmModal.tsx")) && !/fixed inset-0/.test(read("src/components/ui/ConfirmModal.tsx")));
+  check("ToastProvider hiển thị bằng KinToast, có toast.warn + dòng phụ", /KinToast/.test(read("src/components/kin/ToastProvider.tsx")) && /warn:/.test(read("src/components/kin/ToastProvider.tsx")) && /detail/.test(read("src/components/kin/ToastProvider.tsx")));
+  // SCL-F2 (P2-29): một hệ toast, một hệ hộp xác nhận — src/components/ui/* (ConfirmModal, Toast cũ…) đã xoá; AdminToast chỉ còn là lớp chuyển sang useToast.
+  check("src/components/ui/ không còn (ConfirmModal, Toast cũ đã gỡ)", !existsSync(join(ROOT, "src/components/ui")));
+  check("AdminToast không tự vẽ toast riêng, đi qua useToast (KinToast)", /useToast/.test(read("src/components/AdminToast.tsx")) && !/fixed top-4/.test(read("src/components/AdminToast.tsx")));
   check("tutor Badge dùng KinStatus", /KinStatus/.test(read("src/components/tutor/shared.tsx")));
   for (const f of ["src/components/tutor/ClassInvites.tsx", "src/app/lop-cua-toi/(tutor)/kiem-duyet/KiemDuyetClient.tsx", "src/app/lop-cua-toi/(tutor)/ke-hoach-buoi/[id]/KeHoachEditorClient.tsx"])
     check(`${f.split("/").pop()}: xác nhận việc không hoàn tác bằng KinConfirm nguy hiểm, không window.confirm`, /<KinConfirm/.test(read(f)) && /tone="nguy-hiem"/.test(read(f)) && !/window\.confirm|[^.\w]confirm\(/.test(read(f)));
@@ -63,7 +65,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   const ntb = read("src/components/student/nop-tep/NopTepBox.tsx");
   check("NopTepBox: hỏi lại bằng useKinConfirm trước khi nộp lại bài đã chấm (đúng một {dialog} cho mỗi hook)", /ask\(\{\s*title:\s*"Nộp lại bài đã chấm\?"/.test(ntb) && (ntb.match(/useKinConfirm\(\)/g) ?? []).length === (ntb.match(/\{dialog\}/g) ?? []).length, { hooks: (ntb.match(/useKinConfirm\(\)/g) ?? []).length, dialogs: (ntb.match(/\{dialog\}/g) ?? []).length });
   check("student/bai-giang/[lessonId]: phần nộp bài dùng <NopTepBox>", /<NopTepBox\b/.test(read("src/app/(student)/student/bai-giang/[lessonId]/page.tsx")));
-  for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx"]) {
+  for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/ngan-hang-de-thi/page.tsx"]) { // SCL-F2: admin/khoa-hoc/[id] bỏ phần soạn (không còn hỏi xoá)
     const t = read(f), asks = (t.match(/await ask\(/g) ?? []).length, dialogs = (t.match(/\{dialog\}/g) ?? []).length, hooks = (t.match(/useKinConfirm\(\)/g) ?? []).length;
     check(`${f.split("/").slice(-2).join("/")}: dùng useKinConfirm (${asks} lần hỏi, ${hooks} hook, ${dialogs} hộp) — mỗi thành phần có hook thì có đúng một {dialog}`, asks >= 1 && hooks >= 1 && hooks === dialogs, { asks, hooks, dialogs });
   }
@@ -97,7 +99,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("KinSelect: tên nút = nhãn + giá trị đang chọn (aria-labelledby gồm id nhãn và id span giá trị; chỉ aria-label ⇒ span ẩn mang nhãn)",
     /id=\{valueId\}/.test(ks) && /aria-labelledby=\{nameId \? `\$\{nameId\} \$\{valueId\}` : undefined\}/.test(ks) && /<span id=\{labelId\} hidden>\{labelText\}<\/span>/.test(ks) && /const labelText = ariaLabel \?\? wrapLabel/.test(ks)
     && !/aria-label=\{aria\["aria-label"\]\}/.test(ks));
-  check("TabCaiDat.tsx: hai KinSelect nối nhãn bằng aria-labelledby (để đọc cả giá trị)", /aria-labelledby="class-category-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")) && /aria-labelledby="class-status-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")));
+  check("TabCaiDat.tsx: hai KinSelect (môn, khối — SCL-F2) nối nhãn bằng aria-labelledby (để đọc cả giá trị)", /aria-labelledby="class-category-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")) && /aria-labelledby="class-grade-nhan"/.test(read("src/components/tutor/quan-lop/TabCaiDat.tsx")));
   check("KinSelect không xuất qua kin/index.ts (import thẳng tệp — tệp chung không đổi)", !/KinSelect/.test(idx));
   for (const f of ["src/components/tutor/HocSinh.tsx", "src/components/tutor/quan-lop/AssignmentEditor.tsx", "src/components/tutor/quan-lop/TabCaiDat.tsx", "src/components/tutor/quan-lop/TabChuongBai.tsx"]) {
     const t = read(f).replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, ""); // bỏ chú thích

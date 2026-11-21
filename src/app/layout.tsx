@@ -5,7 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import InitScript from "@/components/InitScript";
 import { GlobalDropGuard } from "@/components/GlobalDropGuard";
-import { ToastProvider } from "@/components/ui";
+import { ToastProvider } from "@/components/kin/ToastProvider";
 import { ThemeApplier } from "@/components/ThemeApplier";
 import AccountThemeSync from "@/components/AccountThemeSync";
 import { THEME_INIT_SCRIPT } from "@/lib/kinTheme";

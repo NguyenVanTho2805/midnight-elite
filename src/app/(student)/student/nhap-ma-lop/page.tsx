@@ -12,7 +12,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useToast } from "@/components/ui";
+import { useToast } from "@/components/kin/ToastProvider";
 import { KinButton, KinCallout } from "@/components/kin";
 import { KinCopyButton } from "@/components/kin/CopyButton";
 import { REAPPLY_COOLDOWN_HOURS } from "@/lib/joinRequest";

@@ -136,9 +136,9 @@ import { prisma } from "@/lib/prisma";
   await mp.locator("[data-course-row]").first().waitFor({ timeout: 90000 });
   check("không tràn ngang (scrollWidth ≤ 390)", await mp.evaluate(() => document.documentElement.scrollWidth <= 390));
   check("bộ lọc gập vào nút 'Lọc'", await mp.getByRole("button", { name: /^Lọc/ }).isVisible() && !(await mp.getByRole("combobox", { name: /Kỳ thi/ }).isVisible()));
-  const fab = mp.getByRole("button", { name: "Tạo khoá học" });
+  const fab = mp.getByRole("link", { name: "Tạo lớp", exact: true }); // SCL-F2: một cửa tạo lớp (TaoLop trong vỏ gia sư)
   const box = await fab.boundingBox();
-  check("nút 'Tạo khoá học' thấy được không cần cuộn", !!box && box.y + box.height <= 800 && box.height >= 44, box);
+  check("nút 'Tạo lớp' thấy được không cần cuộn, trỏ /lop-cua-toi/lop/tao", (await fab.getAttribute("href")) === "/lop-cua-toi/lop/tao" && !!box && box.y + box.height <= 800 && box.height >= 44, box);
   await mp.locator("[data-course-row] button").first().click();
   const sp = mp.locator("[data-side-panel]");
   await sp.waitFor({ timeout: 15000 });

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { KinButton, KinConfirm, KinSkeleton, KinStateCard, KinStatus, KinTabs, KinToast, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
-import { useToast } from "@/components/ui";
+import { useToast } from "@/components/kin/ToastProvider";
 
 const VARIANTS: { v: KinButtonVariant; label: string }[] = [
   { v: "primary", label: "Chính" }, { v: "secondary", label: "Thường" }, { v: "ghost", label: "Ghost" },

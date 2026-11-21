@@ -12,10 +12,8 @@ const SMALL = `[...document.querySelectorAll('main a, main button, main select, 
   return e.offsetParent && r.height < 43.5 && e.type !== 'checkbox' && e.type !== 'radio' && !e.closest('nav') && !e.closest('label') && !e.closest('nextjs-portal') && !e.closest('[data-kin-toast]') && e.getAttribute('aria-label') !== 'Mở rộng thanh bên';
 }).map(e => (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 30) + ':' + Math.round(e.getBoundingClientRect().height))`;
 
-// TUT-lich-keo-tha: bước Lịch học nay BẮT BUỘC. Bài này kiểm học phí, không kiểm lịch → đi bằng lối thoát duy nhất "Lớp này học buổi lẻ" (qua KinConfirm), rồi Tiếp tục.
+// SCL-F2 (P2-18): bước Lịch học tuỳ chọn — bài này kiểm học phí, không kiểm lịch → bấm thẳng Tiếp tục.
 async function skipSchedule(p: import("./ui").Page) {
-  await p.locator("[data-one-off]").click();
-  await p.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
 }
 

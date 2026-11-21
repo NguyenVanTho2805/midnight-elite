@@ -49,8 +49,8 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
   await eventually("giao diện: lại thấy 'đang giữ 1'", async () => /đang giữ 1/.test(await rowA.innerText()));
 
   section("Lịch học của lớp: link vào lớp");
-  await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=lich-hoc`, { waitUntil: "networkidle" });
-  // D1: tab Lịch học của admin dùng lưới LichKhung (panel khung giờ), không còn form cũ.
+  // SCL-F2 (P2-27): khung giờ chỉ còn đặt ở Lịch học của lớp trong vỏ gia sư (lưới LichKhung); trang admin của lớp không còn lưới.
+  await page.goto(`${BASE}/lop-cua-toi/quan-lop/${course.id}/lich-hoc`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Thêm khung giờ" }).click();
   await page.getByLabel(/Link vào lớp/).fill("https://meet.google.com/xyz-abcd-efg");
   await page.getByRole("button", { name: "Lưu khung giờ" }).click();

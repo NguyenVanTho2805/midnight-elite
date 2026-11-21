@@ -1,6 +1,6 @@
 // Wizard tạo lớp 3 bước (LO-03) + Thêm học sinh trong chi tiết lớp (LO-09) + tổng hợp link báo cáo cả lớp (LO-13), trình duyệt thật.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-tao-lop-wizard.ts
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
+import { BASE, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -37,11 +37,8 @@ import { prisma } from "@/lib/prisma";
   await p.getByLabel(/^Đơn giá/).fill("150000");
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("sang bước 2 'Lịch học' (BU-01: Thông tin → Lịch học → Cách vào lớp)", await stepOf() === "2" && await p.getByRole("button", { name: "Thêm khung giờ" }).isVisible());
-  // TUT-lich-keo-tha: bước Lịch học BẮT BUỘC. 0 khung → "Tiếp tục" bị chặn (trước đây đi tiếp được, nút cuối ghi 'Tạo lớp' 0 buổi).
-  await p.getByRole("button", { name: "Tiếp tục" }).click();
-  check("bước 2: chưa có khung giờ → 'Tiếp tục' bị chặn, ở lại bước 2, báo 'ít nhất một khung giờ'", await stepOf() === "2" && await p.locator("p[role=alert]").filter({ hasText: "ít nhất một khung giờ" }).isVisible());
-  check("lối thoát duy nhất là liên kết chữ 'Lớp này học buổi lẻ, không lặp hằng tuần'", await p.locator("[data-one-off]").isVisible() && (await p.locator("[data-one-off]").innerText()).includes("Lớp này học buổi lẻ"));
-  check("bước 2 hiện nhãn 'Bắt buộc' và câu rỗng 'Lớp chưa có lịch học'", await p.locator("[data-wizard-schedule]").getByText("Bắt buộc").isVisible() && await p.locator("[data-empty-hint]").isVisible());
+  // SCL-F2 (P2-18): bước Lịch học TUỲ CHỌN — không còn lỗi "ít nhất một khung giờ", không còn liên kết/hộp "buổi lẻ" (ca không lịch ở section dưới).
+  check("bước 2 ghi 'Không bắt buộc', không còn lối 'buổi lẻ' và không báo lỗi khi chưa có khung", await p.locator("[data-wizard-schedule]").getByText("Không bắt buộc").isVisible() && await p.locator("[data-one-off]").count() === 0 && await p.locator("p[role=alert]").count() === 0);
   await p.getByRole("button", { name: "Thêm khung giờ" }).click();
   await kinSelect(p.locator('[data-block-panel] [role="combobox"]').first(), "2");
   await kinSelect(p.locator("#sched-s"), "1140"); await kinSelect(p.locator("#sched-e"), "1230");
@@ -66,7 +63,7 @@ import { prisma } from "@/lib/prisma";
   check("bước 3: nút 'Tạo lớp + 4 buổi'", await stepOf() === "3" && await p.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }).isVisible());
   // Em đã học lớp khác của cô nằm trong mục gập ở bước 3.
   await p.locator("[data-wizard-students] summary").click();
-  check("mục gập có chọn em đã học lớp khác", await p.getByText("Chọn em đã học một lớp khác của cô").isVisible());
+  check("mục gập có chọn em đã học lớp khác", await p.getByText("Chọn em đã học một lớp khác của bạn").isVisible());
   const rows = p.locator("[data-picker-row]");
   await rows.first().waitFor({ timeout: 30000 });
   check("danh sách chỉ có em của cô Lan (An, Bình); KHÔNG có em của cô khác", await rows.count() === 2 && await p.getByText("Em Của Cô Khác").count() === 0);
@@ -91,34 +88,44 @@ import { prisma } from "@/lib/prisma";
   check("tới trang lớp, mục Mã mời (tab Học sinh) mở sẵn + thông báo 'Đã thêm 2 học sinh'", /muc=ma-moi/.test(p.url()) && (await p.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời" && await p.getByText("Đã thêm 2 học sinh vào lớp").isVisible());
   check("em của cô khác KHÔNG bị ghi danh", await prisma.enrollment.count({ where: { courseId: made.id, userId: X.id } }) === 0);
 
-  section("Lối thoát 'Lớp này học buổi lẻ': KinConfirm → tạo lớp KHÔNG khung (scheduleCount=0)");
+  section("SCL-F2: bỏ qua bước Lịch học → tạo lớp KHÔNG khung (scheduleCount=0), không hộp xác nhận");
   const o = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(o);
   let nativeDialogs = 0; o.on("dialog", d => { nativeDialogs++; void d.dismiss(); });
   await o.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle", timeout: 120000 });
   await o.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
   await o.getByLabel(/Tên lớp/).fill("Lớp buổi lẻ");
+  await kinSelect(o.locator("#tl-mon"), "Toán"); await kinSelect(o.locator("#tl-khoi"), "Lớp 9");
   await o.getByRole("radio", { name: /^Miễn phí/ }).check();
   await o.getByRole("button", { name: "Tiếp tục" }).click();
-  await o.locator("[data-one-off]").click();
-  const dlg = o.getByRole("dialog").filter({ hasText: "Tạo lớp không có lịch cố định?" });
-  await dlg.waitFor({ timeout: 10000 });
-  check("KinConfirm nêu hệ quả: 'Cô đặt lịch sau ở mục Lịch'; không window.confirm", (await dlg.innerText()).includes("Cô đặt lịch sau ở mục Lịch") && nativeDialogs === 0);
-  await dlg.getByRole("button", { name: "Quay lại" }).click();
+  check("bước 2 chưa có khung → 'Tiếp tục' sang bước 3 luôn, không hộp thoại", await o.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "2");
   await o.getByRole("button", { name: "Tiếp tục" }).click();
-  check("bấm 'Quay lại' trong hộp → chưa chọn gì, 'Tiếp tục' vẫn bị chặn ở bước 2", await o.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "2");
-  await o.locator("[data-one-off]").click();
-  await o.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
-  check("chọn 'Vẫn tạo không lịch' → tóm tắt nói lớp buổi lẻ, liên kết thoát biến mất", (await o.locator("[data-wizard-summary]").innerText()).includes("buổi lẻ") && await o.locator("[data-one-off]").count() === 0);
-  await o.getByRole("button", { name: "Tiếp tục" }).click();
+  check("đã sang bước 3, không window.confirm / KinConfirm nào", await o.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "3" && nativeDialogs === 0 && await o.getByRole("dialog").count() === 0);
   await o.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await o.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-buoi-le/, { timeout: 90000 });
   const le = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Lớp buổi lẻ" } });
-  check("DB: lớp buổi lẻ được tạo, 0 khung giờ", (await prisma.classSchedule.count({ where: { courseId: le.id } })) === 0);
+  check("DB: lớp không lịch được tạo, 0 khung giờ; môn · khối lưu 'Toán · Lớp 9' (KinSelect danh sách cố định)", (await prisma.classSchedule.count({ where: { courseId: le.id } })) === 0 && le.category === "Toán · Lớp 9", le.category);
   // LOI-02: tab Giáo trình đã bỏ — …/giao-trinh 307 về gốc lớp (tab "Bài học"); dòng nhắc "Lớp chưa có lịch học" của Giáo trình không còn với chủ lớp (tab Lịch học bỏ khỏi dải).
   await o.goto(`${BASE}/lop-cua-toi/quan-lop/${le.id}/giao-trinh`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await o.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${le.id}`, { timeout: 90000 });
   await o.getByText("Lớp chưa có bài học").first().waitFor({ timeout: 90000 });
   check("LOI-02: lớp mới mở vào 'Bài học' rỗng ('Lớp chưa có bài học' + 'Tạo chương đầu tiên'), không còn dòng nhắc đặt lịch", await o.getByRole("button", { name: "Tạo chương đầu tiên" }).isVisible() && (await o.locator("[data-gt-chua-co-lich]").count()) === 0);
+
+  section("SCL-F2: Chủ nhiệm đi hết 3 bước — không mục học phí, không mục 'em đã học lớp khác', lớp mặc định (không CourseFeeRate)");
+  const SA = await mkSuper("Chủ nhiệm wizard");
+  const sa = await (await ctxFor(SA, { width: 1280, height: 900 })).newPage(); watch(sa);
+  const saBad: string[] = []; sa.on("response", r => { if (r.url().includes("/api/tutor/hoc-sinh") && r.status() >= 400) saBad.push(`${r.status()} ${r.url()}`); });
+  await sa.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle", timeout: 120000 });
+  await sa.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
+  check("Chủ nhiệm bước 1: không 'Cách tính học phí' / 'Có học phí' / ô Đơn giá", (await sa.getByText(/Cách tính học phí|Có học phí/).count()) === 0 && (await sa.getByLabel(/Đơn giá/).count()) === 0);
+  await sa.getByLabel(/Tên lớp/).fill("Lớp trung tâm wizard");
+  await sa.getByRole("button", { name: "Tiếp tục" }).click();
+  await sa.getByRole("button", { name: "Tiếp tục" }).click();
+  check("Chủ nhiệm bước 3: không mục 'Thêm sẵn em đã học lớp khác', không ErrorStrip tải học sinh", (await sa.locator("[data-wizard-students]").count()) === 0 && (await sa.getByText(/Không tải được danh sách học sinh/).count()) === 0);
+  await sa.getByRole("button", { name: "Tạo lớp", exact: true }).click();
+  await sa.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-trung-tam-wizard/, { timeout: 90000 });
+  const cm = await prisma.course.findFirstOrThrow({ where: { name: "Lớp trung tâm wizard" } });
+  check("DB: lớp của Chủ nhiệm, feeMode mặc định, KHÔNG CourseFeeRate, instructor 'KiN'", cm.ownerId === SA.id && cm.feeMode === "monthly_sessions" && (await prisma.courseFeeRate.count({ where: { courseId: cm.id } })) === 0 && cm.instructor === "KiN", { f: cm.feeMode, i: cm.instructor });
+  check("Chủ nhiệm: không gọi /api/tutor/hoc-sinh lỗi (403)", saBad.length === 0, saBad);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");
   const cNew = await mkCourse(T.id, { name: "Lớp trống" });
@@ -162,7 +169,7 @@ import { prisma } from "@/lib/prisma";
       await m.locator("[data-week-editor]").waitFor({ timeout: 30000 });
       const sm2 = await m.evaluate(`[...document.querySelectorAll('[data-wizard-schedule] button:not([data-block-id]), [data-wizard-schedule] select')].filter(e => e.offsetParent && (e.getBoundingClientRect().height < 43.5 || e.getBoundingClientRect().width < 43.5)).map(e => e.textContent.trim().slice(0,20))`) as string[];
       check("390px bước 2 (Lịch học): không tràn ngang, nút/ô chọn ngày ≥ 44px", (await m.evaluate("document.documentElement.scrollWidth")) as number <= 390 && sm2.length === 0, sm2);
-      await m.locator("[data-one-off]").click(); await m.getByRole("button", { name: "Vẫn tạo không lịch" }).click(); await m.getByRole("button", { name: "Tiếp tục" }).click(); await m.locator("[data-wizard-students] summary").click(); await m.locator("[data-picker-row]").first().waitFor({ timeout: 30000 }); }
+      await m.getByRole("button", { name: "Tiếp tục" }).click(); /* SCL-F2: lịch tuỳ chọn, đi thẳng bước 3 */ await m.locator("[data-wizard-students] summary").click(); await m.locator("[data-picker-row]").first().waitFor({ timeout: 30000 }); }
     else await m.locator("[data-lop-bao-cao]").first().waitFor({ timeout: 30000 });
     const small = await m.evaluate(`[...document.querySelectorAll('main a, main button, main select, main input, [role=tab]')].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5 && e.type !== 'checkbox' && !e.closest('nav') && !e.closest('label')).map(e => e.textContent.trim().slice(0,30) + ':' + Math.round(e.getBoundingClientRect().height))`) as string[];
     check(`${path}: không tràn ngang, nút ≥ 44px`, (await m.evaluate("document.documentElement.scrollWidth")) as number <= 390 && small.length === 0, small);

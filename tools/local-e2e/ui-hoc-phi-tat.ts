@@ -27,8 +27,6 @@ import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
   await shot(p, "hp-tat-tao-lop-b1-1280");
   await p.getByLabel(/Tên lớp/).fill("Hoá 11 thử");
   await p.getByRole("button", { name: "Tiếp tục" }).click();
-  await p.locator("[data-one-off]").click();
-  await p.getByRole("button", { name: "Vẫn tạo không lịch" }).click();
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("bước 3: có 'Cô duyệt', 'Chỉ mã mời'; KHÔNG có 'Vào ngay'", await p.locator("[data-policy=approve]").isVisible() && await p.locator("[data-policy=invite_only]").isVisible() && (await p.locator("[data-policy=open]").count()) === 0);
   await p.getByRole("button", { name: "Tạo lớp", exact: true }).click();

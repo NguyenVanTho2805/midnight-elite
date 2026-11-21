@@ -225,10 +225,9 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   await typeIn(p.getByLabel(/Tên lớp/), courseName);
   await typeIn(p.getByLabel(/^Đơn giá/), "150000");
   await click(p.getByRole("button", { name: "Tiếp tục" }));
-  // TUT-lich-keo-tha: bước Lịch học BẮT BUỘC. Chưa có khung → "Tiếp tục" bị chặn; thêm một khung 17:00–18:00 (hôm nay) bằng nút + panel rồi mới đi tiếp.
-  sub("bước 2 'Lịch học' (bắt buộc ≥ 1 khung): Tiếp tục bị chặn khi chưa có khung");
-  await click(p.getByRole("button", { name: "Tiếp tục" }));
-  check("chưa có khung giờ → ở lại bước 2 và báo 'ít nhất một khung giờ'", await p.locator("p[role=alert]").filter({ hasText: "ít nhất một khung giờ" }).isVisible());
+  // SCL-F2 (P2-18): bước Lịch học TUỲ CHỌN. Hành trình vẫn thêm một khung 17:00–18:00 (hôm nay) để các bước sau có buổi học.
+  sub("bước 2 'Lịch học' (không bắt buộc): không báo lỗi khi chưa có khung");
+  check("bước 2 ghi 'Không bắt buộc', không lỗi khung giờ", await p.locator("[data-wizard-schedule]").getByText("Không bắt buộc").isVisible() && (await p.locator("p[role=alert]").count()) === 0);
   await click(p.getByRole("button", { name: "Thêm khung giờ" }));
   await pick(p.locator('[data-block-panel] [role="combobox"]').first(), dayOfWeekOfKey(vnDateKeyOf(new Date())));
   await pick(p.locator("#sched-s"), 17 * 60);
@@ -316,7 +315,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
   check("Hộp việc đang trống việc hoặc liệt kê việc — có chữ giải thích, không trắng", inboxText.replace(/\s+/g, "").length > 200);
 
   // ───────────────────── NC2-029: kiểm thêm (không tính vào số đo) ─────────────────────
-  section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp vẫn bắt buộc đủ 4 ô");
+  section("NC2-029. Menu ··· của gia sư có 'Mở lớp'; quản trị tạo lớp qua TaoLop, vẫn bắt buộc tên lớp");
   await p.goto(`${BASE}/lop-cua-toi/quan-lop`, GOTO);
   await p.waitForURL(/\/lop-cua-toi\/lop$/, { timeout: 60000 });
   // Lớp CHƯA có học sinh thì dòng lớp hiện "Mời học sinh →" (LopHoc.tsx: empty ? Mời : "Mở lớp →" với aria-label "Mở lớp <tên>"), còn tên lớp luôn là liên kết tới /lop-cua-toi/<lớp>:
@@ -326,22 +325,14 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
     const before = await prisma.course.count();
     const ac = await ctxFor(root, { width: 1280, height: 900 });
     const ap2 = await ac.newPage();
+    // SCL-F2 (P2-26): ngăn kéo "Tạo khoá học mới" đã bỏ — ?tao=1 tải cứng sang TaoLop, cửa tạo lớp duy nhất (không giá bán / số bài học).
     await ap2.goto(`${BASE}/admin/khoa-hoc?tao=1`, GOTO);
-    const adr = ap2.locator("div.fixed.right-0");
-    await adr.getByRole("heading", { name: "Tạo khoá học mới" }).waitFor({ timeout: 90000 });
-    await ap2.waitForTimeout(400);
-    const aText = await adr.innerText();
-    const stars = await adr.locator("label span.text-red-500").count();
-    check("quản trị trung tâm: drawer vẫn có 4 dấu * (Tên, Ngày khai giảng, Giá bán, Số bài học), không '(tuỳ chọn · mặc định)'", stars === 4 && !aText.includes("tuỳ chọn · mặc định"), { stars });
-    await adr.getByRole("button", { name: "Tạo khoá học" }).click();
+    await ap2.waitForURL(/\/lop-cua-toi\/lop\/tao/, { timeout: 90000 });
+    await ap2.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
+    check("quản trị: ?tao=1 → /lop-cua-toi/lop/tao (TaoLop), không còn ô Giá bán / Số bài học", (await ap2.getByLabel(/Giá bán|Số bài học/).count()) === 0);
+    await ap2.getByRole("button", { name: "Tiếp tục" }).click();
     await ap2.waitForTimeout(600);
-    const aText2 = await adr.innerText();
-    check("quản trị: để trống bấm Tạo → báo đủ 4 lỗi, không tạo lớp", ["không được để trống", "Chọn ngày khai giảng", "Giá bán phải là số dương", "Số bài học phải là số"].every(k => aText2.includes(k)) && (await prisma.course.count()) === before, aText2.slice(0, 300));
-    await adr.getByPlaceholder("VD: ĐGNL HSA — Trọn gói lộ trình").fill("Lớp quản trị thử");
-    await adr.getByRole("button", { name: "Tạo khoá học" }).click();
-    await ap2.waitForTimeout(600);
-    const aText3 = await adr.innerText();
-    check("quản trị: chỉ gõ Tên vẫn bị từ chối (ngày, giá, số bài còn thiếu), không tạo lớp", aText3.includes("Chọn ngày khai giảng") && aText3.includes("Giá bán phải là số dương") && (await prisma.course.count()) === before);
+    check("quản trị: để trống tên bấm Tiếp tục → báo 'Bạn nhập tên lớp trước nhé.', vẫn ở bước 1, không tạo lớp", await ap2.getByText("Bạn nhập tên lớp trước nhé.").first().isVisible() && (await ap2.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step")) === "1" && (await prisma.course.count()) === before);
     await ac.close();
   }
 

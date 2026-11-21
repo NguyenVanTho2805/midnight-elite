@@ -137,7 +137,7 @@ const rep = (status: string, n: number) => Array.from({ length: n }, () => ({ st
   const dt = read("src/app/lop-cua-toi/(tutor)/doanh-thu/DoanhThuClient.tsx");
   // Cập nhật: sau khối cơ bản nay có thêm liên kết "Mở sổ điểm và tiến bộ" (DoanhThuClient.tsx) trước khối nâng cao; regex cho phép đúng liên kết đó, không nới thêm.
   check("trang Doanh thu: khối nâng cao nằm SAU phần cơ bản, không bọc/che số cơ bản", /<\/>\)\}\s*\n\s*\n\s*(<Link href="\/lop-cua-toi\/so-diem"[^\n]*<\/Link>\s*\n\s*\n\s*)?<AdvancedAttendanceStats \/>/.test(dt));
-  for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/[id]/page.tsx", "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx", "src/components/ExtractReviewModal.tsx"])
+  for (const f of ["src/app/(admin)/admin/thi-thu/page.tsx", "src/app/(admin)/admin/thi-thu/[id]/page.tsx", "src/components/ExtractReviewModal.tsx"]) // SCL-F2: admin/khoa-hoc/[id] bỏ phần soạn (trích đề AI)
     check(`ô 'còn N lượt' có mặt ở ${f}`, /<AiQuotaNote busy=\{/.test(read(f)));
   const note = read("src/components/AiQuotaNote.tsx");
   check("ô lượt AI: đọc lại khi trích xong (thấy lượt được trả), hết lượt → nút tới /lop-cua-toi/goi", /prevBusy\.current && !busy/.test(note) && /href="\/lop-cua-toi\/goi"/.test(note) && /Đã hết lượt AI trích đề/.test(note));

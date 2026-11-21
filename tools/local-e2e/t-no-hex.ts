@@ -25,7 +25,6 @@ const ALLOW: { file: RegExp; why: string }[] = [
   { file: /^src\/components\/kin\/KinLogo\.tsx$/, why: "màu logo thương hiệu (Figma: giữ 4 màu gốc, không đổi theo chủ đề)" },
   { file: /^src\/components\/community\/ThreadDetailShared\.tsx$/, why: "bảng màu avatar phân loại" },
   { file: /^src\/app\/\(admin\)\/admin\/khoa-hoc\/(page|\[id\]\/page)\.tsx$/, why: "bộ chọn màu nhãn khoá học: các màu này được LƯU vào DB (Course.tagColor)" },
-  { file: /^src\/components\/admin\/courses\/CreateCourseDrawer\.tsx$/, why: "CAT-02: form tạo khoá chuyển nguyên văn từ admin/khoa-hoc/page.tsx — bộ chọn màu nhãn được LƯU vào DB (Course.tagColor)" },
 ];
 
 section("Mã hex viết cứng");
