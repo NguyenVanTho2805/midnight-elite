@@ -73,7 +73,7 @@ check("quản trị: giữ nguyên /admin/... kể cả query", contentHref(fals
 section("giaoTrinhHref / baiHocHref (BU-02 → LOI-02)");
 check("LOI-02: gia sư → gốc lớp /lop-cua-toi/quan-lop/<id> (bí danh cũ của Giáo trình; …/giao-trinh nay chỉ 307 về gốc)", giaoTrinhHref("toan-9", true) === "/lop-cua-toi/quan-lop/toan-9", giaoTrinhHref("toan-9", true));
 check("LOI-02: baiHocHref = classBase (không query)", baiHocHref("toan-9") === "/lop-cua-toi/quan-lop/toan-9" && baiHocHref("toan-9") === classBase("toan-9"));
-check("quản trị (không có màn này) → tab Chương bài của trang quản lớp /admin", giaoTrinhHref("toan-9", false) === "/admin/khoa-hoc/toan-9?tab=chuong-bai");
+check("SCL-F2: quản trị (Chủ nhiệm) cũng về gốc lớp trong vỏ gia sư — trang /admin không còn tab Chương bài", giaoTrinhHref("toan-9", false) === "/lop-cua-toi/quan-lop/toan-9");
 check("phá: id lạ (có '/', '?', '#', '..', '.', ' ') bị mã hoá, không thoát khỏi đường dẫn của lớp", ["a/b", "a?x=1", "a#h", "../admin", "..", ".", "a b"].every(id => [giaoTrinhHref(id, true), baiHocHref(id)].every(h => h.startsWith("/lop-cua-toi/quan-lop/") && h.split("/").length === 4 && !h.includes("?") && !h.includes("#") && !/\/\.{1,2}$/.test(h) && new URL(h, "https://x.vn").pathname.startsWith("/lop-cua-toi/quan-lop/"))), ["..", "../admin"].map(id => baiHocHref(id)));
 check("đi vòng: đường gốc lớp / giáo trình KHÔNG có bản /admin riêng cho …/giao-trinh (toAdminPath → null, đúng quyết định 'không sửa FAMILIES')", toAdminPath("/lop-cua-toi/quan-lop/toan-9/giao-trinh") === null);
 

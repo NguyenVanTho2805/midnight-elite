@@ -1,6 +1,6 @@
 // CAT-02 — danh sách khoá học phía quản trị (dùng chung cho gia sư trong TutorAdminFrame).
 // Bảng 6 cột + ô chọn, cột đầu là tên khoá; bộ lọc đồng bộ URL + chip; sửa nhanh trong panel bên; chọn nhiều + Hoàn tác.
-// Giá CHỈ hiển thị (không ô sửa giá ở đây). Form tạo khoá nằm ở components/admin/courses/CreateCourseDrawer.tsx (chuyển nguyên văn).
+// Giá CHỈ hiển thị (không ô sửa giá ở đây). SCL-F2 (P2-26): một cửa tạo lớp — nút "Tạo lớp" mở TaoLop trong vỏ gia sư (/lop-cua-toi/lop/tao), ngăn kéo tạo khoá cũ đã bỏ.
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,12 +10,13 @@ import { useContentHref } from "@/components/tutor/useContentHref";
 import {
   KinPage, KinPageHeader, KinButton, KinStateCard, KinEmptyState, KinTableSkeleton, KinToast, KinStatus, kinButtonClass,
 } from "@/components/kin";
-import { CreateCourseDrawer } from "@/components/admin/courses/CreateCourseDrawer";
 import { CourseTable } from "@/components/admin/courses/CourseTable";
 import { CourseFilters, EMPTY_FILTER, applyFilter, buildFacets, filterToQuery, readFilter, type CatalogRow, type CatalogFilter } from "@/components/admin/courses/CourseFilters";
 import { CoursePanel, type CoursePatch } from "@/components/admin/courses/CoursePanel";
 import { BulkBar } from "@/components/admin/courses/BulkBar";
 import { PANEL_GUTTER } from "@/components/admin/panel/SidePanel";
+
+const CREATE_HREF = "/lop-cua-toi/lop/tao";
 
 interface ListResponse { rows: CatalogRow[]; truncated: boolean; canManageCategories: boolean }
 interface BulkResult { updated: { id: string; prev: { status: boolean; category: string } }[]; skipped: { id: string; reason: string }[] }
@@ -44,8 +45,8 @@ function KhoaHocListInner() {
   const [categoryNames, setCategoryNames] = useState<string[]>([]);
 
   const [filter, setFilter] = useState<CatalogFilter>(() => readFilter(sp));
-  // ?tao=1: nút "Tạo lớp đầu tiên" của gia sư mới (và đường cũ /admin/khoa-hoc/tao-moi) mở thẳng form tạo.
-  const [createOpen, setCreateOpen] = useState(sp.get("tao") === "1");
+  // ?tao=1 (liên kết cũ "Tạo khoá"): sang cửa tạo lớp duy nhất. Tải cứng (không router) vì proxy đưa đường /lop-cua-toi sang tên miền chính.
+  useEffect(() => { if (sp.get("tao") === "1") window.location.replace(CREATE_HREF); }, [sp]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busyIds] = useState<Set<string>>(() => new Set());
@@ -180,7 +181,7 @@ function KhoaHocListInner() {
         title="Khoá học"
         sub={sub}
         live
-        actions={<KinButton className="max-md:hidden" onClick={() => setCreateOpen(true)}>Tạo khoá học</KinButton>}
+        actions={<a href={CREATE_HREF} className={`max-md:hidden ${kinButtonClass("primary")}`}>Tạo lớp</a>}
       />
 
       {state === "loading" && <KinTableSkeleton label="Đang tải danh sách khoá học" rows={8} />}
@@ -215,7 +216,7 @@ function KhoaHocListInner() {
             <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">Chỉ hiện 1000 khoá đầu — thu hẹp bằng bộ lọc để thấy đủ.</p>
           )}
           {total === 0 ? (
-            <KinEmptyState title="Chưa có khoá học" action={<KinButton onClick={() => setCreateOpen(true)}>Tạo khoá học đầu tiên</KinButton>}>
+            <KinEmptyState title="Chưa có khoá học" action={<a href={CREATE_HREF} className={kinButtonClass("primary")}>Tạo lớp đầu tiên</a>}>
               Khi bạn tạo khoá, nó sẽ hiện ở đây để sửa nhanh, ẩn/hiện và xem sĩ số.
             </KinEmptyState>
           ) : filtered.length === 0 ? (
@@ -235,10 +236,10 @@ function KhoaHocListInner() {
 
       {/* Nút Tạo khoá nổi ở điện thoại */}
       {state !== "loading" && (
-        <button type="button" onClick={() => setCreateOpen(true)}
+        <a href={CREATE_HREF}
           className={`md:hidden fixed bottom-4 right-4 z-30 shadow-[var(--kin-bong-noi)] ${kinButtonClass("primary", "lg")}`}>
-          Tạo khoá học
-        </button>
+          Tạo lớp
+        </a>
       )}
 
       {activeRow && (
@@ -275,16 +276,6 @@ function KhoaHocListInner() {
         </div>
       )}
 
-      <CreateCourseDrawer
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={slug => {
-          // Gia sư: sang thẳng trang quản khoá của lớp vừa tạo, mở sẵn tab Lịch học. Quản trị trung tâm: ở lại danh sách.
-          if (isTeacher) { router.push(href(`/admin/khoa-hoc/${slug}?tab=lich-hoc&moi=1`)); return; }
-          showToast("Đã tạo khoá học mới. Vào tab Lịch học của khoá để đặt khung giờ hằng tuần"); load(false);
-        }}
-        showToast={(msg, ok) => showToast(msg, ok ?? true)}
-      />
     </KinPage>
   );
 }

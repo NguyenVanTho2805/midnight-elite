@@ -150,9 +150,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
     }
 
-    // Mã lớp trùng (hai gia sư cùng đặt "Toán 9"): HP-BO (17/11/2026) gia sư được tự thêm hậu tố -2, -3… thay vì báo lỗi "Slug" khó hiểu. Quản trị giữ báo trùng như cũ.
+    // Mã lớp trùng (hai gia sư cùng đặt "Toán 9"): HP-BO (17/11/2026) tự thêm hậu tố -2, -3… thay vì báo lỗi "Slug" khó hiểu.
+    // SCL-F2: áp cho cả quản trị — TaoLop là cửa tạo lớp duy nhất, không còn ô slug để tự sửa.
     let existing = await prisma.course.findUnique({ where: { id: data.id as string }, select: { id: true } });
-    if (existing && auth.adminRole === "teacher") {
+    if (existing) {
       const base = String(data.id);
       for (let n = 2; n <= 50 && existing; n++) {
         const cand = `${base}-${n}`;

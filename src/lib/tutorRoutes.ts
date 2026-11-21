@@ -83,12 +83,9 @@ export function contentHref(isTeacher: boolean, adminPath: string): string {
 /** LOI-02: tab "Bài học" của một lớp = gốc lớp (không query). Thẻ lớp ở thư viện mở thẳng vào đây. */
 export function baiHocHref(courseId: string): string { return classBase(courseId); }
 
-/** BU-02 → LOI-02: bí danh cũ của màn Giáo trình. Gia sư: nay về gốc lớp (tab "Bài học"; …/giao-trinh chỉ còn 307 về gốc).
- *  Quản trị không có màn này (đường mới là đường gia sư, không có bản /admin) nên về tab "Chương bài" (?tab=chuong-bai) của trang quản lớp. */
-export function giaoTrinhHref(courseId: string, isTeacher: boolean): string {
-  const id = encodeURIComponent(courseId);
-  return isTeacher ? baiHocHref(courseId) : `/admin/khoa-hoc/${id}?tab=chuong-bai`; // classBase: như encodeURIComponent, thêm mã hoá "." / ".." (không thoát đường dẫn)
-}
+/** BU-02 → LOI-02: bí danh cũ của màn Giáo trình → gốc lớp (tab "Bài học"; …/giao-trinh chỉ còn 307 về gốc).
+ *  SCL-F2 (P2-27): trang /admin của lớp không còn tab soạn bài — Chủ nhiệm cũng soạn trong vỏ gia sư (allowAdmin), nên mọi vai cùng một đích. */
+export const giaoTrinhHref: (courseId: string, isTeacher?: boolean) => string = courseId => baiHocHref(courseId);
 
 // ─── Dải tab của vỏ nội dung gia sư (src/components/tutor/TutorContentTabs.tsx) ────────────────────────────────────────────────
 export interface ContentTab { label: string; href: string; active: boolean }

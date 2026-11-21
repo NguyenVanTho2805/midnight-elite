@@ -3,7 +3,8 @@
 // "Tạo lớp" của gia sư, WIZARD 3 BƯỚC (LO-03; Figma "Gia sư · Tạo lớp đầu tiên" 299:112849, bản cũ: Thông tin → Học sinh → Lịch học); nút cuối "Tạo lớp + N buổi".
 // Bước 1 gồm cả "Cách tính học phí" (HP-15: chọn LÚC TẠO LỚP; HOCPHI-THEO-BUOI: mặc định Theo buổi, Theo giờ/Theo khoá nằm trong mục gập, cách cũ bỏ khỏi lớp mới; không đổi được hình thức của lớp đã tạo; số tiền do máy chủ tính).
 // Bước 2: chỉ thêm được em ĐÃ học một lớp khác của gia sư (StudentPicker); em mới vào lớp bằng mã mời (KiN mở sẵn mục Mã mời sau khi tạo). Không thu thêm dữ liệu trẻ ở đây.
-// TUT-lich-keo-tha: bước Lịch học BẮT BUỘC — dựng bằng WeekScheduleEditor (kéo-thả, chế độ cục bộ) và gửi cùng một lần POST /api/courses kèm schedules[] + requireSchedule
+// SCL-F2 (P2-18): bước Lịch học nay TUỲ CHỌN — không thêm khung nào thì lớp tạo không lịch cố định (noFixedSchedule), đặt lịch sau ở trang lớp.
+// TUT-lich-keo-tha (cũ): bước Lịch học BẮT BUỘC — dựng bằng WeekScheduleEditor (kéo-thả, chế độ cục bộ) và gửi cùng một lần POST /api/courses kèm schedules[] + requireSchedule
 // (tạo lớp + khung giờ nguyên tử). Lối thoát duy nhất: "Lớp này học buổi lẻ, không lặp hằng tuần" -> KinConfirm -> noFixedSchedule.
 // (Mô tả cũ bên dưới về "gửi khung tuần tự sau khi tạo lớp" không còn đúng.)
 // Bước 3 (cũ): một hoặc nhiều khung giờ hằng tuần + ngày buổi đầu + số tuần xem trước. "N buổi" là số buổi lịch lặp sinh ra trong khoảng đó (previewSessionCount) — chỉ để hiển thị;
@@ -16,7 +17,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { toSlug } from "@/lib/slug";
-import { ADMIN_CATEGORIES, CATEGORY_GRADIENT } from "@/lib/courseData";
+import { CATEGORY_GRADIENT } from "@/lib/courseData";
+import { CLASS_GRADES, CLASS_SUBJECTS, joinCategory } from "@/lib/classSubject";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { FEE_MODE_HINT, FEE_MODE_SHEET, FEE_RATE_MIN, FEE_MODE_LABEL, FEE_RATE_UNIT, hourlyAmount, isNewFeeMode, validateFeeSetup, type NewFeeMode } from "@/lib/tuitionFee";
 import {
@@ -25,7 +27,6 @@ import {
 import WeekScheduleEditor from "@/components/tutor/WeekScheduleEditor";
 import { WEEKDAY_NAMES, applyOp, formatDuration, fromApiRow, toApiSlot, toWizardSlots, validateBlocks, weeklyMinutes, WEEK_ORDER, type OpResult, type ScheduleBlock, type ScheduleOp } from "@/lib/scheduleDrag";
 import { classAccentFor } from "@/lib/classColor";
-import { useKinConfirm } from "@/components/kin/useConfirm";
 import { hmOf } from "@/lib/classSessions";
 import { KinButton, kinButtonClass } from "@/components/kin";
 import { KinInput } from "@/components/kin/Input";
@@ -57,8 +58,8 @@ export default function TaoLop() {
   const todayKey = vnDateKeyOf(new Date());
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
-  const [options, setOptions] = useState<string[]>([...ADMIN_CATEGORIES]);
+  const [subject, setSubject] = useState("");   // SCL-F2 (P2-25): môn · khối chọn từ danh sách cố định (classSubject), lưu vào category như cũ
+  const [grade, setGrade] = useState("");
   const [feeMode, setFeeMode] = useState<NewFeeMode>("per_session"); // HOCPHI-THEO-BUOI: lớp mới mặc định theo buổi; cách cũ không còn trong lựa chọn
   const [feeRate, setFeeRate] = useState("");
   const [feeMinutes, setFeeMinutes] = useState("90");
@@ -68,20 +69,13 @@ export default function TaoLop() {
   const [policy, setPolicy] = useState<JoinPolicy>("approve");  // BU-01: mặc định Cô duyệt
   const [students, setStudents] = useState<string[]>([]);
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);        // khung giờ hằng tuần (bước Lịch học, BẮT BUỘC ≥ 1 hoặc chọn "buổi lẻ")
-  const [noFixed, setNoFixed] = useState(false);                     // "Lớp này học buổi lẻ" đã qua KinConfirm
   const [ghosts, setGhosts] = useState<ScheduleBlock[]>([]);         // khung của lớp khác của cô: chỉ để cảnh báo trùng giờ
   const [ghostState, setGhostState] = useState<"loading" | "ok" | "error">("loading");
-  const { ask, dialog: confirmDialog } = useKinConfirm();
   const [firstDate, setFirstDate] = useState(todayKey);
   const [weeks, setWeeks] = useState(4);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/categories").then(r => (r.ok ? r.json() : { categories: [] }))
-      .then(d => { const cats = (d.categories as { name: string }[]).map(c => c.name); if (cats.length) setOptions([...new Set([...ADMIN_CATEGORIES, ...cats])]); })
-      .catch(() => {});
-  }, []);
 
   // Khung lớp khác của cô (một lần). Lỗi KHÔNG chặn tạo lớp, chỉ mất cảnh báo trùng giờ.
   useEffect(() => {
@@ -114,7 +108,6 @@ export default function TaoLop() {
   // Chế độ cục bộ: mọi thao tác chỉ đổi state, ghi thật khi bấm "Tạo lớp".
   const onLocalOp = (op: ScheduleOp): OpResult => {
     setBlocks(cur => applyOp(cur, op));
-    if (op.type === "create") setNoFixed(false);
     setError(null);
     return { ok: true };
   };
@@ -129,24 +122,10 @@ export default function TaoLop() {
     if (step === 2) {
       const bad = validateBlocks(blocks);
       if (bad) { setError(bad); return; }
-      if (activeBlocks.length === 0 && !noFixed) {
-        setError("Cô thêm ít nhất một khung giờ học hằng tuần, hoặc chọn 'Lớp này học buổi lẻ' bên dưới.");
-        formRef.current?.querySelector<HTMLElement>("[data-add-block]")?.focus();
-        return;
-      }
     }
     setError(null); setStep(s => (s < 3 ? ((s + 1) as Step) : s));
   }
   function back() { setError(null); setStep(s => (s > 1 ? ((s - 1) as Step) : s)); }
-  async function chooseOneOff() {
-    const ok = await ask({
-      title: "Tạo lớp không có lịch cố định?",
-      message: "Lớp sẽ chưa có lịch cố định. Cô đặt lịch sau ở mục Lịch. Vẫn tạo lớp không lịch?",
-      confirmLabel: "Vẫn tạo không lịch", cancelLabel: "Quay lại", tone: "thuong",
-    });
-    if (ok) { setNoFixed(true); setError(null); }
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -156,7 +135,6 @@ export default function TaoLop() {
     if (infoErr) { setError(infoErr); setStep(1); fv.validateAll({ name, feeRate, feeMinutes }); fv.focusFirst(formRef.current); return; }
     const slotErr = validateBlocks(blocks);
     if (slotErr) { setError(slotErr); setStep(2); return; }
-    if (activeBlocks.length === 0 && !noFixed) { setError("Cô thêm ít nhất một khung giờ học hằng tuần, hoặc chọn 'Lớp này học buổi lẻ'."); setStep(2); return; }
     let fee: Record<string, unknown> = {};
     if (!feeOn) {
       fee = {};
@@ -168,7 +146,7 @@ export default function TaoLop() {
     }
     setBusy(true); setError(null);
     let slug = toSlug(clean);
-    const cat = category.trim() || "Khác";
+    const cat = joinCategory(subject, grade);
     try {
       const payload = {
         ...fee,
@@ -179,7 +157,7 @@ export default function TaoLop() {
         // SCL-A (Q10): chỉ lớp "Vào ngay" mới hiện ở trang công khai; tên gia sư máy chủ lấy từ tài khoản tạo lớp.
         joinPolicy: policy, price: 0, originalPrice: null, lessons: 0, hours: 0, status: policy === "open",
         // Tạo lớp + khung giờ trong MỘT giao dịch (không còn cảnh "lớp có rồi, khung giờ lỗi").
-        schedules: activeBlocks.map(toApiSlot), requireSchedule: true, noFixedSchedule: activeBlocks.length === 0 && noFixed,
+        schedules: activeBlocks.map(toApiSlot), requireSchedule: true, noFixedSchedule: activeBlocks.length === 0,
       };
       const created = await api.courses.create(payload);
       // HP-BO: mã trùng lớp của gia sư khác ⇒ máy chủ tự thêm hậu tố (-2, -3…); đi tiếp theo mã máy chủ trả về.
@@ -213,7 +191,7 @@ export default function TaoLop() {
 
   return (
     <form ref={formRef} noValidate onSubmit={e => void submit(e)} className={KIN_PAGE} aria-label="Tạo lớp">
-      <KinPageHeader title="Tạo lớp học" sub="Ba bước. Lớp nào cũng cần lịch học để học sinh thấy buổi và để KiN nhắc lịch."
+      <KinPageHeader title="Tạo lớp học" sub="Ba bước. Lịch học không bắt buộc, bạn đặt sau ở trang lớp cũng được."
         actions={<Link href="/lop-cua-toi/lop" className={kinButtonClass("ghost")}>Thoát</Link>} />
 
       <ol aria-label="Các bước tạo lớp" className="mb-6 flex flex-wrap gap-x-6 gap-y-2 text-[length:var(--kin-co-goc)]">
@@ -235,10 +213,16 @@ export default function TaoLop() {
                 <div className="pt-5 grid sm:grid-cols-2 gap-5">
                   <KinInput label="Tên lớp *" value={name} onChange={e => { setName(e.target.value); setError(null); }} placeholder="Ví dụ: Toán 9" autoComplete="off"
                     aria-required {...fv.bind("name", name)} />
-                  <label className={LABEL}>Môn · khối
-                    <input list="tl-mon" value={category} onChange={e => setCategory(e.target.value)} placeholder="Ví dụ: Toán · Lớp 9" className={`${FIELD} mt-2`} />
-                    <datalist id="tl-mon">{options.map(o => <option key={o} value={o} />)}</datalist>
-                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className={LABEL}><span id="tl-mon-nhan">Môn</span>
+                      <KinSelect id="tl-mon" aria-labelledby="tl-mon-nhan" value={subject} onChange={setSubject} placeholder="Chọn môn" className="mt-2"
+                        options={CLASS_SUBJECTS.map(v => ({ value: v, label: v }))} />
+                    </div>
+                    <div className={LABEL}><span id="tl-khoi-nhan">Khối</span>
+                      <KinSelect id="tl-khoi" aria-labelledby="tl-khoi-nhan" value={grade} onChange={setGrade} className="mt-2"
+                        options={[{ value: "", label: "Không ghi khối" }, ...CLASS_GRADES.map(v => ({ value: v, label: v }))]} />
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -343,7 +327,7 @@ export default function TaoLop() {
 
           {step === 2 && (
             <section aria-labelledby="tl-lich" data-wizard-schedule>
-              <KinSectionHead id="tl-lich" title="Lịch học" aside="Bắt buộc" />
+              <KinSectionHead id="tl-lich" title="Lịch học" aside="Không bắt buộc" />
               <p className="pt-3 pb-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Kéo trên lưới để đặt giờ học hằng tuần của lớp. Bấm vào khối để sửa chi tiết hoặc đổi giờ bằng bộ chọn.</p>
               <WeekScheduleEditor blocks={shownBlocks} ghosts={ghosts} accent={classAccentFor(toSlug(className) || "lop")} state="ready" onOp={onLocalOp} courseLabel={className} />
               {ghostState === "loading" && <p role="status" data-ghost-loading className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang kiểm lịch các lớp khác của cô…</p>}
@@ -352,16 +336,13 @@ export default function TaoLop() {
               <div className="pt-5" data-wizard-summary>
                 <KinSectionHead title="Tóm tắt lịch" aside={<span className="tabular-nums">{activeBlocks.length ? `Tổng ${formatDuration(weeklyMinutes(blocks))} mỗi tuần` : ""}</span>} />
                 {activeBlocks.length === 0 ? (
-                  <p className="pt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{noFixed ? "Lớp này sẽ tạo không có lịch cố định (buổi lẻ). Thêm một khung giờ nếu cô muốn lịch lặp hằng tuần." : "Lớp chưa có khung giờ. Kéo trên lưới để thêm."}</p>
+                  <p className="pt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chưa có khung giờ. Bạn có thể bỏ qua: lớp tạo không lịch cố định, đặt lịch sau ở trang lớp.</p>
                 ) : (
                   <ul className="pt-3 space-y-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]" aria-label="Khung giờ hằng tuần">
                     {[...activeBlocks].sort((x, y) => WEEK_ORDER.indexOf(x.dayOfWeek as typeof WEEK_ORDER[number]) - WEEK_ORDER.indexOf(y.dayOfWeek as typeof WEEK_ORDER[number]) || x.startMin - y.startMin).map(b => (
                       <li key={b.id} data-wizard-slot className="tabular-nums">{WEEKDAY_NAMES[b.dayOfWeek]} {hmText(b.startMin)}–{hmText(b.endMin)} · {formatDuration(b.endMin - b.startMin)}</li>
                     ))}
                   </ul>
-                )}
-                {activeBlocks.length === 0 && !noFixed && (
-                  <button type="button" onClick={() => void chooseOneOff()} data-one-off className="mt-3 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Lớp này học buổi lẻ, không lặp hằng tuần</button>
                 )}
               </div>
 
@@ -405,7 +386,7 @@ export default function TaoLop() {
             <KinSectionHead id="tl-sau" title="Sau khi tạo lớp" />
             <ul className="pt-4 space-y-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
               <li>Mời học sinh bằng mã lớp (KiN mở sẵn mục Mã mời)</li>
-              <li>Lịch học đặt ngay ở bước 2; đổi lại bằng lưới kéo-thả ở trang lớp.</li>
+              <li>Lịch học đặt ở bước 2 hoặc sau này bằng lưới kéo-thả ở trang lớp.</li>
               <li>Điểm danh từng buổi ngay trong trang lớp</li>
             </ul>
           </section>
@@ -416,7 +397,6 @@ export default function TaoLop() {
           </section>
         </aside>
       </div>
-      {confirmDialog}
     </form>
   );
 }

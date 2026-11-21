@@ -2,7 +2,7 @@
 // Token KiN (--kin-*): màu trạng thái luôn đi kèm CHỮ, không chỉ chấm màu.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { useToast } from "@/components/ui";
+import { useToast } from "@/components/kin/ToastProvider";
 import { KinStatus, type StatusTone } from "@/components/kin/Status";
 
 // useToast() trả object MỚI mỗi lần render → đưa thẳng vào deps của useEffect/
