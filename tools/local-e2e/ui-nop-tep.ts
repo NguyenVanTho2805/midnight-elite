@@ -320,7 +320,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   check("390: khối nộp tệp hiện (một cột)", (await p3.locator(BOX).count()) === 1);
   const noScroll = async (p: any, tag: string) => check(`${tag}: không cuộn ngang`, await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await noScroll(p3, "390 trống");
-  check("390: vùng thả cao ≥132px, nút 'Chọn tệp' ≥44px", (((await p3.locator(`${BOX} [data-nop-tep-vung-tha]`).boundingBox())?.height ?? 0) >= 132) && (((await p3.locator(`${BOX} [data-nop-tep-chon]`).boundingBox())?.height ?? 0) >= 44));
+  check("390: vùng thả gọn 96–211px (SCL-D P2-1: không chiếm nửa màn), nút 'Chọn tệp' ≥44px", (((await p3.locator(`${BOX} [data-nop-tep-vung-tha]`).boundingBox())?.height ?? 0) >= 96) && (((await p3.locator(`${BOX} [data-nop-tep-vung-tha]`).boundingBox())?.height ?? 999) <= 211) && (((await p3.locator(`${BOX} [data-nop-tep-chon]`).boundingBox())?.height ?? 0) >= 44));
   const chooser = p3.waitForEvent("filechooser", { timeout: 10000 });
   await p3.locator(`${BOX} [data-nop-tep-chon]`).click();
   check("390: bấm 'Chọn tệp' mở hộp chọn tệp", !!(await chooser.catch(() => null)));
