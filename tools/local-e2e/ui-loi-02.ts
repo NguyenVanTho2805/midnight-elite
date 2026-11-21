@@ -18,7 +18,7 @@ import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
-const TABS = ["Bài học", "Học sinh", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };
@@ -74,10 +74,13 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const noOverflow = (pg: any) => pg.evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`) as Promise<boolean>;
   const base = (id: string) => `/lop-cua-toi/quan-lop/${id}`;
   const lessonRow = (pg: any, title: string) => pg.locator("[data-bai]", { hasText: title }).first();
+  // SCL-D: ngày học / trạng thái / bài tập / ghi chú nằm trong mục gập "Tuỳ chọn khác" — mở ra trước khi thao tác.
+  const openMore = async (pg: any) => { const b = pg.locator("[data-tuy-chon] > button").first(); if ((await b.getAttribute("aria-expanded")) === "false") { await b.click(); await pg.waitForTimeout(300); } };
   const openDetail = async (pg: any, title: string) => {
     await pg.getByRole("button", { name: `Chi tiết bài ${title}` }).first().click(); // 7b nhân bản chương ⇒ tên bài lặp ở chương bản sao
     await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ timeout: 30000 });
     await pg.waitForTimeout(450); // panel trượt vào 0,28s
+    await openMore(pg);
   };
   const closePanel = async (pg: any) => { await pg.getByRole("button", { name: "Huỷ", exact: true }).first().click(); await pg.waitForTimeout(400); };
 
@@ -165,8 +168,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("panel không có ô 'Link phòng Zoom'", !panelText.includes("Link phòng Zoom") && (await pg.getByPlaceholder("https://zoom.us/j/...").count()) === 0);
   check("panel không có ô 'Dán link Google Drive' / 'Hoặc dán link tài liệu'", (await pg.getByPlaceholder(/Dán link Google Drive/).count()) === 0 && !panelText.includes("Hoặc dán link tài liệu"));
   check("bài có Zoom cũ: dòng chỉ đọc 'Bài này có link phòng Zoom cũ — học sinh vẫn thấy.'", (await pg.locator("[data-zoom-cu]").innerText()).includes("Bài này có link phòng Zoom cũ — học sinh vẫn thấy."));
-  check("thứ tự khối: Tên → Ngày học → Trạng thái → Tài liệu → Thêm link → Ghi chú → Xem như học sinh", await pg.evaluate(`(() => {
-    const order = ["#ls-ten", "[data-ngay-hoc]", "#ls-trang-thai", "[data-tai-lieu]", "[data-them-link]", "#ls-ghi-chu", "[data-xem-nhu-hoc-sinh]"].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().top : -1; });
+  check("thứ tự khối (SCL-D): Tên → Video → Tài liệu → [Tuỳ chọn khác: Ngày học → Trạng thái → Ghi chú → Xem như học sinh]", await pg.evaluate(`(() => {
+    const order = ["#ls-ten", "[data-video-bai]", "[data-tai-lieu]", "[data-tuy-chon]", "[data-ngay-hoc]", "#ls-trang-thai", "#ls-ghi-chu", "[data-xem-nhu-hoc-sinh]"].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().top : -1; });
     return order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1]));
   })()`));
   check("'Xem như học sinh ↗' trỏ …/giao-trinh/xem/<id>", (await pg.locator("[data-xem-nhu-hoc-sinh]").getAttribute("href")) === `${base(A.id)}/giao-trinh/xem/loi-l1`);
@@ -321,6 +324,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await qn.getByRole("button", { name: "Chi tiết…" }).click();
   await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
   await pg.waitForTimeout(450);
+  await openMore(pg);
   await pg.locator("#ls-trang-thai").click();
   const addOpts = (await pg.locator('[role="listbox"] [role="option"]').allInnerTexts()).map(t => t.replace("✓", "").trim()); // mục đang chọn có dấu ✓
   check("panel Thêm bài: ô Trạng thái chỉ có 'Đã đăng' · 'Nháp' (không 'Ẩn')", JSON.stringify(addOpts) === JSON.stringify(["Đã đăng", "Nháp"]), addOpts);
@@ -370,6 +374,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await qn2.getByRole("button", { name: "Chi tiết…" }).click();
   await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
   await pg.waitForTimeout(450);
+  await openMore(pg);
   const lbt = pg.locator("[data-luu-them-bai-tap]");
   const lbtBox = await lbt.boundingBox();
   check("panel Thêm bài: có ô 'Bài tập của bài' + nút 'Lưu và thêm bài tập' ≥44px, chưa có trình soạn bài tập", (await lbt.count()) === 1 && (lbtBox?.height ?? 0) >= 43.5 && (await pg.locator("[data-bai-tap-tu-nop]").count()) === 0, lbtBox);

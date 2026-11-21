@@ -1,5 +1,6 @@
 "use client";
 // Giao diện trang Bản ghi của lớp (xem page.tsx). Hành động ghi là <form method="post"> thường → API trả 303 về đây.
+// SCL-D (P2-4): cũng là thân tab "Video" của lớp gia sư (`embedded`): thêm danh sách video bài giảng ở đầu, form gửi back=video để 303 quay về tab.
 import Link from "next/link";
 import { useRef } from "react";
 import { KinPage, KinPageHeader, KinTwoCol, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
@@ -11,12 +12,18 @@ import { KinPanel } from "@/components/kin/Panel";
 import { KinStatus } from "@/components/kin/Status";
 import { kinButtonClass } from "@/components/kin/Button";
 import { useKinConfirm } from "@/components/kin/useConfirm";
+import { YOUTUBE_UNLISTED_NOTE } from "@/lib/mediaLink";
 import { COPYRIGHT_NOTICE, COPYRIGHT_PLEDGE_LABEL, WATCH_LABEL, type WatchState } from "@/lib/classRecordings";
 import { KinSelect } from "@/components/kin/KinSelect";
 
 interface Rec { id: string; title: string; url: string; kind: string; sessionId: string | null; createdAt: string }
 interface Props {
   courseId: string; courseName: string; isOwner: boolean;
+  /** Dán / gỡ được bản ghi (chủ lớp hoặc quản trị — cùng luật API). Mặc định = isOwner. */
+  canManage?: boolean;
+  /** Vẽ trong tab "Video" của lớp: không đầu trang riêng, 303 quay về tab. */
+  embedded?: boolean;
+  lessonVideos?: { id: string; title: string; status: string; label: string }[];
   flash: { ok: boolean; removed: boolean; error: string };
   preselectSession: string;
   bySession: { session: { id: string; dateKey: string }; recordings: Rec[] }[];
@@ -33,6 +40,9 @@ export default function BanGhiClient(p: Props) {
   const { ask, dialog } = useKinConfirm();
   const formRef = useRef<HTMLFormElement>(null);
   const base = `/api/courses/${encodeURIComponent(p.courseId)}/recordings`;
+  const canManage = p.canManage ?? p.isOwner;
+  const selfHref = p.embedded ? `/lop-cua-toi/quan-lop/${encodeURIComponent(p.courseId)}/video` : `/lop-cua-toi/${p.courseId}/ban-ghi`;
+  const backField = p.embedded ? <input type="hidden" name="back" value="video" /> : null;
 
   const recRow = (r: Rec) => (
     <div key={r.id} data-recording-row className="flex items-start justify-between gap-3 border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-[var(--kin-kc-6)]">
@@ -42,12 +52,13 @@ export default function BanGhiClient(p: Props) {
       </div>
       <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
         <a href={r.url} target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Mở</a>
-        {p.isOwner && (
+        {canManage && (
           <form method="post" action={`${base}/${r.id}/delete`} onSubmit={async e => {
             e.preventDefault();
             const f = e.currentTarget;
             if (await ask({ title: "Gỡ bản ghi này khỏi lớp?", message: "Chỉ gỡ link khỏi KiN; video trên YouTube/Drive vẫn còn nguyên.", confirmLabel: "Gỡ" })) f.submit();
           }}>
+            {backField}
             <button type="submit" className={kinButtonClass("danger")}>Gỡ</button>
           </form>
         )}
@@ -55,12 +66,34 @@ export default function BanGhiClient(p: Props) {
     </div>
   );
 
-  return (
-    <KinPage>
-      <KinPageHeader title="Bản ghi của lớp" sub={p.courseName} back={{ href: `/lop-cua-toi/${p.courseId}`, label: "← Về lớp" }} />
+  const wrap = (children: React.ReactNode) => (p.embedded ? <div data-tab-video className="min-w-0 max-w-5xl">{children}</div> : <KinPage>{children}</KinPage>);
+  return wrap(
+    <>
+      {!p.embedded && <KinPageHeader title="Bản ghi của lớp" sub={p.courseName} back={{ href: `/lop-cua-toi/${p.courseId}`, label: "← Về lớp" }} />}
       {p.flash.ok && <div role="status" className="mb-4"><KinCallout tone="nhan">Đã lưu bản ghi vào lớp.</KinCallout></div>}
       {p.flash.removed && <div role="status" className="mb-4"><KinCallout>Đã gỡ bản ghi khỏi lớp.</KinCallout></div>}
       {p.flash.error && <div role="alert" className="mb-4"><KinPanel variant="loi"><p className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{p.flash.error}</p></KinPanel></div>}
+
+      {p.embedded && (
+        <section aria-label="Video bài giảng" data-video-bai-giang className="mb-10">
+          <KinSectionHead title="Video bài giảng" aside={`${p.lessonVideos?.length ?? 0} video`} />
+          {(p.lessonVideos?.length ?? 0) === 0 ? (
+            <KinEmptyState title="Chưa có video bài giảng" action={<Link href={`/lop-cua-toi/quan-lop/${encodeURIComponent(p.courseId)}`} className={kinButtonClass("secondary")}>Mở tab Bài học</Link>}>
+              Mở một bài ở tab Bài học rồi dán link YouTube vào ô &ldquo;Link video YouTube&rdquo;.
+            </KinEmptyState>
+          ) : (
+            <ul>
+              {p.lessonVideos!.map(v => (
+                <li key={v.id} data-video-bai-row className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-[var(--kin-kc-5)] text-[length:var(--kin-co-goc)]">
+                  <span className="min-w-0 break-words text-[var(--kin-chu-chinh)]">{v.title}</span>
+                  <span className="text-[var(--kin-chu-mo)]">{v.label}{v.status !== "published" ? " · học sinh chưa thấy" : ""}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p data-youtube-luu-y className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">{YOUTUBE_UNLISTED_NOTE}</p>
+        </section>
+      )}
 
       <KinTwoCol>
         <div className="min-w-0 space-y-8">
@@ -72,7 +105,7 @@ export default function BanGhiClient(p: Props) {
               <div key={g.session.id} data-session-block={g.session.id}>
                 <KinListRow title={`Buổi ${dmy(g.session.dateKey)}`}
                   status={g.recordings.length === 0 ? <KinStatus tone="mo">Chưa có bản ghi</KinStatus> : <KinStatus tone="xong">{g.recordings.length} bản ghi</KinStatus>}
-                  trailing={p.isOwner ? <Link href={`/lop-cua-toi/${p.courseId}/ban-ghi?buoi=${g.session.id}#dan-link`} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Dán bản ghi</Link> : undefined} />
+                  trailing={canManage ? <Link href={`${selfHref}?buoi=${g.session.id}#dan-link`} className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Dán bản ghi</Link> : undefined} />
                 {g.recordings.map(recRow)}
               </div>
             ))}
@@ -86,10 +119,11 @@ export default function BanGhiClient(p: Props) {
         </div>
 
         <aside className="min-w-0 space-y-8">
-          {p.isOwner ? (
+          {canManage ? (
             <section id="dan-link" aria-label="Dán link bản ghi">
               <KinSectionHead title="Dán link bản ghi" />
               <form ref={formRef} method="post" action={base} className="pt-4 space-y-4">
+                {backField}
                 <div>
                   <label htmlFor="rec-title" className={KIN_LABEL}>Tên bản ghi</label>
                   <input id="rec-title" name="title" required maxLength={120} placeholder="Bản ghi buổi 16/10" className={`${KIN_FIELD} mt-2`} />
@@ -162,6 +196,6 @@ export default function BanGhiClient(p: Props) {
         )}
       </section>
       {dialog}
-    </KinPage>
+    </>
   );
 }

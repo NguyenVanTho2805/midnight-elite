@@ -3,10 +3,8 @@
 // được chuyển sang tab "Tài liệu & bản ghi" trong Lớp của tôi. Tên học sinh trong bảng "ai đã xem" CHỈ hiện cho gia sư chủ lớp.
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-import { recordingAccess, listCourseRecordings } from "@/lib/classRecordingsServer";
-import { buildWatchTable, groupRecordingsBySession } from "@/lib/classRecordings";
-import { firstPlayableVideo } from "@/lib/mediaLink";
+import { recordingAccess } from "@/lib/classRecordingsServer";
+import { loadClassVideoView } from "@/lib/classVideoServer";
 import BanGhiClient from "./BanGhiClient";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 
@@ -22,31 +20,10 @@ export default async function BanGhiPage({ params, searchParams }: Props) {
   const acc = await recordingAccess(session, courseId);
   if (!acc.ok && acc.suspended) return <SuspendedNotice contactHref={acc.contactHref ?? null} />;
   if (!acc.ok) notFound();
-  if (acc.role === "student") redirect(`/student/hoc-tap?course=${encodeURIComponent(courseId)}`);
+  if (acc.role === "student") redirect(`/student/hoc-tap?course=${encodeURIComponent(courseId)}&tab=video`); // SCL-D: video bài + bản ghi ở tab Video
 
   const isOwner = session.role === "admin" && session.adminRole === "teacher" && acc.course.ownerId === session.userId;
-  const { rows, sessions } = await listCourseRecordings(courseId);
-  const grouped = groupRecordingsBySession(rows, sessions);
-
-  // MD-17: video của lớp = bài có link video đọc được. Chỉ em ghi danh active/suspended của CHÍNH lớp này; gia sư chủ lớp mới thấy tên.
-  const lessons = await prisma.lesson.findMany({
-    where: { chapter: { section: { courseId } } },
-    orderBy: [{ chapter: { section: { order: "asc" } } }, { chapter: { order: "asc" } }, { order: "asc" }],
-    select: { id: true, title: true, videoUrl: true },
-  });
-  const watchLessons = lessons.map(l => ({ id: l.id, title: l.title, hasVideo: firstPlayableVideo(l.videoUrl) !== null }));
-  const enrolled = await prisma.enrollment.findMany({
-    where: { courseId, status: { in: ["active", "suspended"] } },
-    select: { userId: true, user: { select: { name: true } } },
-    orderBy: { user: { name: "asc" } },
-  });
-  const progress = watchLessons.some(l => l.hasVideo) && enrolled.length
-    ? await prisma.lessonProgress.findMany({
-        where: { userId: { in: enrolled.map(e => e.userId) }, lessonId: { in: watchLessons.filter(l => l.hasVideo).map(l => l.id) } },
-        select: { userId: true, lessonId: true, completed: true, watchedSeconds: true },
-      })
-    : [];
-  const watch = buildWatchTable(watchLessons, enrolled.map(e => ({ id: e.userId, name: e.user.name })), progress);
+  const view = await loadClassVideoView(courseId, isOwner);
 
   return (
     <BanGhiClient
@@ -55,15 +32,7 @@ export default async function BanGhiPage({ params, searchParams }: Props) {
       isOwner={isOwner}
       flash={{ ok: sp.ok === "1", removed: sp["da-go"] === "1", error: typeof sp.loi === "string" ? sp.loi.slice(0, 300) : "" }}
       preselectSession={typeof sp.buoi === "string" ? sp.buoi : ""}
-      bySession={grouped.bySession.map(g => ({ session: g.session, recordings: g.recordings.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })) }))}
-      unattached={grouped.unattached.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }))}
-      studentCount={enrolled.length}
-      watch={{
-        videoCount: watch.videoCount,
-        lessons: watch.lessons,
-        // Quản trị không phải chủ lớp chỉ nhận số tổng, không nhận tên / dòng từng em.
-        students: isOwner ? watch.students : [],
-      }}
+      {...view}
     />
   );
 }

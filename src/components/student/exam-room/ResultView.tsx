@@ -10,7 +10,7 @@ import { isLinkHidden } from "@/lib/features";
 
 export interface ResultViewProps {
   examTitle: string; mode: ExamMode | null; hasQuestions: boolean;
-  result: { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean };
+  result: { score: number | null; totalPoints: number; rank: number | null; pendingManual?: boolean; pendingReview?: boolean };
   receipt: string; submittedAt: string | null; expired: boolean;
   tiles: { label: string; value: string }[];
   showRank: boolean; answersLine: string | null;
@@ -43,6 +43,7 @@ export default function ResultView(p: ResultViewProps) {
             <div className="text-5xl font-bold mb-1 tabular-nums" style={{ color: "var(--kin-nhan-link)" }}>
               {p.result.score}<span className="text-2xl" style={{ color: "var(--kin-chu-mo)" }}>/{p.result.totalPoints}</span>
             </div>
+            {p.result.pendingReview && <p role="status" data-cho-duyet className="text-sm font-semibold mt-1" style={{ color: "var(--kin-tt-chu-cho)" }}>Điểm bạn tự khai đang chờ gia sư duyệt. Duyệt xong mới vào báo cáo và bảng xếp hạng.</p>}
             {p.showRank && p.result.rank !== null && p.result.rank > 0 && <p className="text-sm mt-1" style={{ color: "var(--kin-chu-mo)" }}>Hạng #{p.result.rank} trong bảng xếp hạng</p>}
           </div>
         )}

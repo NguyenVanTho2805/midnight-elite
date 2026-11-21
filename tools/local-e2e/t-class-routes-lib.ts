@@ -94,25 +94,25 @@ check("kết quả luôn là https hợp lệ hoặc null (quét 12 mẫu)", ['u
   .every(b => { const r = coverImageOf(b); return r === null || (r.startsWith("https://") && !/[\s"'()<>\\]/.test(r)); }));
 
 section("contentTabsFor — dải tab 5 mục (LOI-02 + TB-LOP Thông báo, một nơi duy nhất)");
-const ORDER = "Bài học · Học sinh · Thông báo · Điểm danh · Cài đặt";
+const ORDER = "Bài học · Video · Học sinh · Thông báo · Điểm danh · Cài đặt"; // SCL-D thêm Video
 const tabs = (p: string, t: string | null = null, r?: Parameters<typeof contentTabsFor>[2]) => contentTabsFor(p, t, r);
 const lit = (p: string, t: string | null = null, r?: Parameters<typeof contentTabsFor>[2]) => tabs(p, t, r)?.tabs.filter(x => x.active).map(x => x.label).join() ?? "∅";
 const G = tabs(Q);
 check("thứ tự: " + ORDER, G?.label === "Quản lớp" && G.tabs.map(t => t.label).join(" · ") === ORDER, G?.tabs.map(t => t.label));
-check("href: gốc · hoc-vien · thong-bao · diem-danh · ?tab=cai-dat", G?.tabs.map(t => t.href).join("|") === [Q, `${Q}/hoc-vien`, `${Q}/thong-bao`, `${Q}/diem-danh`, `${Q}?tab=cai-dat`].join("|"), G?.tabs.map(t => t.href));
+check("href: gốc · hoc-vien · thong-bao · diem-danh · ?tab=cai-dat", G?.tabs.map(t => t.href).join("|") === [Q, `${Q}/video`, `${Q}/hoc-vien`, `${Q}/thong-bao`, `${Q}/diem-danh`, `${Q}?tab=cai-dat`].join("|"), G?.tabs.map(t => t.href));
 const A2: [string, string | null, string][] = [
   [Q, null, "Bài học"], [Q, "chuong-bai", "Bài học"], [Q, "giao-trinh", "Bài học"], [Q, "xyz", "Bài học"],
   [`${Q}/giao-trinh`, null, "Bài học"], [`${Q}/giao-trinh/xem/l-1`, "cai-dat", "Bài học"],
-  [`${Q}/hoc-vien`, null, "Học sinh"], [Q, "hoc-vien", "Học sinh"], [`${Q}/thong-bao`, null, "Thông báo"], [`${Q}/thong-bao`, "cai-dat", "Thông báo"], [`${Q}/diem-danh`, null, "Điểm danh"], [`${Q}/diem-danh/in`, "cai-dat", "Điểm danh"],
+  [`${Q}/video`, null, "Video"], [`${Q}/hoc-vien`, null, "Học sinh"], [Q, "hoc-vien", "Học sinh"], [`${Q}/thong-bao`, null, "Thông báo"], [`${Q}/thong-bao`, "cai-dat", "Thông báo"], [`${Q}/diem-danh`, null, "Điểm danh"], [`${Q}/diem-danh/in`, "cai-dat", "Điểm danh"],
   [Q, "cai-dat", "Cài đặt"], [Q, "lich-hoc", ""], [Q, "diem-danh", ""], [`${Q}/lich-hoc`, null, ""],
 ];
 check("mỗi đường đúng tab sáng theo bảng A2 (nhiều nhất MỘT)", A2.every(([p, t, want]) => lit(p, t) === want), A2.filter(([p, t, want]) => lit(p, t) !== want).map(([p, t]) => [p, t, lit(p, t)]));
-check("…/lich-hoc (mở bằng link): dải vẫn hiện, KHÔNG tab nào sáng", tabs(`${Q}/lich-hoc`)?.tabs.length === 5 && lit(`${Q}/lich-hoc`) === "");
+check("…/lich-hoc (mở bằng link): dải vẫn hiện, KHÔNG tab nào sáng", tabs(`${Q}/lich-hoc`)?.tabs.length === 6 && lit(`${Q}/lich-hoc`) === "");
 check("phá: không còn nhãn 'Giáo trình' · 'Lịch học' · 'Bài tập' · 'Bài tập tự nộp' · 'Danh bạ lớp'", ![G, tabs(`${Q}/lich-hoc`), tabs(`${Q}/giao-trinh`, null, "co_teacher")].some(g => g?.tabs.some(t => ["Giáo trình", "Lịch học", "Bài tập", "Bài tập tự nộp", "Danh bạ lớp"].includes(t.label))));
 check("phá: tiền tố giả (giao-trinh-khac, hoc-vienx, diem-danhx, thong-baox) không làm sáng", lit(`${Q}/giao-trinh-khac`) === "" && lit(`${Q}/hoc-vienx`) === "" && lit(`${Q}/diem-danhx`) === "" && lit(`${Q}/thong-baox`) === "");
 check("tao-moi / danh sách lớp / trang khác → không dải", tabs("/lop-cua-toi/quan-lop/tao-moi") === null && tabs("/lop-cua-toi/quan-lop/tao-moi/giao-trinh") === null && tabs("/lop-cua-toi/quan-lop") === null && tabs("/lop-cua-toi/lich") === null);
 check("đồng giảng / bộ môn → chỉ 'Bài học' (sáng ở gốc)", (["co_teacher", "subject_teacher"] as const).every(r => tabs(Q, null, r)?.tabs.map(t => t.label).join(" · ") === "Bài học" && lit(Q, null, r) === "Bài học"));
-check("chủ lớp / quản trị / không vai → đủ 5", (["owner", "admin", null, undefined] as const).every(r => tabs(Q, null, r)?.tabs.length === 5));
+check("chủ lớp / quản trị / không vai → đủ 6 (SCL-D thêm Video)", (["owner", "admin", null, undefined] as const).every(r => tabs(Q, null, r)?.tabs.length === 6));
 check("đồng giảng ở trang lịch (mở bằng link) → không tab nào sáng", lit(`${Q}/lich-hoc`, null, "co_teacher") === "");
 check("nhóm Đề thi KHÔNG đổi (4 tab, sáng theo tiền tố dài nhất)", tabs("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/b1")?.tabs.map(t => t.label).join(" · ") === "Đề thi · Ngân hàng câu hỏi · Ma trận đề · Tệp đề gốc" && lit("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/b1") === "Ngân hàng câu hỏi");
 check("href của mọi tab giữ id đã mã hoá (không thoát khỏi lớp)", (() => { const g = contentTabsFor(`/lop-cua-toi/quan-lop/${encodeURIComponent("a/b")}/giao-trinh`); return !!g && g.tabs.every(t => t.href.startsWith("/lop-cua-toi/quan-lop/a%2Fb")); })());

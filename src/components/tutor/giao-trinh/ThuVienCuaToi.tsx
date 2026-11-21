@@ -147,6 +147,28 @@ export default function ThuVienCuaToi({ view }: { view: TutorLibraryView | null 
     if (r.ok) done("Đã xoá tệp."); else setNote({ tone: "err", text: r.json?.error ?? "Chưa xoá được." });
   }
 
+  // SCL-D (P2-6): tệp cũ Cloudinary công khai ⇒ chép vào kho riêng tư rồi đổi link trong bài (một tệp hoặc tất cả một lần).
+  const legacy = data.items.filter(i => i.storage === "cloudinary_cu").map(i => i.url);
+  async function makePrivate(urls: string[]) {
+    if (!urls.length) return;
+    const many = urls.length > 1;
+    if (!(await ask({ title: many ? `Chuyển ${urls.length} tài liệu cũ sang riêng tư?` : "Chuyển tài liệu này sang riêng tư?",
+      message: "KiN chép tệp vào kho riêng tư và đổi link ở mọi bài của bạn đang dùng tệp. Sau đó chỉ học sinh của lớp mở được. Link công khai cũ không còn hiện trong KiN.",
+      confirmLabel: "Chuyển sang riêng tư" }))) return;
+    setBusy(many ? "rt:all" : `rt:${urls[0]}`); setNote(null);
+    const r = await jfetch("/api/tutor/thu-vien/rieng-tu", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ urls }) });
+    setBusy(null);
+    if (!r.ok) { setNote({ tone: "err", text: r.json?.error ?? (r.status === 0 ? "Mất kết nối. Thử lại." : "Chưa chuyển được. Thử lại sau.") }); return; }
+    const res = (r.json?.results ?? []) as { ok: boolean; error?: string }[];
+    const failed = res.filter(x => !x.ok);
+    const moved = res.length - failed.length;
+    setOpen(null);
+    setNote({ tone: failed.length ? "err" : "ok", text: failed.length
+      ? `Đã chuyển ${moved} tài liệu. Chưa chuyển được ${failed.length}: ${failed[0].error ?? "lỗi không rõ"}`
+      : `Đã chuyển ${moved} tài liệu sang riêng tư.` });
+    router.refresh();
+  }
+
   const nothing = totalAll === 0 && data.examFiles.length === 0;
 
   return (
@@ -154,6 +176,15 @@ export default function ThuVienCuaToi({ view }: { view: TutorLibraryView | null 
       <KinPageHeader title="Thư viện" sub="Tài liệu của cô, dùng lại giữa các lớp. Mỗi tài liệu chỉ nằm một chỗ, bài nào cần thì thêm vào."
         actions={<Link href={uploadHref} className={kinButtonClass("primary")}>↑ Tải tài liệu</Link>} />
 
+      <p data-tv-rieng-tu-mac-dinh className="mb-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tệp bạn tải lên luôn ở chế độ riêng tư: chỉ học sinh của lớp có bài dùng tệp mới mở được.</p>
+      {legacy.length > 0 && (
+        <div data-tv-tep-cu className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-tt-vien-cho)] bg-[var(--kin-tt-nen-cho)] px-4 py-3">
+          <p className="min-w-0 flex-1 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">{legacy.length} tài liệu cũ đang công khai: ai có link cũng tải được.</p>
+          <KinButton type="button" variant="secondary" loading={busy === "rt:all"} loadingLabel="Đang chuyển…" disabled={!!busy} onClick={() => void makePrivate(legacy)} data-tv-rieng-tu-tat-ca>
+            {legacy.length > 1 ? `Chuyển cả ${legacy.length} sang riêng tư` : "Chuyển sang riêng tư"}
+          </KinButton>
+        </div>
+      )}
       {note && <p role={note.tone === "err" ? "alert" : "status"} data-tv-thong-bao className={`mb-4 text-[length:var(--kin-co-goc)] ${note.tone === "err" ? "text-[var(--kin-tt-chu-loi)]" : "text-[var(--kin-chu-chinh)]"}`}>{note.text}</p>}
 
       {nothing ? (
@@ -225,6 +256,9 @@ export default function ThuVienCuaToi({ view }: { view: TutorLibraryView | null 
                             <div className="md:col-span-4 flex flex-wrap gap-x-5 gap-y-0 md:mt-1">
                               <Link href={viewerHref(i.name, i.url)} target="_blank" rel="noopener noreferrer" className={ACT}>Xem</Link>
                               <button type="button" aria-expanded={open === i.url} onClick={() => setOpen(o => (o === i.url ? null : i.url))} className={ACT}>Dùng ở lớp khác</button>
+                              {i.storage === "cloudinary_cu" && (
+                                <button type="button" disabled={!!busy} onClick={() => void makePrivate([i.url])} data-tv-rieng-tu className={`${ACT} disabled:opacity-50`}>{busy === `rt:${i.url}` ? "Đang chuyển…" : "Chuyển sang riêng tư"}</button>
+                              )}
                             </div>
                             {open === i.url && <UseElsewhere courses={data.courses} url={i.url} name={i.name} onDone={done} onCancel={() => setOpen(null)} />}
                             {i.usedIn.length > 0 && (

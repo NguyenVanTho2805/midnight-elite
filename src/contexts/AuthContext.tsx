@@ -63,12 +63,23 @@ interface AuthContextType {
 // ─── CONTEXT ─────────────────────────────────────────────────────────────────
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser]         = useState<AuthUser | null>(null);
-  const [isLoading, setLoading] = useState(true);
+/** `initialUser` (SCL-H, P2-30): vỏ đã đọc phiên ở máy chủ ((student)/layout.tsx) truyền vào dạng JSON của /api/auth/me (null = khách) — trang có nội dung ngay
+ *  trong HTML, không chờ thêm vòng /api/auth/me. Không truyền (undefined) = như cũ: tự hỏi /api/auth/me. Provider gốc (app/layout.tsx) vẫn hỏi như cũ để đồng bộ vai + gia hạn phiên. */
+export function AuthProvider({ children, initialUser }: { children: ReactNode; initialUser?: Record<string, unknown> | null }) {
+  const seeded = initialUser !== undefined;
+  const [user, setUser]         = useState<AuthUser | null>(() => (initialUser ? toAuthUser(initialUser) : null));
+  const [isLoading, setLoading] = useState(!seeded);
   const router = useRouter();
 
+  // router.refresh() (vd. sau đồng bộ vai) dựng lại layout máy chủ → nhận user mới (chỉnh state ngay khi render, mẫu React "prop đổi thì đặt lại state").
+  const [seedSeen, setSeedSeen] = useState(initialUser);
+  if (seeded && initialUser !== seedSeen) {
+    setSeedSeen(initialUser);
+    setUser(initialUser ? toAuthUser(initialUser) : null);
+  }
+
   useEffect(() => {
+    if (seeded) return;
     fetch("/api/auth/me")
       .then(r => r.json())
       .then(data => {

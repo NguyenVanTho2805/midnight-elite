@@ -16,7 +16,7 @@ import { KIN_FIELD } from "@/components/kin/PageLayout";
 import { routeInput, type GiaoTrinhSnapshot, type GtEntry } from "@/lib/giaoTrinh";
 import type { MediaSlot } from "@/lib/mediaLink";
 import { formatMegabytes } from "@/lib/mediaStorage";
-import { COPYRIGHT_PLEDGE_LABEL, COPYRIGHT_NOTICE } from "@/lib/classRecordings";
+import { COPYRIGHT_PLEDGE_LABEL, DOCUMENT_STORAGE_NOTICE } from "@/lib/classRecordings";
 import type { AddResult, GtTarget } from "./useGiaoTrinh";
 import { ChipTrangThai } from "./ChipTrangThai";
 import { KinSelect } from "@/components/kin/KinSelect";
@@ -212,7 +212,7 @@ export default function OTaiLen({ courseId, config, entries: lessons, onAdd, onU
           <input type="checkbox" checked={pledge} onChange={e => setPledgeSaved(e.target.checked)} className="mt-0.5 w-5 h-5 flex-shrink-0" />
           <span>{COPYRIGHT_PLEDGE_LABEL}</span>
         </label>
-        <p className="text-[length:var(--kin-co-caption)] leading-5 text-[var(--kin-chu-mo)]">{COPYRIGHT_NOTICE}</p>
+        <p className="text-[length:var(--kin-co-caption)] leading-5 text-[var(--kin-chu-mo)]">{DOCUMENT_STORAGE_NOTICE}</p>
       </div>
 
       {boxError && <p role="alert" data-gt-loi className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi)]">{boxError}</p>}

@@ -121,7 +121,9 @@ export default function TutorShell({
   // Mục "Học sinh" (Figma 299:113083) đứng ngay sau Lớp khi Lớp bật. B6 GS-09 (08/11/2026): KHÔNG còn phụ thuộc module Lớp — tắt Lớp vẫn thấy Học sinh
   // (đứng cuối các module), vì Yêu cầu tìm gia sư và hồ sơ học sinh vào từ đó. Trang riêng của gia sư (/lop-cua-toi/hoc-sinh), không dùng /admin/hoc-sinh.
   const studentItem: ModuleItem = { key: "hoc-sinh", label: "Học sinh", href: "/lop-cua-toi/hoc-sinh", icon: "nguoi", active: isUnder(pathname, "/lop-cua-toi/hoc-sinh") || isUnder(pathname, "/lop-cua-toi/yeu-cau"), desktopOnly: true };
-  const withStudents = head ? mods : mods.some(m => m.key === "lop")
+  // SCL-C (P1-1): Chủ nhiệm quản lý điểm mọi lớp — Sổ điểm đứng ngay sau Lớp (gia sư thấy Sổ điểm ở nhóm "Dạy học" như cũ).
+  const soDiemItem: ModuleItem = { key: "so-diem", label: "Sổ điểm", href: "/lop-cua-toi/so-diem", icon: "bai-kt", active: isUnder(pathname, "/lop-cua-toi/so-diem") };
+  const withStudents = head ? [...mods, soDiemItem] : mods.some(m => m.key === "lop")
     ? mods.flatMap<ModuleItem>(m => m.key === "lop" ? [m, studentItem] : [m])
     : [...mods, studentItem];
   // Thanh RỘNG (Figma "Điều hướng"): "Làm việc hằng ngày" = các module đang bật (trừ Học phí); Học phí đứng chung nhóm "Tiền" với Doanh thu; các nhóm còn lại là chính

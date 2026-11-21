@@ -11,7 +11,7 @@ import { featureOn } from "@/lib/features";
 const RAIL = "Module của gia sư";
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH, mục Học phí của Cài đặt theo cờ HOC_PHI (mặc định ẨN). Bài đọc cờ ở tiến trình này: chạy cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
 const DIEM_DANH = featureOn("DIEM_DANH"), HOC_PHI = featureOn("HOC_PHI");
-const TABS = ["Bài học", "Học sinh", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
 
 (async () => {
   await wipe();
@@ -123,7 +123,7 @@ const TABS = ["Bài học", "Học sinh", "Thông báo", ...(DIEM_DANH ? ["Đi�
     await pg.goto(`${BASE}${base}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.getByText("Thông tin cơ bản").first().waitFor({ timeout: 120000 });
     const cn = pg.locator('nav[aria-label^="Mục của"]:visible');
-    const MUC = ["Thông tin", ...(HOC_PHI ? ["Học phí"] : []), "Đồng giảng", "Cộng đồng", "Bản ghi", "Học online"];
+    const MUC = ["Thông tin", ...(HOC_PHI ? ["Học phí"] : []), "Đồng giảng", "Cộng đồng", "Học online"]; // SCL-D: Bản ghi chuyển sang tab Video
     check(`${tag}: ${MUC.length} mục con ${MUC.join(" · ")} (DG-HOC-ONLINE thêm mục cuối; Học phí theo cờ HOC_PHI)`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(MUC), await cn.getByRole("link").allInnerTexts());
     if (HOC_PHI) {
       await cn.getByRole("link", { name: "Học phí" }).click();

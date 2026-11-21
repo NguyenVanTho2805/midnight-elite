@@ -1,5 +1,5 @@
 // A3 (BU-02) — phát / tải một TÀI LIỆU lưu trên KiN. KHÔNG có địa chỉ công khai: mỗi lượt đều kiểm quyền, cùng luật với /api/media/[id]/stream.
-// Được xem: chủ tệp; quản trị cấp 1 / nội dung; gia sư CHỦ LỚP của một bài đang tham chiếu tệp; học viên "active" / "suspended" của lớp có bài tham chiếu; bài `isFree` (vẫn phải đăng nhập).
+// Được xem: chủ tệp; quản trị cấp 1 / nội dung; gia sư CHỦ LỚP của một bài đang tham chiếu tệp; học viên "active" / "suspended" của lớp có bài tham chiếu; KHÔNG mở cho bài `isFree` (SCL-D: tài liệu chỉ dành cho thành viên lớp, kể cả ở bài học thử cũ — khác video ở /stream).
 // "Bài tham chiếu" = Lesson.documents chứa `/api/media/<mã>/file` (gỡ tệp khỏi hết bài ⇒ học sinh không còn mở được). Chưa đăng nhập 401; không đủ quyền 403; mã lạ / chưa ready 404.
 // An toàn nội dung: Content-Type lấy từ BẢNG đuôi (không từ tệp), nosniff, CSP chặn mọi thứ (sandbox, trừ PDF vì trình xem PDF của Chrome không chạy trong sandbox), chỉ PDF/ảnh/văn bản mới `inline`.
 import { documentFileIds } from "@/lib/lessonMediaServer";
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const enr = session.role === "student"
         ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
         : null;
-      return canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree, coTeacher: helper });
+      return canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: false, coTeacher: helper });
     };
     // Bài đã ghi trên tệp trước (rẻ), rồi mới quét theo nội dung. Chỉ tính bài THẬT SỰ còn chứa đường dẫn này (gỡ khỏi hết bài ⇒ không còn ai ngoài chủ mở được).
     const tried: string[] = [];

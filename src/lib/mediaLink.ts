@@ -48,6 +48,9 @@ export interface MediaLinkInfo {
 const MAX_URL_LENGTH = 2000;
 const MAX_LINKS = 20;
 
+/** SCL-D (Q4): một câu cho gia sư — rủi ro của video YouTube "Không công khai" (chỉ hiện phía gia sư, không hiện cho học sinh). */
+export const YOUTUBE_UNLISTED_NOTE = "Lưu ý: video YouTube \"Không công khai\" vẫn xem được bởi bất kỳ ai có link, nên học sinh có thể chia link ra ngoài lớp.";
+
 const NONE = { embedUrl: null, id: null, vimeoHash: null, suggestedType: null, error: null, warning: null } as const;
 
 function invalid(error: string, url = ""): MediaLinkInfo {
@@ -172,7 +175,7 @@ function classifyCore(raw: string | null | undefined): CoreInfo {
     const start = startSeconds(u);
     const embed = `https://www.youtube-nocookie.com/embed/${yt}?rel=0&modestbranding=1${start ? `&start=${start}` : ""}`;
     return { ok: true, kind: "youtube", label: "YouTube", url, embedUrl: embed, id: yt, vimeoHash: null, suggestedType: "record", error: null,
-      warning: "Nếu video để chế độ \"Không công khai\", học sinh có link vẫn xem được; nếu để \"Riêng tư\", học sinh sẽ không xem được." };
+      warning: "Để video ở chế độ \"Không công khai\" (để \"Riêng tư\" thì học sinh không xem được)." };
   }
   if ((hostMatches(host, "youtube.com") || hostMatches(host, "youtu.be")) && u.searchParams.get("list") && !u.searchParams.get("v"))
     return invalid("Đây là link danh sách phát YouTube. Hãy dán link của MỘT video.", url);

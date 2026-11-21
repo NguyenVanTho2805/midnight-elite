@@ -71,7 +71,7 @@ const LINKS: [string, FeatureKey][] = [
   ["/lop-cua-toi/c1/bang-hoc-phi", "HOC_PHI"], ["/lop-cua-toi/c1/bang-hoc-phi/nhap", "HOC_PHI"],
   ["/lop-cua-toi/doanh-thu", "KINH_DOANH"], ["/lop-cua-toi/goi", "KINH_DOANH"], ["/admin/doanh-thu", "KINH_DOANH"], ["/admin/goi-pro", "KINH_DOANH"],
   ["/lop-cua-toi/quan-lop/c1/diem-danh", "DIEM_DANH"], ["/lop-cua-toi/quan-lop/c1/diem-danh/in?month=2026-11", "DIEM_DANH"],
-  ["/lop-cua-toi/so-diem", "SO_DIEM"], ["/lop-cua-toi/bao-cao-thang", "SO_DIEM"], ["/lop-cua-toi/bao-cao-thang/in", "SO_DIEM"],
+  ["/lop-cua-toi/bao-cao-thang", "SO_DIEM"], ["/lop-cua-toi/bao-cao-thang/in", "SO_DIEM"], // SCL-C: /lop-cua-toi/so-diem thường trực (xem KEEP)
   ["/student/nhac-hoc", "NHAC_HOC"], ["/lop-cua-toi/tong-quan", "HOP_VIEC"],
   ["/thi-thu", "THI_THU_CONG_KHAI"], ["/thi-thu?mon=toan", "THI_THU_CONG_KHAI"], ["/student/thi-thu", "THI_THU_CONG_KHAI"],
   ["/admin/pheu", "VAN_HANH_PHU"], ["/admin/so-do", "VAN_HANH_PHU"], ["/admin/danh-gia", "VAN_HANH_PHU"], ["/admin/trang-chu", "VAN_HANH_PHU"], ["/admin/trang-chu/xem-truoc", "VAN_HANH_PHU"],
@@ -85,7 +85,7 @@ for (const [href, k] of LINKS) {
 const KEEP = ["/", "/khoa-hoc", "/khoa-hoc?gia=free", "/student/thi-thu/de-1", "/student/thi-thu/de-1?lan=2", "/student/viec-cua-toi", "/student/hoc-tap", "/student/hoc-tap?course=c1", "/student/bai-giang/b1", "/student/ho-so", "/student/nhap-ma-lop",
   "/lop-cua-toi", "/lop-cua-toi/lich", "/lop-cua-toi/lich/khung?lop=x", "/lop-cua-toi/lop", "/lop-cua-toi/lop/tao", "/lop-cua-toi/bai-tap", "/lop-cua-toi/ho-so", "/lop-cua-toi/cai-dat", "/lop-cua-toi/ho-tro", "/lop-cua-toi/hoc-sinh", "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/ngan-hang-de-thi",
   "/lop-cua-toi/quan-lop/c1", "/lop-cua-toi/quan-lop/c1?tab=cai-dat", "/lop-cua-toi/quan-lop/c1/hoc-vien", "/lop-cua-toi/quan-lop/c1/lich-hoc", "/lop-cua-toi/quan-lop/c1/giao-trinh", "/lop-cua-toi/c1", "/lop-cua-toi/c1/ban-ghi",
-  "/lop-cua-toi/hoc-phix", "/lop-cua-toi/c1/bang-hoc-phix", "/lop-cua-toi/quan-lop/c1/diem-danhx", "/thi-thux", "/student/thi-thux",
+  "/lop-cua-toi/so-diem", "/lop-cua-toi/so-diem?lop=c1", "/lop-cua-toi/bai-tap/giao", "/student/diem", "/lop-cua-toi/hoc-phix", "/lop-cua-toi/c1/bang-hoc-phix", "/lop-cua-toi/quan-lop/c1/diem-danhx", "/thi-thux", "/student/thi-thux",
   "/admin", "/admin/kiem-duyet", "/admin/gia-su", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/khoa-hoc/danh-muc", "/admin/thi-thu/ngan-hang-cau-hoi", "/admin/nhat-ky", "/admin/trien-khai", "/admin/ho-tro",
   "/admin/thi-thu", "/admin/khoa-hoc", "/dang-ky", "/dang-nhap", "/phu-huynh", "/ban-do",
   "/cong-dong/t123", "/cong-dong/t123#r-9", "/yeu-cau/abc", "/mentor/abc", "/mentor/abc/yeu-cau", "/mentor/abc?tab=lop", "/lich", "/giang-vienx", "/tin-tucx", "/thu-vienx", "https://zalo.me/x", "tel:0384", "//evil.com/giang-vien"];
@@ -106,12 +106,13 @@ const BLOCKED: [string, FeatureKey][] = [
   // DG (14/11/2026): trang gia sư / học sinh / khách của phần mới — chặn với MỌI vai.
   ["/lop-cua-toi/hoc-phi", "HOC_PHI"], ["/lop-cua-toi/hoc-phi/thang", "HOC_PHI"], ["/student/hoc-phi", "HOC_PHI"], ["/lop-cua-toi/c1/bang-hoc-phi/nhap", "HOC_PHI"],
   ["/lop-cua-toi/doanh-thu", "KINH_DOANH"], ["/lop-cua-toi/goi", "KINH_DOANH"], ["/lop-cua-toi/quan-lop/c1/diem-danh", "DIEM_DANH"], ["/lop-cua-toi/quan-lop/c1/diem-danh/in", "DIEM_DANH"],
-  ["/lop-cua-toi/so-diem", "SO_DIEM"], ["/lop-cua-toi/bao-cao-thang/in", "SO_DIEM"], ["/student/nhac-hoc", "NHAC_HOC"], ["/lop-cua-toi/tong-quan", "HOP_VIEC"],
+  ["/lop-cua-toi/bao-cao-thang/in", "SO_DIEM"], ["/student/nhac-hoc", "NHAC_HOC"], ["/lop-cua-toi/tong-quan", "HOP_VIEC"],
   ["/thi-thu", "THI_THU_CONG_KHAI"], ["/student/thi-thu", "THI_THU_CONG_KHAI"], ["/lop-cua-toi/bai-dang", "TIM_GIA_SU"], ["/lop-cua-toi/yeu-cau", "TIM_GIA_SU"],
 ];
 for (const [p, k] of BLOCKED) {
   check(`${p}: mọi vai bị chặn khi ${k} tắt; mở lại khi ${k}=1`, VIEWERS.every(v => blockedRouteFeature(p, v, OFF) === k) && VIEWERS.every(v => blockedRouteFeature(p, v, only(k)) === null));
 }
+check("SCL-C: Sổ điểm /lop-cua-toi/so-diem (và ?lop=) thường trực — không vai nào bị chặn khi mọi cờ tắt", ["/lop-cua-toi/so-diem", "/lop-cua-toi/so-diem?lop=c1"].every(p => VIEWERS.every(v => blockedRouteFeature(p, v, OFF) === null)));
 check("/cong-dong/<id> (câu hỏi trong lớp) KHÔNG bị chặn ở proxy — trang tự kiểm courseId", VIEWERS.every(v => blockedRouteFeature("/cong-dong/t123", v, OFF) === null));
 check("hồ sơ từng gia sư /mentor/<id>, /mentor/<id>/yeu-cau vẫn mở cho mọi vai (link đã chia sẻ không chết); chỉ sàn /giang-vien bị chặn", ["/mentor/abc", "/mentor/abc/yeu-cau"].every(p => VIEWERS.every(v => blockedRouteFeature(p, v, OFF) === null)) && !mayBlockRoute("/mentor/abc", OFF));
 

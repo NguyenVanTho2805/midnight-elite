@@ -12,6 +12,7 @@ import { BADGE_RULES } from "@/lib/honorData";
 import { DropZone } from "@/components/DropZone";
 import ParentLinkWidget from "@/components/parent/ParentLinkWidget";
 import SelfConsentCard from "@/components/account/SelfConsentCard";
+import type { ThuVienResp } from "@/lib/studentLop";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -277,18 +278,11 @@ export default function HoSoPage() {
       .then((d: { counts: Record<string, number> }) => setActivityCounts(d.counts))
       .catch(() => {});
 
-    fetch("/api/enrollments")
-      .then(r => r.ok ? r.json() : { courseIds: [] })
-      .then((d: { courseIds: string[] }) => {
-        if (!d.courseIds?.length) return;
-        fetch("/api/courses")
-          .then(r => r.ok ? r.json() : [])
-          .then((courses: EnrolledCourseItem[]) => {
-            const ids = new Set(d.courseIds);
-            setEnrolledCourses(courses.filter(c => ids.has(c.id)));
-          })
-          .catch(() => {});
-      })
+    // SCL-H (P2-33): lớp đang học lấy thẳng từ /api/student/lop (một yêu cầu, chỉ lớp của em) — trước đây /api/enrollments rồi tải CẢ danh mục /api/courses để lọc ở máy
+    // (lớp riêng không có trong danh mục công khai thì còn không hiện).
+    fetch("/api/student/lop")
+      .then(r => r.ok ? r.json() : { classes: [] })
+      .then((d: ThuVienResp) => setEnrolledCourses((d.classes ?? []).map(c => ({ id: c.id, name: c.name, category: c.category, lessons: c.total }))))
       .catch(() => {});
 
   }, []);

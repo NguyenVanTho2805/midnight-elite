@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { KinButton } from "@/components/kin";
 import type { ExamFull } from "@/lib/api";
 
-export interface AzotaDone { score: number | null; totalPoints: number; rank: number | null }
+export interface AzotaDone { score: number | null; totalPoints: number; rank: number | null; pendingReview?: boolean }
 
 export default function AzotaFlow({ exam, onDone }: { exam: ExamFull; onDone: (r: AzotaDone) => void }) {
   const [phase, setPhase] = useState<"ready" | "entering" | "submit">("ready");
@@ -30,7 +30,7 @@ export default function AzotaFlow({ exam, onDone }: { exam: ExamFull; onDone: (r
       const res = await fetch("/api/exam-results", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ examId: exam.id, score }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Lỗi nộp kết quả");
-      onDone({ score: data.score, totalPoints: data.totalPoints, rank: data.rank });
+      onDone({ score: data.score, totalPoints: data.totalPoints, rank: data.rank, pendingReview: data.pendingReview === true });
     } catch (e) { setErr(e instanceof Error ? e.message : "Lỗi không xác định"); } finally { setBusy(false); }
   }
 

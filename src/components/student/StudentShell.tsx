@@ -22,6 +22,7 @@ import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { useRail } from "@/components/kin/shell/railStore";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
+import { fetchStudentWork } from "@/lib/studentWorkClient";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
@@ -69,10 +70,10 @@ export default function StudentShell({ children, preview }: { children: ReactNod
   const exam = isExamRoom(pathname);
   const [rail] = useRail();
 
+  // SCL-H: dùng chung phản hồi với trang (fetchStudentWork) — mở "Việc của tôi" chỉ một lần tính lịch, không phải ba.
   const loadBadge = useCallback(() => {
-    fetch("/api/student/viec-cua-toi?badge=1", { credentials: "same-origin" })
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (d && typeof d.badge === "number") setBadge(d.badge); })
+    fetchStudentWork()
+      .then(d => { if (typeof d.badge === "number") setBadge(d.badge); })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -99,6 +100,8 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
     // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" },
+    // SCL-C (P1-1, HS4): điểm / trạng thái từng bài của các lớp đang học. Lên thanh dưới điện thoại.
+    { key: "diem", label: "Điểm", href: "/student/diem", icon: "bai-kt" },
     // DG (14/11/2026, vòng dạy thật): mọi mục của bảng "Khác" đang ẩn theo cờ ⇒ bảng chỉ còn "Trang chủ KiN" + "Đăng xuất", cả hai đã có sẵn (logo / mục Trang chủ,
     // menu tên ở dải trên). Bỏ hẳn nút "Khác" thay vì để một nút mở bảng gần rỗng; bật lại bất kỳ cờ nào trong nhóm thì nút trở lại như cũ.
     ...(MORE_GROUPS.length ? [{ key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true } satisfies ModuleItem] : []),

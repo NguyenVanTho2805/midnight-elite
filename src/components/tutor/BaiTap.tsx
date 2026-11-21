@@ -24,7 +24,6 @@ import { KinCallout } from "@/components/kin/Callout";
 import { NopTepBox, NopTepStudentFiles, type NopTepBoxHandle } from "@/components/student/nop-tep/NopTepBox"; // BU-HS-NOP-TEP: tệp học sinh nộp + tệp trả bài (chỉ import)
 import { dayAt } from "@/lib/baiTap";
 import { deThiSubHref, taoDeHref } from "@/components/tutor/de-thi/deThiClient";
-import { contentHref } from "@/lib/tutorRoutes";
 import { KinSelect } from "@/components/kin/KinSelect";
 
 type Tab = "all" | BaiTapGroup;
@@ -194,8 +193,6 @@ export default function BaiTap() {
   const [tab, setTab] = useState<Tab>("all");
   const [courseId, setCourseId] = useState("");
   const [selKey, setSelKey] = useState<string | null>(null);
-  const [pickOpen, setPickOpen] = useState(false);
-  const [pickId, setPickId] = useState("");
 
   const load = useCallback(() => {
     fetch("/api/tutor/bai-tap", { credentials: "same-origin", cache: "no-store" })
@@ -219,13 +216,8 @@ export default function BaiTap() {
   for (const i of shown) byCourse.set(i.courseName, [...(byCourse.get(i.courseName) ?? []), i]);
   const groups = [...byCourse.entries()];
 
-  // A1: "+ Giao bài" soạn bài tập tự nộp ở tab "Bài tập" của lớp. Một lớp, hoặc đã lọc lớp → đi thẳng; từ 2 lớp mà chưa chọn → hỏi lớp ngay tại trang này (không đẩy sang danh sách lớp).
-  const nCourses = data?.courses.length ?? 0;
-  const onlyCourse = nCourses === 1 ? data!.courses[0].id : null;
-  const tuNopHref = (id: string) => contentHref(true, `/admin/khoa-hoc/${encodeURIComponent(id)}?tab=chuong-bai`);
-  const directId = onlyCourse ?? (courseId || null);
-  const needPick = directId === null && nCourses >= 2;
-  const giaoHref = directId ? tuNopHref(directId) : "/lop-cua-toi/lop";
+  // SCL-C (P2-2): "+ Giao bài" mở thẳng form ngắn (lớp, tiêu đề, tệp đề hoặc quiz, hạn nộp) — không bắt gắn vào bài học. Đang lọc lớp ⇒ chọn sẵn lớp đó.
+  const giaoHref = `/lop-cua-toi/bai-tap/giao${courseId ? `?lop=${encodeURIComponent(courseId)}` : ""}`;
 
   function choose(i: BaiTapItem) {
     setSelKey(keyOf(i));
@@ -249,40 +241,18 @@ export default function BaiTap() {
         <div className="flex flex-wrap gap-3 self-start flex-shrink-0">
           <Link href={taoDeHref()} className={kinButtonClass("secondary")}>Tạo đề</Link>
           <Link href="/lop-cua-toi/de-thi" className={kinButtonClass("secondary")}>Quản lý đề thi</Link>
-          {needPick
-            ? <button type="button" onClick={() => setPickOpen(o => !o)} aria-expanded={pickOpen} aria-controls="bt-giao-pick" className={kinButtonClass("primary")}>+ Giao bài</button>
-            : <Link href={giaoHref} className={kinButtonClass("primary")}>+ Giao bài</Link>}
+          <Link href="/lop-cua-toi/so-diem" className={kinButtonClass("secondary")}>Sổ điểm</Link>
+          <Link href={giaoHref} className={kinButtonClass("primary")}>+ Giao bài</Link>
         </div>
       </header>
-
-      {needPick && pickOpen && (
-        <KinPanel as="section" id="bt-giao-pick" aria-labelledby="bt-giao-pick-h" className="mb-6">
-          <h2 id="bt-giao-pick-h" className="text-[length:var(--kin-co-tieu-de)] leading-6 font-medium text-[var(--kin-chu-chinh)]">Giao bài cho lớp nào?</h2>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chọn lớp rồi soạn bài tập tự nộp ở tab Bài tập của lớp đó. Giao đề thi thì mở một đề ở Quản lý đề thi.</p>
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-end gap-3">
-            <div className="min-w-0 sm:flex-1 sm:max-w-sm">
-              <label htmlFor="bt-giao-lop" className={LABEL}>Lớp</label>
-              <KinSelect id="bt-giao-lop" autoFocus value={pickId} onChange={v => setPickId(v)}>
-                <option value="">Chọn lớp</option>
-                {data?.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </KinSelect>
-            </div>
-            {pickId
-              ? <Link href={tuNopHref(pickId)} className={kinButtonClass("primary")}>Soạn bài cho lớp này</Link>
-              : <button type="button" disabled className={kinButtonClass("primary")}>Soạn bài cho lớp này</button>}
-          </div>
-        </KinPanel>
-      )}
 
       {error && <ErrorStrip message="Không tải được danh sách bài." onRetry={load} />}
       {data === null ? (!error ? <Skeleton /> : null) : items.length === 0 ? (
         <KinEmptyState title="Chưa có bài tập hay đề thi nào"
-          action={needPick
-            ? <button type="button" onClick={() => setPickOpen(true)} className={kinButtonClass("primary")}>Giao bài đầu tiên</button>
-            : <Link href={giaoHref} className={kinButtonClass("primary")}>{data.courses.length ? "Giao bài đầu tiên" : "Tạo lớp trước"}</Link>}>
+          action={<Link href={data.courses.length ? giaoHref : "/lop-cua-toi/lop"} className={kinButtonClass("primary")}>{data.courses.length ? "Giao bài đầu tiên" : "Tạo lớp trước"}</Link>}>
           {data.courses.length
-            ? "Giao bài trong tab Bài tập của lớp. Bài học sinh nộp sẽ hiện ở đây để cô chấm."
-            : "Cô cần có lớp trước, rồi mới giao bài được. Đề thi cô tạo cũng sẽ hiện ở đây."}
+            ? "Bấm “+ Giao bài” để giao bài cho lớp. Bài học sinh nộp sẽ hiện ở đây để bạn chấm."
+            : "Bạn cần có lớp trước, rồi mới giao bài được. Đề thi bạn tạo cũng sẽ hiện ở đây."}
         </KinEmptyState>
       ) : (
         <>
@@ -290,7 +260,7 @@ export default function BaiTap() {
           <div className="mt-6 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-x-8 gap-y-8 items-start">
             <div className="min-w-0">
               <label htmlFor="bt-lop" className={LABEL}>Lọc lớp</label>
-              <KinSelect id="bt-lop" value={courseId} onChange={v => { setCourseId(v); setSelKey(null); setPickOpen(false); }}>
+              <KinSelect id="bt-lop" value={courseId} onChange={v => { setCourseId(v); setSelKey(null); }}>
                 <option value="">Tất cả lớp</option>
                 {data.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </KinSelect>

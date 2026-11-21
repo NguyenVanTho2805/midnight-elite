@@ -220,9 +220,11 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const order = await card.evaluate(e => { const kids = [...e.children]; return { second: kids[1]?.hasAttribute("data-nop-tep") ?? false, guideAfter: (() => { const g = e.querySelector("[data-bai-tap-huong-dan]"), z = e.querySelector("[data-nop-tep]"); return !!g && !!z && !!(z.compareDocumentPosition(g) & Node.DOCUMENT_POSITION_FOLLOWING); })() }; });
     check("thẻ bài tập: ngay sau tiêu đề + hạn là khối nộp tệp; hướng dẫn / đề bài nằm SAU", order.second && order.guideAfter, order);
     const zb = await zone.boundingBox(), cardB = await card.boundingBox();
-    check(`vùng thả là <button>, cao ≥ 200px, rộng gần hết thẻ`, (await zone.evaluate(e => e.tagName)) === "BUTTON" && !!zb && zb.height >= 200 && !!cardB && zb.width >= cardB.width - 2 * 24, { zb, cardB });
-    check("chữ 'Kéo thả tệp Word hoặc PDF vào đây' + 'hoặc' + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
-      /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText()) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44
+    // SCL-D (P2-1): dưới 768px ô thả gọn (≥ 96px, chữ "Tệp Word hoặc PDF"), từ 768px mới là vùng thả lớn.
+    const phone = w < 768;
+    check(`vùng thả là <button>, cao ${phone ? "96–211px (gọn trên điện thoại)" : "≥ 200px"}, rộng gần hết thẻ`, (await zone.evaluate(e => e.tagName)) === "BUTTON" && !!zb && (phone ? zb.height >= 96 && zb.height <= 211 : zb.height >= 200) && !!cardB && zb.width >= cardB.width - 2 * 24, { zb, cardB });
+    check("chữ ô thả (máy tính: 'Kéo thả… vào đây' + 'hoặc'; điện thoại: 'Tệp Word hoặc PDF') + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
+      (phone ? /Tệp Word hoặc PDF/.test(await zone.innerText()) : /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText())) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44
       && /dưới 10 MB.*60 ngày.*Tối đa 3 tệp/.test(await card.locator("[data-nop-tep-chu-thich]").innerText()));
     // Rà soát lượt 1 (P2): cảnh báo thông tin cá nhân phải đọc được TRƯỚC khi chọn tệp / nộp — ngay dưới chú thích, TRÊN nút Nộp bài (thứ tự DOM + toạ độ y).
     const warn = card.locator("[data-nop-tep-canh-bao]"), nopBtn = card.locator("[data-nop-tep-nop]");
@@ -329,7 +331,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await eventually("em không có bài hẹn (phiếu rỗng thật) ⇒ VẪN nói '3 ngày tới chưa có buổi học' (rỗng ≠ đang tải)", async () => (await p1.getByText("3 ngày tới chưa có buổi học").count()) === 1 && (await p1.locator("[data-aside-dang-tai]").count()) === 0, 60000);
     await c1.close();
   }
-  section("LOI-07 · 1600 · không giấu lỗi: hom-nay 500 / 403 không ẩn cột buổi học; /api/schedule 500 ⇒ khối lịch báo lỗi + Thử lại");
+  section("LOI-07 · 1600 · không giấu lỗi: hom-nay 500 / 403 không ẩn cột buổi học; viec-cua-toi 500 ⇒ khối lịch báo lỗi + Thử lại");
   {
     for (const [what, status] of [["500", 500], ["403 (gia sư / quản trị xem thử)", 403]] as const) {
       const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
@@ -343,11 +345,15 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     }
     const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
     let fail = true;
-    await p.route("**/api/schedule**", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
+    // SCL-H: lịch của lớp về cùng /api/student/viec-cua-toi (một yêu cầu ⇒ một lỗi: việc và lịch cùng báo lỗi); /api/schedule không còn được gọi.
+    let scheduleCalls = 0;
+    await p.route("**/api/schedule**", r => { scheduleCalls++; return r.continue(); });
+    await p.route("**/api/student/viec-cua-toi**", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
     await p.goto(`${BASE}/student/hoc-tap?course=${X.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     const loi = p.locator("[data-course-sessions] [data-course-sessions-loi]");
     await loi.waitFor({ timeout: 120000 }).catch(() => {});
-    check("lớp có bài hẹn hôm nay + /api/schedule 500 ⇒ khối 'Buổi học sắp tới' VẪN hiện, nói 'Không tải được lịch của lớp.' + 'Thử lại' ≥ 44px (không im lặng ẩn)",
+    check("trang lớp không gọi /api/schedule (lịch đi cùng viec-cua-toi)", scheduleCalls === 0, scheduleCalls);
+    check("lớp có bài hẹn hôm nay + /api/student/viec-cua-toi 500 ⇒ khối 'Buổi học sắp tới' VẪN hiện, nói 'Không tải được lịch của lớp.' + 'Thử lại' ≥ 44px (không im lặng ẩn)",
       await loi.isVisible() && /Không tải được lịch của lớp\./.test(await loi.innerText()) && ((await loi.getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44);
     fail = false;
     await loi.getByRole("button", { name: "Thử lại" }).click();

@@ -5,7 +5,7 @@ import { hmOf, vnMinutesOfDay, vnDateKeyOf, addDaysKey, dayOfWeekOfKey } from "@
 import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { parseAzotaDeadline } from "@/lib/azotaDeadline";
-import { isListedToStudent } from "@/lib/examVariantRoute";
+import { isListedToStudent, listedToStudentWhere } from "@/lib/examVariantRoute";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
@@ -59,15 +59,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
 
   // ── Exam events ──────────────────────────────────────────────────────────────
   // BU-04: mã đề con (variantOfId) và đề "giao theo link" của gia sư (không lớp, chủ là gia sư) không bao giờ hiện ở lịch —
-  // cùng luật `isListedToStudent` với GET /api/exams (một nguồn). Lọc ở JS, không dùng Prisma `NOT {…owner…}`: hàng không có
-  // chủ (ownerId NULL) sẽ bị SQL loại nhầm.
-  const examRows = await prisma.exam.findMany({
-    where: { active: true, isDraft: false, supersededById: null, variantOfId: null, status: { not: "completed" } }, // QZ-04/07: không hiện bản nháp hay phiên bản cũ
-    select: {
-      id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true,
-      variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
-    },
-  });
+  // cùng luật `isListedToStudent` với GET /api/exams (một nguồn).
   // STU-004 (cùng luật GET /api/exams): đề của lớp em không học thì KHÔNG hiện tên ở lịch, trừ đề đã được cấp quyền vào (ExamGuestAccess).
   const [enr, acc] = await Promise.all([
     prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
@@ -75,6 +67,14 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
   ]);
   const enrolledCourses = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));
   const grantedExams = new Set(acc.map(a => a.examId));
+  // SCL-H (P2-31): lọc "ai được thấy" ở SQL (listedToStudentWhere — ghi riêng hàng chủ NULL), không kéo cả bảng đề về; lọc JS giữ lại làm lưới an toàn cùng luật.
+  const examRows = await prisma.exam.findMany({
+    where: { active: true, isDraft: false, supersededById: null, status: { not: "completed" }, ...listedToStudentWhere([...enrolledCourses], [...grantedExams]) }, // QZ-04/07: không hiện bản nháp hay phiên bản cũ
+    select: {
+      id: true, title: true, category: true, date: true, time: true, azotaUrl: true, duration: true, questions: true,
+      variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
+    },
+  });
   const exams = examRows.filter(e => grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses));
 
   for (const exam of exams) {
@@ -93,15 +93,11 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
   }
 
   // ── Deadline events (enrolled courses only) ───────────────────────────────
-  const enrollments = await prisma.enrollment.findMany({
-    where: { userId, status: "active" },
-    select: { courseId: true },
-  });
+  // SCL-H: lớp đang học = chính `enrolledCourses` ở trên (cùng status "active"), không hỏi lại; bốn truy vấn dưới độc lập nhau ⇒ chạy song song.
+  if (enrolledCourses.size > 0) {
+    const courseIds = [...enrolledCourses];
 
-  if (enrollments.length > 0) {
-    const courseIds = enrollments.map((e) => e.courseId);
-
-    const lessons = await prisma.lesson.findMany({
+    const [lessons, classSchedules, courseRows, sessions] = await Promise.all([prisma.lesson.findMany({
       where: {
         azotaDeadline: { not: null },
         ...PUBLISHED_ONLY,   // BU-02-PHẲNG (R12): hạn của mục Nháp/Ẩn không vào lịch học sinh
@@ -122,7 +118,25 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
           },
         },
       },
-    });
+    }),
+    // ── Class events (khung giờ học cố định hàng tuần — ClassSchedule) ──────
+    // Không lưu 1 dòng/buổi trong DB — tự khai triển từ quy luật lặp dayOfWeek
+    // ra từng ngày cụ thể trong cửa sổ 90 ngày.
+    prisma.classSchedule.findMany({
+      where: { active: true, courseId: { in: courseIds } },
+      select: {
+        id: true, dayOfWeek: true, startTime: true, endTime: true, note: true, mode: true, location: true, joinUrl: true,
+        course: { select: { id: true, name: true, category: true, classJoinUrl: true } },
+      },
+    }),
+    // Bản ghi buổi trong cửa sổ: (a) ghi đè hình thức / địa chỉ / link RIÊNG của một buổi theo lịch tuần, (b) buổi lẻ / dạy bù / phát sinh
+    // gia sư thêm ngoài lịch tuần (cột kind + startTime). Trước đây phần (b) không hề vào lịch của học sinh. Link vào lớp chỉ đi tới học sinh
+    // đang học (chỉ lớp status = "active"), cùng quy tắc với link chung của lớp ở mediaAccess.ts.
+    prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, name: true, category: true, classJoinUrl: true } }),
+    prisma.attendanceSession.findMany({
+      where: { courseId: { in: courseIds }, date: { gte: dayDate(todayISO), lte: dayDate(maxISO) } },
+      select: { id: true, courseId: true, date: true, kind: true, startTime: true, endTime: true, mode: true, location: true, joinUrl: true },
+    })]);
 
     for (const lesson of lessons) {
       // MD-16: hạn Azota là "YYYY-MM-DDTHH:mm" (ô datetime-local, giờ Việt Nam) — đọc bằng parseAzotaDeadline, không phải toISO.
@@ -140,26 +154,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
       });
     }
 
-    // ── Class events (khung giờ học cố định hàng tuần — ClassSchedule) ──────
-    // Không lưu 1 dòng/buổi trong DB — tự khai triển từ quy luật lặp dayOfWeek
-    // ra từng ngày cụ thể trong cửa sổ 90 ngày.
-    const classSchedules = await prisma.classSchedule.findMany({
-      where: { active: true, courseId: { in: courseIds } },
-      select: {
-        id: true, dayOfWeek: true, startTime: true, endTime: true, note: true, mode: true, location: true, joinUrl: true,
-        course: { select: { id: true, name: true, category: true, classJoinUrl: true } },
-      },
-    });
-
-    // Bản ghi buổi trong cửa sổ: (a) ghi đè hình thức / địa chỉ / link RIÊNG của một buổi theo lịch tuần, (b) buổi lẻ / dạy bù / phát sinh
-    // gia sư thêm ngoài lịch tuần (cột kind + startTime). Trước đây phần (b) không hề vào lịch của học sinh. Link vào lớp chỉ đi tới học sinh
-    // đang học (enrollments ở trên lọc status = "active"), cùng quy tắc với link chung của lớp ở mediaAccess.ts.
-    const courseRows = await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, name: true, category: true, classJoinUrl: true } });
     const courseOf = new Map(courseRows.map(c => [c.id, c]));
-    const sessions = await prisma.attendanceSession.findMany({
-      where: { courseId: { in: courseIds }, date: { gte: dayDate(todayISO), lte: dayDate(maxISO) } },
-      select: { id: true, courseId: true, date: true, kind: true, startTime: true, endTime: true, mode: true, location: true, joinUrl: true },
-    });
     const sessionOn = new Map(sessions.map(x => [`${x.courseId}|${keyOfDay(x.date)}`, x]));
     const placeOf = (c: { classJoinUrl: string | null }, o: { sessionMode?: string | null; sessionLocation?: string | null; sessionUrl?: string | null; scheduleMode?: string | null; scheduleLocation?: string | null; scheduleUrl?: string | null }) => {
       const mode = effectiveMode({ sessionMode: o.sessionMode, scheduleMode: o.scheduleMode });
