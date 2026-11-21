@@ -2,7 +2,7 @@
 //   1. Tiêu đề chống nhúng iframe (X-Frame-Options: SAMEORIGIN), không còn x-powered-by.
 //   2. Chống dò mật khẩu bền: sai 5 lần cùng email + máy → lần 6 bị chặn (kể cả mật khẩu đúng), máy khác vẫn vào; bộ đếm nằm trong bảng
 //      login_failures (không phải bộ nhớ tiến trình); hết 15 phút thì mở.
-//   3. Chi tiết lớp công khai không trả ownerId / adminName cho khách, học sinh; chủ lớp vẫn thấy.
+//   3. Chi tiết lớp và danh sách lớp công khai không trả ownerId / adminName cho khách, học sinh; chủ lớp vẫn thấy.
 import { BASE, api, mkUser, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 
@@ -62,6 +62,15 @@ async function login(identifier: string, password: string, ip: string) {
   check("học sinh chưa vào lớp: không có ownerId, adminName", stu.status === 200 && !("ownerId" in stu.json) && !("adminName" in stu.json), stu.json && Object.keys(stu.json));
   const owner = await api("GET", `/api/courses/${c.id}`, { as: T });
   check("chủ lớp: vẫn thấy ownerId (màn soạn lớp cần)", owner.status === 200 && owner.json?.ownerId === T.id, owner.json?.ownerId);
+
+  section("Danh sách lớp công khai GET /api/courses: không lộ ownerId / adminName");
+  const pick = (r: { json?: unknown }) => (Array.isArray(r.json) ? r.json : []).find((x: { id?: string }) => x.id === c.id) as Record<string, unknown> | undefined;
+  const gl = pick(await api("GET", "/api/courses"));
+  check("khách: danh sách có lớp, không có ownerId, adminName", !!gl && !("ownerId" in gl) && !("adminName" in gl), gl && Object.keys(gl));
+  const sl = pick(await api("GET", "/api/courses", { as: S }));
+  check("học sinh: danh sách không có ownerId, adminName", !!sl && !("ownerId" in sl) && !("adminName" in sl), sl && Object.keys(sl));
+  const ol = pick(await api("GET", "/api/courses?all=1", { as: T }));
+  check("chủ lớp (?all=1): vẫn thấy ownerId, adminName", !!ol && ol.ownerId === T.id && "adminName" in ol, ol && Object.keys(ol));
 
   await done();
 })();
