@@ -11,7 +11,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import bcrypt from "bcryptjs";
 import { BASE, mkUser, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll, kinSelect } from "./ui";
+import { launch, ctxFor, closeAll } from "./ui";
 import type { Page } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -63,34 +63,24 @@ const protectedAttrs = (a: Awaited<ReturnType<typeof read>>) => a.cap === "off" 
   await p.getByPlaceholder("Nguyễn Văn A").fill("Phương Uyên");
   const nameAttrs = await read(p.getByPlaceholder("Nguyễn Văn A"));
   check("ô Họ và tên KHÔNG bị tắt viết hoa (tên người vẫn viết hoa chữ đầu)", nameAttrs.cap !== "off" && nameAttrs.spell !== "false", nameAttrs);
-  await p.locator('input[type="tel"]').nth(0).fill("0912345678");
-  await p.locator('input[type="tel"]').nth(1).fill("0987654321");
-  await kinSelect(p.locator('form [role="combobox"]').first(), { index: 1 });
-  await p.getByPlaceholder("THPT Chu Văn An").fill("THCS Thử Nghiệm");
-  await p.getByRole("button", { name: /Tiếp theo/ }).click();
-  const em = p.getByPlaceholder("ten@gmail.com"), pw = p.getByPlaceholder("Tối thiểu 8 ký tự"), cf = p.getByPlaceholder("Nhập lại mật khẩu");
+  // SCL P2-17: học sinh một bước — họ tên, email, mật khẩu (không còn ô nhập lại).
+  const em = p.getByPlaceholder("ten@gmail.com"), pw = p.getByPlaceholder("Tối thiểu 8 ký tự");
   await em.waitFor({ timeout: 30000 });
   let a = await read(em);
   check("email: tắt viết hoa + tự sửa + chính tả", protectedAttrs(a), a);
   a = await read(pw);
   check("mật khẩu (đang ẩn, type=password): có ba thuộc tính", a.type === "password" && protectedAttrs(a), a);
-  a = await read(cf);
-  check("nhập lại mật khẩu (đang ẩn): có ba thuộc tính", a.type === "password" && protectedAttrs(a), a);
   await p.getByRole("button", { name: "Hiện mật khẩu" }).first().click();     // ô mật khẩu → type="text" (đúng chỗ gây lỗi)
   a = await read(pw);
   check("bấm Hiện: ô mật khẩu thành type=text VÀ vẫn giữ ba thuộc tính", a.type === "text" && protectedAttrs(a), a);
-  await p.getByRole("button", { name: "Hiện mật khẩu" }).first().click();     // nút còn lại là của ô nhập lại
-  a = await read(cf);
-  check("bấm Hiện: ô nhập lại thành type=text VÀ vẫn giữ ba thuộc tính", a.type === "text" && protectedAttrs(a), a);
 
   section("Vòng người dùng: đăng ký với mật khẩu đang HIỆN → đăng nhập với mật khẩu ẩn");
   await em.fill(email);
   await pw.fill(PASS);
-  await cf.fill(PASS);
-  check("ô mật khẩu giữ đúng chữ đã gõ (không bị đổi chữ)", (await pw.inputValue()) === PASS && (await cf.inputValue()) === PASS);
+  check("ô mật khẩu giữ đúng chữ đã gõ (không bị đổi chữ)", (await pw.inputValue()) === PASS);
   await p.locator('form input[type="checkbox"]').check();
   await p.getByRole("button", { name: "Tạo tài khoản miễn phí" }).click();
-  await eventually("hiện 'Kiểm tra hộp thư' (đăng ký xong)", async () => (await p.locator("body").innerText()).includes("Kiểm tra hộp thư"), 40000);
+  await eventually("đăng ký xong → vào thẳng khu học sinh (SCL Q6)", () => new URL(p.url()).pathname.startsWith("/student"), 60000);
   const row = await prisma.user.findUnique({ where: { email } });
   check("tài khoản có trong DB", !!row);
   check("mật khẩu đã băm ĐÚNG bằng chữ đã gõ (không lệch hoa/thường, không thừa dấu cách)", !!row && await bcrypt.compare(PASS, row.password));

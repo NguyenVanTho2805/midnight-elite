@@ -1,5 +1,5 @@
-// Vào lớp bằng mã mời (Figma 32:54, FE-125/126). Học sinh PHẢI thấy tên gia sư + mức học phí trước khi bấm "Vào lớp này":
-// gõ nhầm một ký tự là vào nhầm lớp người khác, và lúc đó mới cãi nhau tiền.
+// Vào lớp bằng mã mời (Figma 32:54, FE-125/126). Học sinh PHẢI thấy tên gia sư + tên lớp (và mức học phí khi phần Học phí đang bật) trước khi bấm "Vào lớp này":
+// gõ nhầm một ký tự là vào nhầm lớp người khác. SCL P2-11 (21/11/2026): mọi chữ về học phí nằm sau featureOn("HOC_PHI").
 //
 // Flow:
 //   1. Gõ mã (8 ký tự, ép in hoa) hoặc mở link /student/nhap-ma-lop?code=ABCD2345 (điền sẵn).
@@ -18,6 +18,9 @@ import { KinCopyButton } from "@/components/kin/CopyButton";
 import { REAPPLY_COOLDOWN_HOURS } from "@/lib/joinRequest";
 import InviteCodeInput, { normalizeInviteCode, type InvitePreview, type InvitePreviewOk } from "@/components/student/InviteCodeInput";
 import { scheduleLabel, taughtLabel, tuitionLabel } from "@/lib/invitePreview";
+import { featureOn } from "@/lib/features";
+
+const FEE_ON = featureOn("HOC_PHI");
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -42,7 +45,7 @@ function ClassPreview({ p }: { p: InvitePreviewOk }) {
       <dl className="flex flex-col gap-2.5">
         {p.course.owner && <Row label="Gia sư">{p.course.owner.name}</Row>}
         <Row label="Lịch">{scheduleLabel(p.schedule ?? [])}</Row>
-        {free ? <Row label="Học phí">Miễn phí</Row> : p.tuition && <Row label="Học phí">{tuitionLabel(p.tuition)}</Row>}
+        {FEE_ON && (free ? <Row label="Học phí">Miễn phí</Row> : p.tuition && <Row label="Học phí">{tuitionLabel(p.tuition)}</Row>)}
         <Row label="Đã học">{taughtLabel(p.taught ?? 0)}</Row>
       </dl>
       {(closed || p.maxUses !== null || p.expiresAt) && (
@@ -161,6 +164,7 @@ export default function NhapMaLopPage() {
 
   const approve = okPreview?.joinPolicy === "approve";
   const free = okPreview?.course.isFree === true;
+  const noFee = free || !FEE_ON; // không nhắc học phí khi lớp miễn phí hoặc phần Học phí đang tắt
   const decidedAt = okPreview?.rejection ? new Date(okPreview.rejection.decidedAt) : null;
   const retryAt = decidedAt ? new Date(decidedAt.getTime() + REAPPLY_COOLDOWN_HOURS * 3_600_000) : null;
   const cooling = !!retryAt && retryAt.getTime() > now;
@@ -204,10 +208,10 @@ export default function NhapMaLopPage() {
 
           {!checking && okPreview && !okPreview.alreadyEnrolled && !waiting && (
             <div className="rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-nhan)] px-3.5 py-3">
-              <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{approve ? "Gửi yêu cầu" : "Vào lớp"} là đồng ý {free ? "hai" : "ba"} điều</p>
+              <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">{approve ? "Gửi yêu cầu" : "Vào lớp"} là đồng ý {noFee ? "hai" : "ba"} điều</p>
               <p className="mt-1 text-[length:var(--kin-co-caption)] leading-[1.45] text-[var(--kin-chu-mo-tren-nen-nhan)]">
                 Gia sư thấy điểm danh và điểm bài của bạn · phụ huynh gắn với bạn cũng thấy
-                {free ? "." : <> · học phí tính theo tháng, đơn giá giảm khi học nhiều môn. KiN không giữ tiền, gia sư thu trực tiếp.</>}
+                {noFee ? "." : <> · học phí tính theo tháng, đơn giá giảm khi học nhiều môn. KiN không giữ tiền, gia sư thu trực tiếp.</>}
               </p>
             </div>
           )}
@@ -230,9 +234,9 @@ export default function NhapMaLopPage() {
         <footer className="border-t border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] px-5 py-4">
           <p className="text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-chu-chinh)]">Xem trước rồi mới vào</p>
           <p className="mt-1 text-[length:var(--kin-co-caption)] leading-[1.45] text-[var(--kin-chu-mo)]">
-            {free
-              ? "Đừng bấm khi chưa thấy tên gia sư và tên lớp. Gõ nhầm một ký tự là vào nhầm lớp người khác."
-              : "Đừng cho bấm “vào lớp” khi chưa thấy tên gia sư và mức học phí. Học sinh gõ nhầm một ký tự là vào nhầm lớp người khác, và lúc đó mới cãi nhau tiền."}
+            {noFee
+              ? "Bạn xem đúng tên gia sư và tên lớp rồi mới bấm. Gõ nhầm một ký tự là vào nhầm lớp người khác."
+              : "Bạn xem đúng tên gia sư, tên lớp và mức học phí rồi mới bấm. Gõ nhầm một ký tự là vào nhầm lớp người khác."}
           </p>
         </footer>
       </div>

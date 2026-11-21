@@ -1,6 +1,9 @@
 import { mkUser, mkTutor, mkCourse, wipe, api, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
+
+const FEE = featureOn("HOC_PHI"); // SCL P2-11: phần học phí chỉ hiện khi cờ HOC_PHI bật
 
 const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BASE để chạy song song nhiều máy chủ thử
 
@@ -56,11 +59,17 @@ const MAIN = process.env.BASE ?? "http://localhost:3100"; // NC2: cổng theo BA
   await box.fill(code);
   await page.getByText("Bạn sắp vào lớp").waitFor({ timeout: 8000 });
   const rows = await page.locator("dl > div").evaluateAll(els => els.map(e => [e.querySelector("dt")!.textContent, e.querySelector("dd")!.textContent]));
-  check("thẻ xem trước có đúng các dòng: Gia sư · Lịch · Học phí · Đã học", rows.map(r => r[0]).join("|") === "Gia sư|Lịch|Học phí|Đã học", rows);
-  check("'Đã học: Chưa học buổi nào' (lớp mới) và 'Lịch' nói rõ chưa có lịch cố định", rows[3][1] === "Chưa học buổi nào" && rows[1][1] === "Gia sư chưa đặt lịch cố định", rows);
-  check("học phí hiện ngay trước khi bấm vào lớp: 70.000đ một buổi khi học 1 môn · tính theo tháng", rows[2][1] === "70.000đ một buổi khi học 1 môn · tính theo tháng", rows[2]);
-  check("khung 'Vào lớp là đồng ý ba điều' + câu KiN không giữ tiền", await page.getByText("Vào lớp là đồng ý ba điều").isVisible() && await page.getByText(/KiN không giữ tiền, gia sư thu trực tiếp/).isVisible());
-  check("chân trang 'Xem trước rồi mới vào' + lý do (gõ nhầm một ký tự)", await page.getByText("Xem trước rồi mới vào").isVisible() && await page.getByText(/gõ nhầm một ký tự là vào nhầm lớp người khác/).isVisible());
+  const last = rows.length - 1;
+  check(`thẻ xem trước có đúng các dòng: Gia sư · Lịch · ${FEE ? "Học phí · " : ""}Đã học`, rows.map(r => r[0]).join("|") === (FEE ? "Gia sư|Lịch|Học phí|Đã học" : "Gia sư|Lịch|Đã học"), rows);
+  check("'Đã học: Chưa học buổi nào' (lớp mới) và 'Lịch' nói rõ chưa có lịch cố định", rows[last][1] === "Chưa học buổi nào" && rows[1][1] === "Gia sư chưa đặt lịch cố định", rows);
+  if (FEE) {
+    check("học phí hiện ngay trước khi bấm vào lớp: 70.000đ một buổi khi học 1 môn · tính theo tháng", rows[2][1] === "70.000đ một buổi khi học 1 môn · tính theo tháng", rows[2]);
+    check("khung 'Vào lớp là đồng ý ba điều' + câu KiN không giữ tiền", await page.getByText("Vào lớp là đồng ý ba điều").isVisible() && await page.getByText(/KiN không giữ tiền, gia sư thu trực tiếp/).isVisible());
+  } else {
+    check("CA PHÁ: HOC_PHI tắt ⇒ không có chữ 'Học phí' / 'KiN không giữ tiền'; khung 'đồng ý hai điều'", (await page.getByText(/Học phí|học phí|KiN không giữ tiền/).count()) === 0 && await page.getByText("Vào lớp là đồng ý hai điều").isVisible());
+  }
+  check("không còn câu nội bộ 'cãi nhau tiền'", (await page.getByText(/cãi nhau/).count()) === 0);
+  check("chân trang 'Xem trước rồi mới vào' + lý do (gõ nhầm một ký tự)", await page.getByText("Xem trước rồi mới vào").isVisible() && await page.getByText(/gõ nhầm một ký tự là vào nhầm lớp người khác/i).isVisible());
   const notMine = page.getByRole("button", { name: "Không phải lớp của tôi" });
   const hs = [await join.boundingBox(), await notMine.boundingBox()].map(b => Math.round(b?.height ?? 0));
   check("hai nút cao ≥ 44px, rộng hết khung", hs.every(h => h >= 44) && Math.round((await join.boundingBox())!.width) === Math.round((await notMine.boundingBox())!.width), hs);

@@ -26,7 +26,9 @@ export default function AuthGuard({ requiredRole, children }: Props) {
     if (!user) {
       // Đăng nhập xong quay lại đúng trang đang định vào, không đá về trang chủ (Figma 33:2, cột "hết hạn thì sao").
       // HP-BO (17/11/2026): giữ cả ?tham số (link mời /student/nhap-ma-lop?code=… không mất mã).
-      router.replace(`/dang-nhap?redirect=${encodeURIComponent(pathname + window.location.search)}`);
+      // SCL P1-5: khu học sinh ⇒ mở sẵn tab Học sinh (dang-nhap cũng tự suy từ redirect; ghi rõ để link "Tạo tài khoản" mang đúng vai).
+      const vai = pathname === "/student" || pathname.startsWith("/student/") ? "&vai=hoc-sinh" : "";
+      router.replace(`/dang-nhap?redirect=${encodeURIComponent(pathname + window.location.search)}${vai}`);
       return;
     }
     if (bounce) router.replace(bounce);

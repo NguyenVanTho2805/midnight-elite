@@ -25,7 +25,8 @@ import { logAction } from "@/lib/auditLog";
 import { canSelfEnroll, ENROLL_NOT_STUDENT_MESSAGE, ENROLL_TUTOR_PENDING_MESSAGE } from "@/lib/enrollEligibility";
 import { isApplicant } from "@/lib/tutorGate";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
-import { effectivePolicy, redeemOutcome } from "@/lib/joinRequest";
+import { redeemPolicy, redeemOutcome, INVITE_LOOKUP_LIMIT } from "@/lib/joinRequest";
+import { limitOrBlock } from "@/lib/rate-limit";
 import { SUSPENDED_REDEEM_MESSAGE, SUSPENDED_CONTENT_CODE, isSuspended } from "@/lib/suspendedContent";
 import { enrollInTx, logEnrollment, submitJoinRequestTx, notifyTutorNewJoinRequest } from "@/lib/enrollServer";
 
@@ -53,6 +54,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (isApplicant(await loadTutorStatus(session))) {
     return NextResponse.json({ error: "Tài khoản gia sư chờ duyệt chưa vào lớp bằng cách này" }, { status: 403 });
   }
+
+  // SCL P2-9: giới hạn số lần thử mã theo tài khoản (chống dò mã), cùng bộ đếm với xem trước by-code.
+  const limited = limitOrBlock(session.userId, "invite-lookup", INVITE_LOOKUP_LIMIT.max, INVITE_LOOKUP_LIMIT.windowMs);
+  if (limited) return limited;
 
   const { id: code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {
@@ -82,7 +87,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!course) return NextResponse.json({ error: "Lớp không còn tồn tại" }, { status: 404 });
 
   // Mã cá nhân của người khác: từ chối TRƯỚC mọi thứ khác (không lộ lớp, không tăng lượt, không tạo yêu cầu).
-  const outcome = redeemOutcome({ policy: effectivePolicy(course.joinPolicy), invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
+  const outcome = redeemOutcome({ policy: redeemPolicy(course.joinPolicy), invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
   if (outcome.action === "deny") return NextResponse.json({ error: outcome.error }, { status: outcome.status });
 
   // Đã đăng ký rồi — không cần redeem nữa, trả 200 idempotent để UI hiển thị

@@ -99,7 +99,6 @@ export function ClassInviteList({ items, onChanged }: { items: Invite[]; onChang
               {st.usable && (
                 <div className="mt-3 flex gap-2 flex-wrap">
                   <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép link" text={() => `${window.location.origin}/student/nhap-ma-lop?code=${i.code}`} onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép link mời." : "Không sao chép được.")}>Sao chép link</KinCopyButton>
-                  <KinCopyButton appearance="button" buttonVariant="ghost" label="Sao chép mã" text={i.code} onResult={ok => notify[ok ? "ok" : "err"](ok ? "Đã sao chép mã." : "Không sao chép được.")}>Sao chép mã</KinCopyButton>
                   <KinButton variant="danger" onClick={() => setRevoking(i)}>Thu hồi</KinButton>
                 </div>
               )}
@@ -201,12 +200,22 @@ export function joinHowText(policy: JoinPolicy, hasCode: boolean): string {
 export function ClassJoinHowTo({ courseId, policy, code, onChanged }: { courseId: string; policy: JoinPolicy; code: string | null; onChanged: () => void }) {
   const notify = useNotify();
   const [busy, setBusy] = useState(false);
+  const [rotating, setRotating] = useState(false);
   const needsCode = policy !== "open";
   async function make() {
     setBusy(true);
     const r = await callApi<{ error?: string }>(`/api/courses/${courseId}/invites`, { method: "POST", body: JSON.stringify({ ensure: true }) });
     setBusy(false);
     if (!r.ok) { notify.err(r.data.error ?? "Chưa tạo được mã lớp, thử lại sau."); return; }
+    onChanged();
+  }
+  // SCL Q7: "Đổi mã" một chạm — mã cũ hết hiệu lực ngay, lớp có mã mới (POST {rotate:true}).
+  async function rotate() {
+    setRotating(true);
+    const r = await callApi<{ error?: string; code?: string }>(`/api/courses/${courseId}/invites`, { method: "POST", body: JSON.stringify({ rotate: true }) });
+    setRotating(false);
+    if (!r.ok) { notify.err(r.data.error ?? "Chưa đổi được mã, thử lại sau."); return; }
+    notify.ok("Đã đổi mã. Mã cũ không dùng được nữa.");
     onChanged();
   }
   const done = (what: string) => (ok: boolean) => notify[ok ? "ok" : "err"](ok ? `Đã sao chép ${what}.` : "Không sao chép được.");
@@ -219,18 +228,20 @@ export function ClassJoinHowTo({ courseId, policy, code, onChanged }: { courseId
           <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Mã lớp</span>
           {code ? (<>
             <span className="text-xl font-mono font-medium tracking-wider tabular-nums" style={{ color: "var(--kin-chu-chinh)" }} data-class-code>{code}</span>
-            <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép mã lớp" text={code} onResult={done("mã lớp")}>Sao chép mã</KinCopyButton>
-            <KinCopyButton appearance="button" buttonVariant="ghost" label="Sao chép link vào lớp bằng mã" text={() => `${window.location.origin}/student/nhap-ma-lop?code=${code}`} onResult={done("link nhập mã")}>Sao chép link nhập mã</KinCopyButton>
+            <KinCopyButton appearance="button" buttonVariant="primary" label="Sao chép link mời" text={() => `${window.location.origin}/student/nhap-ma-lop?code=${code}`} onResult={done("link mời")}>Sao chép link mời</KinCopyButton>
+            <KinButton variant="secondary" loading={rotating} loadingLabel="Đang đổi…" onClick={() => void rotate()} data-rotate-code>Đổi mã</KinButton>
           </>) : (
             <KinButton variant="secondary" loading={busy} loadingLabel="Đang tạo…" onClick={() => void make()}>Tạo mã lớp</KinButton>
           )}
         </div>
       )}
-      {needsCode && code && <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-code-leak-hint>Mã bị lộ ra ngoài thì cô thu hồi ở mục Mã mời của tab Học sinh, rồi bấm Tạo mã lớp để lấy mã mới.</p>}
-      <div className="mt-3 flex items-center gap-3 flex-wrap">
-        <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Link trang lớp</span>
-        <KinCopyButton appearance="button" buttonVariant={needsCode ? "ghost" : "secondary"} label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`} onResult={done("link trang lớp")}>Sao chép link trang lớp</KinCopyButton>
-      </div>
+      {needsCode && code && <p className="mt-2 text-sm" style={{ color: "var(--kin-chu-phu)" }} data-code-leak-hint>Mã bị lộ ra ngoài thì bạn bấm Đổi mã: mã cũ hết hiệu lực ngay, học sinh đã trong lớp vẫn ở lại.</p>}
+      {!needsCode && (
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <span className="text-sm" style={{ color: "var(--kin-chu-phu)" }}>Link trang lớp</span>
+          <KinCopyButton appearance="button" buttonVariant="secondary" label="Sao chép link trang lớp" text={() => `${window.location.origin}/khoa-hoc/${courseId}`} onResult={done("link trang lớp")}>Sao chép link trang lớp</KinCopyButton>
+        </div>
+      )}
     </section>
   );
 }
@@ -268,11 +279,17 @@ export default function ClassInvitesPanel({ courseId, courseName, tutorName, joi
     <div className="space-y-4">
       {join && <ClassJoinHowTo courseId={courseId} policy={join.policy} code={classCode ?? null} onChanged={() => onChanged?.()} />}
       {join && <JoinPolicyBox courseId={courseId} policy={join.policy} isFree={join.isFree} canOpen={join.canOpen} pending={join.pending} onChanged={() => onChanged?.()} />}
-      <ClassInviteForm courseId={courseId} onCreated={() => { void load(); onChanged?.(); }} />
-      {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => { void load(); onChanged?.(); }} /> : null}
-      {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />
-        : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-medium" onClick={load}>Thử lại</button></div>
-        : <ClassInviteList items={items} onChanged={() => { void load(); onChanged?.(); }} />}
+      {/* SCL Q7: một mã lớp + một nút ở khối trên; mã có giới hạn lượt / hạn dùng là tuỳ chọn, gập lại. Mã lớp đang hiện ở trên không lặp lại trong danh sách. */}
+      <details className="rounded-xl p-4" style={CARD_STYLE} data-more-codes open={!join}>
+        <summary className="cursor-pointer min-h-11 flex items-center font-medium" style={{ color: "var(--kin-chu-chinh)" }}>Mã có giới hạn lượt hoặc hạn dùng (tuỳ chọn)</summary>
+        <div className="mt-3 space-y-4">
+          <ClassInviteForm courseId={courseId} onCreated={() => { void load(); onChanged?.(); }} />
+          {courseName ? <BulkInvite courseId={courseId} courseName={courseName} tutorName={tutorName} onCreated={() => { void load(); onChanged?.(); }} /> : null}
+          {loading ? <div className="h-20 rounded-xl animate-pulse" style={CARD_STYLE} aria-busy="true" />
+            : failed ? <div role="alert" className="rounded-xl p-5 text-center text-sm" style={CARD_STYLE}>Không tải được danh sách mã mời. <button className="underline font-medium min-h-11" onClick={load}>Thử lại</button></div>
+            : <ClassInviteList items={join ? items.filter(i => i.code !== classCode) : items} onChanged={() => { void load(); onChanged?.(); }} />}
+        </div>
+      </details>
     </div>
   );
 }

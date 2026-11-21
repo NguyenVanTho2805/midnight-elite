@@ -31,7 +31,8 @@ export const mkTutor = (name = "Gia sư") => mkUser({ name, role: "admin", admin
 export const mkSuper = (name = "Admin") => mkUser({ name, role: "admin", adminRole: "admin_super" });
 
 let courseSeq = 0;
-export async function mkCourse(ownerId: string | null, o: { name?: string; capacity?: number | null; classStatus?: string } = {}) {
+// SCL Q7: lớp joinPolicy null khi dùng mã thành "chờ duyệt" (redeemPolicy). Lớp thử mặc định "invite_only" như lớp tạo từ TaoLop; truyền joinPolicy: null để thử lớp cũ.
+export async function mkCourse(ownerId: string | null, o: { name?: string; capacity?: number | null; classStatus?: string; joinPolicy?: string | null } = {}) {
   courseSeq++;
   const id = `lop-${stamp}-${courseSeq}`;
   return prisma.course.create({
@@ -40,6 +41,7 @@ export async function mkCourse(ownerId: string | null, o: { name?: string; capac
       shortTitle: o.name ?? `Lớp ${courseSeq}`, category: "toan", instructor: "GV", teacherAvatar: "", openDate: "2026-09-01",
       types: [], bg: "#fff", price: 0, createdAt: new Date().toISOString(), ownerId,
       capacity: o.capacity ?? null, classStatus: o.classStatus ?? "open",
+      joinPolicy: o.joinPolicy === undefined ? "invite_only" : o.joinPolicy,
     },
   });
 }

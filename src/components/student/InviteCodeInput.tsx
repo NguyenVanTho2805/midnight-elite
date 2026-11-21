@@ -78,6 +78,7 @@ export default function InviteCodeInput({
         const r = await fetch(`/api/invites/by-code/${encodeURIComponent(value)}`, { credentials: "same-origin" });
         next = r.status === 401
           ? { status: "invalid", error: "Bạn cần đăng nhập để nhập mã mời." }
+          : r.status === 429 ? { status: "invalid", error: "Bạn đã thử nhiều mã quá. Chờ vài phút rồi thử lại." } // SCL P2-9
           : await r.json();
       } catch {
         next = { status: "invalid", error: "Không kết nối được máy chủ." };

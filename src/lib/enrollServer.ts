@@ -304,6 +304,27 @@ export async function loadPendingJoinRequests(courseId: string): Promise<{ id: s
   return rows.map((r) => ({ id: r.id, studentName: r.user.name ?? "Học sinh", createdAt: r.createdAt }));
 }
 
+/** SCL P2-20 — hàng chờ "Xin vào lớp" GỘP mọi lớp của một gia sư (chỉ lớp gia sư là chủ, chỉ yêu cầu pending), nhóm theo lớp, lớp có yêu cầu cũ nhất lên trước. */
+export async function loadOwnerJoinQueue(ownerId: string): Promise<{ courseId: string; courseName: string; items: { id: string; studentName: string; createdAt: Date }[] }[]> {
+  const rows = await prisma.classJoinRequest.findMany({
+    where: { status: "pending", course: { ownerId } }, orderBy: { createdAt: "asc" },
+    select: { id: true, createdAt: true, courseId: true, course: { select: { name: true } }, user: { select: { name: true } } },
+  });
+  const by = new Map<string, { courseId: string; courseName: string; items: { id: string; studentName: string; createdAt: Date }[] }>();
+  for (const r of rows) {
+    const g = by.get(r.courseId) ?? { courseId: r.courseId, courseName: r.course.name, items: [] };
+    g.items.push({ id: r.id, studentName: r.user.name ?? "Học sinh", createdAt: r.createdAt });
+    by.set(r.courseId, g);
+  }
+  return [...by.values()];
+}
+
+/** Đường hàng chờ gộp. Form duyệt / từ chối gửi kèm `ve=hang-cho` thì 303 về đây thay vì tab Học sinh của lớp. */
+export const JOIN_QUEUE_PATH = "/lop-cua-toi/xin-vao-lop";
+export function joinDecideBack(courseId: string, fd: FormData | null, qs: string): string {
+  return fd?.get("ve") === "hang-cho" ? `${JOIN_QUEUE_PATH}?${qs}` : `/lop-cua-toi/${encodeURIComponent(courseId)}?tab=hoc-sinh&${qs}`;
+}
+
 export async function countPendingJoinRequests(courseId: string): Promise<number> {
   return prisma.classJoinRequest.count({ where: { courseId, status: "pending" } });
 }

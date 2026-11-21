@@ -17,7 +17,7 @@ import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { normalizeFeeMode } from "@/lib/tuitionFee";
-import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
+import { effectivePolicy, redeemPolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { courseRoleForPage } from "@/lib/courseAccessServer";
@@ -118,7 +118,7 @@ export default async function LopPage({ params, searchParams }: Props) {
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
       initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", codeFailed: sp.ma === "loi",
       // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
-      joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
+      joinPolicy: co ? effectivePolicy(null) : redeemPolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
       pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),
     }} />;
   }
