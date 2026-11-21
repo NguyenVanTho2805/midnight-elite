@@ -24,7 +24,7 @@ export interface ScheduleEvent {
   endTime?: string;
   /** Mô tả ngắn của đề (chỉ buổi thi), vd "10 câu · 15 phút"; thiếu dữ liệu thì bỏ. */
   meta?: string;
-  /** Chỉ buổi học: lớp của buổi (để trang lớp lọc đúng buổi của lớp đó). */
+  /** Buổi học / buổi thi: lớp của mục (để trang lớp lọc đúng mục của lớp đó). */
   courseId?: string;
   /** Chỉ buổi học: buổi theo lịch tuần hay buổi lẻ / dạy bù / phát sinh gia sư thêm ngoài lịch. */
   sessionKind?: SessionKind;
@@ -90,6 +90,8 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
       time: exam.time,
       isoDate: iso,
       link: exam.azotaUrl || undefined,
+      // SCL-G-HS: lớp của đề (đã có ở hàng đề) ⇒ trang lớp đưa đúng kiểm tra của lớp vào "Cần làm".
+      courseId: exam.courseId ?? undefined,
       meta: [exam.questions > 0 ? `${exam.questions} câu` : "", (/^\d+$/.test(exam.duration?.trim() ?? "") ? `${exam.duration.trim()} phút` : exam.duration?.trim()) || ""].filter(Boolean).join(" · ") || undefined,
     });
   }

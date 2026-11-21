@@ -75,15 +75,31 @@ export async function loadClassGradebook(courseId: string): Promise<{ columns: C
 }
 
 /** Kết quả của CHÍNH học sinh: các lớp đang học (hoặc một lớp), mỗi bài một dòng. Không trả id dòng điểm / bài nộp. */
+/** SCL-G-HS (R4): điểm "Chờ duyệt" KHÔNG rời máy chủ tới học sinh (score = null) — chỉ chủ nhiệm xác nhận xong mới thấy số. */
 export async function loadStudentResults(userId: string, courseId: string | null) {
   const enr = await prisma.enrollment.findMany({
     where: { userId, status: "active", ...(courseId ? { courseId } : {}) }, select: { course: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 30,
   });
-  const out: { courseId: string; courseName: string; items: (Column & Omit<Cell, "max">)[] }[] = [];
+  const out: { courseId: string; courseName: string; items: (Column & Omit<Cell, "max"> & { submittedAt: string | null; gradedAt: string | null; href: string | null })[] }[] = [];
   for (const { course } of enr) {
     const { columns, cells } = await loadGrid(course.id, [userId], true);
     const mine = cells.get(userId) ?? {};
-    out.push({ courseId: course.id, courseName: course.name, items: columns.map(c => { const x = mine[c.id]; return { ...c, state: x.state, label: x.label, score: x.score }; }) });
+    // SCL-G-HS (§4.1 #5): điểm kèm NGÀY (nộp / chấm) và đường tới bài — hỏi riêng cho đúng học sinh này, không đụng loadGrid dùng chung với sổ điểm gia sư.
+    const aIds = columns.filter(c => c.kind === "bai-tap").map(c => c.id), eIds = columns.filter(c => c.kind !== "bai-tap").map(c => c.id);
+    const [subs, lessons, results] = await Promise.all([
+      prisma.assignmentSubmission.findMany({ where: { userId, assignmentId: { in: aIds } }, select: { assignmentId: true, submittedAt: true, gradedAt: true } }),
+      prisma.assignment.findMany({ where: { id: { in: aIds } }, select: { id: true, lessonId: true } }),
+      eIds.length ? prisma.examResult.findMany({ where: { userId, examId: { in: eIds } }, select: { examId: true, completedAt: true } }) : [],
+    ]);
+    const subOf = new Map(subs.map(x => [x.assignmentId, x])), lessonOf = new Map(lessons.map(x => [x.id, x.lessonId])), doneAt = new Map(results.map(x => [x.examId, x.completedAt]));
+    out.push({ courseId: course.id, courseName: course.name, items: columns.map(c => {
+      const x = mine[c.id], sb = subOf.get(c.id);
+      const gradedAt = x.state === "da-cham" ? sb?.gradedAt ?? null : null;
+      const submittedAt = sb?.submittedAt ?? doneAt.get(c.id) ?? null;
+      const lessonId = lessonOf.get(c.id);
+      return { ...c, state: x.state, label: x.label, score: x.state === "cho-duyet" ? null : x.score,
+        submittedAt: submittedAt?.toISOString() ?? null, gradedAt: gradedAt?.toISOString() ?? null, href: lessonId ? `/student/bai-giang/${lessonId}` : null };
+    }) });
   }
   return out;
 }

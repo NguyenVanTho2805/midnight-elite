@@ -1,5 +1,5 @@
 // SCL-C — trình duyệt: (1) gia sư giao bài trong ≤ 4 lần bấm từ trang Bài tập, rồi nhập điểm một bài nộp ngay trong sổ điểm (ô điểm 16px ở 390px);
-// (2) duyệt điểm tự khai; (3) học sinh mở tab "Kết quả" của lớp ở 390px: thấy "Chờ gia sư duyệt", không tràn ngang.
+// (2) duyệt điểm tự khai; (3) học sinh mở mục Điểm (trước: tab "Kết quả" của lớp) ở 390px: thấy "Chờ gia sư duyệt", không tràn ngang.
 // Chạy (máy chủ dev đang chạy): source tools/local-e2e/env.sh && TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/ui-so-diem.ts
 import { mkUser, mkTutor, mkCourse, wipe, check, section, done, BASE } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
@@ -90,19 +90,16 @@ import { prisma } from "@/lib/prisma";
   await mctx.close();
   await prisma.examResult.create({ data: { userId: s1.id, examId: "az-ui", score: 7, totalPoints: 10, pendingReview: true } });
 
-  section("Học sinh — tab Kết quả (390px)");
+  section("Học sinh — mục Điểm (390px; SCL-G-HS: trang lớp không còn tab Kết quả, lối từ trang lớp là mục Điểm trên thanh dưới)");
   const sctx = await ctxFor(s1, { width: 390, height: 844 });
   const sp = await sctx.newPage();
   sp.on("pageerror", x => errors.push(String(x)));
-  await sp.goto(`${BASE}/student/hoc-tap?course=${c1.id}`, { waitUntil: "networkidle", timeout: 120000 });
-  await sp.getByRole("tab", { name: "Kết quả" }).click({ timeout: 90000 });
-  await sp.locator("[data-ket-qua]").waitFor({ timeout: 60000 });
-  check("thấy bài tập 8,5/10 'Đã chấm' và đề Azota 'Chờ gia sư duyệt'", (await sp.getByText("8,5/10").isVisible()) && (await sp.getByText("Chờ gia sư duyệt").isVisible()));
-  check("không tràn ngang ở 390px", await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-  await shot(sp, "ket-qua-hs-390");
   await sp.goto(`${BASE}/student/diem`, { waitUntil: "networkidle", timeout: 120000 });
   await sp.locator("[data-ket-qua]").waitFor({ timeout: 60000 });
   check("/student/diem mở được, có lớp Toán 9", await sp.getByText("Toán 9").first().isVisible());
+  check("thấy bài tập 8,5/10 'Đã chấm' và đề Azota 'Chờ gia sư duyệt'", (await sp.getByText("8,5/10").isVisible()) && (await sp.getByText("Chờ gia sư duyệt").first().isVisible()));
+  check("không tràn ngang ở 390px", await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  await shot(sp, "ket-qua-hs-390");
   await sctx.close();
 
   check("không lỗi trang", errors.length === 0, errors);

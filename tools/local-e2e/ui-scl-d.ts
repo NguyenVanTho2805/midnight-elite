@@ -3,7 +3,7 @@
 //      không có Khoá bài / Học thử / ô Azota / ô Drive; dán link YouTube ⇒ "Nhận diện: YouTube" + câu lưu ý link không công khai; kéo-thả MỘT PDF ⇒ hàng tài liệu; Lưu ⇒ DB đúng.
 //   B. Gia sư: tab "Video" của lớp gộp video bài giảng + form dán bản ghi; dán bản ghi ⇒ 303 về lại tab Video. Công tắc (Toggle) có role=switch, aria-checked, tên, ≥44px.
 //   C. Học sinh 390: trang bài phát video qua youtube-nocookie, KHÔNG có lời dặn "Riêng tư"; tải được tài liệu (200, %PDF); danh sách bài là hộp thoại (Escape đóng);
-//      tab Video của lớp: bản ghi YouTube "Xem" ⇒ iframe youtube-nocookie; không tràn ngang.
+//      tab Video của lớp (SCL-G-HS: nay là màn Tất cả bài học #ban-ghi, link ?tab=video cũ chuyển tới đó): bản ghi YouTube "Xem" ⇒ iframe youtube-nocookie; không tràn ngang.
 //   D. Học sinh 390: chọn 2 ảnh ⇒ "Gộp 2 ảnh thành PDF" ⇒ MỘT tệp .pdf tải lên (ảnh gốc không gửi), Nộp bài ⇒ tệp đã nộp có /Count 2.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-scl-d.ts
 import { BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done, eventually } from "./h";
@@ -125,14 +125,15 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   check("Escape đóng danh sách bài", !(await od.isVisible().catch(() => false)));
   check("390: trang bài không tràn ngang", await noOverflow(ps));
 
+  // SCL-G-HS: tab Video đã bỏ — link cũ ?tab=video chuyển tới màn "Tất cả bài học" (#ban-ghi): bài có video và bản ghi buổi học ở cùng một màn.
   await ps.goto(`${BASE}/student/hoc-tap?course=${C.id}&tab=video`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  await ps.locator("[data-video-tab]").last().waitFor({ timeout: 120000 });
-  // Next 16 giữ trang vừa xem ẩn trong DOM và phần dưới có thể còn đang tải ⇒ đọc bản ĐANG HIỆN, chờ tới khi đủ.
-  await eventually("tab Video của lớp: video bài giảng + bản ghi ở một chỗ", async () => { const vt = await ps.locator("[data-video-tab]:visible").last().innerText(); return /Buổi 1: Hàm số/.test(vt) && /Bản ghi buổi 1/.test(vt); }, 30000);
+  await ps.waitForURL(u => u.searchParams.get("xem") === "bai-hoc" && u.hash === "#ban-ghi", { timeout: 120000 });
+  await ps.locator("[data-ban-ghi]:visible").waitFor({ timeout: 120000 });
+  await eventually("Tất cả bài học: bài 'Buổi 1: Hàm số' có video + bản ghi buổi ở một chỗ", async () => (await ps.locator("[data-co-video]:visible").filter({ hasText: "Buổi 1: Hàm số" }).count()) >= 1 && /Bản ghi buổi 1/.test(await ps.locator("[data-ban-ghi]:visible").innerText()), 30000);
   await ps.getByRole("button", { name: "Xem bản ghi Bản ghi buổi 2" }).click();
   const rsrc = await ps.locator("iframe[data-ban-ghi-video]").getAttribute("src");
   check("bản ghi YouTube xem ngay qua youtube-nocookie", /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/.test(rsrc ?? ""), rsrc);
-  check("390: tab Video không tràn ngang", await noOverflow(ps));
+  check("390: màn Tất cả bài học (bản ghi) không tràn ngang", await noOverflow(ps));
 
   // ── D ────────────────────────────────────────────────────────────────────
   section("D. Học sinh 390: nộp 2 ảnh ⇒ một PDF");
