@@ -107,7 +107,8 @@ export async function POST(req: NextRequest) {
     // Chỉ lớp tạo SAU mới có thể khác mặc định; không có đường nào đổi hình thức của lớp đã tạo.
     // HOCPHI-THEO-BUOI 3.1: có đơn giá (feeRate) mà không nói feeMode → mặc định theo buổi. Không gửi cả hai → lớp cũ như trước (đường quản trị / ngăn kéo cũ).
     // HP-BO (17/11/2026): phần Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ bỏ qua mọi trường học phí: lớp tạo ra là lớp mặc định, không có đơn giá, chốt buổi không sinh phí.
-    const feeModeIn: unknown = !featureOn("HOC_PHI") ? undefined
+    // SCL-F2: quản trị (lớp trung tâm) tạo lớp mặc định như ngăn kéo cũ — bỏ qua feeMode/feeRate; phiếu chốt bằng requireTutor nên lớp có chủ phí là quản trị sẽ không ai quản được.
+    const feeModeIn: unknown = !featureOn("HOC_PHI") || auth.adminRole !== "teacher" ? undefined
       : body.feeMode !== undefined ? body.feeMode : (body.feeRate !== undefined && body.feeRate !== null ? "per_session" : undefined);
     let feeSetup: FeeSetup | null = null;
     if (feeModeIn !== undefined && feeModeIn !== FEE_MODE_LEGACY) {

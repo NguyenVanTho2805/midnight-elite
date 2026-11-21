@@ -31,7 +31,7 @@ const overflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWi
   const p = await (await ctxFor(T, { width: 1280, height: 900 })).newPage();
 
   section("Gia sư: lớp miễn phí 'Cô duyệt' (mặc định) vừa tạo");
-  await wizard(p, "Free duyet", "Cô duyệt");
+  await wizard(p, "Free duyet", "Duyệt từng bạn");
   const c1 = await prisma.course.findFirstOrThrow({ where: { name: "Free duyet" } });
   await p.locator("[data-class-code]").waitFor({ timeout: 60000 });
   const code1 = (await p.locator("[data-class-code]").innerText()).trim();

@@ -313,20 +313,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
       check(`${W}: PHÁ — bấm mục trong ô bọc <label>: danh sách ĐÓNG và không bị nhãn mở lại; nút mang '7'`, (await kt.getAttribute("aria-expanded")) === "false" && (await kinSelectValue(kt)) === "7" && (await pa.locator("[data-kin-select-mo]").count()) === 0);
       await eventually(`${W}: máy chủ được hỏi với days=7 (giá trị số y như <select> cũ)`, async () => asked.some(u => /days=7\b/.test(u)), 20000);
 
-      // 3. Ngăn kéo "Tạo khoá học" (fixed + transform + overflow-y-auto): danh sách bám đúng dưới nút, không lệch theo transform, không bị cắt.
-      await pa.goto(`${ADMIN}/admin/khoa-hoc`, { waitUntil: "domcontentloaded", timeout: 170000 });
-      await pa.getByRole("button", { name: /^Tạo khoá học/ }).filter({ visible: true }).first().click({ timeout: 120000 });
-      const dmc = pa.getByRole("combobox", { name: /^Danh mục/ }).filter({ visible: true }).first();
-      await dmc.waitFor({ timeout: 30000 });
-      await pa.waitForTimeout(600); // ngăn kéo trượt xong
-      await dmc.click();
-      await pa.locator("[data-kin-select-mo]").waitFor({ timeout: 10000 });
-      const g = await pa.evaluate(`(() => { const b = document.querySelector('[data-kin-select-nut][aria-expanded="true"]').getBoundingClientRect(), m = document.querySelector("[data-kin-select-mo]").getBoundingClientRect(); return { dx: Math.abs(m.left - Math.max(16, Math.min(b.left, innerWidth - 16 - m.width))), dy: Math.min(Math.abs(m.top - (b.bottom + 4)), Math.abs(m.bottom - (b.top - 4))) }; })()`) as { dx: number; dy: number };
-      check(`${W}: PHÁ — ngăn kéo có transform: danh sách bám mép nút (lệch ≤ 2px), không trôi theo khối chứa`, g.dx <= 2 && g.dy <= 2, g);
-      const lo = await listOk(pa);
-      check(`${W}: ngăn kéo: danh sách nằm trong khung nhìn, mục đầu + cuối đang thấy bấm trúng (không bị cắt/đè)`, lo.inView && lo.hitFirst && lo.hitLast, lo);
-      check(`${W}: ngăn kéo: không cuộn ngang khi danh sách mở`, await noHScroll(pa));
-      await pa.keyboard.press("Escape");
+      // 3. (SCL-F2) Ngăn kéo "Tạo khoá học" của /admin/khoa-hoc đã bỏ — tạo lớp chỉ còn TaoLop; ca danh sách trong khối có transform không còn chỗ kiểm.
       await ca.close();
 
       // 4. Panel bên (Modal "Thêm khung giờ") — ô "Kết thúc" nhiều lựa chọn: không bị panel cắt; ở 390 (ngăn dưới) lật lên khi thiếu chỗ.

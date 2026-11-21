@@ -1,6 +1,6 @@
 // Wizard tạo lớp 3 bước (LO-03) + Thêm học sinh trong chi tiết lớp (LO-09) + tổng hợp link báo cáo cả lớp (LO-13), trình duyệt thật.
 // Chạy (máy chủ dev bật): source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-tao-lop-wizard.ts
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
+import { BASE, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -63,7 +63,7 @@ import { prisma } from "@/lib/prisma";
   check("bước 3: nút 'Tạo lớp + 4 buổi'", await stepOf() === "3" && await p.getByRole("button", { name: /^Tạo lớp \+ \d+ buổi$/ }).isVisible());
   // Em đã học lớp khác của cô nằm trong mục gập ở bước 3.
   await p.locator("[data-wizard-students] summary").click();
-  check("mục gập có chọn em đã học lớp khác", await p.getByText("Chọn em đã học một lớp khác của cô").isVisible());
+  check("mục gập có chọn em đã học lớp khác", await p.getByText("Chọn em đã học một lớp khác của bạn").isVisible());
   const rows = p.locator("[data-picker-row]");
   await rows.first().waitFor({ timeout: 30000 });
   check("danh sách chỉ có em của cô Lan (An, Bình); KHÔNG có em của cô khác", await rows.count() === 2 && await p.getByText("Em Của Cô Khác").count() === 0);
@@ -109,6 +109,23 @@ import { prisma } from "@/lib/prisma";
   await o.waitForURL(u => u.pathname === `/lop-cua-toi/quan-lop/${le.id}`, { timeout: 90000 });
   await o.getByText("Lớp chưa có bài học").first().waitFor({ timeout: 90000 });
   check("LOI-02: lớp mới mở vào 'Bài học' rỗng ('Lớp chưa có bài học' + 'Tạo chương đầu tiên'), không còn dòng nhắc đặt lịch", await o.getByRole("button", { name: "Tạo chương đầu tiên" }).isVisible() && (await o.locator("[data-gt-chua-co-lich]").count()) === 0);
+
+  section("SCL-F2: Chủ nhiệm đi hết 3 bước — không mục học phí, không mục 'em đã học lớp khác', lớp mặc định (không CourseFeeRate)");
+  const SA = await mkSuper("Chủ nhiệm wizard");
+  const sa = await (await ctxFor(SA, { width: 1280, height: 900 })).newPage(); watch(sa);
+  const saBad: string[] = []; sa.on("response", r => { if (r.url().includes("/api/tutor/hoc-sinh") && r.status() >= 400) saBad.push(`${r.status()} ${r.url()}`); });
+  await sa.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle", timeout: 120000 });
+  await sa.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
+  check("Chủ nhiệm bước 1: không 'Cách tính học phí' / 'Có học phí' / ô Đơn giá", (await sa.getByText(/Cách tính học phí|Có học phí/).count()) === 0 && (await sa.getByLabel(/Đơn giá/).count()) === 0);
+  await sa.getByLabel(/Tên lớp/).fill("Lớp trung tâm wizard");
+  await sa.getByRole("button", { name: "Tiếp tục" }).click();
+  await sa.getByRole("button", { name: "Tiếp tục" }).click();
+  check("Chủ nhiệm bước 3: không mục 'Thêm sẵn em đã học lớp khác', không ErrorStrip tải học sinh", (await sa.locator("[data-wizard-students]").count()) === 0 && (await sa.getByText(/Không tải được danh sách học sinh/).count()) === 0);
+  await sa.getByRole("button", { name: "Tạo lớp", exact: true }).click();
+  await sa.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-trung-tam-wizard/, { timeout: 90000 });
+  const cm = await prisma.course.findFirstOrThrow({ where: { name: "Lớp trung tâm wizard" } });
+  check("DB: lớp của Chủ nhiệm, feeMode mặc định, KHÔNG CourseFeeRate, instructor 'KiN'", cm.ownerId === SA.id && cm.feeMode === "monthly_sessions" && (await prisma.courseFeeRate.count({ where: { courseId: cm.id } })) === 0 && cm.instructor === "KiN", { f: cm.feeMode, i: cm.instructor });
+  check("Chủ nhiệm: không gọi /api/tutor/hoc-sinh lỗi (403)", saBad.length === 0, saBad);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");
   const cNew = await mkCourse(T.id, { name: "Lớp trống" });

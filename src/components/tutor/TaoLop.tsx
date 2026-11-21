@@ -48,12 +48,12 @@ const hmText = (m: number) => (m >= 1440 ? "24:00" : hmOf(m));
 type Step = 1 | 2 | 3;
 const STEPS: { n: Step; label: string }[] = [{ n: 1, label: "Thông tin" }, { n: 2, label: "Lịch học" }, { n: 3, label: "Cách vào lớp" }];
 const POLICY_CARDS: { value: JoinPolicy; title: string; hint: string }[] = [
-  { value: "approve", title: "Cô duyệt", hint: "Học sinh xin vào lớp, cô duyệt từng bạn. Nên chọn khi lớp công khai." },
-  { value: "invite_only", title: "Chỉ mã mời", hint: "Chỉ ai có mã cô gửi mới vào được, vào ngay không cần duyệt." },
+  { value: "approve", title: "Duyệt từng bạn", hint: "Học sinh xin vào lớp, bạn duyệt từng em. Nên chọn khi lớp công khai." },
+  { value: "invite_only", title: "Chỉ mã mời", hint: "Chỉ ai có mã bạn gửi mới vào được, vào ngay không cần duyệt." },
   { value: "open", title: "Vào ngay", hint: "Học sinh bấm Vào lớp là vào ngay. Chỉ dành cho lớp miễn phí." },
 ];
 
-export default function TaoLop() {
+export default function TaoLop({ centerAdmin = false }: { centerAdmin?: boolean }) {
   const router = useRouter();
   const todayKey = vnDateKeyOf(new Date());
   const [step, setStep] = useState<Step>(1);
@@ -64,7 +64,8 @@ export default function TaoLop() {
   const [feeRate, setFeeRate] = useState("");
   const [feeMinutes, setFeeMinutes] = useState("90");
   // HP-BO (17/11/2026): Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ bước 1 không hỏi học phí, lớp tạo ra không có đơn giá, bỏ lựa chọn "Vào ngay" (chỉ dành cho lớp miễn phí).
-  const feeOn = featureOn("HOC_PHI");
+  // SCL-F2: Chủ nhiệm tạo lớp trung tâm như ngăn kéo cũ — không hỏi học phí, không gửi feeMode/feeRate (máy chủ cũng bỏ qua).
+  const feeOn = featureOn("HOC_PHI") && !centerAdmin;
   const [free, setFree] = useState(false);                       // BU-01: "Miễn phí" (dấu do gia sư tick) — mặc định "Có học phí" = hành vi cũ
   const [policy, setPolicy] = useState<JoinPolicy>("approve");  // BU-01: mặc định Cô duyệt
   const [students, setStudents] = useState<string[]>([]);
@@ -90,7 +91,7 @@ export default function TaoLop() {
   // HT-02: kiểm tại chỗ ở bước 1. Câu báo không chứa nội dung cô đã gõ; đơn giá/phút dùng đúng luật máy chủ (validateFeeSetup).
   const formRef = useRef<HTMLFormElement>(null);
   const rules = useMemo<Record<string, readonly FieldRule[]>>(() => {
-    const r: Record<string, readonly FieldRule[]> = { name: [required("Cô nhập tên lớp trước nhé.")] };
+    const r: Record<string, readonly FieldRule[]> = { name: [required("Bạn nhập tên lớp trước nhé.")] };
     // HP-LOP-TRUONG: "Theo bảng học phí tháng" không hỏi đơn giá lúc tạo lớp (cô đặt bảng bậc ở tab Học phí sau).
     if (feeOn && !free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) {
       r.feeRate = [v => { const x = validateFeeSetup({ mode: feeMode, rate: Number(v), sessionMinutes: 90 }); return x.ok ? null : x.error; }];
@@ -113,7 +114,7 @@ export default function TaoLop() {
   };
 
   function checkInfo(): string | null {
-    if (!name.trim()) return "Cô nhập tên lớp trước nhé.";
+    if (!name.trim()) return "Bạn nhập tên lớp trước nhé.";
     if (feeOn && !free && isNewFeeMode(feeMode) && feeMode !== FEE_MODE_SHEET) { const v = validateFeeSetup({ mode: feeMode, rate: Number(feeRate), sessionMinutes: Number(feeMinutes) }); if (!v.ok) return v.error; }
     return null;
   }
@@ -163,7 +164,7 @@ export default function TaoLop() {
       // HP-BO: mã trùng lớp của gia sư khác ⇒ máy chủ tự thêm hậu tố (-2, -3…); đi tiếp theo mã máy chủ trả về.
       if (created && typeof created.id === "string" && created.id) slug = created.id;
     } catch (err) {
-      setError(`Chưa tạo được lớp: ${err instanceof Error ? err.message : "lỗi không rõ"}. Cô kiểm tra tên lớp rồi bấm lại.`);
+      setError(`Chưa tạo được lớp: ${err instanceof Error ? err.message : "lỗi không rõ"}. Bạn kiểm tra tên lớp rồi bấm lại.`);
       setBusy(false);
       return;
     }
@@ -231,7 +232,7 @@ export default function TaoLop() {
                 <fieldset className="pt-5">
                   <legend className="sr-only">Lớp có thu học phí không</legend>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    {([[true, "Miễn phí", "Lớp không thu học phí. Cô vẫn có thể tự nhập đơn giá sau nếu cần."], [false, "Có học phí", "Chọn cách tính học phí ngay bên dưới."]] as const).map(([v, t, h]) => (
+                    {([[true, "Miễn phí", "Lớp không thu học phí. Bạn vẫn có thể tự nhập đơn giá sau nếu cần."], [false, "Có học phí", "Chọn cách tính học phí ngay bên dưới."]] as const).map(([v, t, h]) => (
                       <label key={t} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${free === v ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>
                         <input type="radio" name="tl-free" className="mt-1" checked={free === v}
                           onChange={() => { setFree(v); setError(null); if (!v && policy === "open") setPolicy("approve"); }} />
@@ -263,14 +264,14 @@ export default function TaoLop() {
                   )}
                   {feeMode === FEE_MODE_SHEET ? (
                     <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]" data-fee-sheet-note>
-                      Cô chưa cần nhập đơn giá lúc này. Sau khi tạo lớp, cô vào tab Học phí để đặt bảng bậc theo số môn (KiN điền sẵn từ lớp trước của cô nếu có), rồi mỗi tháng nhập số buổi từng môn của từng em từ Excel hoặc Google Sheet. KiN cho cô xem trước, cô xác nhận mới ghi.
+                      Bạn chưa cần nhập đơn giá lúc này. Sau khi tạo lớp, bạn vào tab Học phí để đặt bảng bậc theo số môn (KiN điền sẵn từ lớp trước của bạn nếu có), rồi mỗi tháng nhập số buổi từng môn của từng em từ Excel hoặc Google Sheet. KiN cho bạn xem trước, bạn xác nhận mới ghi.
                     </p>
                   ) : (
                   <p className="sm:col-span-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
                     {feeMode === "per_hour" && Number(feeRate) > 0 && Number(feeMinutes) > 0
                       ? `Mỗi buổi ${Number(feeMinutes)} phút tính ${hourlyAmount(Number(feeRate), Number(feeMinutes)).toLocaleString("vi-VN")}đ (làm tròn từng buổi). `
                       : ""}
-                    Học phí sinh ra khi cô bấm Đã dạy xong, cho em có mặt hoặc đi muộn. Em vắng hoặc có phép không tính. Phiếu đã chốt không đổi khi cô đổi đơn giá sau.
+                    Học phí sinh ra khi bạn bấm Đã dạy xong, cho em có mặt hoặc đi muộn. Em vắng hoặc có phép không tính. Phiếu đã chốt không đổi khi bạn đổi đơn giá sau.
                   </p>
                   )}
                 </div>
@@ -306,22 +307,23 @@ export default function TaoLop() {
                         <label key={c.value} data-policy={c.value} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${locked ? "opacity-60" : ""} ${policy === c.value ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>
                           <input type="radio" name="tl-policy" className="mt-1" checked={policy === c.value} disabled={locked} onChange={() => { setPolicy(c.value); setError(null); }} />
                           <span><span className="font-medium text-[var(--kin-chu-chinh)]">{c.title}</span>
-                            <span className="block text-[var(--kin-chu-mo)]">{locked ? "Chỉ chọn được khi lớp miễn phí. Cô quay lại bước 1 để chọn Miễn phí." : c.hint}</span></span>
+                            <span className="block text-[var(--kin-chu-mo)]">{locked ? "Chỉ chọn được khi lớp miễn phí. Bạn quay lại bước 1 để chọn Miễn phí." : c.hint}</span></span>
                         </label>
                       );
                     })}
                   </div>
                 </fieldset>
                 {policy === "open" && <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp hiện ở trang Khóa học công khai, ai có tài khoản học sinh cũng vào được.</p>}
-                {policy === "approve" && <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Học sinh xin vào lớp, cô duyệt ở tab Học sinh của lớp.</p>}
+                {policy === "approve" && <p className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Học sinh xin vào lớp, bạn duyệt ở tab Học sinh của lớp.</p>}
               </section>
-              <details className="border-t border-[var(--kin-vien-nhat)] pt-4" data-wizard-students>
-                <summary className="inline-flex items-center min-h-11 cursor-pointer text-[var(--kin-nhan-link)] underline">Thêm sẵn em đã học lớp khác của cô (không bắt buộc){students.length ? ` · đã chọn ${students.length}` : ""}</summary>
+              {/* SCL-F2: /api/tutor/hoc-sinh chỉ cho gia sư — Chủ nhiệm không có "em đã học lớp khác của mình". */}
+              {!centerAdmin && <details className="border-t border-[var(--kin-vien-nhat)] pt-4" data-wizard-students>
+                <summary className="inline-flex items-center min-h-11 cursor-pointer text-[var(--kin-nhan-link)] underline">Thêm sẵn em đã học lớp khác của bạn (không bắt buộc){students.length ? ` · đã chọn ${students.length}` : ""}</summary>
                 <p className="pt-3 pb-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">
-                  Chọn em đã học một lớp khác của cô để thêm ngay. Em mới thì cô gửi mã mời hoặc link lớp sau khi tạo lớp, em tự vào lớp.
+                  Chọn em đã học một lớp khác của bạn để thêm ngay. Em mới thì bạn gửi mã mời hoặc link lớp sau khi tạo lớp, em tự vào lớp.
                 </p>
                 <StudentPicker selected={students} onChange={ids => { setStudents(ids); setError(null); }} max={ADD_STUDENTS_MAX} />
-              </details>
+              </details>}
             </>
           )}
 
@@ -330,7 +332,7 @@ export default function TaoLop() {
               <KinSectionHead id="tl-lich" title="Lịch học" aside="Không bắt buộc" />
               <p className="pt-3 pb-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Kéo trên lưới để đặt giờ học hằng tuần của lớp. Bấm vào khối để sửa chi tiết hoặc đổi giờ bằng bộ chọn.</p>
               <WeekScheduleEditor blocks={shownBlocks} ghosts={ghosts} accent={classAccentFor(toSlug(className) || "lop")} state="ready" onOp={onLocalOp} courseLabel={className} />
-              {ghostState === "loading" && <p role="status" data-ghost-loading className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang kiểm lịch các lớp khác của cô…</p>}
+              {ghostState === "loading" && <p role="status" data-ghost-loading className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Đang kiểm lịch các lớp khác của bạn…</p>}
               {ghostState === "error" && <p role="status" data-ghost-error className="mt-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Chưa kiểm được trùng với lớp khác — vẫn tạo được.</p>}
 
               <div className="pt-5" data-wizard-summary>
@@ -379,7 +381,7 @@ export default function TaoLop() {
         </div>
 
         <aside className="min-w-0 space-y-[var(--kin-cach-muc)]">
-          <KinCallout title="Sổ dạy học, theo nhịp của cô">
+          <KinCallout title="Sổ dạy học, theo nhịp của bạn">
             Tạo lớp, lên buổi, điểm danh, rồi mời học sinh vào lớp bằng mã.
           </KinCallout>
           <section aria-labelledby="tl-sau">

@@ -1,4 +1,5 @@
-// NC2-035 — toast "Đã tạo khoá học mới" (?moi=1) chỉ hiện MỘT lần: xong là xoá tham số, F5 không báo lại.
+// NC2-035, viết lại theo SCL-F2 (P2-26): toast "Đã tạo khoá học mới" sống ở trang /admin cũ, nay không còn đường tới. TaoLop (cửa tạo lớp duy nhất)
+// đưa lớp mới về tab Học sinh › Mã mời với ?moi=1 → khối "Đã tạo lớp". Bài kiểm: có moi=1 thì báo, không có thì không; legacy ?tab=ma-moi&moi=1 về đúng đích.
 import { BASE, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 
@@ -11,33 +12,20 @@ import { launch, ctxFor, closeAll } from "./ui";
   const ctx = await ctxFor(T, { width: 1280, height: 800 });
   const pg = await ctx.newPage();
   pg.on("pageerror", e => errors.push(String(e)));
-  const TOAST = "Đã tạo khoá học mới";
-  const url = `${BASE}/lop-cua-toi/quan-lop/${c.id}?tab=lich-hoc&moi=1`; // BU-00 bước 3: gia sư ở bí danh của /admin/khoa-hoc/[id]
-  // Toast chỉ sống 3 giây (useAdminToast) mà trang quản khoá còn gọi mạng lâu hơn thế: đừng chờ networkidle TRƯỚC khi tìm toast
-  // (lần chạy 23/10: 7/7 rồi 6/7 trên cùng mã). Tìm toast ngay từ lúc DOM tải xong, chờ tối đa `ms`.
-  const toastShown = (ms: number) => pg.getByText(TOAST).first().waitFor({ timeout: ms }).then(() => true, () => false);
+  const callout = () => pg.getByText("Đã tạo lớp", { exact: true }).first();
 
-  // Làm nóng trang (chưa có moi=1): lần mở đầu của `next dev` biên dịch rồi có thể tải lại trang đang mở, làm toast biến mất.
-  await pg.goto(`${BASE}/lop-cua-toi/quan-lop/${c.id}?tab=lich-hoc`, { waitUntil: "networkidle", timeout: 150000 });
+  section("Đích của TaoLop: Học sinh › Mã mời, có moi=1");
+  await pg.goto(`${BASE}/lop-cua-toi/quan-lop/${c.id}/hoc-vien?muc=ma-moi&moi=1`, { waitUntil: "networkidle", timeout: 150000 });
+  check("khối 'Đã tạo lớp' hiện", await callout().waitFor({ timeout: 30000 }).then(() => true, () => false));
 
-  section("Vừa tạo lớp: toast hiện một lần, tham số bị xoá khỏi URL");
-  await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
-  check("toast hiện", await toastShown(30000));
-  await pg.waitForFunction(() => !location.search.includes("moi="), null, { timeout: 15000 }).catch(() => {});
-  const u1 = new URL(pg.url());
-  check("URL không còn moi=1", !u1.searchParams.has("moi"), pg.url());
-  check("vẫn giữ nguyên trang lớp và tab Lịch học", u1.pathname === `/lop-cua-toi/quan-lop/${c.id}` && u1.searchParams.get("tab") === "lich-hoc", pg.url());
+  section("Không có moi=1: không báo");
+  await pg.goto(`${BASE}/lop-cua-toi/quan-lop/${c.id}/hoc-vien?muc=ma-moi`, { waitUntil: "networkidle", timeout: 120000 });
+  check("không có khối 'Đã tạo lớp'", (await pg.getByText("Đã tạo lớp", { exact: true }).count()) === 0);
 
-  section("F5: không báo lại");
-  await pg.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
-  // Bản lỗi (báo lại sau F5) sẽ hiện toast ngay sau khi trang gắn kết, trong vài giây: chờ 6 giây, không thấy mới tính là "không báo lại".
-  check("sau F5: không toast (chờ 6 giây)", !(await toastShown(6000)));
-  await pg.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-  check("sau F5: URL vẫn sạch", !new URL(pg.url()).searchParams.has("moi"), pg.url());
-
-  section("Đối chứng: mở lại ?moi=1 lần nữa (vừa tạo lớp khác) vẫn báo");
-  await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 120000 });
-  check("lần mở mới có moi=1 → toast hiện lại", await toastShown(30000));
+  section("Liên kết cũ /lop-cua-toi/<lớp>?tab=ma-moi&moi=1 về đúng đích");
+  await pg.goto(`${BASE}/lop-cua-toi/${c.id}?tab=ma-moi&moi=1`, { waitUntil: "networkidle", timeout: 120000 });
+  const u = new URL(pg.url());
+  check("về /hoc-vien?muc=ma-moi, giữ moi=1", u.pathname === `/lop-cua-toi/quan-lop/${c.id}/hoc-vien` && u.searchParams.get("muc") === "ma-moi" && u.searchParams.get("moi") === "1", pg.url());
   check("không lỗi script trang", errors.length === 0, errors);
   await closeAll();
   done();

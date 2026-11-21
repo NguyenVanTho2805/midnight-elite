@@ -31,6 +31,13 @@ import { prisma } from "@/lib/prisma";
   const mon = page.getByRole("combobox", { name: "Môn" }), khoi = page.getByRole("combobox", { name: "Khối" });
   check("dữ liệu cũ 'toan · lop 9' hiện chuẩn hoá: Toán / Lớp 9 (không sửa DB khi chưa lưu)", (await kinValue(mon)) === "Toán" && (await kinValue(khoi)) === "Lớp 9" && (await prisma.course.findUnique({ where: { id: course.id } }))?.category === "toan · lop 9", [await kinValue(mon), await kinValue(khoi)]);
   check("cách vào lớp + hiện/ẩn có chữ; gia sư không bật tắt hiện/ẩn trực tiếp", await form.locator("[data-cai-dat-policy]").isVisible() && await form.locator("[data-cai-dat-hien]").isVisible() && await form.getByRole("switch").count() === 0);
+  // Chỉ đổi tên ⇒ KHÔNG gửi category: chữ cũ 'toan · lop 9' giữ nguyên trong DB (chuẩn hoá chỉ khi hiển thị).
+  await page.getByLabel("Tên lớp").fill("Toán 9 đổi tên");
+  await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
+  await eventually("chỉ đổi tên: DB có tên mới, category cũ 'toan · lop 9' GIỮ NGUYÊN", async () => {
+    const db = await prisma.course.findUnique({ where: { id: course.id } });
+    return db?.name === "Toán 9 đổi tên" && db?.category === "toan · lop 9";
+  });
   await kinPick(mon, "Vật lý"); await kinPick(khoi, "Lớp 11");
   await page.getByLabel("Tên lớp").fill("Lý 11 thử");
   await page.getByRole("button", { name: /Lưu thay đổi/ }).click();

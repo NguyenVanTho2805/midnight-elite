@@ -42,7 +42,9 @@ export function TabCaiDat({ courseSlug, course }: { courseSlug: string; course: 
     setSaving(true); setMsg(null);
     try {
       // Chỉ gửi trường đã sửa được ở đây — giá, nhãn, ảnh nền… của lớp cũ không bị đụng. Gia sư: máy chủ tự suy hiện/ẩn từ cách vào lớp.
-      await api.courses.update(courseSlug, { name: name.trim(), category: joinCategory(subject, grade), ...(center ? { status: shown } : {}) });
+      // Môn/khối chỉ chuẩn hoá khi hiển thị: không đổi thì KHÔNG gửi category, để chữ cũ trong DB giữ nguyên.
+      const catChanged = subject !== init.subject || grade !== init.grade;
+      await api.courses.update(courseSlug, { name: name.trim(), ...(catChanged ? { category: joinCategory(subject, grade) } : {}), ...(center ? { status: shown } : {}) });
       setMsg({ ok: true, text: "Đã lưu thông tin lớp." });
     } catch (err) {
       setMsg({ ok: false, text: `Chưa lưu được: ${err instanceof Error ? err.message : "lỗi không rõ"}. Bạn thử lại nhé.` });
