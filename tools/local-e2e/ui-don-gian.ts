@@ -156,20 +156,20 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const nav = p.getByRole("navigation", { name: "Module của học sinh" });
     await nav.waitFor({ timeout: 120000 });
-    await p.getByRole("heading", { name: "Đề thi được giao" }).waitFor({ timeout: 120000 });
+    await p.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 120000 });
     const navText = (await nav.allInnerTexts()).join("\n");
     for (const gone of ["Nhắc học", "Lớp miễn phí", "Lịch học", "Tiếng Anh tự học"]) check(`thanh học sinh KHÔNG có '${gone}'`, !navText.includes(gone), navText);
-    for (const keep of ["Việc của tôi", "Lớp của tôi"]) check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
-    check("Việc của tôi: không nút 'Xem lịch tuần', không lối 'Đề thi thử' (danh sách công khai)", await p.getByRole("link", { name: "Xem lịch tuần" }).count() === 0 && await p.getByRole("link", { name: "Đề thi thử", exact: true }).count() === 0);
+    for (const keep of ["Cần làm", "Lớp của tôi"]) check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
+    check("Cần làm: không nút 'Xem lịch tuần', không lối 'Đề thi thử' (danh sách công khai)", await p.getByRole("link", { name: "Xem lịch tuần" }).count() === 0 && await p.getByRole("link", { name: "Đề thi thử", exact: true }).count() === 0);
     await p.getByRole("button", { name: /Minh Anh|Tài khoản/ }).first().click();
     const menu = p.getByRole("menu").first();
     await menu.waitFor({ timeout: 30000 }).catch(() => {});
     const menuText = await menu.innerText().catch(() => "");
     check("menu tên: có Hồ sơ, KHÔNG có Học phí", /Hồ sơ/.test(menuText) && !/Học phí/.test(menuText), menuText);
     await p.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await p.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
-    await p.locator("[data-lop-thong-tin]").waitFor({ timeout: 60000 });
-    check("trang lớp › Tổng quan: không 'Phiếu học phí của bạn →'", await p.locator("[data-lop-hoc-phi]").count() === 0);
+    // SCL-G-HS: trang lớp không còn tab; "Thông tin lớp" nằm cuối trang.
+    await p.locator("[data-lop-thong-tin]").waitFor({ timeout: 120000 });
+    check("trang lớp › Thông tin lớp: không 'Phiếu học phí của bạn'", await p.locator("[data-lop-hoc-phi]").count() === 0);
     await ctx.close();
   }
 

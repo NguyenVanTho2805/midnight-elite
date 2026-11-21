@@ -88,13 +88,14 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     // Lối về mặt tiền. `desktopOnly` và không `onClick` nên không lên thanh dưới điện thoại; href "/" chỉ khớp đúng "/" nên không sáng ở /student/*.
     { key: "trang-chu", label: "Trang chủ", href: "/", icon: "nha", desktopOnly: true },
     // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
-    { key: "viec", label: "Việc của tôi", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
+    // SCL-G-HS (QUYET-DINH §3.4): "Việc của tôi" thành "Cần làm" (mọi việc của mọi lớp, xếp theo hạn). Thanh dưới điện thoại: Cần làm · Lớp · Lịch · Điểm, cao 64px.
+    { key: "viec", label: "Cần làm", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
     // LOI-04 (11/11/2026): "Nhắc học" — việc học sinh tự ghi + buổi học có hẹn ngày. Không theo cờ LICH; không desktopOnly ⇒ lên thanh dưới điện thoại.
     // DG (14/11/2026): theo cờ NHAC_HOC (mặc định ẩn); route /student/nhac-hoc chặn 307 ở proxy.
     ...(isLinkHidden("/student/nhac-hoc") ? [] : [{ key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" } satisfies ModuleItem]),
     // LOI-01: "Lịch học" rời thanh khi phần Lịch đang ẩn; /student/lich-hoc vẫn chạy (Việc của tôi có "Xem lịch tuần", thông báo đổi lịch trỏ vào).
-    ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
-    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" },
+    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop", mobileLabel: "Lớp" },
+    ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich", mobileLabel: "Lịch" } satisfies ModuleItem]),
     // SCL-C (P1-1, HS4): điểm / trạng thái từng bài của các lớp đang học. Lên thanh dưới điện thoại.
     { key: "diem", label: "Điểm", href: "/student/diem", icon: "bai-kt" },
     // DG (14/11/2026, vòng dạy thật): mọi mục của bảng "Khác" đang ẩn theo cờ ⇒ bảng chỉ còn "Trang chủ KiN" + "Đăng xuất", cả hai đã có sẵn (logo / mục Trang chủ,
@@ -111,10 +112,10 @@ export default function StudentShell({ children, preview }: { children: ReactNod
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
       <KinSkipLink />
-      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore} mobileMore
+      <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore} mobileMore tallBar
         home={{ href: "/", label: "KiN — Trang chủ" }} footnote="Miễn phí ra mắt" />
 
-      <div className="flex-1 min-w-0 pb-[60px] md:pb-0 relative">
+      <div className="flex-1 min-w-0 pb-[var(--kin-cao-thanh-duoi)] md:pb-0 relative">
         {/* BU-00 sửa sau test (31/10/2026): vùng bấm của liên kết ≥ 44px (min-h-11), băng theo chiều cao liên kết — không nhỏ hơn vùng bấm. */}
         {showPreview && (
           <div data-admin-preview role="status" className="min-h-11 flex items-center justify-center gap-2 px-4 text-[length:var(--kin-co-small)] bg-[var(--kin-nen-nhan)] text-[var(--kin-chu-chinh)] border-b border-[var(--kin-vien-nhat)]">

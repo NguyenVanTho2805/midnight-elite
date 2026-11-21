@@ -25,7 +25,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ass
   const scope = await loadAssignmentScope(assignmentId);
   // Bài Nháp/Ẩn ⇒ 404 TRƯỚC kiểm ghi danh (như submit/route.ts).
   if (!scope || !isLearnerVisible(scope.lessonStatus) || scope.mode === "azota" || assignmentId.startsWith("azota-")) return html ? go("/student/hoc-tap") : nopTepErr("Không tìm thấy bài tập", 404);
-  const back = (code: NopTepResultCode) => NextResponse.redirect(new URL(`/student/bai-giang/${encodeURIComponent(scope.lessonId)}?nop=${code}`, req.url), 303);
+  // SCL-G-HS: nút "Nộp bài" ngay trong thẻ Cần làm gửi kèm `ve` (lop / can-lam) ⇒ quay về đúng màn đã bấm, kèm mã bài để thẻ đổi thành "Đã nộp". Không có `ve` ⇒ trang bài như cũ.
+  const ve = req.headers.get("content-type")?.includes("form") ? String((await req.formData().catch(() => null))?.get("ve") ?? "") : "";
+  const q = (code: NopTepResultCode) => `nop=${code}&bt=${encodeURIComponent(assignmentId)}`;
+  const back = (code: NopTepResultCode) => NextResponse.redirect(new URL(
+    ve === "lop" ? `/student/hoc-tap?course=${encodeURIComponent(scope.courseId)}&${q(code)}`
+      : ve === "can-lam" ? `/student/viec-cua-toi?${q(code)}`
+      : `/student/bai-giang/${encodeURIComponent(scope.lessonId)}?nop=${code}`, req.url), 303);
 
   const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true } });
   if (!isEnrollmentActive(enrolled)) return back(NOP_TEP_RESULT.classDenied);

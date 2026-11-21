@@ -53,6 +53,8 @@ export interface ModuleItem {
   desktopOnly?: boolean;
   /** Chỉ hiện ở thanh dưới (điện thoại). */
   mobileOnly?: boolean;
+  /** SCL-G-HS: nhãn ngắn trên thanh dưới điện thoại ("Lớp" thay "Lớp của tôi"). Thiếu thì dùng `label`. */
+  mobileLabel?: string;
 }
 
 const matches = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
@@ -67,7 +69,7 @@ function Badge({ n, mobile }: { n: number; mobile: boolean }) {
   );
 }
 
-export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote, mobileMore = false }: {
+export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote, mobileMore = false, tallBar = false }: {
   roleLabel: string;
   modules: ModuleItem[];
   /** Các mục xếp theo nhóm cho thanh RỘNG (Figma "Điều hướng" 272px). Không truyền thì thanh rộng không có gì để hiện, nên mọi vỏ đều truyền. */
@@ -84,6 +86,8 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
   /** Điều hướng B3 (08/11/2026): bật thì mục `desktopOnly` có `onClick` (nút "Khác" mở bảng) CŨNG nằm trên thanh dưới điện thoại, để các trang còn lại cách 2 bấm thay vì 3
    *  (Avatar → "Tất cả mục" → mục). Mặc định TẮT: vỏ nào muốn thì tự bật; mục `desktopOnly` là liên kết thường vẫn chỉ ở thanh bên. Số ô thanh dưới do nơi gọi giữ ≤ 5 và đo ≥ 44px ở 320 / 390px. */
   mobileMore?: boolean;
+  /** SCL-G-HS (§3.4): thanh dưới cao --kin-cao-thanh-duoi (64px) thay 60px. Vỏ nào bật thì thân trang chừa đúng token đó. */
+  tallBar?: boolean;
 }) {
   const pathname = usePathname();
   const [rail] = useRail();
@@ -154,7 +158,7 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
     const inner = (
       <>
         <ShellIcon name={m.icon} />
-        <span className="kin-rail-lab truncate max-w-full leading-tight">{m.label}</span>
+        <span className="kin-rail-lab truncate max-w-full leading-tight">{mobile ? m.mobileLabel ?? m.label : m.label}</span>
         {m.badge && m.badge > 0 ? <Badge n={m.badge} mobile={mobile} /> : null}
       </>
     );
@@ -238,7 +242,7 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
         </nav>
       </div>
       <nav aria-label={ariaLabel}
-        className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]">
+        className={`md:hidden fixed bottom-0 inset-x-0 ${tallBar ? "h-[var(--kin-cao-thanh-duoi)]" : "h-[60px]"} flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]`}>
         {modules.filter(m => !m.desktopOnly || (mobileMore && !!m.onClick)).map((m, i) => renderItem(m, true, i))}
       </nav>
     </>

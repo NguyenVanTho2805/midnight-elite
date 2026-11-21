@@ -1,4 +1,4 @@
-// Vỏ học sinh (Figma 11:98): thanh module trái / thanh dưới 60px, "Việc của tôi" (trang dọc, Figma 299:114360), bảng "Khác",
+// Vỏ học sinh (Figma 11:98): thanh module trái / thanh dưới 64px (SCL-G-HS), "Cần làm" (trước là "Việc của tôi"; bản chốt SCL-G khung 2), bảng "Khác",
 // phòng thi không có vỏ, trạng thái trống / tải / lỗi, điện thoại 390px.
 // 09/11/2026 (BU-HS-TRANG-CHU mục 8): thanh module có thêm mục "Trang chủ" (đầu thanh, chỉ máy tính, không `aria-current`, không lên thanh dưới điện thoại → vẫn 4 ô);
 // bảng "Khác" ở 390px có thêm hàng đầu "Trang chủ KiN" (6 liên kết nhìn thấy; ở 1280 hàng đó ẩn nên vẫn 5).
@@ -54,16 +54,16 @@ const H = 3_600_000, D = 24 * H;
   const rail = () => pg.getByRole("navigation", { name: railName });
   const mod = (name: string) => rail().getByRole(name === "Khác" ? "button" : "link", { name: new RegExp(`^${name}`) });
 
-  section("Vào /student → thẳng 'Việc của tôi'");
+  section("Vào /student → thẳng 'Cần làm' (/student/viec-cua-toi)");
   await pg.goto(`${BASE}/student`, { waitUntil: "networkidle", timeout: 120000 });
-  await pg.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 90000 });
+  await pg.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 90000 });
   check("/student chuyển tới /student/viec-cua-toi", new URL(pg.url()).pathname === "/student/viec-cua-toi", pg.url());
 
   section("Thanh module");
   // LOI-07: "HỌC SINH" có 2 bản trong thanh — <span aria-hidden> cạnh logo (chỉ thanh RỘNG 272px, display:none ở thanh hẹp) và <p sr-only> cho trình đọc màn hình
   // (ModuleRail.tsx:201, :205). Bài chạy thanh hẹp 79px ⇒ `.first()` rơi vào bản ẩn. Kiểm như ui-tutor-shell: có ít nhất một bản đang dựng (sr-only vẫn có hộp 1px).
   check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0)));
-  for (const m of ["Việc của tôi", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  for (const m of ["Cần làm", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   if (!NHAC) check("DG: Nhắc học đang ẩn → không có module 'Nhắc học' trên thanh", await mod("Nhắc học").count() === 0 && await rail().locator(":scope a[href='/student/nhac-hoc']").count() === 0);
   if (NHAC) check("LOI-04: module 'Nhắc học' → /student/nhac-hoc, đứng ngay sau 'Việc của tôi'", (await mod("Nhắc học").getAttribute("href")) === "/student/nhac-hoc"
     && (await rail().evaluate(`(() => { const t = [...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent).map(e => e.getAttribute("href")); const i = t.indexOf("/student/viec-cua-toi"); return i >= 0 && t[i + 1] === "/student/nhac-hoc"; })()`)) === true);
@@ -78,15 +78,15 @@ const H = 3_600_000, D = 24 * H;
   // bản ẩn cũng mang aria-current nhưng không vào cây trợ năng. Đếm mục ĐANG HIỆN (như ui-tutor-shell :55), và đếm riêng bản ẩn để thấy rõ đó là bản thanh rộng.
   const currentVisible = await rail().locator("[aria-current=page]:visible").count();
   const currentHiddenWide = await rail().locator(".kin-rail-groups [aria-current=page]").evaluateAll(els => els.filter(e => !(e as HTMLElement).offsetParent && e.getClientRects().length === 0).length);
-  check("module đang ở có aria-current=page (đúng một mục ĐANG HIỆN; bản thanh rộng đang ẩn không tính)", await mod("Việc của tôi").getAttribute("aria-current") === "page" && currentVisible === 1, { currentVisible, currentHiddenWide });
+  check("module đang ở có aria-current=page (đúng một mục ĐANG HIỆN; bản thanh rộng đang ẩn không tính)", await mod("Cần làm").getAttribute("aria-current") === "page" && currentVisible === 1, { currentVisible, currentHiddenWide });
   {
     // Đối chứng ở thanh RỘNG 272px (bản hẹp ẩn, bản có nhóm hiện): vẫn đúng MỘT mục đang hiện mang aria-current và nhãn "HỌC SINH" cạnh logo hiện thật.
     const wp = await (await ctxFor(S, { width: 1280, height: 800, rail: "rong" })).newPage(); watch(wp);
     await wp.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
-    await wp.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 90000 });
+    await wp.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 90000 });
     const wr = wp.getByRole("navigation", { name: railName });
     const lit = await wr.locator("[aria-current=page]:visible").evaluateAll(els => els.map(e => e.getAttribute("href")));
-    check("thanh rộng: đúng một mục đang hiện mang aria-current (Việc của tôi); nhãn 'HỌC SINH' cạnh logo hiện", lit.length === 1 && lit[0] === "/student/viec-cua-toi" && await wr.locator(".kin-rail-tag", { hasText: "HỌC SINH" }).isVisible(), lit);
+    check("thanh rộng: đúng một mục đang hiện mang aria-current (Cần làm); nhãn 'HỌC SINH' cạnh logo hiện", lit.length === 1 && lit[0] === "/student/viec-cua-toi" && await wr.locator(".kin-rail-tag", { hasText: "HỌC SINH" }).isVisible(), lit);
     await wp.close();
   }
   const clipped = await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a span.truncate, nav[aria-label="${railName}"] button span.truncate')].filter(e => e.offsetParent && e.scrollWidth > e.clientWidth).map(e => e.textContent)`) as string[];
@@ -99,19 +99,18 @@ const H = 3_600_000, D = 24 * H;
   check("thanh trên cũ (Navbar) và thanh dưới cũ không còn", await pg.getByRole("link", { name: /^Cộng đồng$/ }).count() === 0 && await pg.getByRole("navigation", { name: /Chính|main/i }).count() === 0);
   check("có chuông 'Thông báo' ở dải trên", await pg.getByRole("button", { name: "Thông báo" }).isVisible());
 
-  section("Trang dọc theo Figma 299:114360: Cần làm / Đã nộp · đang chờ chấm");
-  const rows = pg.locator("[data-student-task]");
-  check("có 5 dòng (4 bài chưa nộp ở 'Cần làm' + 1 bài đã nộp ở 'Chờ chấm')", await rows.count() === 5, await rows.count());
-  check("tiêu đề 'Việc của tôi' (h1) và hai khu 'Cần làm', 'Đã nộp · đang chờ chấm'", await pg.getByRole("heading", { level: 1, name: "Việc của tôi" }).isVisible() && await pg.getByRole("heading", { name: "Cần làm" }).isVisible() && await pg.getByRole("heading", { name: "Đã nộp · đang chờ chấm" }).isVisible());
-  const todoList = pg.getByRole("list", { name: "Cần làm" });
-  check("'Cần làm' có đúng 4 bài, bài quá hạn (hạn sớm nhất) nằm đầu", await todoList.locator("[data-student-task]").count() === 4 && /Bài quá hạn/.test(await todoList.locator("[data-student-task]").first().innerText()));
-  check("trạng thái có CHỮ, không chỉ chấm màu (Quá hạn / Chưa nộp / Chờ chấm)", await todoList.getByText("Quá hạn").first().isVisible() && await todoList.getByText("Chưa nộp").first().isVisible() && await pg.getByRole("list", { name: "Đã nộp, đang chờ chấm" }).getByText("Chờ chấm").isVisible());
-  const send = todoList.getByRole("link", { name: "Nộp bài" }).first();
-  check("nút 'Nộp bài' trỏ vào bài giảng chứa bài tập", (await send.getAttribute("href")) === `/student/bai-giang/${lid}`);
-  check("bài đã nộp có nút 'Xem bài nộp' (không còn 'Nộp bài' ở đó)", await pg.getByRole("link", { name: "Xem bài nộp" }).count() === 1);
-  check("cột phải: 'Kiểm tra sắp mở' (đề thi) và 'Buổi học' trống có lối sang Lịch học", await pg.getByText("Kiểm tra sắp mở").isVisible() && await pg.getByText("3 ngày tới chưa có buổi học").isVisible() && await pg.getByRole("link", { name: "Mở Lịch học" }).count() === 0);
-  if (LICH) check("nút 'Xem lịch tuần' ở góc phải → /student/lich-hoc", (await pg.getByRole("link", { name: "Xem lịch tuần" }).getAttribute("href")) === "/student/lich-hoc");
-  else check("DG: Lịch ẩn → không nút 'Xem lịch tuần'", await pg.getByRole("link", { name: "Xem lịch tuần" }).count() === 0);
+  section("SCL-G-HS: màn Cần làm (bản chốt khung 2): thẻ theo hạn / Đã nộp, chờ chấm");
+  const cards = pg.locator("[data-can-lam-the]:visible");
+  await cards.first().waitFor({ timeout: 60000 });
+  check("có 5 thẻ (4 bài chưa nộp + 1 kiểm tra 'Đề thử'), bài quá hạn (hạn sớm nhất) nằm đầu, trong nhóm 'Quá hạn'",
+    await cards.count() === 5 && /Bài quá hạn/.test(await cards.first().innerText()) && (await pg.locator("[data-can-lam-nhom]").first().getAttribute("data-can-lam-nhom")) === "qua-han", await cards.count());
+  check("trạng thái có CHỮ, không chỉ màu (Quá hạn từ … / Hạn … / Chờ chấm)", /Quá hạn từ/.test(await cards.first().innerText()) && /^Hạn /.test((await cards.nth(1).locator("[data-can-lam-han]").innerText()).trim())
+    && await pg.getByRole("list", { name: "Đã nộp, đang chờ chấm" }).getByText("Chờ chấm").isVisible());
+  check("nút 'Nộp bài' ngay trong thẻ (mở chọn ảnh / PDF), có tên đọc được kèm tên bài", await pg.getByRole("button", { name: "Nộp bài: Bài quá hạn" }).isVisible());
+  check("bài đã nộp nằm ở 'Đã nộp, chờ chấm', là liên kết tới bài giảng (không còn nút Nộp bài)", await pg.locator("[data-cho-cham]").count() === 1 && (await pg.locator("[data-cho-cham] a").getAttribute("href")) === `/student/bai-giang/${lid}`
+    && await pg.getByRole("button", { name: "Nộp bài: Bài đã nộp" }).count() === 0);
+  check("kiểm tra 'Đề thử' là thẻ có 'Xem thông tin đề' (nút phụ)", await pg.locator("[data-can-lam-the='kiem-tra']").getByRole("link", { name: /Xem thông tin đề/ }).isVisible());
+  check("không còn nút 'Xem lịch tuần' (Lịch nằm trên thanh điều hướng)", await pg.getByRole("link", { name: "Xem lịch tuần" }).count() === 0);
 
   section("Bố cục: một trang dọc, không còn hai khung");
   const lay = await pg.evaluate(`({ listbox: document.querySelectorAll('[role=listbox]').length, hOverflow: document.documentElement.scrollWidth - window.innerWidth })`) as any;
@@ -166,7 +165,7 @@ const H = 3_600_000, D = 24 * H;
   }
   await pg.goto(`${BASE}/student/bai-tap`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.waitForURL(/\/student\/viec-cua-toi/, { timeout: 60000 });
-  check("B1: /student/bai-tap (thông báo cũ) chuyển về 'Việc của tôi', module đó sáng", await mod("Việc của tôi").getAttribute("aria-current") === "page" && (!LICH || await mod("Lịch học").getAttribute("aria-current") === null));
+  check("B1: /student/bai-tap (thông báo cũ) chuyển về 'Việc của tôi', module đó sáng", await mod("Cần làm").getAttribute("aria-current") === "page" && (!LICH || await mod("Lịch học").getAttribute("aria-current") === null));
 
   section("Phòng thi không có vỏ");
   await pg.goto(`${BASE}/student/thi-thu`, { waitUntil: "domcontentloaded", timeout: 120000 });
@@ -189,15 +188,15 @@ const H = 3_600_000, D = 24 * H;
   await wait;
   await p2.locator("[aria-busy=true]").first().waitFor({ timeout: 60000 });
   check("đang tải lần đầu: khung xương (aria-busy), không có vòng xoay", await p2.locator("[aria-busy=true]").count() >= 1 && await p2.locator(".animate-spin").count() === 0);
-  await p2.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 60000 });
-  await p2.locator("[data-student-task]").first().waitFor({ timeout: 60000 });
+  await p2.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 60000 });
+  await p2.locator("[data-can-lam-the]").first().waitFor({ timeout: 60000 });
   check("tải xong: khung xương biến mất", await p2.locator("[aria-busy=true]").count() === 0);
   failNext = true;
   await p2.evaluate(`window.dispatchEvent(new Event("focus"))`);
   const strip = p2.locator('[role="alert"]:not(#__next-route-announcer__)');
   await strip.waitFor({ timeout: 30000 });
   check("lỗi tải lại: hiện dải báo lỗi + nút 'Thử lại'", await strip.getByText("Không tải được danh sách.").isVisible() && await strip.getByRole("button", { name: "Thử lại" }).isVisible());
-  check("danh sách cũ vẫn còn dưới dải lỗi (không mất việc đang xem)", await p2.locator("[data-student-task]").count() === 5);
+  check("danh sách cũ vẫn còn dưới dải lỗi (không mất việc đang xem)", await p2.locator("[data-can-lam-the]").count() === 5);
   failNext = false; delayMs = 0;
   await strip.getByRole("button", { name: "Thử lại" }).click();
   await strip.waitFor({ state: "detached", timeout: 30000 });
@@ -222,13 +221,13 @@ const H = 3_600_000, D = 24 * H;
   await pm.addStyleTag({ content: "[data-agentation-root]{display:none!important}" });
   const bar = pm.getByRole("navigation", { name: railName });
   await bar.waitFor({ timeout: 90000 });
-  await pm.locator("[data-student-task]").first().waitFor({ timeout: 60000 });
+  await pm.locator("[data-can-lam-the]").first().waitFor({ timeout: 60000 });
   const bb = await bar.boundingBox();
-  check("thanh module thành thanh dưới cao 60px, dính đáy", !!bb && Math.round(bb.height) === 60 && Math.round(bb.y + bb.height) === 800, bb);
+  check("SCL-G-HS: thanh module thành thanh dưới cao 64px (--kin-cao-thanh-duoi), dính đáy", !!bb && Math.round(bb.height) === 64 && Math.round(bb.y + bb.height) === 800, bb);
   check("chỉ có MỘT thanh module nhìn thấy (thanh dọc ẩn)", await pm.getByRole("navigation", { name: railName }).count() === 1);
-  check("điện thoại: một cột, thấy tiêu đề và danh sách việc", await pm.getByRole("heading", { level: 1, name: "Việc của tôi" }).isVisible() && await pm.locator("[data-student-task]").first().isVisible());
-  const taskBtn = await pm.locator("[data-student-task] a").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
-  check("nút trong dòng việc cao ≥ 44px", taskBtn.length > 0 && taskBtn.every(h => h >= 44), taskBtn);
+  check("điện thoại: một cột, thấy tiêu đề và danh sách việc", await pm.getByRole("heading", { level: 1, name: "Cần làm" }).isVisible() && await pm.locator("[data-can-lam-the]").first().isVisible());
+  const taskBtn = await pm.locator("[data-can-lam-the] a, [data-can-lam-the] button").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
+  check("nút trong thẻ việc cao ≥ 44px", taskBtn.length > 0 && taskBtn.every(h => h >= 44), taskBtn);
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a, nav[aria-label="${railName}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
   check(`B3: ${MOBILE_CELLS} ô (${HAS_MORE ? `${MOBILE_CELLS - 1} module + Khác` : `${MOBILE_CELLS} module, không Khác`}), mỗi nút cao ≥ 44px (chạm được)`, hit.length === MOBILE_CELLS && hit.every(h => h >= 44), hit);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
@@ -239,7 +238,7 @@ const H = 3_600_000, D = 24 * H;
     await bar.getByRole("button", { name: /^Khác/ }).click();
     const dm = pm.getByRole("dialog", { name: "Các mục khác" });
     const db = await dm.boundingBox();
-    check("bảng 'Khác' nổi ngay trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 60 && db.x >= 0 && db.x + db.width <= 390, db);
+    check("bảng 'Khác' nổi ngay trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 64 && db.x >= 0 && db.x + db.width <= 390, db);
     check("mọi mục trong bảng cao ≥ 44px", (await dm.evaluate(`[...document.querySelectorAll('[role=dialog] a, [role=dialog] button')].map(e => Math.round(e.getBoundingClientRect().height))`) as number[]).every(h => h >= 44));
     check(`BU-HS-TRANG-CHU: ở 390px bảng Khác có ${MORE_EXPECT.length + 1} liên kết, hàng ĐẦU là 'Trang chủ KiN' → '/', cao ≥ 44px, không nằm trong nhóm nào của các mục cũ`,
       await dm.getByRole("link").count() === MORE_EXPECT.length + 1 && (await dm.getByRole("link").first().innerText()).trim() === "Trang chủ KiN" && (await dm.getByRole("link").first().getAttribute("href")) === "/" && ((await dm.getByRole("link").first().boundingBox())?.height ?? 0) >= 44);

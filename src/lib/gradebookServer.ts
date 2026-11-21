@@ -69,6 +69,7 @@ export async function loadClassGradebook(courseId: string): Promise<{ columns: C
 }
 
 /** Kết quả của CHÍNH học sinh: các lớp đang học (hoặc một lớp), mỗi bài một dòng. Không trả id dòng điểm / bài nộp. */
+/** SCL-G-HS (R4): điểm "Chờ duyệt" KHÔNG rời máy chủ tới học sinh (score = null) — chỉ chủ nhiệm xác nhận xong mới thấy số. */
 export async function loadStudentResults(userId: string, courseId: string | null) {
   const enr = await prisma.enrollment.findMany({
     where: { userId, status: "active", ...(courseId ? { courseId } : {}) }, select: { course: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 30,
@@ -77,7 +78,7 @@ export async function loadStudentResults(userId: string, courseId: string | null
   for (const { course } of enr) {
     const { columns, cells } = await loadGrid(course.id, [userId], true);
     const mine = cells.get(userId) ?? {};
-    out.push({ courseId: course.id, courseName: course.name, items: columns.map(c => { const x = mine[c.id]; return { ...c, state: x.state, label: x.label, score: x.score }; }) });
+    out.push({ courseId: course.id, courseName: course.name, items: columns.map(c => { const x = mine[c.id]; return { ...c, state: x.state, label: x.label, score: x.state === "cho-duyet" ? null : x.score }; }) });
   }
   return out;
 }
