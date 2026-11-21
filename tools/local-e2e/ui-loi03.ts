@@ -319,7 +319,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await c.close();
     const A = await mkSuper("Quản trị LOI-03");
     const ra = await api("GET", `/lop-cua-toi/${X.id}`, { as: A });
-    check("quản trị: trang lớp như cũ (200, không chuyển hướng), KHÔNG /student/hoc-tap", ra.status === 200 && !(ra.headers.get("location") ?? "").includes("/student/hoc-tap") && ra.text.includes("Toán 9 (LOI-03)"), [ra.status, ra.headers.get("location")]);
+    // SCL-B (Q1, SUA-CHUA-LON-KE-HOACH): quản trị trung tâm đứng lớp trong vỏ gia sư ⇒ cùng dải tab quan-lop như chủ lớp (trước SCL-B là trang 200 cũ).
+    const la = ra.headers.get("location") ?? "";
+    check("quản trị: 307 → dải tab của lớp (quan-lop) như chủ lớp, KHÔNG /student/hoc-tap", ra.status === 307 && new URL(la, BASE).pathname === want && !la.includes("/student/hoc-tap"), [ra.status, la, want]);
   }
 
   section("Không lỗi trình duyệt");

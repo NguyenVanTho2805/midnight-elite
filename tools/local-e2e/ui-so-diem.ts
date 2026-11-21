@@ -97,7 +97,8 @@ import { prisma } from "@/lib/prisma";
   await sp.goto(`${BASE}/student/diem`, { waitUntil: "networkidle", timeout: 120000 });
   await sp.locator("[data-ket-qua]").waitFor({ timeout: 60000 });
   check("/student/diem mở được, có lớp Toán 9", await sp.getByText("Toán 9").first().isVisible());
-  check("thấy bài tập 8,5/10 'Đã chấm' và đề Azota 'Chờ gia sư duyệt'", (await sp.getByText("8,5/10").isVisible()) && (await sp.getByText("Chờ gia sư duyệt").first().isVisible()));
+  // SCL-G-HS: dòng "Trung bình 8,5/10" của lớp cũng chứa chuỗi này ⇒ tìm ở ô điểm của bài ([data-diem]).
+  check("thấy bài tập 8,5/10 'Đã chấm' và đề Azota 'Chờ gia sư duyệt'", (await sp.locator("[data-diem]:visible").filter({ hasText: "8,5/10" }).first().isVisible()) && (await sp.getByText("Chờ gia sư duyệt").first().isVisible()));
   check("không tràn ngang ở 390px", await sp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await shot(sp, "ket-qua-hs-390");
   await sctx.close();

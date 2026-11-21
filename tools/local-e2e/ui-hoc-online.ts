@@ -1,5 +1,5 @@
 // DG-HOC-ONLINE — trình duyệt thật: gia sư vào lớp → Cài đặt → "Học online", dán link Google Meet, chọn "Trước 1 giờ", Lưu (POST + 303),
-// F5 vẫn còn giá trị; link sai ⇒ báo lỗi, không lưu; 1600 và 390 không tràn ngang, nút ≥ 44px. Học sinh của lớp thấy "Mở link học online" đúng link đó.
+// F5 vẫn còn giá trị; link sai ⇒ báo lỗi, không lưu; 1600 và 390 không tràn ngang, nút ≥ 44px. Học sinh của lớp thấy "Mở link học online" đúng link đó (ở Cần làm → Buổi học sắp tới).
 // Chạy (máy chủ dev đang chạy): TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/ui-hoc-online.ts
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, kinSelect, kinSelectValue, type Page } from "./ui";
@@ -92,11 +92,13 @@ import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
   {
     const ctx = await ctxFor(S, { width: 390, height: 844 });
     const p = await ctx.newPage(); watch(p);
-    await p.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
-    await p.locator("[data-course-session]").first().waitFor({ timeout: 120000 });
-    const join = p.locator("[data-course-session-join]").first();
-    check("trang lớp của học sinh: 'Mở link học online' trỏ đúng link Meet gia sư vừa lưu, mở tab ngoài", (await join.count()) === 1 && (await join.getAttribute("href")) === lastLink && (await join.getAttribute("target")) === "_blank", await join.getAttribute("href").catch(() => null));
-    check("390: trang học sinh không tràn ngang", await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+    // SCL-G-HS (bản chốt §2.1): trang lớp học sinh không còn danh sách "Lịch của lớp" — buổi sắp tới kèm link học online nằm ở "Cần làm" (Buổi học sắp tới).
+    await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
+    const row = p.locator("[data-buoi-sap-toi]:visible").filter({ hasText: "Toán 8 Online" });
+    await row.first().waitFor({ timeout: 120000 });
+    const join = row.first().getByRole("link", { name: "Mở link học online" });
+    check("'Cần làm' → Buổi học sắp tới của lớp: 'Mở link học online' trỏ đúng link Meet gia sư vừa lưu, mở tab ngoài", (await join.count()) === 1 && (await join.getAttribute("href")) === lastLink && (await join.getAttribute("target")) === "_blank", await join.getAttribute("href").catch(() => null));
+    check("390: trang Cần làm của học sinh không tràn ngang", await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
     await ctx.close();
   }
 

@@ -13,6 +13,7 @@
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, api, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, closeAll, shot, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 
 const YT = "https://youtu.be/dQw4w9WgXcQ";
 const H = 3_600_000;
@@ -132,7 +133,8 @@ const H = 3_600_000;
   await pg.locator("[data-recording-months]").waitFor({ timeout: 90000 });
   const months = pg.locator("[data-recording-month]");
   check("3 nhóm theo thứ tự: Tháng 10/2026, Tháng 9/2026, Chưa gắn buổi", (await months.evaluateAll(els => els.map(e => e.getAttribute("data-recording-month")))).join() === "2026-10,2026-09,chua-gan-buoi");
-  const btn = (key: string) => pg.locator(`[data-recording-month="${key}"] button`);
+  // Nút tiêu đề tháng (aria-controls) — mỗi dòng bản ghi nay cũng có nút "Xem" của riêng nó.
+  const btn = (key: string) => pg.locator(`[data-recording-month="${key}"] button[aria-controls="rec-thang-${key}"]`);
   const inert = (key: string) => pg.locator(`#rec-thang-${key}`).evaluate((e: HTMLElement) => e.inert);
   check("tháng mới nhất mở sẵn (aria-expanded=true), các tháng cũ gập", (await btn("2026-10").getAttribute("aria-expanded")) === "true" && (await btn("2026-09").getAttribute("aria-expanded")) === "false" && (await btn("chua-gan-buoi").getAttribute("aria-expanded")) === "false");
   check("nhóm đang gập bị 'inert' (Tab không chui vào phần ẩn), nhóm đang mở thì không", (await inert("2026-09")) === true && (await inert("2026-10")) === false);
@@ -166,56 +168,77 @@ const H = 3_600_000;
   check("chưa có lớp: vẫn giải thích + 'Nhập mã lớp'", (await pl.getByRole("link", { name: "Nhập mã lớp" }).getAttribute("href")) === "/student/nhap-ma-lop" && (await pl.locator("[data-class-catalog]").count()) === 0);
   await cl.close();
 
-  section("NC2-040 — Thi thử xếp theo ngày thi, gom theo tháng (học sinh)");
-  await go(pg, "/thi-thu");
-  await pg.locator("[data-exam-month]").first().waitFor({ timeout: 120000 });
-  const keys = () => pg.locator("[data-exam-month]").evaluateAll(els => els.map(e => e.getAttribute("data-exam-month")));
-  const titles = (key: string) => pg.locator(`[data-exam-month="${key}"] [data-exam-row]`).evaluateAll(els => els.map(e => (e.querySelector("p")?.textContent ?? "").trim()));
-  check("tháng mới nhất trước: 11/2026, 10/2026, 09/2026, rồi 'Chưa có ngày thi' (ngày tạo đề ngược hẳn)", (await keys()).join() === "2026-11,2026-10,2026-09,chua-co-ngay", await keys());
-  check("trong tháng 10: đề 25/10 đứng trước đề 05/10", (await titles("2026-10")).join() === "Đề mười muộn,Đề mười sớm", await titles("2026-10"));
-  check("đề không đọc được ngày KHÔNG bị ẩn: nằm nhóm 'Chưa có ngày thi'", (await titles("chua-co-ngay")).join() === "Đề chưa rõ ngày");
-  check("tiêu đề tháng ghi số đề ('Tháng 10/2026 · 2 đề') và là tiêu đề (heading)", await pg.getByRole("heading", { name: /Tháng 10\/2026\s*·\s*2 đề/ }).isVisible());
-  check("đủ 5 đề, không mất không trùng", (await pg.locator("[data-exam-row]").count()) === 5);
-  await pg.getByRole("searchbox", { name: "Tìm đề thi" }).fill("mười một");
-  await eventually("ô tìm 'mười một' → chỉ còn tháng 11 (không để tiêu đề tháng rỗng)", async () => (await keys()).join() === "2026-11" && (await pg.locator("[data-exam-row]").count()) === 1, 8000);
-  await pg.getByRole("searchbox", { name: "Tìm đề thi" }).fill("");
-  await pg.getByRole("button", { name: "Chưa làm", exact: true }).click();
-  check("lọc 'Chưa làm' vẫn giữ nhóm tháng (5 đề chưa làm)", (await keys()).length === 4 && (await pg.locator("[data-exam-row]").count()) === 5);
-  await shot(pg, "lop-nhieu-lop-thi-thu");
+  // DG (14/11/2026): /thi-thu công khai theo cờ THI_THU_CONG_KHAI (mặc định ẨN, proxy chặn 307). Cờ tắt thì chỉ kiểm lối đó bị chặn; bật cờ cho cả máy chủ và bài để kiểm đủ NC2-040.
+  if (!featureOn("THI_THU_CONG_KHAI")) {
+    section("NC2-040 — /thi-thu đang ẩn theo cờ THI_THU_CONG_KHAI");
+    const rt = await api("GET", "/thi-thu", { as: S });
+    check("cờ tắt: /thi-thu chuyển hướng 307 (không mở danh sách thi thử công khai)", rt.status === 307, rt.status);
+  } else {
+    section("NC2-040 — Thi thử xếp theo ngày thi, gom theo tháng (học sinh)");
+    await go(pg, "/thi-thu");
+    await pg.locator("[data-exam-month]").first().waitFor({ timeout: 120000 });
+    const keys = () => pg.locator("[data-exam-month]").evaluateAll(els => els.map(e => e.getAttribute("data-exam-month")));
+    const titles = (key: string) => pg.locator(`[data-exam-month="${key}"] [data-exam-row]`).evaluateAll(els => els.map(e => (e.querySelector("p")?.textContent ?? "").trim()));
+    check("tháng mới nhất trước: 11/2026, 10/2026, 09/2026, rồi 'Chưa có ngày thi' (ngày tạo đề ngược hẳn)", (await keys()).join() === "2026-11,2026-10,2026-09,chua-co-ngay", await keys());
+    check("trong tháng 10: đề 25/10 đứng trước đề 05/10", (await titles("2026-10")).join() === "Đề mười muộn,Đề mười sớm", await titles("2026-10"));
+    check("đề không đọc được ngày KHÔNG bị ẩn: nằm nhóm 'Chưa có ngày thi'", (await titles("chua-co-ngay")).join() === "Đề chưa rõ ngày");
+    check("tiêu đề tháng ghi số đề ('Tháng 10/2026 · 2 đề') và là tiêu đề (heading)", await pg.getByRole("heading", { name: /Tháng 10\/2026\s*·\s*2 đề/ }).isVisible());
+    check("đủ 5 đề, không mất không trùng", (await pg.locator("[data-exam-row]").count()) === 5);
+    await pg.getByRole("searchbox", { name: "Tìm đề thi" }).fill("mười một");
+    await eventually("ô tìm 'mười một' → chỉ còn tháng 11 (không để tiêu đề tháng rỗng)", async () => (await keys()).join() === "2026-11" && (await pg.locator("[data-exam-row]").count()) === 1, 8000);
+    await pg.getByRole("searchbox", { name: "Tìm đề thi" }).fill("");
+    await pg.getByRole("button", { name: "Chưa làm", exact: true }).click();
+    check("lọc 'Chưa làm' vẫn giữ nhóm tháng (5 đề chưa làm)", (await keys()).length === 4 && (await pg.locator("[data-exam-row]").count()) === 5);
+    await shot(pg, "lop-nhieu-lop-thi-thu");
 
-  section("NC2-040 — khách cũng thấy đề theo tháng");
-  const cg = await ctxFor(null, { width: 1280, height: 900 });
-  const pgst = await cg.newPage(); watch(pgst);
-  await go(pgst, "/thi-thu");
-  await pgst.locator("[data-exam-month]").first().waitFor({ timeout: 120000 });
-  check("khách: cùng thứ tự tháng 11, 10, 09, 'chưa có ngày'", (await pgst.locator("[data-exam-month]").evaluateAll(els => els.map(e => e.getAttribute("data-exam-month")))).join() === "2026-11,2026-10,2026-09,chua-co-ngay");
-  check("khách: đủ 5 đề, đề 25/10 đứng trước đề 05/10", /Đề mười muộn[\s\S]*Đề mười sớm/.test(await pgst.locator("body").innerText()) && /Đề mười một[\s\S]*Đề mười muộn[\s\S]*Đề mười sớm[\s\S]*Đề tháng chín[\s\S]*Đề chưa rõ ngày/.test(await pgst.locator("body").innerText()));
-  await cg.close();
+    section("NC2-040 — khách cũng thấy đề theo tháng");
+    const cg = await ctxFor(null, { width: 1280, height: 900 });
+    const pgst = await cg.newPage(); watch(pgst);
+    await go(pgst, "/thi-thu");
+    await pgst.locator("[data-exam-month]").first().waitFor({ timeout: 120000 });
+    check("khách: cùng thứ tự tháng 11, 10, 09, 'chưa có ngày'", (await pgst.locator("[data-exam-month]").evaluateAll(els => els.map(e => e.getAttribute("data-exam-month")))).join() === "2026-11,2026-10,2026-09,chua-co-ngay");
+    check("khách: đủ 5 đề, đề 25/10 đứng trước đề 05/10", /Đề mười muộn[\s\S]*Đề mười sớm/.test(await pgst.locator("body").innerText()) && /Đề mười một[\s\S]*Đề mười muộn[\s\S]*Đề mười sớm[\s\S]*Đề tháng chín[\s\S]*Đề chưa rõ ngày/.test(await pgst.locator("body").innerText()));
+    await cg.close();
+  }
 
-  section("NC2-048 — thanh bên chỉ còn MỘT mục 'Cộng đồng'; liên kết cũ vẫn sống");
-  const cw = await ctxFor(S, { width: 1440, height: 900, rail: "mac-dinh" });
-  const pw = await cw.newPage(); watch(pw);
-  await go(pw, "/student/hoi-dap");
-  await pw.waitForURL(u => u.pathname === "/cong-dong", { timeout: 120000 });
-  check("/student/hoi-dap (liên kết / thông báo cũ) vẫn dẫn tới Cộng đồng, tab Hỏi đáp", new URL(pw.url()).searchParams.get("tab") === "hoi-dap-qa", pw.url());
-  const rail = pw.getByRole("navigation", { name: "Module của học sinh" }).first();
-  await rail.waitFor({ timeout: 90000 });
-  check("thanh bên KHÔNG còn mục 'Hỏi đáp'", (await rail.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
-  check("đứng ở Cộng đồng (tab Hỏi đáp) → chỉ mục 'Cộng đồng' sáng, không xung đột", (await rail.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("aria-current")) === "page" && (await rail.locator('a[aria-current="page"]').count()) === 1);
-  // BU-05: "Hỏi đáp" nay là liên kết (<Link>) trong điều hướng trái của Cộng đồng (LeftNav), không còn là nút tab.
-  check("trang vẫn có mục 'Hỏi đáp' bên trong Cộng đồng (điều hướng trái, liên kết ?tab=hoi-dap-qa)", await pw.getByRole("link", { name: "Hỏi đáp", exact: true }).first().waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false));
-  await cw.close();
-  // Thanh HẸP (mặc định của các bài ui-*): mục nằm trong bảng "Khác". ui-student-shell kiểm chỗ này nhưng đang hỏng sẵn ở bản gốc (strict mode 'HỌC SINH' khớp 2 phần tử), nên kiểm lại ở đây.
-  const cn = await ctxFor(S, { width: 1280, height: 800 });
-  const pn = await cn.newPage(); watch(pn);
-  await go(pn, "/student/viec-cua-toi");
-  const railN = pn.getByRole("navigation", { name: "Module của học sinh" }).first();
-  await railN.getByRole("button", { name: /^Khác/ }).click({ timeout: 120000 });
-  const dlg = pn.getByRole("dialog", { name: "Các mục khác" });
-  await dlg.waitFor({ timeout: 60000 });
-  // BU-00 bước 6: Thi thử / Thư viện / Hỏi đáp đã rút khỏi bảng "Khác" (Thi thử nằm trong "Việc của tôi"); bảng chỉ còn Khám phá + Tự học.
-  check("bảng 'Khác' (thanh hẹp): có 'Cộng đồng' và KHÔNG có 'Hỏi đáp', 'Thi thử', 'Thư viện' (đã rút ở BU-00)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thi thử", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Thư viện", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
-  await cn.close();
+  // LOI-01: Cộng đồng theo cờ CONG_DONG (mặc định ẨN, proxy chặn 307). Cờ tắt thì chỉ kiểm lối cũ bị chặn và thanh bên không có mục Cộng đồng / Hỏi đáp.
+  if (!featureOn("CONG_DONG")) {
+    section("NC2-048 — Cộng đồng đang ẩn theo cờ CONG_DONG");
+    const rh = await api("GET", "/student/hoi-dap", { as: S });
+    check("cờ tắt: /student/hoi-dap chuyển hướng 307", rh.status === 307, rh.status);
+    const cw = await ctxFor(S, { width: 1440, height: 900, rail: "mac-dinh" });
+    const pw = await cw.newPage(); watch(pw);
+    await go(pw, "/student/viec-cua-toi");
+    const rail = pw.getByRole("navigation", { name: "Module của học sinh" }).first();
+    await rail.waitFor({ timeout: 90000 });
+    check("thanh bên không có mục 'Cộng đồng' / 'Hỏi đáp'", (await rail.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 0 && (await rail.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
+    await cw.close();
+  } else {
+    section("NC2-048 — thanh bên chỉ còn MỘT mục 'Cộng đồng'; liên kết cũ vẫn sống");
+    const cw = await ctxFor(S, { width: 1440, height: 900, rail: "mac-dinh" });
+    const pw = await cw.newPage(); watch(pw);
+    await go(pw, "/student/hoi-dap");
+    await pw.waitForURL(u => u.pathname === "/cong-dong", { timeout: 120000 });
+    check("/student/hoi-dap (liên kết / thông báo cũ) vẫn dẫn tới Cộng đồng, tab Hỏi đáp", new URL(pw.url()).searchParams.get("tab") === "hoi-dap-qa", pw.url());
+    const rail = pw.getByRole("navigation", { name: "Module của học sinh" }).first();
+    await rail.waitFor({ timeout: 90000 });
+    check("thanh bên KHÔNG còn mục 'Hỏi đáp'", (await rail.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
+    check("đứng ở Cộng đồng (tab Hỏi đáp) → chỉ mục 'Cộng đồng' sáng, không xung đột", (await rail.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("aria-current")) === "page" && (await rail.locator('a[aria-current="page"]').count()) === 1);
+    // BU-05: "Hỏi đáp" nay là liên kết (<Link>) trong điều hướng trái của Cộng đồng (LeftNav), không còn là nút tab.
+    check("trang vẫn có mục 'Hỏi đáp' bên trong Cộng đồng (điều hướng trái, liên kết ?tab=hoi-dap-qa)", await pw.getByRole("link", { name: "Hỏi đáp", exact: true }).first().waitFor({ state: "visible", timeout: 60000 }).then(() => true, () => false));
+    await cw.close();
+    // Thanh HẸP (mặc định của các bài ui-*): mục nằm trong bảng "Khác". ui-student-shell kiểm chỗ này nhưng đang hỏng sẵn ở bản gốc (strict mode 'HỌC SINH' khớp 2 phần tử), nên kiểm lại ở đây.
+    const cn = await ctxFor(S, { width: 1280, height: 800 });
+    const pn = await cn.newPage(); watch(pn);
+    await go(pn, "/student/viec-cua-toi");
+    const railN = pn.getByRole("navigation", { name: "Module của học sinh" }).first();
+    await railN.getByRole("button", { name: /^Khác/ }).click({ timeout: 120000 });
+    const dlg = pn.getByRole("dialog", { name: "Các mục khác" });
+    await dlg.waitFor({ timeout: 60000 });
+    // BU-00 bước 6: Thi thử / Thư viện / Hỏi đáp đã rút khỏi bảng "Khác" (Thi thử nằm trong "Việc của tôi"); bảng chỉ còn Khám phá + Tự học.
+    check("bảng 'Khác' (thanh hẹp): có 'Cộng đồng' và KHÔNG có 'Hỏi đáp', 'Thi thử', 'Thư viện' (đã rút ở BU-00)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).count()) === 1 && (await dlg.getByRole("link", { name: "Thi thử", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Thư viện", exact: true }).count()) === 0 && (await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count()) === 0);
+    await cn.close();
+  }
 
   section("Rà soát độc lập 28/10 — ca biên: đổi lớp khi mạng chậm, API lỗi, ?course= lạ, cô lập, tạm dừng, gia sư 'KiN'");
   // P2-1: phản hồi CHẬM của lớp trước không được ghi đè lớp đang xem (bấm sang Địa 12 rồi Quay lại ngay về Sử 12).
@@ -317,7 +340,7 @@ const H = 3_600_000;
   const cm = await ctxFor(S, { width: 390, height: 844 });
   const pm = await cm.newPage(); watch(pm);
   await pm.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }).catch(() => {});
-  for (const [name, path, ready] of [["Danh mục lớp", "/student/hoc-tap", "[data-class-catalog]"], ["Trong lớp", `/student/hoc-tap?course=${A.id}`, "[data-lop-can-lam]"], ["Thi thử theo tháng", "/thi-thu", "[data-exam-month]"]] as const) {
+  for (const [name, path, ready] of [["Danh mục lớp", "/student/hoc-tap", "[data-class-catalog]"], ["Trong lớp", `/student/hoc-tap?course=${A.id}`, "[data-lop-can-lam]"], ...(featureOn("THI_THU_CONG_KHAI") ? [["Thi thử theo tháng", "/thi-thu", "[data-exam-month]"]] as const : [])] as const) {
     await go(pm, path);
     await pm.locator(ready).first().waitFor({ timeout: 120000 });
     await pm.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
@@ -328,7 +351,7 @@ const H = 3_600_000;
   }
   await go(pm, `/student/hoc-tap?course=${A.id}&xem=bai-hoc`);
   await pm.locator("[data-recording-months]").waitFor({ timeout: 90000 });
-  check("bản ghi theo tháng ở 390px: không tràn ngang, tiêu đề tháng ≥ 44px", (await overflow(pm)) <= 0 && ((await pm.locator('[data-recording-month="2026-09"] button').boundingBox())?.height ?? 0) >= 44);
+  check("bản ghi theo tháng ở 390px: không tràn ngang, tiêu đề tháng ≥ 44px", (await overflow(pm)) <= 0 && ((await pm.locator('[data-recording-month="2026-09"] button[aria-controls="rec-thang-2026-09"]').boundingBox())?.height ?? 0) >= 44);
   await cm.close();
 
   section("Không lỗi trình duyệt");

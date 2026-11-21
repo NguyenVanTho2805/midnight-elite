@@ -1,6 +1,6 @@
 // Hành trình học sinh MỚI từ đầu đến cuối (16/10/2026; Thọ: "kiểm tra toàn bộ role học sinh và role guest xem có lỗi hay button đến sai địa chỉ").
 //   J1  Khách mở trang chủ → "Đăng ký" ở đầu trang → /dang-ky
-//   J2  Form 2 bước (học viên) → "Kiểm tra hộp thư" (đúng email vừa nhập)
+//   J2  Form một bước 3 ô (học viên, SCL-E) → Q6: đăng nhập luôn, vào thẳng "Việc của tôi" (không còn màn "Kiểm tra hộp thư" chặn giữa)
 //   J3  Thư xác thực (đọc từ EMAIL_SINK_DIR) → trang xác thực → tự đăng nhập → ĐI THẲNG vào "Việc của tôi" (trước đây đẩy sang /student/hoc-tap, trang "Chưa có khóa học nào",
 //       dù trang ghi "Đang chuyển đến Dashboard")
 //   J4  Nhập mã mời của gia sư → "Vào lớp này" → /student/hoc-tap?course=<lớp> (quyết định: thành công vào thẳng lớp)
@@ -10,7 +10,7 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { BASE, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
-import { launch, ctxFor, closeAll, kinSelect } from "./ui";
+import { launch, ctxFor, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 
 const SINK = process.env.EMAIL_SINK_DIR;
@@ -45,21 +45,16 @@ const pathOf = (url: string) => { const u = new URL(url); return u.pathname + u.
   await eventually("tới /dang-ky", () => at().pathname === "/dang-ky", 30000);
   check("trang đăng ký hiện form học viên (mặc định)", await p.getByText("Họ và tên *").first().isVisible().catch(() => false));
 
-  section("J2. Form hai bước → 'Kiểm tra hộp thư'");
+  // SCL-E ("đăng ký 3 ô"): học viên chỉ còn Họ tên + Email + Mật khẩu trên MỘT bước (không SĐT, lớp, trường, nhập lại mật khẩu).
+  section("J2. Form một bước (3 ô) → đăng nhập luôn, vào 'Việc của tôi' (SCL-E Q6)");
   await p.getByPlaceholder("Nguyễn Văn A").fill("Học Sinh Mới");
-  await p.locator('input[type="tel"]').nth(0).fill("0912345678");
-  await p.locator('input[type="tel"]').nth(1).fill("0987654321");
-  await kinSelect(p.locator('form [role="combobox"]').first(), { index: 1 });
-  await p.getByPlaceholder("THPT Chu Văn An").fill("THCS Thử Nghiệm");
-  await p.getByRole("button", { name: /Tiếp theo/ }).click();
-  await p.getByPlaceholder("ten@gmail.com").waitFor({ timeout: 20000 });
   await p.getByPlaceholder("ten@gmail.com").fill(email);
   await p.getByPlaceholder("Tối thiểu 8 ký tự").fill("Passw0rd!");
-  await p.getByPlaceholder("Nhập lại mật khẩu").fill("Passw0rd!");
   await p.locator('form input[type="checkbox"]').check();   // "form": thanh công cụ dev (agentation) cũng có ô tích, bộ chọn trần khớp 6 phần tử
   await p.getByRole("button", { name: "Tạo tài khoản miễn phí" }).click();
-  await eventually("hiện 'Kiểm tra hộp thư'", async () => (await p.locator("body").innerText()).includes("Kiểm tra hộp thư"), 40000);
-  check("trang nói đúng email vừa nhập", (await p.locator("body").innerText()).includes(email));
+  await eventually("vào thẳng /student/viec-cua-toi trong khung học sinh", async () => at().pathname === "/student/viec-cua-toi" && (await p.locator('nav[aria-label="Module của học sinh"]').count()) > 0, 40000);
+  const u = await prisma.user.findUnique({ where: { email }, select: { role: true, emailVerified: true } });
+  check("tài khoản đúng email vừa nhập, vai học sinh, email CHƯA xác thực", u?.role === "student" && !u.emailVerified, u);
 
   section("J3. Thư xác thực → trang xác thực → vào thẳng 'Việc của tôi'");
   await eventually("thư xác thực đã được gửi tới email đó", () => mails(email).some(m => /xác thực/i.test(m.subject)), 20000);

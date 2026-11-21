@@ -4,6 +4,7 @@ import { api, BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, do
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
+const TUTOR_INBOX_PATH = "/lop-cua-toi/hop-viec"; // = TUTOR_INBOX_PATH của components/tutor/TutorShell.tsx (tệp client, không import vào tiến trình test)
 
 // LOI-01 (11/11/2026): module "Lịch" và mục "Kiểm duyệt cộng đồng" rời menu khi phần Lịch / Cộng đồng đang ẨN (src/lib/features.ts) — route vẫn chạy.
 // Bài đọc cờ ở tiến trình này: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
@@ -197,7 +198,10 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
   await pc.waitForURL(u => u.pathname === compactHome, { timeout: 90000 });
   check(`Hộp việc đã tắt → /lop-cua-toi chuyển về ${LICH ? "Lịch" : "Lớp (Lịch đang ẩn)"}`, new URL(pc.url()).pathname === compactHome, pc.url());
   await pc.getByRole("navigation", { name: RAIL }).waitFor();
-  check(`thanh chỉ có ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`, (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").allInnerTexts()).filter(t => t.trim() !== "KiN").length === (LICH ? 3 : 2));
+  // SCL-G-GS (QUYET-DINH §3.4): "Hộp việc" MỚI (gom việc mọi lớp, TUTOR_INBOX_PATH) luôn đầu thanh, kể cả khi module Hộp việc cũ (có học phí) đã tắt.
+  const compactLinks = (await pc.getByRole("navigation", { name: RAIL }).getByRole("link").evaluateAll(els => els.map(e => [(e.textContent ?? "").trim(), e.getAttribute("href") ?? ""]))).filter(([t]) => !t.startsWith("KiN")); // logo (chữ "KiN" + nhãn vai)
+  check(`thanh chỉ có Hộp việc (mới) + ${LICH ? "Lịch + " : ""}Học phí + Học sinh (GS-09: Học sinh không còn phụ thuộc module Lớp; Cài đặt lẻ đã bỏ; LOI-01: Lịch theo cờ) (+ logo, + Khác)`,
+    compactLinks.map(([t]) => t).join("|") === ["Hộp việc", ...(LICH ? ["Lịch"] : []), "Học phí", "Học sinh"].join("|") && compactLinks[0][1] === TUTOR_INBOX_PATH, compactLinks);
   await pc.getByRole("navigation", { name: RAIL }).getByRole("button", { name: /^Khác/ }).click();
   check("bảng Khác có 'Thêm module' → /lop-cua-toi/cai-dat#module", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Thêm module" }).getAttribute("href") === "/lop-cua-toi/cai-dat#module");
   check("B1: Hộp việc tắt thì bảng Khác CÓ 'Tổng quan' (lối duy nhất tới số liệu) và 'Yêu cầu tìm gia sư' (GS-09)", await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Tổng quan", exact: true }).getAttribute("href") === "/lop-cua-toi/tong-quan" && await pc.getByRole("dialog", { name: "Các mục khác" }).getByRole("link", { name: "Yêu cầu tìm gia sư" }).getAttribute("href") === "/lop-cua-toi/yeu-cau");
@@ -219,10 +223,11 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
   check("chỉ MỘT thanh module nhìn thấy", await pm.getByRole("navigation", { name: RAIL }).count() === 1);
   check("điện thoại: một cột — Buổi học sắp tới đứng trước Cần cô xử lý, dải số 2 cột", await pm.evaluate(`document.querySelector('#hv-next').getBoundingClientRect().top < document.querySelector('#hv-todo').getBoundingClientRect().top && Math.abs(document.querySelector('#hv-todo').getBoundingClientRect().left - document.querySelector('#hv-wait').getBoundingClientRect().left) < 2`) as boolean && await pm.getByRole("list", { name: "Việc cần cô xử lý" }).isVisible());
   const hit = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-  // DG (14/11/2026): thanh dưới luôn đủ 4 module + Khác — module ẩn theo cờ (Lịch khi LICH tắt) nhường chỗ cho module kế tiếp (Bài tập), TutorShell MOBILE_ORDER.
-  check(`B3: 5 ô (Hộp việc, ${LICH ? "Lịch, Lớp, Học phí" : "Lớp, Học phí, Bài tập"} + Khác), mỗi nút cao ≥ 44px`, hit.length === 5 && hit.every(h => h >= 44), hit);
+  // SCL-G-GS (QUYET-DINH §3.4, gia sư điện thoại): thanh dưới ĐÚNG 3 ô Hộp việc / Lớp / Tôi (Tôi mở bảng "Khác" — các module còn lại vào từ đó). Thay B3 "4 module + Khác".
+  const barLabels = await bar.evaluate(n => [...n.querySelectorAll("a, button")].filter(e => (e as HTMLElement).offsetParent).map(e => (e.querySelector(".kin-rail-lab")?.textContent ?? "").trim()));
+  check("SCL-G-GS: 3 ô (Hộp việc, Lớp, Tôi), mỗi nút cao ≥ 44px", hit.length === 3 && hit.every(h => h >= 44) && barLabels.join("|") === "Hộp việc|Lớp|Tôi", { hit, barLabels });
   const wid = await pm.evaluate(`[...document.querySelectorAll('nav[aria-label="${RAIL}"] a, nav[aria-label="${RAIL}"] button')].filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().width))`) as number[];
-  check("mỗi nút rộng ≥ 44px (390 / 4 ≈ 90)", wid.every(w => w >= 44), wid);
+  check("mỗi nút rộng ≥ 44px (390 / 3 ≈ 130)", wid.every(w => w >= 44), wid);
   check("không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   await pm.evaluate(`window.scrollTo(0, document.body.scrollHeight)`);
   check("nội dung không bị thanh dưới che (cuộn hết: ghi chú chân nằm trên thanh dưới 60px)", await pm.evaluate(`[...document.querySelectorAll('[data-kin-callout]')].pop().getBoundingClientRect().bottom <= 800 - 60 + 1`) as boolean);
@@ -241,10 +246,10 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
   await pm.getByRole("button", { name: /^Tài khoản của/ }).click();
   check("B2/B3: menu tài khoản trên điện thoại: có Cài đặt, Hồ sơ gia sư, Đăng xuất; không còn 'Tất cả mục'", await pm.getByRole("menuitem", { name: "Cài đặt" }).isVisible() && await pm.getByRole("menuitem", { name: "Hồ sơ gia sư" }).isVisible() && await pm.getByRole("menuitem", { name: "Đăng xuất" }).isVisible() && await pm.getByRole("menuitem", { name: "Tất cả mục" }).count() === 0);
   await pm.keyboard.press("Escape");
-  await bar.getByRole("button", { name: /^Khác/ }).click();
+  await bar.getByRole("button", { name: /^Tôi/ }).click(); // SCL-G-GS: ô "Tôi" trên thanh dưới mở bảng "Khác"
   const dm = pm.getByRole("dialog", { name: "Các mục khác" });
   const db = await dm.boundingBox();
-  check("bảng 'Khác' (mở từ menu tài khoản) nổi trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 60 + 1 && db.x >= 0 && db.x + db.width <= 390, db);
+  check("bảng 'Khác' (mở từ ô Tôi) nổi trên thanh dưới, không tràn khỏi màn hình", !!db && db.y >= 0 && db.y + db.height <= 800 - 60 + 1 && db.x >= 0 && db.x + db.width <= 390, db);
   check("mọi mục trong bảng cao ≥ 44px", (await dm.evaluate(`[...document.querySelectorAll('[role=dialog] a, [role=dialog] button')].map(e => Math.round(e.getBoundingClientRect().height))`) as number[]).every(h => h >= 44));
   await shot(pm, "tutor-shell-khac-mobile");
   await cm.close();
