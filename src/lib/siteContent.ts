@@ -43,7 +43,7 @@ function deepFreeze<T>(o: T): T {
 export const DEFAULT_HOME_CONTENT: HomeContent = deepFreeze({
   badge: "KiN · Luyện thi ĐGNL, THPT & BCA cùng gia sư thật",
   title: "Học cùng gia sư thật,\ntheo lớp và theo lịch",
-  lead: "Vào lớp bằng mã gia sư gửi, xem lịch và buổi học, làm bài tập và đề thi thử ngay trên KiN. Phụ huynh xem Sổ của con bằng đường dẫn riêng.",
+  lead: "Vào lớp bằng mã gia sư gửi, xem buổi học, làm bài tập và đề gia sư giao ngay trên KiN. Phụ huynh xem Sổ của con bằng đường dẫn riêng.",
   exams: [
     exam("ĐGNL HSA", "ĐH Quốc gia Hà Nội"),
     exam("ĐGNL HCM", "ĐH Quốc gia TP.HCM"),
@@ -54,10 +54,10 @@ export const DEFAULT_HOME_CONTENT: HomeContent = deepFreeze({
     title: "Học ở đây thì được gì?",
     subtitle: "Những thứ học sinh thực tế dùng mỗi ngày",
     cards: [
-      { icon: "key", title: "Vào lớp bằng mã mời", desc: "Gia sư gửi mã, em nhập là thấy tên gia sư, lịch và học phí (nếu có) của lớp trước khi bấm vào." },
-      { icon: "calendar", title: "Lịch học và buổi học", desc: "Một lịch tuần cho mọi lớp: buổi học với gia sư, hạn nộp bài tập và buổi thi thử." },
-      { icon: "clipboard", title: "Thi thử trong phòng thi", desc: "Làm đề có giờ như thi thật. Nộp xong, KiN ghi nhận bài và tính điểm phần trắc nghiệm." },
-      { icon: "chat", title: "Bài tập và hỏi đáp", desc: "Nộp bài tập gia sư giao ngay trên KiN. Có thắc mắc thì hỏi gia sư ngay trong lớp của mình." },
+      { icon: "key", title: "Vào lớp bằng mã mời", desc: "Gia sư gửi mã, bạn nhập là thấy tên gia sư và lịch của lớp trước khi bấm vào." },
+      { icon: "calendar", title: "Buổi học và hạn nộp", desc: "Việc của tôi gom buổi học sắp tới với gia sư và hạn nộp bài tập của mọi lớp bạn học." },
+      { icon: "clipboard", title: "Thi thử trong phòng thi", desc: "Làm đề gia sư giao, có giờ như thi thật. Nộp xong, KiN ghi nhận bài và tính điểm phần trắc nghiệm." },
+      { icon: "chat", title: "Bài tập và hỏi đáp", desc: "Nộp bài tập gia sư giao ngay trên KiN. Có thắc mắc thì hỏi gia sư ngay trong lớp của bạn." },
     ],
   },
   findTutor: {
@@ -68,8 +68,8 @@ export const DEFAULT_HOME_CONTENT: HomeContent = deepFreeze({
     parentNote: "Phụ huynh xem Sổ của con bằng đường dẫn riêng do gia sư gửi, không cần tài khoản.",
   },
   cta: {
-    title: "Gia nhập cộng đồng KiN ngay hôm nay",
-    desc: "Tạo tài khoản học sinh để thi thử ngay. Có mã từ gia sư thì vào lớp, xem lịch và nộp bài trên KiN.",
+    title: "Bắt đầu học cùng KiN ngay hôm nay",
+    desc: "Tạo tài khoản học sinh miễn phí. Có mã từ gia sư thì vào lớp, xem bài học và nộp bài trên KiN.",
     primary: { label: "Tạo tài khoản miễn phí →", href: "/dang-ky" },
     secondary: { label: "Thi thử ĐGNL ngay", href: "/thi-thu" },
   },

@@ -21,10 +21,8 @@ const anyFolder = files.filter(f => /["'`](lessons\/documents|assignments\/files
 check("không tệp nguồn nào còn nhắc thư mục lessons/documents hoặc assignments/files", anyFolder.length === 0, anyFolder);
 
 const kh = readFileSync(join(process.cwd(), "src/app/(admin)/admin/khoa-hoc/[id]/page.tsx"), "utf8");
-const i = kh.indexOf("function DocumentsEditor");
-const body = i < 0 ? "" : kh.slice(i, kh.indexOf("\nfunction ", i + 10) > 0 ? kh.indexOf("\nfunction ", i + 10) : undefined);
-check("DocumentsEditor tồn tại và KHÔNG có <input type=\"file\">", i >= 0 && body.length > 100 && !/type=["']file["']/.test(body));
-check("DocumentsEditor có hướng dẫn dán liên kết", /liên kết|link|dán/i.test(body));
+// SCL-F2 (P2-27): trang quản trị của lớp không còn soạn bài (DocumentsEditor chỉ-link-Drive đã xoá) — soạn ở vỏ gia sư.
+check("admin/khoa-hoc/[id] không còn DocumentsEditor / tab Chương bài", !kh.includes("function DocumentsEditor") && !kh.includes("TabChuongBai"));
 
 section("Cảnh báo (không đỏ): nơi còn tải lên Cloudinary không ký — ngoài phạm vi BU-08");
 const left = files.filter(f => /\b(uploadToCloudinary|uploadMany)\s*\(/.test(strip(readFileSync(f, "utf8"))) && !/^src\/lib\/cloudinary\.ts$/.test(rel(f))).map(rel);

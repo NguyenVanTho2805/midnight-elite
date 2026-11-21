@@ -107,7 +107,8 @@ export async function POST(req: NextRequest) {
     // Chỉ lớp tạo SAU mới có thể khác mặc định; không có đường nào đổi hình thức của lớp đã tạo.
     // HOCPHI-THEO-BUOI 3.1: có đơn giá (feeRate) mà không nói feeMode → mặc định theo buổi. Không gửi cả hai → lớp cũ như trước (đường quản trị / ngăn kéo cũ).
     // HP-BO (17/11/2026): phần Học phí đang ẩn (cờ HOC_PHI tắt) ⇒ bỏ qua mọi trường học phí: lớp tạo ra là lớp mặc định, không có đơn giá, chốt buổi không sinh phí.
-    const feeModeIn: unknown = !featureOn("HOC_PHI") ? undefined
+    // SCL-F2: quản trị (lớp trung tâm) tạo lớp mặc định như ngăn kéo cũ — bỏ qua feeMode/feeRate; phiếu chốt bằng requireTutor nên lớp có chủ phí là quản trị sẽ không ai quản được.
+    const feeModeIn: unknown = !featureOn("HOC_PHI") || auth.adminRole !== "teacher" ? undefined
       : body.feeMode !== undefined ? body.feeMode : (body.feeRate !== undefined && body.feeRate !== null ? "per_session" : undefined);
     let feeSetup: FeeSetup | null = null;
     if (feeModeIn !== undefined && feeModeIn !== FEE_MODE_LEGACY) {
@@ -150,9 +151,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Mã "${data.id}" trùng tên một trang của KiN. Hãy đặt tên lớp khác để tạo mã khác.` }, { status: 400 });
     }
 
-    // Mã lớp trùng (hai gia sư cùng đặt "Toán 9"): HP-BO (17/11/2026) gia sư được tự thêm hậu tố -2, -3… thay vì báo lỗi "Slug" khó hiểu. Quản trị giữ báo trùng như cũ.
+    // Mã lớp trùng (hai gia sư cùng đặt "Toán 9"): HP-BO (17/11/2026) tự thêm hậu tố -2, -3… thay vì báo lỗi "Slug" khó hiểu.
+    // SCL-F2: áp cho cả quản trị — TaoLop là cửa tạo lớp duy nhất, không còn ô slug để tự sửa.
     let existing = await prisma.course.findUnique({ where: { id: data.id as string }, select: { id: true } });
-    if (existing && auth.adminRole === "teacher") {
+    if (existing) {
       const base = String(data.id);
       for (let n = 2; n <= 50 && existing; n++) {
         const cand = `${base}-${n}`;
@@ -179,6 +181,8 @@ export async function POST(req: NextRequest) {
       data.instructor = nm;
       data.teacherAvatar = nm.charAt(0).toUpperCase();
     }
+    // SCL-F2: quản trị tạo lớp qua TaoLop (không gửi instructor) → mặc định "KiN" như ngăn kéo tạo khoá cũ (Course.instructor bắt buộc).
+    if (auth.adminRole !== "teacher" && !instr) { data.instructor = "KiN"; data.teacherAvatar = "K"; }
     // SCL-A (P1-3, Q10): lớp của gia sư là riêng — chỉ lớp "Vào ngay" (open) hiện ở trang công khai, bất kể client gửi gì.
     if (auth.adminRole === "teacher") data.status = data.joinPolicy === "open";
 

@@ -7,13 +7,16 @@ import { prisma } from "@/lib/prisma";
 import { isPreviewEnv } from "@/lib/planLimits";
 import { proPayConfig } from "@/lib/proPayment";
 import { planRenewals, renewalText } from "@/lib/proRenewal";
+import { featureOn } from "@/lib/features";
 
-export interface RenewalRunResult { skipped: "preview" | "sale-closed" | null; candidates: number; created: number; alreadySent: number; failed: number }
+export interface RenewalRunResult { skipped: "preview" | "sale-closed" | "feature-off" | null; candidates: number; created: number; alreadySent: number; failed: number }
 
 export async function runProRenewalReminders(now: Date = new Date()): Promise<RenewalRunResult> {
   const none = { candidates: 0, created: 0, alreadySent: 0, failed: 0 };
   if (isPreviewEnv()) return { skipped: "preview", ...none };
   if (!proPayConfig().open) return { skipped: "sale-closed", ...none };
+  // SCL F1 (P2-28): phần Kinh doanh đang ẩn ⇒ /lop-cua-toi/goi bị chặn 307; chuông "hãy gia hạn" dẫn vào đó là đường chết — không nhắc.
+  if (!featureOn("KINH_DOANH")) return { skipped: "feature-off", ...none };
 
   const horizon = new Date(now.getTime() + 9 * 86_400_000);
   const near = await prisma.proOrder.findMany({

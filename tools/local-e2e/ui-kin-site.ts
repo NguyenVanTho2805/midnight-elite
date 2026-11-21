@@ -37,7 +37,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("không còn câu 'Mua 1 lần, học trọn đời' (KiN thu theo tháng)", !(await p.locator("body").innerText()).includes("Mua 1 lần"));
   const nav = p.getByRole("navigation", { name: "Điều hướng chính" });
   const navHrefs = await nav.getByRole("link").evaluateAll(els => els.map(e => [e.textContent, e.getAttribute("href")]));
-  check("thanh trên có đúng 4 mục: Lớp học, Thi thử, Cộng đồng, Tin tức", JSON.stringify(navHrefs) === JSON.stringify([["Lớp học", "/khoa-hoc"], ["Thi thử", "/thi-thu"], ["Cộng đồng", "/cong-dong"], ["Tin tức", "/tin-tuc"]]), navHrefs);
+  check("thanh trên có đúng 3 mục: Lớp học, Thi thử, Cộng đồng (SCL F1: Tin tức đã xoá)", JSON.stringify(navHrefs) === JSON.stringify([["Lớp học", "/khoa-hoc"], ["Thi thử", "/thi-thu"], ["Cộng đồng", "/cong-dong"]]), navHrefs);
   const login = p.locator("header").getByRole("link", { name: "Đăng nhập", exact: true });
   const reg = p.locator("header").getByRole("link", { name: "Đăng ký", exact: true });
   check("nút Đăng nhập → /dang-nhap, Đăng ký → /dang-ky", (await login.getAttribute("href")) === "/dang-nhap" && (await reg.getAttribute("href")) === "/dang-ky");
@@ -82,7 +82,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
     ["nhãn số liệu", hero.getByText("Học sinh đang học"), over([255, 255, 255, 0.06], navy)],
   ];
   for (const [name, loc, bg] of samples) { const r = ratio(await colorOf(loc), bg); check(`${name}: ${r.toFixed(2)}:1`, r >= 4.5, r); }
-  const ctaP = p.getByText(/Tạo tài khoản học sinh để thi thử ngay/);
+  const ctaP = p.getByText(/Tạo tài khoản học sinh miễn phí/);
   const rc = ratio(await colorOf(ctaP), navy); check(`đoạn mô tả khung CTA: ${rc.toFixed(2)}:1`, rc >= 4.5, rc);
 
   section("Mục 'Học ở đây thì được gì?', CTA, chân trang");
@@ -90,7 +90,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   // Vẫn giới hạn trong mục "Học ở đây thì được gì?" (h2 + khối kế tiếp); 4 thẻ giữ, chữ đổi theo STU-002; không bỏ ca nào.
   const whySection = p.locator("section").filter({ has: p.getByRole("heading", { level: 2, name: "Học ở đây thì được gì?" }) }).first();
   const why = await whySection.getByRole("heading", { level: 3 }).allInnerTexts();
-  check("4 thẻ lợi ích đúng chữ KiN", JSON.stringify(why) === JSON.stringify(["Vào lớp bằng mã mời", "Lịch học và buổi học", "Thi thử trong phòng thi", "Bài tập và hỏi đáp"]), why);
+  check("4 thẻ lợi ích đúng chữ KiN", JSON.stringify(why) === JSON.stringify(["Vào lớp bằng mã mời", "Buổi học và hạn nộp", "Thi thử trong phòng thi", "Bài tập và hỏi đáp"]), why);
   // 09/11/2026 (BU-HS-LANDING): trang chủ nay có thẻ <article> ở khối Gia sư / Lớp / Thi thử / Tin TRƯỚC mục lợi ích, nên phải đo thẻ đầu TRONG mục "Học ở đây thì được gì?".
   const grid = await whySection.locator("article").first().boundingBox();
   check("thẻ lợi ích đầu tiên cách mép trái 260px (lưới 920px, Figma 152:6)", !!grid && Math.abs(grid.x - 260) <= 1, grid?.x);
@@ -102,7 +102,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
   check("khung CTA 760px: nút Tạo tài khoản → /dang-ky", (await p.getByRole("link", { name: /Tạo tài khoản miễn phí/ }).getAttribute("href")) === "/dang-ky");
   const foot = p.locator("footer");
   const footLinks = await foot.getByRole("link").evaluateAll(els => els.map(e => [e.textContent?.trim(), e.getAttribute("href")]));
-  const want = [["Thi thử ĐGNL miễn phí", "/thi-thu"], ["Bảng xếp hạng", "/bang-xep-hang"], ["Tra cứu điểm chuẩn", "/diem-chuan"], ["Tin tức tuyển sinh", "/tin-tuc"], ["Danh sách gia sư", "/giang-vien"], ["Dành cho học sinh", "/dang-ky"], ["Dành cho gia sư", "/dang-ky?vai=gia-su"], ["Dành cho phụ huynh", "/phu-huynh"], ["Chính sách bảo mật", "/chinh-sach"]];
+  const want = [["Thi thử ĐGNL miễn phí", "/thi-thu"], ["Danh sách gia sư", "/giang-vien"], ["Dành cho học sinh", "/dang-ky"], ["Dành cho gia sư", "/dang-ky?vai=gia-su"], ["Dành cho phụ huynh", "/phu-huynh"], ["Chính sách bảo mật", "/chinh-sach"]];
   check("chân trang có đủ 3 cột Figma + liên kết đúng", want.every(([t, h]) => footLinks.some(l => l[0] === t && l[1] === h)), footLinks);
   check("chân trang giữ hotline 0384 409 051", (await foot.innerText()).includes("0384 409 051"));
   check("không tràn ngang ở 1440px", await p.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
@@ -245,7 +245,7 @@ const ratio = (fg: RGBA, bg: RGBA) => { const f = over(fg, bg); const [x, y] = [
     return bad;
   });
   const groups: [string, any, string[]][] = [
-    ["khách", null, ["/khoa-hoc", "/thi-thu", "/tin-tuc", "/bang-xep-hang", "/cong-dong", "/giang-vien", "/diem-chuan", "/chinh-sach"]],
+    ["khách", null, ["/khoa-hoc", "/thi-thu", "/cong-dong", "/giang-vien", "/chinh-sach"]],
     ["học viên", S0, ["/student/hoc-tap", "/student/lich-hoc", "/student/ho-so"]],
     ["quản trị", A0, ["/admin", "/admin/hoc-sinh", "/admin/khoa-hoc", "/admin/thi-thu"]],
   ];

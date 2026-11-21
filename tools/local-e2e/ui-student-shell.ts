@@ -12,7 +12,8 @@ import { featureOn } from "@/lib/features";
 const LICH = featureOn("LICH");
 // DG (14/11/2026): "Lớp miễn phí" đi cùng cờ TIM_GIA_SU (lối khám phá sàn); "Nhắc học" theo cờ NHAC_HOC; "Xem lịch tuần" theo LICH; danh sách thi thử theo THI_THU_CONG_KHAI.
 const NHAC = featureOn("NHAC_HOC"), THI_THU = featureOn("THI_THU_CONG_KHAI");
-const MORE_EXPECT = [...(featureOn("TIM_GIA_SU") ? ["Lớp miễn phí", "Gia sư"] : []), ...(featureOn("CONG_DONG") ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
+const MORE_EXPECT = [...(featureOn("TIM_GIA_SU") ? ["Lớp miễn phí", "Gia sư"] : []), ...(featureOn("CONG_DONG") ? ["Cộng đồng"] : [])];
+// SCL F1: "Tin tức", "Tiếng Anh tự học" đã xoá hẳn — không bao giờ có trong bảng Khác.
 const MORE_HIDDEN = ["Lớp miễn phí", "Gia sư", "Cộng đồng", "Tin tức", "Tiếng Anh tự học"].filter(l => !MORE_EXPECT.includes(l));
 // LOI-04 (11/11/2026): module "Nhắc học" luôn hiện (không theo cờ) ⇒ điện thoại: Việc của tôi · Nhắc học · Lớp của tôi · Khác = 4 ô khi LICH tắt, 5 ô khi bật.
 // DG (14/11/2026): bảng Khác hết mục (mọi cờ trong nhóm tắt) ⇒ không còn nút "Khác" (chỉ còn Trang chủ + Đăng xuất, đã có ở logo / menu tên).
@@ -129,9 +130,9 @@ const H = 3_600_000, D = 24 * H;
     check("NC2-048: không còn mục 'Hỏi đáp' riêng (gộp vào Cộng đồng)", await dlg.getByRole("link", { name: "Hỏi đáp", exact: true }).count() === 0);
     for (const l of ["Thư viện", "Thi thử", "Bảng xếp hạng", "Khoá học đang mở", "Lớp đang theo dõi", "Tra cứu điểm chuẩn", "Ví và Coin"]) check(`BU-00: mục '${l}' đã rời bảng Khác (route vẫn giữ, chỉ ẩn lối vào)`, await dlg.getByRole("link", { name: l, exact: true }).count() === 0);
     check("A6: bảng Khác không còn 'Nhập mã lớp'", await dlg.getByRole("link", { name: "Nhập mã lớp", exact: true }).count() === 0);
-    if (MORE_EXPECT.includes("Cộng đồng") && MORE_EXPECT.includes("Tin tức"))
-      check("A6: Cộng đồng → /cong-dong, Tin tức → /tin-tuc (không qua chuyển hướng)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("href")) === "/cong-dong" && (await dlg.getByRole("link", { name: "Tin tức", exact: true }).getAttribute("href")) === "/tin-tuc");
-    check(`bảng Khác đúng ${MORE_EXPECT.length} mục (bật đủ cờ: 5 mục, 2 nhóm — Khám phá có thêm Lớp miễn phí 08/11, Tự học; tắt hết: 0 mục, còn Đăng xuất)`, await dlg.getByRole("link").count() === MORE_EXPECT.length, await dlg.getByRole("link").count());
+    if (MORE_EXPECT.includes("Cộng đồng"))
+      check("A6: Cộng đồng → /cong-dong (không qua chuyển hướng)", (await dlg.getByRole("link", { name: "Cộng đồng", exact: true }).getAttribute("href")) === "/cong-dong");
+    check(`bảng Khác đúng ${MORE_EXPECT.length} mục (bật đủ cờ: 3 mục, 1 nhóm Khám phá; tắt hết: 0 mục, còn Đăng xuất)`, await dlg.getByRole("link").count() === MORE_EXPECT.length, await dlg.getByRole("link").count());
     check("BU-HS-TRANG-CHU: ở 1280 hàng 'Trang chủ KiN' của bảng Khác không hiện (máy tính đã có mục Trang chủ ở thanh bên)", await dlg.getByRole("link", { name: "Trang chủ KiN", exact: true }).count() === 0 && (await dlg.locator("[data-more-home]").count()) === 1 && !(await dlg.locator("[data-more-home]").isVisible()));
     check("có 'Đăng xuất' và tên người dùng", await dlg.getByRole("button", { name: "Đăng xuất" }).isVisible() && await dlg.getByText("Minh Anh").isVisible());
     await shot(pg, "student-shell-khac");

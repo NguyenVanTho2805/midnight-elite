@@ -17,6 +17,7 @@ for (const k of ["KINPRO_BANK_BIN", "KINPRO_ACCOUNT_NO", "KINPRO_ACCOUNT_NAME", 
 if (hasAcct) { process.env.KINPRO_BANK_BIN = "970436"; process.env.KINPRO_ACCOUNT_NO = ACCT; process.env.KINPRO_ACCOUNT_NAME = "Kin Pro Thu"; }
 if (hasKey) process.env.KINPRO_SEPAY_API_KEY = KEY;
 if (MODE === "preview") process.env.VERCEL_ENV = "preview";
+process.env.NEXT_PUBLIC_KIN_MO_KINH_DOANH = "1"; // SCL F1: nhắc gia hạn chỉ chạy khi phần Kinh doanh mở (máy chủ cũng phải đặt cờ này — xem pro-webhook-run.sh).
 const CRON = process.env.CRON_SECRET!;
 const ENABLED = MODE === "on";
 
@@ -182,7 +183,7 @@ const pays = () => prisma.proPayment.count();
   const okc = await rc({ authorization: `Bearer ${CRON}` });
   const okj = await okc.json();
   check("đúng khoá → 200, phản hồi chỉ có số đếm (không tên, không số tiền)", okc.status === 200 && typeof okj.created === "number" && !/Cô |@/.test(JSON.stringify(okj)), okj);
-  check("đúng khoá → ghi dấu lần gọi gần nhất; trang Triển khai thấy việc mới", !!(await prisma.settingKV.findUnique({ where: { key: "cron.pro-renewal-reminders.lastCall" } })) && (await api("GET", "/api/admin/trien-khai", { as: A })).json.crons.some((c: { key: string }) => c.key === "pro-renewal-reminders"));
+  check("đúng khoá → ghi dấu lần gọi gần nhất (SCL F1: tác vụ đã rút khỏi vercel.json và trang Triển khai)", !!(await prisma.settingKV.findUnique({ where: { key: "cron.pro-renewal-reminders.lastCall" } })));
   if (MODE === "preview") check("bản xem trước: cron trả skipped=preview, không tạo thông báo", okj.skipped === "preview" && okj.created === 0);
   if (MODE === "noconfig") check("chưa mở bán: cron trả skipped=sale-closed", okj.skipped === "sale-closed");
 

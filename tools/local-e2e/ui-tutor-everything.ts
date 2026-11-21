@@ -305,7 +305,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
     "/lop-cua-toi/quan-lop", "/lop-cua-toi/quan-lop/tao-moi", ...(full ? [`/lop-cua-toi/quan-lop/${course1}`, ...["chuong-bai", "lich-hoc", "hoc-vien"].map(t => `/lop-cua-toi/quan-lop/${course1}?tab=${t}`), `/lop-cua-toi/quan-lop/${course1}/hoc-vien`, `/lop-cua-toi/quan-lop/${course1}/diem-danh`] : []),
     "/lop-cua-toi/de-thi", "/lop-cua-toi/de-thi/tao-moi", ...(full ? [`/lop-cua-toi/de-thi/${full.examId}`] : []), "/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-de-thi", "/lop-cua-toi/de-thi/ma-tran",
     "/admin/khoa-hoc", "/admin/thi-thu", "/admin/khoa-hoc/danh-muc",
-    "/thu-vien", "/khoa-hoc", ...(full ? [`/khoa-hoc/${course1}`] : []), "/giang-vien", `/mentor/${T.id}`, "/thi-thu", "/cong-dong", "/tin-tuc", "/diem-chuan", "/bang-xep-hang", "/cai-dat/chu-de", "/",
+    "/thu-vien", "/khoa-hoc", ...(full ? [`/khoa-hoc/${course1}`] : []), "/giang-vien", `/mentor/${T.id}`, "/thi-thu", "/cong-dong", "/cai-dat/chu-de", "/",
   ].map(s => MAIN + s);
 
   // ── A. liên kết ──

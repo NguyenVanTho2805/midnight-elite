@@ -1,7 +1,7 @@
 // BU-HS-LANDING mục 5 "ui-home-landing.ts" — trang chủ công khai theo bố cục hsavnu, dữ liệu THẬT của KiN, trình duyệt thật, 1440 / 1280 / 390 / 320.
-// Gồm: (A) thứ tự khối `data-home-block` (khách; học sinh có thêm my-class) + nền đan xen khác nhau; (B) nội dung thật của bốn khối, đề chưa tới giờ KHÔNG là liên kết, khách bấm đề mở → /dang-nhap?redirect=;
+// Gồm: (A) thứ tự khối `data-home-block` (khách; học sinh có thêm my-class) + nền đan xen khác nhau; (B) nội dung thật của ba khối, đề chưa tới giờ KHÔNG là liên kết, khách bấm đề mở → /dang-nhap?redirect=;
 //   (C) HTML tĩnh không lộ mã mồi / passwordHash / email gia sư, khách và học sinh cùng thân HTML; (D) khách mở "/" không phát sinh /api/student/*, /api/enrollments, /api/progress;
-//   (E) hero (≤440px ở 1280, dòng cuối h1 màu nhấn, MỘT nút đặc), nút ≥44px, không tràn ngang, chữ 130%, dải cuộn có tabindex + aria-label; (F) ca dữ liệu rỗng từng khối + 1 gia sư + rỗng cả bốn;
+//   (E) hero (≤440px ở 1280, dòng cuối h1 màu nhấn, MỘT nút đặc), nút ≥44px, không tràn ngang, chữ 130%, dải cuộn có tabindex + aria-label; (F) ca dữ liệu rỗng từng khối + 1 gia sư + rỗng cả ba;
 //   (G) xem trước quản trị /admin/trang-chu/xem-truoc; (H) chữ tiếng Việt thật; (I) 0 pageerror / console.error. Ảnh chụp 1440 + 390 vào ${SHOTS_DIR}.
 // Chạy: source tools/local-e2e/env.sh && TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/ui-home-landing.ts      (KHÔNG chạy cùng bài khác: wipe()).
 // Ca phá cố ý (sửa gì trong src/ thì ca nào phải đỏ; stu-test tự bẻ rồi `git checkout` hoàn lại):
@@ -30,8 +30,9 @@ const BAIT = `MA-MOI-${stamp}`;
 const SHOTS_DIR = process.env.SHOTS_DIR ?? "/private/tmp/claude-501/-Users-Admin-Documents-Code-quan-ly-tai-chinh/4ff5b9b0-beb3-4a69-a474-f833d9e0ffa4/scratchpad/shots-hs-landing";
 mkdirSync(SHOTS_DIR, { recursive: true });
 const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`;
-const ORDER_GUEST = ["hero", "tutors", "courses", "exams", "news", "community", "score", "why", "cta"];
-const ORDER_STUDENT = ["hero", "my-class", "tutors", "courses", "exams", "news", "community", "score", "why"];
+// SCL F1: khối "news" (Tin tức) và "score" (Tính điểm) đã xoá.
+const ORDER_GUEST = ["hero", "tutors", "courses", "exams", "community", "why", "cta"];
+const ORDER_STUDENT = ["hero", "my-class", "tutors", "courses", "exams", "community", "why"];
 
 let seq = 0;
 async function mkExam(o: { title: string; owner: string; date: string; time?: string; secrets?: boolean }) {
@@ -82,21 +83,15 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
   const opens: Awaited<ReturnType<typeof mkExam>>[] = [];
   for (let i = 0; i < 5; i++) opens.push(await mkExam({ title: `Đề ĐANG MỞ ${i + 1} ${stamp}`, owner: admin.id, date: `0${i + 1}/09/2026`, secrets: i === 0 }));
   const examIds = [upcoming.id, ...opens.map(e => e.id)];
-  const articleIds: string[] = [];
-  for (let i = 0; i < 4; i++) {
-    const a = await prisma.article.create({ data: { slug: `tin-mau-${i}-${stamp}`, title: `Tin mẫu ${i + 1} ${stamp}`, excerpt: `Tóm tắt tin ${i + 1}`, content: `${BAIT} nội dung dài ${i}`, category: "tuyen-sinh", author: "KiN", authorId: admin.id, published: true, publishedAt: new Date(Date.now() - (i + 1) * 3_600_000) } });
-    articleIds.push(a.id);
-  }
 
   /** Đưa DB về trạng thái "có / không có" từng loại dữ liệu (idempotent). */
-  const setAvail = async (a: { tutors: 0 | 1 | 3; courses: boolean; exams: boolean; news: boolean }) => {
+  const setAvail = async (a: { tutors: 0 | 1 | 3; courses: boolean; exams: boolean }) => {
     const visible = [TA, TB, TC].map((_, i) => i < a.tutors);
     for (const [i, t] of [TA, TB, TC].entries()) await prisma.user.update({ where: { id: t.id }, data: { preferences: visible[i] ? {} : { profile: { hidden: true } } } });
     await prisma.course.updateMany({ where: { id: { in: courseIds } }, data: { status: a.courses } });
     await prisma.exam.updateMany({ where: { id: { in: examIds } }, data: { active: a.exams } });
-    await prisma.article.updateMany({ where: { id: { in: articleIds } }, data: { published: a.news } });
   };
-  const FULL = { tutors: 3 as const, courses: true, exams: true, news: true };
+  const FULL = { tutors: 3 as const, courses: true, exams: true };
   await setAvail(FULL);
 
   await launch();
@@ -120,14 +115,14 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
   const blocks = (p: Page) => p.evaluate(`[...document.querySelectorAll('[data-home-block]')].filter(e => !e.parentElement.closest('[data-home-block]')).map(e => e.getAttribute('data-home-block'))`) as Promise<string[]>;
   const count = (p: Page, b: string) => p.locator(`[data-home-block="${b}"]`).count();
   const small = (p: Page, scope: string) => p.evaluate(`(() => { const out = []; for (const e of document.querySelectorAll(${JSON.stringify(scope)} + ' a[href], ' + ${JSON.stringify(scope)} + ' button, ' + ${JSON.stringify(scope)} + ' input, ' + ${JSON.stringify(scope)} + ' select, ' + ${JSON.stringify(scope)} + ' summary')) { if (e.closest('[data-feedback-toolbar],[data-annotation-popup],[data-agentation-root],[inert],.sr-only')) continue; const r = e.getBoundingClientRect(); if (r.width === 0 || r.height === 0) continue; const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') continue; if (r.height < 43.5) out.push(((e.getAttribute('aria-label') || e.textContent || e.getAttribute('href') || e.tagName).trim().slice(0, 40)) + ' = ' + Math.round(r.height)); } return [...new Set(out)]; })()`) as Promise<string[]>;
-  const LANDING_SCOPES = ['[data-home-block="hero"]', '[data-home-block="tutors"]', '[data-home-block="courses"]', '[data-home-block="exams"]', '[data-home-block="news"]', '[data-home-block="why"]', '[data-home-block="cta"]'];
+  const LANDING_SCOPES = ['[data-home-block="hero"]', '[data-home-block="tutors"]', '[data-home-block="courses"]', '[data-home-block="exams"]', '[data-home-block="why"]', '[data-home-block="cta"]'];
   /** Nền tính ra của từng khối cấp cao + hai token nền, để so sánh. */
   const bgs = (p: Page) => p.evaluate(`(() => { const tok = n => { const d = document.createElement('div'); d.style.background = 'var(' + n + ')'; document.body.appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; };
     const list = [...document.querySelectorAll('[data-home-block]')].filter(e => !e.parentElement.closest('[data-home-block]')).map(e => [e.getAttribute('data-home-block'), getComputedStyle(e).backgroundColor]);
     return { trang: tok('--kin-nen-trang'), bang: tok('--kin-nen-bang'), navy: tok('--kin-nhan-nen'), list }; })()`) as Promise<{ trang: string; bang: string; navy: string; list: [string, string][] }>;
 
   // ═════════════════════════ A. Thứ tự khối và nền đan xen ═════════════════════════
-  section("A · khách 1440: thứ tự khối hero → tutors → courses → exams → news → community → score → why → cta; nền đan xen khác nhau");
+  section("A · khách 1440: thứ tự khối hero → tutors → courses → exams → community → why → cta; nền đan xen khác nhau");
   {
     const { c, p } = await open(null, 1440);
     await ready(p);
@@ -158,12 +153,12 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
     const g = await open(null, 1440); await ready(g.p);
     const bg2 = await bgs(g.p);
     const pick = (l: [string, string][], n: string) => l.find(([x]) => x === n)?.[1];
-    check("màu của tutors / courses / exams / news / community / score / why giống hệt bản khách", ["tutors", "courses", "exams", "news", "community", "score", "why"].every(n => pick(b.list, n) === pick(bg2.list, n)), [b.list, bg2.list]);
+    check("màu của tutors / courses / exams / community / why giống hệt bản khách", ["tutors", "courses", "exams", "community", "why"].every(n => pick(b.list, n) === pick(bg2.list, n)), [b.list, bg2.list]);
     await g.c.close();
     await shot(p, "hocsinh-1440"); await c.close();
   }
 
-  // ═════════════════════════ B. Nội dung thật của bốn khối ═════════════════════════
+  // ═════════════════════════ B. Nội dung thật của ba khối ═════════════════════════
   section("B · khách 1440: nội dung thật (gia sư, lớp theo kỳ thi, đề, tin) và liên kết");
   {
     const { c, p } = await open(null, 1440);
@@ -185,9 +180,6 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
     check("đề ĐANG MỞ: có đúng một liên kết /student/thi-thu/<id>, chữ 'Vào thi ngay →', ghi 'Miễn phí' và số câu", (await op.locator("a").count()) === 1 && (await op.locator("a").getAttribute("href")) === `/student/thi-thu/${opens[0].id}` && /Vào thi ngay →/.test(await op.innerText()) && /Miễn phí/.test(await op.innerText()) && /2 câu/.test(await op.innerText()), await op.innerText());
     check("khối Thi thử: không số thí sinh / điểm / hạng / đáp án", !/thí sinh|điểm trung bình|xếp hạng|777/i.test(await exs.innerText()));
     check("khối Thi thử: 'Xem tất cả đề thi thử →' → /thi-thu", (await exs.getByRole("link", { name: /Xem tất cả đề thi thử/ }).getAttribute("href")) === "/thi-thu");
-    const nw = p.locator('[data-home-block="news"]');
-    check("khối Tin: đúng 3 bài (có 4 bài đã đăng), mỗi bài là liên kết /tin-tuc/<slug>", await nw.locator("[data-home-news]").count() === 3 && await nw.locator('a[href^="/tin-tuc/"]').count() === 3, await nw.locator("[data-home-news]").count());
-    check("khối Tin: 'Xem tất cả tin tức →' → /tin-tuc", (await nw.getByRole("link", { name: /Xem tất cả tin tức/ }).getAttribute("href")) === "/tin-tuc");
     // khách bấm đề đang mở → đăng nhập kèm redirect
     await op.locator("a").click();
     await p.waitForURL(u => u.pathname === "/dang-nhap", { timeout: 90000 });
@@ -271,16 +263,15 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
   }
 
   // ═════════════════════════ F. Ca dữ liệu rỗng ═════════════════════════
-  const cases: { name: string; avail: Parameters<typeof setAvail>[0]; absent: ("courses" | "exams" | "news")[]; tutors: "grid" | "text-only" }[] = [
+  const cases: { name: string; avail: Parameters<typeof setAvail>[0]; absent: ("courses" | "exams")[]; tutors: "grid" | "text-only" }[] = [
     { name: "không có lớp", avail: { ...FULL, courses: false }, absent: ["courses"], tutors: "grid" },
     { name: "không có đề thi thử", avail: { ...FULL, exams: false }, absent: ["exams"], tutors: "grid" },
-    { name: "không có bài tin", avail: { ...FULL, news: false }, absent: ["news"], tutors: "grid" },
     { name: "không có gia sư", avail: { ...FULL, tutors: 0 }, absent: [], tutors: "text-only" },
     { name: "chỉ 1 gia sư", avail: { ...FULL, tutors: 1 }, absent: [], tutors: "text-only" },
-    { name: "rỗng cả bốn (không gia sư, lớp, đề, bài)", avail: { tutors: 0, courses: false, exams: false, news: false }, absent: ["courses", "exams", "news"], tutors: "text-only" },
+    { name: "rỗng cả ba (không gia sư, lớp, đề)", avail: { tutors: 0, courses: false, exams: false }, absent: ["courses", "exams"], tutors: "text-only" },
   ];
-  const HEAD: Record<string, RegExp> = { courses: /Lớp luyện thi theo từng kỳ thi/, exams: /Đề thi thử đang mở/, news: /Tin giáo dục và tuyển sinh/ };
-  const LABEL: Record<string, RegExp> = { courses: /Lớp đang mở/i, exams: /Thi thử miễn phí/i, news: /^Tin tức$/i };
+  const HEAD: Record<string, RegExp> = { courses: /Lớp luyện thi theo từng kỳ thi/, exams: /Đề thi thử đang mở/ };
+  const LABEL: Record<string, RegExp> = { courses: /Lớp đang mở/i, exams: /Thi thử miễn phí/i };
   for (const cs of cases) {
     section(`F · ${cs.name}: khối rỗng không có trong DOM, không tiêu đề, nền vẫn đan xen`);
     await setAvail(cs.avail);
@@ -306,13 +297,13 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
       if (cs.tutors === "text-only") check(`${w}px: chỉ còn chữ + nút (data-home-state=text-only), KHÔNG có lưới / thẻ gia sư nào (${nT})`, (await tut.getAttribute("data-home-state")) === "text-only" && nT === 0, nT);
       else check(`${w}px: lưới gia sư còn nguyên (≥ 2 thẻ)`, (await tut.getAttribute("data-home-state")) === "ok" && nT >= 2, nT);
       // không khối nào có 0 thẻ con
-      const empties = await p.evaluate(`(() => { const out = []; for (const [b, sel] of [['courses','[data-home-course]'],['exams','[data-home-exam]'],['news','[data-home-news]']]) { const el = document.querySelector('[data-home-block="' + b + '"]'); if (el && !el.querySelector(sel)) out.push(b); } const t = document.querySelector('[data-home-block="tutors"][data-home-state="ok"]'); if (t && !t.querySelector('[data-tutor-card]')) out.push('tutors'); return out; })()`) as string[];
+      const empties = await p.evaluate(`(() => { const out = []; for (const [b, sel] of [['courses','[data-home-course]'],['exams','[data-home-exam]']]) { const el = document.querySelector('[data-home-block="' + b + '"]'); if (el && !el.querySelector(sel)) out.push(b); } const t = document.querySelector('[data-home-block="tutors"][data-home-state="ok"]'); if (t && !t.querySelector('[data-tutor-card]')) out.push('tutors'); return out; })()`) as string[];
       check(`${w}px: không khối dữ liệu nào có 0 thẻ con`, empties.length === 0, empties);
       const b = await bgs(p);
       const inAlt = b.list.filter(([n]) => n !== "hero");
       check(`${w}px: nền hai khối kề nhau vẫn khác nhau sau khi bớt khối`, inAlt.every(([, bg], i) => i === 0 || bg !== inAlt[i - 1][1]), inAlt);
       check(`${w}px: không tràn ngang`, await p.evaluate(NOT_OVERFLOW) as boolean);
-      if (cs.absent.length === 3 || cs.name === "chỉ 1 gia sư" || cs.name === "không có đề thi thử") await shot(p, `rong-${cs.name.replace(/[^a-zà-ỹ0-9]+/gi, "-")}-${w}`);
+      if (cs.absent.length === 2 || cs.name === "chỉ 1 gia sư" || cs.name === "không có đề thi thử") await shot(p, `rong-${cs.name.replace(/[^a-zà-ỹ0-9]+/gi, "-")}-${w}`);
       await c.close();
     }
   }
@@ -325,7 +316,7 @@ const ddmmyyyy = (d: Date) => { const v = new Date(d.getTime() + 7 * 3_600_000);
     await p.getByRole("heading", { level: 1 }).first().waitFor({ timeout: 120000 });
     await p.waitForTimeout(800);
     const order = await blocks(p);
-    check("xem trước chỉ có hero, why, cta (không tutors / courses / exams / news / community / score) dù DB có đủ dữ liệu", order.join() === "hero,why,cta", order);
+    check("xem trước chỉ có hero, why, cta (không tutors / courses / exams / community) dù DB có đủ dữ liệu", order.join() === "hero,why,cta", order);
     check("xem trước vẫn có chữ 'Đang tìm gia sư?' và nút 'Tìm gia sư'", await p.getByRole("heading", { level: 2, name: "Đang tìm gia sư?" }).count() === 1 && await p.getByRole("link", { name: "Tìm gia sư", exact: true }).count() === 1);
     check("xem trước hiện h1 mặc định, không khối số liệu (dl), không thẻ gia sư / lớp / đề / tin", /Học cùng gia sư thật/.test(await p.getByRole("heading", { level: 1 }).first().innerText()) && await p.locator("dl").count() === 0 && await p.locator("[data-tutor-card], [data-home-course], [data-home-exam], [data-home-news]").count() === 0);
     check("xem trước không tràn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);

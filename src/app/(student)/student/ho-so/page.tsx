@@ -8,7 +8,6 @@ import {
   CheckCircle, CloseCircle, AlertCircle,
   Trophy, Key, Edit, PhotoCamera,
 } from "griddy-icons";
-import { BADGE_RULES } from "@/lib/honorData";
 import { DropZone } from "@/components/DropZone";
 import ParentLinkWidget from "@/components/parent/ParentLinkWidget";
 import SelfConsentCard from "@/components/account/SelfConsentCard";
@@ -101,9 +100,6 @@ function InputField({ label, value, onChange, type = "text", placeholder }:
 interface UserStats {
   gpa: number | null;
   streak: number;
-  rank: number | null;
-  totalStudents: number;
-  exp: number;
 }
 
 // ─── GPA Sparkline ────────────────────────────────────────────────────────────
@@ -201,7 +197,6 @@ export default function HoSoPage() {
   const [profile,           setProfile]           = useState<ProfileData | null>(null);
   const [toast,             setToast]             = useState<ToastType | null>(null);
   const [examResults,       setExamResults]       = useState<ExamResultItem[]>([]);
-  const [earnedBadgeIds,    setEarnedBadgeIds]    = useState<Set<string>>(new Set());
   const [userStats,         setUserStats]         = useState<UserStats | null>(null);
   const [activityCounts,    setActivityCounts]    = useState<Record<string, number>>({});
   const [enrolledCourses,   setEnrolledCourses]   = useState<EnrolledCourseItem[]>([]);
@@ -260,10 +255,6 @@ export default function HoSoPage() {
     fetch("/api/exam-results?mine=true")
       .then(r => r.ok ? r.json() : [])
       .then(setExamResults)
-      .catch(() => {});
-    fetch("/api/my-badges")
-      .then(r => r.ok ? r.json() : [])
-      .then((ids: string[]) => setEarnedBadgeIds(new Set(ids)))
       .catch(() => {});
     fetch("/api/users/me/avatar")
       .then(r => r.ok ? r.json() : {})
@@ -692,22 +683,10 @@ export default function HoSoPage() {
                 sub: "/ 10 điểm",
               },
               {
-                label: "Xếp hạng",
-                value: userStats?.rank != null ? `#${userStats.rank}` : "—",
-                color: "var(--kin-nhan-link)", bg: "var(--kin-nhan-nen-nhat)", border: "var(--kin-nhan-vien)",
-                sub: userStats?.totalStudents ? `/ ${userStats.totalStudents} HV` : "toàn trường",
-              },
-              {
                 label: "Streak",
                 value: userStats != null ? `${userStats.streak} ngày` : "—",
                 color: "var(--kin-tt-chu-loi)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-tt-vien-loi)",
                 sub: "liên tiếp",
-              },
-              {
-                label: "EXP tổng",
-                value: userStats != null ? userStats.exp.toLocaleString("vi-VN") : "—",
-                color: "var(--kin-nhan-link)", bg: "var(--kin-chu-tren-nut-chinh)", border: "var(--kin-nhan-vien)",
-                sub: "điểm kinh nghiệm",
               },
             ].map((s) => (
               <div key={s.label} className="rounded-xl p-3" style={{ background: s.bg, border: `1px solid ${s.border}` }}>
@@ -716,25 +695,6 @@ export default function HoSoPage() {
                 <div className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{s.sub}</div>
               </div>
             ))}
-          </div>
-
-          {/* ── Huy hiệu (từ DB) ── */}
-          <div className="rounded-xl p-5" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            <h2 className="text-sm font-bold mb-4" style={{ color: "var(--kin-chu-phu)" }}>Huy hiệu</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {BADGE_RULES.map(badge => {
-                const earned = earnedBadgeIds.has(badge.id);
-                return (
-                  <div key={badge.id} className="text-center" style={{ opacity: earned ? 1 : 0.4 }}>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-1 text-2xl"
-                      style={{ background: earned ? badge.bg : "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" }}>
-                      {badge.icon}
-                    </div>
-                    <p className="text-xs leading-tight" style={{ color: earned ? "var(--kin-chu-phu)" : "var(--kin-chu-mo)" }}>{badge.title}</p>
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           {/* ── Streak Calendar ── */}

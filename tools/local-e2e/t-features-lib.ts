@@ -31,9 +31,10 @@ const only = (k: FeatureKey): FeatureEnv => ({ [k]: "1" });
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 section("Tên cờ và cách đọc");
-check("đúng 17 phần (9 của LOI-01 + 8 của DG), đúng tên phiếu", FEATURES.join() === "TIM_GIA_SU,CONG_DONG,LICH,TIN_TUC,THU_VIEN,TIENG_ANH,XEP_HANG,COIN,DIEM_CHUAN,HOC_PHI,KINH_DOANH,DIEM_DANH,SO_DIEM,NHAC_HOC,HOP_VIEC,THI_THU_CONG_KHAI,VAN_HANH_PHU", FEATURES);
+// SCL F1 (Q8): TIN_TUC, TIENG_ANH, XEP_HANG bỏ hẳn (phần đã xoá); DIEM_CHUAN đổi tên TRA_CUU (chỉ còn /tra-cuu). Ca phá: thêm lại một tên đã bỏ → ca này đỏ.
+check("đúng 14 phần (6 còn lại của LOI-01 + 8 của DG), đúng tên phiếu", FEATURES.join() === "TIM_GIA_SU,CONG_DONG,LICH,THU_VIEN,COIN,TRA_CUU,HOC_PHI,KINH_DOANH,DIEM_DANH,SO_DIEM,NHAC_HOC,HOP_VIEC,THI_THU_CONG_KHAI,VAN_HANH_PHU", FEATURES);
 check("tên biến môi trường NEXT_PUBLIC_KIN_MO_<TÊN> (phòng Gia sư đọc NEXT_PUBLIC_KIN_MO_LICH)", featureEnvName("LICH") === "NEXT_PUBLIC_KIN_MO_LICH" && featureEnvName("TIM_GIA_SU") === "NEXT_PUBLIC_KIN_MO_TIM_GIA_SU");
-check("readFeatureEnv đọc đủ 17 khoá", eq(Object.keys(readFeatureEnv()).sort(), [...FEATURES].sort()));
+check("readFeatureEnv đọc đủ 14 khoá", eq(Object.keys(readFeatureEnv()).sort(), [...FEATURES].sort()));
 for (const k of FEATURES) {
   check(`${k}: thiếu biến → ẩn`, !featureOn(k, OFF));
   check(`${k}: "1" → mở, chỉ mở đúng nó`, featureOn(k, only(k)) && FEATURES.filter(o => o !== k).every(o => !featureOn(o, only(k))));
@@ -41,17 +42,17 @@ for (const k of FEATURES) {
 check("\"0\" / \"true\" / \"yes\" / \" 1\" / rác vẫn ẩn (chỉ đúng \"1\" mới mở)", ["0", "true", "yes", " 1", "1 ", "on", ""].every(v => !featureOn("LICH", { LICH: v })));
 // Đọc môi trường thật: ghi đè process.env rồi gọi không truyền env.
 {
-  const name = featureEnvName("XEP_HANG"), old = process.env[name];
+  const name = featureEnvName("COIN"), old = process.env[name];
   process.env[name] = "1";
-  const on = featureOn("XEP_HANG");
+  const on = featureOn("COIN");
   delete process.env[name];
-  const off = featureOn("XEP_HANG");
+  const off = featureOn("COIN");
   if (old !== undefined) process.env[name] = old;
   check("không truyền env thì đọc process.env lúc gọi (đặt =1 → mở; xoá → ẩn)", on && !off);
 }
 const setFlags = FEATURES.filter(k => process.env[featureEnvName(k)] !== undefined);
 if (setFlags.length === 0) {
-  check("mặc định (không đặt cờ nào): cả 17 phần đều ẩn", FEATURES.every(k => !featureOn(k)));
+  check("mặc định (không đặt cờ nào): cả 14 phần đều ẩn", FEATURES.every(k => !featureOn(k)));
 } else console.log(`  (bỏ qua ca "mặc định": máy đang đặt ${setFlags.map(featureEnvName).join(", ")})`);
 
 section("Liên kết bị gỡ (menu, chân trang, bản đồ, sitemap)");
@@ -60,12 +61,9 @@ const LINKS: [string, FeatureKey][] = [
   ["/cong-dong", "CONG_DONG"], ["/cong-dong?tab=hoi-dap-qa", "CONG_DONG"], ["/cong-dong/hoi-dap/q1", "CONG_DONG"], ["/cong-dong/ho-so/u1", "CONG_DONG"], ["/student/cong-dong", "CONG_DONG"], ["/student/hoi-dap", "CONG_DONG"],
   ["/lop-cua-toi/kiem-duyet", "CONG_DONG"], ["/admin/cong-dong", "CONG_DONG"],
   ["/student/lich-hoc", "LICH"], // HP-BO (17/11): /lop-cua-toi/lich rời danh sách — Lịch gia sư luôn hiện (xem KEEP)
-  ["/tin-tuc", "TIN_TUC"], ["/tin-tuc/bai-1", "TIN_TUC"], ["/student/tin-tuc", "TIN_TUC"], ["/admin/tin-tuc", "TIN_TUC"],
   ["/thu-vien", "THU_VIEN"], ["/thu-vien#c-abc", "THU_VIEN"], ["/admin/thu-vien-video", "THU_VIEN"],
-  ["/student/tieng-anh", "TIENG_ANH"], ["/student/tieng-anh/doc/1", "TIENG_ANH"],
-  ["/bang-xep-hang", "XEP_HANG"], ["/student/bang-xep-hang", "XEP_HANG"], ["/vinh-danh", "XEP_HANG"], ["/admin/vinh-danh", "XEP_HANG"],
   ["/student/vi", "COIN"], ["/admin/topups", "COIN"],
-  ["/diem-chuan", "DIEM_CHUAN"], ["/tra-cuu", "DIEM_CHUAN"], ["/student/tra-cuu", "DIEM_CHUAN"], ["/admin/diem-chuan/cong-thuc", "DIEM_CHUAN"],
+  ["/tra-cuu", "TRA_CUU"], ["/student/tra-cuu", "TRA_CUU"],
   // DG (14/11/2026)
   ["/lop-cua-toi/hoc-phi", "HOC_PHI"], ["/lop-cua-toi/hoc-phi?tab=doi-soat", "HOC_PHI"], ["/lop-cua-toi/hoc-phi/thang", "HOC_PHI"], ["/student/hoc-phi", "HOC_PHI"],
   ["/lop-cua-toi/c1/bang-hoc-phi", "HOC_PHI"], ["/lop-cua-toi/c1/bang-hoc-phi/nhap", "HOC_PHI"],
@@ -91,18 +89,15 @@ const KEEP = ["/", "/khoa-hoc", "/khoa-hoc?gia=free", "/student/thi-thu/de-1", "
   "/cong-dong/t123", "/cong-dong/t123#r-9", "/yeu-cau/abc", "/mentor/abc", "/mentor/abc/yeu-cau", "/mentor/abc?tab=lop", "/lich", "/giang-vienx", "/tin-tucx", "/thu-vienx", "https://zalo.me/x", "tel:0384", "//evil.com/giang-vien"];
 check("đường giữ nguyên (Thi thử, đề, Lớp, Bài tập, Học phí, Hộp việc, Hồ sơ, Cài đặt, Nhập mã lớp…) không bao giờ bị gỡ", KEEP.every(h => !isLinkHidden(h, OFF)), KEEP.filter(h => isLinkHidden(h, OFF)));
 check("bật mọi cờ → không liên kết nào bị gỡ", LINKS.every(([h]) => !isLinkHidden(h, ALL_ON)), LINKS.filter(([h]) => isLinkHidden(h, ALL_ON)));
-const items = [{ href: "/khoa-hoc", label: "a" }, { href: "/giang-vien", label: "b" }, { href: "/lop-cua-toi/lop", label: "c" }, { href: "/tin-tuc", label: "d" }];
-check("visibleLinks giữ thứ tự, bỏ đúng mục ẩn", visibleLinks(items, OFF).map(i => i.label).join() === "a,c" && visibleLinks(items, only("TIN_TUC")).map(i => i.label).join() === "a,c,d" && visibleLinks(items, ALL_ON).length === 4);
+const items = [{ href: "/khoa-hoc", label: "a" }, { href: "/giang-vien", label: "b" }, { href: "/lop-cua-toi/lop", label: "c" }, { href: "/thi-thu", label: "d" }];
+check("visibleLinks giữ thứ tự, bỏ đúng mục ẩn", visibleLinks(items, OFF).map(i => i.label).join() === "a,c" && visibleLinks(items, only("THI_THU_CONG_KHAI")).map(i => i.label).join() === "a,c,d" && visibleLinks(items, ALL_ON).length === 4);
 
 section("Chốt chặn route (blockedRouteFeature)");
 const VIEWERS = ["guest", "student", "tutor", "admin"] as const;
 const BLOCKED: [string, FeatureKey][] = [
   ["/giang-vien", "TIM_GIA_SU"], ["/giang-vien/x", "TIM_GIA_SU"],
   ["/cong-dong", "CONG_DONG"], ["/cong-dong/hoi-dap/q1", "CONG_DONG"], ["/cong-dong/ho-so/u1", "CONG_DONG"], ["/student/cong-dong", "CONG_DONG"], ["/student/hoi-dap", "CONG_DONG"], ["/student/hoi-dap/q1", "CONG_DONG"],
-  ["/tin-tuc", "TIN_TUC"], ["/tin-tuc/bai-1", "TIN_TUC"], ["/student/tin-tuc", "TIN_TUC"],
-  ["/student/tieng-anh", "TIENG_ANH"], ["/student/tieng-anh/tu-vung/on", "TIENG_ANH"],
-  ["/bang-xep-hang", "XEP_HANG"], ["/student/bang-xep-hang", "XEP_HANG"], ["/vinh-danh", "XEP_HANG"],
-  ["/diem-chuan", "DIEM_CHUAN"], ["/diem-chuan/x", "DIEM_CHUAN"], ["/tra-cuu", "DIEM_CHUAN"], ["/student/tra-cuu", "DIEM_CHUAN"],
+  ["/tra-cuu", "TRA_CUU"], ["/student/tra-cuu", "TRA_CUU"],
   // DG (14/11/2026): trang gia sư / học sinh / khách của phần mới — chặn với MỌI vai.
   ["/lop-cua-toi/hoc-phi", "HOC_PHI"], ["/lop-cua-toi/hoc-phi/thang", "HOC_PHI"], ["/student/hoc-phi", "HOC_PHI"], ["/lop-cua-toi/c1/bang-hoc-phi/nhap", "HOC_PHI"],
   ["/lop-cua-toi/doanh-thu", "KINH_DOANH"], ["/lop-cua-toi/goi", "KINH_DOANH"], ["/lop-cua-toi/quan-lop/c1/diem-danh", "DIEM_DANH"], ["/lop-cua-toi/quan-lop/c1/diem-danh/in", "DIEM_DANH"],
@@ -126,17 +121,17 @@ check("ngoại lệ chỉ ở đúng /cong-dong: /cong-dong/hoi-dap?scope=lop-1 
 
 section("LOI-07: dấu ?tam-dong=<CỜ> cho dòng nhắc ở trang đích (pausedNoticeFrom)");
 check("tên tham số 'tam-dong'; pausedSearch dựng đúng chuỗi", PAUSED_PARAM === "tam-dong" && pausedSearch("CONG_DONG") === "?tam-dong=CONG_DONG");
-check("đọc đúng tên cờ đang tắt, có / không dấu '?', lẫn tham số khác", FEATURES.every(k => pausedNoticeFrom(`?tam-dong=${k}`, OFF) === k) && pausedNoticeFrom("tam-dong=TIN_TUC", OFF) === "TIN_TUC" && pausedNoticeFrom("?a=1&tam-dong=CONG_DONG&b=2", OFF) === "CONG_DONG");
+check("đọc đúng tên cờ đang tắt, có / không dấu '?', lẫn tham số khác", FEATURES.every(k => pausedNoticeFrom(`?tam-dong=${k}`, OFF) === k) && pausedNoticeFrom("tam-dong=TRA_CUU", OFF) === "TRA_CUU" && pausedNoticeFrom("?a=1&tam-dong=CONG_DONG&b=2", OFF) === "CONG_DONG");
 check("rác / chữ thường / tên lạ / rỗng / thiếu → null", [null, undefined, "", "?", "?tam-dong=", "?tam-dong=cong_dong", "?tam-dong=CONG_DONG_X", "?tam-dong=%3Cscript%3E", "?tam-dong=__proto__", "?tam-dong=constructor", "?tamdong=CONG_DONG", "?tam-dong= CONG_DONG", "?x=CONG_DONG"].every(q => pausedNoticeFrom(q as string, OFF) === null));
 check("phần đã mở lại (cờ =1) thì không nhắc nữa (null)", pausedNoticeFrom("?tam-dong=CONG_DONG", only("CONG_DONG")) === null && FEATURES.every(k => pausedNoticeFrom(`?tam-dong=${k}`, ALL_ON) === null));
-check("nhiều giá trị: chỉ xét giá trị đầu", pausedNoticeFrom("?tam-dong=TIN_TUC&tam-dong=rac", OFF) === "TIN_TUC" && pausedNoticeFrom("?tam-dong=rac&tam-dong=TIN_TUC", OFF) === null);
+check("nhiều giá trị: chỉ xét giá trị đầu", pausedNoticeFrom("?tam-dong=TRA_CUU&tam-dong=rac", OFF) === "TRA_CUU" && pausedNoticeFrom("?tam-dong=rac&tam-dong=TRA_CUU", OFF) === null);
 check("dấu chỉ để hiển thị: không làm đường nào bị chặn / cho qua khác đi", blockedRouteFeature("/khoa-hoc", "student", OFF, "?tam-dong=CONG_DONG") === null && blockedRouteFeature("/cong-dong", "student", OFF, "?tam-dong=CONG_DONG") === "CONG_DONG");
 
 section("Coin: hiển thị theo cờ, logic là hằng");
 check("logic Coin (trừ xu khi hỏi, hàng chờ nạp) là hằng TẮT — không đọc biến môi trường, kể cả khi NEXT_PUBLIC_KIN_MO_COIN=1", COIN_LOGIC_ON === false);
 check("Lịch: route KHÔNG chặn (chỉ gỡ menu) — /lop-cua-toi/lich, /student/lich-hoc", VIEWERS.every(v => blockedRouteFeature("/lop-cua-toi/lich", v, OFF) === null && blockedRouteFeature("/student/lich-hoc", v, OFF) === null));
 check("Coin: route /student/vi không chặn ở đây (layout của nó tự lo); không đụng logic", VIEWERS.every(v => blockedRouteFeature("/student/vi", v, OFF) === null));
-check("trang quản trị của phần ẩn (/admin/tin-tuc, /admin/cong-dong, /admin/diem-chuan…) chỉ rút menu, không chặn", ["/admin/tin-tuc", "/admin/cong-dong", "/admin/diem-chuan", "/admin/vinh-danh", "/admin/thu-vien-video", "/lop-cua-toi/kiem-duyet"].every(p => VIEWERS.every(v => blockedRouteFeature(p, v, OFF) === null)));
+check("trang quản trị của phần ẩn (/admin/cong-dong, /admin/thu-vien-video…) chỉ rút menu, không chặn", ["/admin/cong-dong", "/admin/thu-vien-video", "/lop-cua-toi/kiem-duyet"].every(p => VIEWERS.every(v => blockedRouteFeature(p, v, OFF) === null)));
 check("Thư viện CHUNG: khách và quản trị bị chặn /thu-vien", blockedRouteFeature("/thu-vien", "guest", OFF) === "THU_VIEN" && blockedRouteFeature("/thu-vien", "admin", OFF) === "THU_VIEN");
 check("học sinh / gia sư vẫn vào /thu-vien (thư viện lớp mình học / Thư viện của tôi)", blockedRouteFeature("/thu-vien", "student", OFF) === null && blockedRouteFeature("/thu-vien", "tutor", OFF) === null);
 check("bật cả 9 cờ → không route nào bị chặn", BLOCKED.every(([p]) => VIEWERS.every(v => blockedRouteFeature(p, v, ALL_ON) === null)) && blockedRouteFeature("/thu-vien", "guest", ALL_ON) === null);
@@ -166,10 +161,10 @@ if (!featureOn("CONG_DONG")) {
     && eq(d("/cong-dong", null, "?scope=lop-1"), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=CONG_DONG" }) && eq(d("/cong-dong", student, "?scope=common"), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=CONG_DONG" }));
   check("câu hỏi cũ /student/hoi-dap/<id> (thông báo cũ) → Việc của tôi ?tam-dong=CONG_DONG", eq(d("/student/hoi-dap/q1", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=CONG_DONG" }), d("/student/hoi-dap/q1", student));
 }
-if (!featureOn("TIN_TUC")) {
-  check("bài tin tức cũ /tin-tuc/<bài>: khách → '/?tam-dong=TIN_TUC', học sinh → Việc của tôi ?tam-dong=TIN_TUC", eq(d("/tin-tuc/bai-1", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=TIN_TUC" }) && eq(d("/tin-tuc/bai-1", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=TIN_TUC" }));
-  // Ca phá cố ý: tham số rác (kể cả một ?tam-dong= giả) KHÔNG được mang theo — đích chỉ có đúng dấu của phần thật sự bị chặn.
-  check("tham số cũ / rác (?tam-dong=<script>, ?tam-dong=COIN&x=1) bị bỏ: đích chỉ có '?tam-dong=TIN_TUC'", ["?tam-dong=%3Cscript%3E", "?tam-dong=COIN&x=1", "?x=1&tam-dong=CONG_DONG"].every(q => { const r = d("/tin-tuc", student, q); return r.kind === "redirect" && r.search === "?tam-dong=TIN_TUC"; }));
+// SCL F1: /tin-tuc đã xoá hẳn (trang 404) ⇒ không còn chốt 307 + dấu ?tam-dong=TIN_TUC. Dấu tham số rác kiểm lại bằng /tra-cuu (cờ TRA_CUU).
+if (!featureOn("TRA_CUU")) {
+  check("đường đã xoá /tin-tuc, /diem-chuan, /bang-xep-hang, /student/tieng-anh: không còn luật chặn (next — trang tự 404)", ["/tin-tuc", "/tin-tuc/bai-1", "/diem-chuan", "/bang-xep-hang", "/student/tieng-anh"].every(p => eq(d(p, student), { kind: "next" }) && eq(d(p, null), { kind: "next" })));
+  check("tham số cũ / rác (?tam-dong=<script>, ?tam-dong=COIN&x=1) bị bỏ: đích chỉ có '?tam-dong=TRA_CUU'", ["?tam-dong=%3Cscript%3E", "?tam-dong=COIN&x=1", "?x=1&tam-dong=CONG_DONG"].every(q => { const r = d("/tra-cuu", student, q); return r.kind === "redirect" && r.search === "?tam-dong=TRA_CUU"; }));
 }
 check("mọi chuyển hướng LOI-01 là 307 (không 308)", [...BLOCKED.map(([p]) => p), "/thu-vien"].every(p => [null, student, tutor, sup].every(s => { const r = d(p, s); return r.kind !== "redirect" || r.status === 307; })));
 check("đường không thuộc phần ẩn → next như trước (Lớp, phòng thi đề được giao, Lịch, câu hỏi lớp, trang lớp gia sư)", ["/khoa-hoc", "/student/thi-thu/de-1", "/lop-cua-toi/lich", "/student/lich-hoc", "/cong-dong/t1", "/lop-cua-toi/quan-lop/c1", "/lop-cua-toi/quan-lop/c1/hoc-vien"].every(p => [null, student, tutor].every(s => eq(d(p, s), { kind: "next" }))));
@@ -179,14 +174,16 @@ section("Nơi dùng: thanh trên, khối trang chủ, menu quản trị");
 const nav = (env: FeatureEnv, kind: "guest" | "student" = "guest") => homeNavFor({ kind }, env).map(i => i.label).join();
 // DG: ĐỔI CÓ CHỦ ĐÍCH — "Thi thử" rời thanh trên theo cờ THI_THU_CONG_KHAI.
 check("thanh trên khi tắt hết: chỉ Lớp học (học sinh thêm Lớp của tôi)", nav(OFF) === "Lớp học" && nav(OFF, "student") === "Lớp học,Lớp của tôi", [nav(OFF), nav(OFF, "student")]);
-check("bật mọi cờ → đủ 4 mục như cũ", nav(ALL_ON) === "Lớp học,Thi thử,Cộng đồng,Tin tức");
-check("bật riêng TIN_TUC → chỉ thêm Tin tức; riêng THI_THU_CONG_KHAI → chỉ thêm Thi thử", nav(only("TIN_TUC")) === "Lớp học,Tin tức" && nav(only("THI_THU_CONG_KHAI")) === "Lớp học,Thi thử");
+check("bật mọi cờ → đủ 3 mục (SCL F1: Tin tức đã xoá)", nav(ALL_ON) === "Lớp học,Thi thử,Cộng đồng");
+check("bật riêng THI_THU_CONG_KHAI → chỉ thêm Thi thử; riêng CONG_DONG → chỉ thêm Cộng đồng", nav(only("THI_THU_CONG_KHAI")) === "Lớp học,Thi thử" && nav(only("CONG_DONG")) === "Lớp học,Cộng đồng");
 const blocks = (env: FeatureEnv) => homeBlocksFor({ kind: "guest" }, { quiz: true }, env);
-check("trang chủ khi tắt: không bảng tin, không quiz (nằm trong bảng tin), không tính điểm", !blocks(OFF).community && !blocks(OFF).quiz && !blocks(OFF).score);
-check("bật CONG_DONG + DIEM_CHUAN → bảng tin, quiz, tính điểm như cũ", blocks({ CONG_DONG: "1", DIEM_CHUAN: "1" }).community && blocks({ CONG_DONG: "1", DIEM_CHUAN: "1" }).quiz && blocks({ CONG_DONG: "1", DIEM_CHUAN: "1" }).score);
+check("trang chủ khi tắt: không bảng tin, không quiz (nằm trong bảng tin); khối tính điểm không còn (SCL F1)", !blocks(OFF).community && !blocks(OFF).quiz && !("score" in blocks(OFF)));
+check("bật CONG_DONG → bảng tin, quiz như cũ", blocks({ CONG_DONG: "1" }).community && blocks({ CONG_DONG: "1" }).quiz);
 const adminHrefs = (env: FeatureEnv) => visibleModules("admin_super", env).flatMap(m => m.subs.map(s => s.href));
-const HIDDEN_ADMIN = ["/admin/tin-tuc", "/admin/thu-vien-video", "/admin/cong-dong", "/admin/vinh-danh", "/admin/diem-chuan", "/admin/diem-chuan/cong-thuc"];
-check("menu quản trị khi tắt: không Tin tức & Blog, Video tham khảo, Cộng đồng, Bảng vinh danh, Điểm chuẩn, Công thức tính điểm", HIDDEN_ADMIN.every(h => !adminHrefs(OFF).includes(h)), HIDDEN_ADMIN.filter(h => adminHrefs(OFF).includes(h)));
+const HIDDEN_ADMIN = ["/admin/thu-vien-video", "/admin/cong-dong"];
+const GONE_ADMIN = ["/admin/tin-tuc", "/admin/vinh-danh", "/admin/diem-chuan", "/admin/diem-chuan/cong-thuc"];
+check("SCL F1: menu quản trị không còn Tin tức & Blog, Bảng vinh danh, Điểm chuẩn, Công thức tính điểm — kể cả khi bật mọi cờ", GONE_ADMIN.every(h => !adminHrefs(ALL_ON).includes(h)), GONE_ADMIN.filter(h => adminHrefs(ALL_ON).includes(h)));
+check("menu quản trị khi tắt: không Video tham khảo, Cộng đồng", HIDDEN_ADMIN.every(h => !adminHrefs(OFF).includes(h)), HIDDEN_ADMIN.filter(h => adminHrefs(OFF).includes(h)));
 // DG (14/11/2026): giữ đúng danh sách chủ chốt; ẩn Doanh thu, Gói KiN Pro, Phễu gia sư, Số đo sản phẩm, Lịch sử đánh giá, Chữ trang chủ.
 const DG_KEEP_ADMIN = ["/admin/kiem-duyet", "/admin/gia-su", "/admin/hoc-sinh", "/admin/quan-tri-vien", "/admin/khoa-hoc", "/admin/khoa-hoc/danh-muc", "/admin/thi-thu", "/admin/thi-thu/ngan-hang-cau-hoi",
   "/admin/thi-thu/ngan-hang-de-thi", "/admin/nhat-ky", "/admin/trien-khai", "/admin/ho-tro"];
@@ -197,7 +194,7 @@ check("menu quản trị khi tắt: không Doanh thu, Gói KiN Pro, Phễu gia s
 check("bật mọi cờ → menu quản trị có lại đủ các trang đã ẩn", [...HIDDEN_ADMIN, ...DG_HIDDEN_ADMIN].every(h => adminHrefs(ALL_ON).includes(h)));
 check("bật riêng KINH_DOANH → Doanh thu + Gói KiN Pro trở lại; riêng VAN_HANH_PHU → bốn trang vận hành phụ trở lại", ["/admin/doanh-thu", "/admin/goi-pro"].every(h => adminHrefs(only("KINH_DOANH")).includes(h)) && !adminHrefs(only("KINH_DOANH")).includes("/admin/pheu")
   && ["/admin/pheu", "/admin/so-do", "/admin/danh-gia", "/admin/trang-chu"].every(h => adminHrefs(only("VAN_HANH_PHU")).includes(h)));
-check("matchSub vẫn nhận trang ẩn (mở thẳng thì sáng đúng module Học vụ)", matchSub("/admin/tin-tuc/abc")?.moduleKey === "hoc-vu" && matchSub("/admin/diem-chuan")?.moduleKey === "hoc-vu");
+check("matchSub vẫn nhận trang ẩn (mở thẳng thì sáng đúng module Học vụ)", matchSub("/admin/cong-dong/abc")?.moduleKey === "hoc-vu" && matchSub("/admin/thu-vien-video")?.moduleKey === "hoc-vu");
 
 section("DG (14/11/2026): tám cờ mới — vai, tên miền admin, trang đầu gia sư");
 check("trang quản trị của phần mới chỉ chặn VAI QUẢN TRỊ (khách / học sinh / gia sư ở tên miền chính đã có luật riêng của /admin)", ["/admin/doanh-thu", "/admin/goi-pro", "/admin/pheu", "/admin/so-do", "/admin/danh-gia", "/admin/trang-chu"]
@@ -243,6 +240,17 @@ section("HP-BO (17/11/2026): API GHI của học phí đóng khi HOC_PHI tắt")
     "/api/tutor/goi/mua", "/api/webhooks/sepay-pro", "/api/phieu/tok/viewed", "/api/parent-portal/tok", "/api/tutor/invoicesx", "/api/courses/lop-a/feesx", "/lop-cua-toi/hoc-phi"];
   check("tắt: lớp, chốt buổi, điểm danh, học sinh, KiN Pro, đường na ná, trang (không phải /api) KHÔNG chặn", KEEP.every(p => blockedApiFeature(p, "POST", OFF) === null), KEEP.filter(p => blockedApiFeature(p, "POST", OFF) !== null));
   check("có ?tham số / / cuối vẫn nhận đúng", blockedApiFeature("/api/tutor/invoices/?x=1", "POST", OFF) === "HOC_PHI");
+}
+
+section("SCL F1: tên biến cũ DIEM_CHUAN vẫn mở /tra-cuu");
+{
+  const saved = { n: process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU, o: process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN };
+  delete process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU; process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN = "1";
+  const oldOnly = readFeatureEnv().TRA_CUU;
+  process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU = "0";
+  const newWins = readFeatureEnv().TRA_CUU;
+  for (const [k, v] of [["NEXT_PUBLIC_KIN_MO_TRA_CUU", saved.n], ["NEXT_PUBLIC_KIN_MO_DIEM_CHUAN", saved.o]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  check("chỉ đặt NEXT_PUBLIC_KIN_MO_DIEM_CHUAN=1 → TRA_CUU mở; đặt tên mới thì tên mới thắng", oldOnly === "1" && newWins === "0", { oldOnly, newWins });
 }
 
 done();

@@ -1,4 +1,4 @@
-// BU-HS-LANDING — bốn khối dữ liệu thật trên trang chủ công khai, phần THUẦN (src/lib/homeLanding.ts). Không cần máy chủ, không cần DB.
+// BU-HS-LANDING — ba khối dữ liệu thật (SCL F1: Tin tức đã xoá) trên trang chủ công khai, phần THUẦN (src/lib/homeLanding.ts). Không cần máy chủ, không cần DB.
 // Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-LANDING.md mục 5. Chạy: npx tsx tools/local-e2e/t-home-landing-lib.ts (chạy lại với TZ=Asia/Ho_Chi_Minh cho chắc).
 //
 // Ca phá (sửa gì trong mã thì ca nào phải đỏ):
@@ -11,12 +11,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  EMPTY_LANDING, HOME_CONTACT, HOME_LANDING_LIMITS, clipText, pickHomeCourses, pickHomeExams, pickHomeTutors, safeBlock, toLandingArticle, viDate,
+  EMPTY_LANDING, HOME_CONTACT, HOME_LANDING_LIMITS, clipText, pickHomeCourses, pickHomeExams, pickHomeTutors, safeBlock, viDate,
   type ExamRowLike, type LandingExam,
 } from "@/lib/homeLanding";
 import { TUTOR_LIST_ITEM_KEYS, type SearchableTutor } from "@/lib/tutorSearch";
 import type { PublicCard, SeatInfo } from "@/lib/courseCatalogPublic";
-import type { ArticleCard } from "@/lib/articlesPublic";
 import { check, section, done } from "./h";
 
 // ─── Dữ liệu dựng ───────────────────────────────────────────────────────────────────────────────────────────
@@ -30,11 +29,6 @@ const card = (slug: string, category: string, seat: SeatInfo = OPEN, o: Partial<
 });
 const exam = (id: string, date: string, time: string, o: Partial<ExamRowLike> = {}): ExamRowLike => ({
   id, code: `HSA.${id}`, title: `Đề ${id}`, category: "ĐGNL HSA", date, time, duration: "90 phút", questionCount: 50, ...o,
-});
-const article = (o: Partial<ArticleCard> = {}): ArticleCard => ({
-  id: "a1", slug: "bai-1", title: "Tuyển sinh 2027", excerpt: "Đoạn trích", category: "tuyen-sinh", categoryLabel: "Tuyển sinh", author: "KiN", tag: null,
-  isPinned: false, readTime: 3, views: 10, publishedAt: new Date("2026-11-01T03:00:00Z"), createdAt: new Date("2026-10-30T03:00:00Z"),
-  coverImage: null, coverCaption: null, ...o,
 });
 const NOW = new Date("2026-11-09T05:00:00Z"); // 12:00 giờ VN
 
@@ -154,8 +148,8 @@ section("pickHomeExams — thứ tự theo mốc giờ VN, giới hạn, ngày r
   check("đầu vào rỗng → []", pickHomeExams([], NOW).length === 0);
 }
 
-// ─── clipText / viDate / toLandingArticle ───────────────────────────────────────────────────────────────────
-section("clipText / viDate / toLandingArticle");
+// ─── clipText / viDate ───────────────────────────────────────────────────────────────────
+section("clipText / viDate");
 {
   const long = "Tuyển sinh đại học năm 2027: những điều thí sinh cần biết ".repeat(10);
   const c = clipText(long, 140);
@@ -179,25 +173,19 @@ section("clipText / viDate / toLandingArticle");
   check("viDate: qua năm 31/12 23:00 UTC → 01/01 năm sau", viDate(new Date("2026-12-31T23:00:00Z")) === "01/01/2027");
   check("viDate: ngày không hợp lệ → rỗng", viDate(new Date("x")) === "" && viDate(undefined as unknown as Date) === "");
 
-  const a = toLandingArticle(article({ excerpt: long, coverImage: "" }));
-  check("toLandingArticle: đoạn trích ≤140, cover rỗng → null", Array.from(a.excerpt).length <= HOME_LANDING_LIMITS.excerpt && a.coverImage === null);
-  check("toLandingArticle: ngày = giờ đăng theo giờ VN (03:00Z → 01/11/2026)", a.dateText === "01/11/2026", a.dateText);
-  check("toLandingArticle: bài không có giờ đăng → ngày tạo", toLandingArticle(article({ publishedAt: null, createdAt: new Date("2026-10-30T20:00:00Z") })).dateText === "31/10/2026");
-  check("toLandingArticle: cover có thật → giữ", toLandingArticle(article({ coverImage: "https://cdn.kin/a.jpg" })).coverImage === "https://cdn.kin/a.jpg");
-  check("toLandingArticle: không có khoá thừa (không tác giả, lượt xem, nội dung, id)", Object.keys(a).sort().join() === "categoryLabel,coverImage,dateText,excerpt,slug,title", Object.keys(a).join());
 }
 
 // ─── EMPTY_LANDING & liên hệ ────────────────────────────────────────────────────────────────────────────────
 section("EMPTY_LANDING, HOME_CONTACT");
 {
-  check("EMPTY_LANDING: bốn mảng + chip rỗng", EMPTY_LANDING.tutors.length + EMPTY_LANDING.courses.length + EMPTY_LANDING.courseChips.length + EMPTY_LANDING.exams.length + EMPTY_LANDING.articles.length === 0);
+  check("EMPTY_LANDING: ba mảng + chip rỗng, không còn khoá articles (SCL F1)", EMPTY_LANDING.tutors.length + EMPTY_LANDING.courses.length + EMPTY_LANDING.courseChips.length + EMPTY_LANDING.exams.length === 0 && !("articles" in EMPTY_LANDING));
   check("EMPTY_LANDING bất biến", Object.isFrozen(EMPTY_LANDING) && Object.isFrozen(EMPTY_LANDING.tutors) && Object.isFrozen(EMPTY_LANDING.exams));
   const footer = readFileSync(join(process.cwd(), "src/components/Footer.tsx"), "utf8");
   check("HOME_CONTACT.phoneHref/phoneText khớp Footer.tsx", footer.includes(`href="${HOME_CONTACT.phoneHref}"`) && footer.includes(`Hotline: ${HOME_CONTACT.phoneText}`));
   check("HOME_CONTACT.zaloHref khớp Footer.tsx", footer.includes(`href="${HOME_CONTACT.zaloHref}"`));
   check("HOME_CONTACT.hours khớp Footer.tsx", footer.includes(`Hỗ trợ: ${HOME_CONTACT.hours}`));
   check("tel: chỉ có chữ số khớp số hiển thị", HOME_CONTACT.phoneHref.replace("tel:", "") === HOME_CONTACT.phoneText.replace(/\s/g, ""));
-  check("giới hạn khớp đặc tả", HOME_LANDING_LIMITS.tutors === 4 && HOME_LANDING_LIMITS.tutorsMin === 2 && HOME_LANDING_LIMITS.courses === 6 && HOME_LANDING_LIMITS.exams === 6 && HOME_LANDING_LIMITS.articles === 3 && HOME_LANDING_LIMITS.excerpt === 140 && HOME_LANDING_LIMITS.avatarChars === 24_000);
+  check("giới hạn khớp đặc tả", HOME_LANDING_LIMITS.tutors === 4 && HOME_LANDING_LIMITS.tutorsMin === 2 && HOME_LANDING_LIMITS.courses === 6 && HOME_LANDING_LIMITS.exams === 6 && HOME_LANDING_LIMITS.avatarChars === 24_000);
   const src = readFileSync(join(process.cwd(), "src/lib/homeLanding.ts"), "utf8").replace(/\/\/.*$/gm, "");
   check("homeLanding.ts thuần: không import prisma/next/react", !/from\s+["'](@\/lib\/prisma|next[/"']|react)/.test(src) && !/@\/lib\/(articlesPublic|tutorSearchServer|courseCatalogPublicServer)["']/.test(src.replace(/import type[^;]*;/g, "")));
 }

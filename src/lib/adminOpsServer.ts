@@ -61,10 +61,9 @@ export async function loadTodayList(session: SessionPayload, now: Date = new Dat
   const has = (k: QueueKind) => kinds.has(k);
   const centre = session.role === "admin" && (role === "admin_super" || role === "admin_content");
   const can = (p: Parameters<typeof checkPermission>[1]) => centre && checkPermission(role, p);
-  const [proOrders, support, scheduled, joinSlow, cronViews, students, openClasses, tutors] = await Promise.all([
+  const [proOrders, support, joinSlow, cronViews, students, openClasses, tutors] = await Promise.all([
     can(PERMISSIONS.MANAGE_REVENUE) ? prisma.proOrder.count({ where: { status: "pending", source: "purchase" } }) : Promise.resolve(null),
     can(PERMISSIONS.MANAGE_TUTORS) ? prisma.supportRequest.count({ where: { status: "open" } }) : Promise.resolve(null),
-    can(PERMISSIONS.MANAGE_NEWS) ? prisma.article.count({ where: { published: true, publishedAt: { gt: now } } }) : Promise.resolve(null),
     has("vao-lop") ? countSlowJoinCourses(now) : Promise.resolve(null),
     can(PERMISSIONS.MANAGE_REVENUE) ? loadCronViews(now) : Promise.resolve(null),
     can(PERMISSIONS.MANAGE_STUDENTS) ? prisma.user.count({ where: { role: "student", ...NOT_SYSTEM_ACCOUNT, ...userNotHiddenWhere() } }) : Promise.resolve(null),
@@ -75,7 +74,7 @@ export async function loadTodayList(session: SessionPayload, now: Date = new Dat
     tutorsPending: counts["gia-su"] ?? 0, threadReports: counts["bai-viet"] ?? 0, profileReports: counts["ho-so"] ?? 0, answerReports: counts["tra-loi"] ?? 0,
     topupsPending: counts["nap-coin"] ?? null, proOrdersPending: proOrders, supportOpen: support,
     reviewsPending: counts["danh-gia"] ?? null, guestQuestions: counts["khach-hoi"] ?? null,
-    joinSlowCourses: joinSlow, scheduledArticles: scheduled,
+    joinSlowCourses: joinSlow,
     cronSlow: cronViews ? cronViews.filter(v => v.tone === "cho").length : null,
   });
   return {

@@ -106,13 +106,8 @@ async function main() {
   check("pending_consent: 200 (luật xem 06/11 không chặn chờ đồng ý)", epc.status === 200, [epc.status, epc.json]);
   check("suspended: 403 kèm mã enrollment_suspended; không ghi danh: 403 kèm enrollment_removed", esu.status === 403 && esu.json?.code === "enrollment_suspended" && !!esu.json?.error && ex2.status === 403 && ex2.json?.code === "enrollment_removed", [esu.json, ex2.json]);
 
-  section("Rà soát · bảng xếp hạng chung bỏ điểm chờ duyệt");
-  const names = async () => ((await api("GET", "/api/leaderboard", { as: T })).json as { name: string }[]).map(r => r.name);
-  const n0 = await names();
-  check("điểm tự khai chờ duyệt KHÔNG lên /api/leaderboard", !n0.includes("Em Trong Lớp") && !n0.includes("Em Lớp Khác"), n0);
-  await prisma.examResult.updateMany({ where: { userId: S.id }, data: { pendingReview: false } });
-  const n1 = await names();
-  check("ĐỐI CHỨNG: duyệt xong thì lên bảng", n1.includes("Em Trong Lớp"), n1);
+  section("Rà soát · bảng xếp hạng chung (SCL F1: đã xoá hẳn)");
+  check("/api/leaderboard không còn (404) — điểm chờ duyệt không có đường nào lên bảng chung", (await api("GET", "/api/leaderboard", { as: T })).status === 404);
 
   section("Rà soát · khách GET /api/exams?activeGuest=true");
   await prisma.exam.update({ where: { id: "az-lop" }, data: { activeGuest: true } });

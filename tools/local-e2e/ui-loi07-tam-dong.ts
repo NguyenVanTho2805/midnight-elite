@@ -1,5 +1,5 @@
-// LOI-07 (11/11/2026, nợ P3 của LOI-01) — trình duyệt thật. Chạy với máy chủ dev KHÔNG đặt NEXT_PUBLIC_KIN_MO_TIN_TUC (phần nào đang mở thì ca của phần đó tự bỏ qua).
-//  C1. Gia sư và quản trị bị chuyển ra khỏi phần đang ẩn (bài tin tức cũ) → trang đầu theo vai (Hộp việc / /admin ở tên miền admin) có MỘT dòng nhắc
+// LOI-07 (11/11/2026, nợ P3 của LOI-01) — trình duyệt thật. Chạy với máy chủ dev KHÔNG đặt NEXT_PUBLIC_KIN_MO_TRA_CUU (phần nào đang mở thì ca của phần đó tự bỏ qua).
+//  C1. Gia sư và quản trị bị chuyển ra khỏi phần đang ẩn (trang tra cứu cũ — SCL F1: Tin tức đã xoá nên ca dùng /tra-cuu) → trang đầu theo vai (Hộp việc / /admin ở tên miền admin) có MỘT dòng nhắc
 //      "Phần này đang tạm đóng." [data-paused-notice] (cùng component với học sinh / khách — ca của hai vai đó ở ui-loi-cong-dong-lop), không nói tên phần; 307 + no-store giữ nguyên.
 //  C2. Màn sửa trang chủ (/admin/trang-chu): ô đường dẫn tự nhập trỏ vào phần đang tạm đóng ⇒ câu "Lưu ý: …" [data-field-warn] ngay dưới ô, nối aria-describedby,
 //      KHÔNG viền đỏ / aria-invalid, nút Lưu vẫn bấm được và lưu thật (CSDL có đường đó); đổi sang đường đang mở ⇒ câu nhắc biến mất. 390: không tràn ngang.
@@ -17,21 +17,21 @@ import { launch, ctxFor, shot, closeAll, ADMIN, type Page } from "./ui";
   const errors: string[] = [];
   const watch = (p: Page) => { p.on("pageerror", e => errors.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/Failed to load resource|favicon|net::ERR|status of (4|5)|Hydration/i.test(m.text())) errors.push(`${p.url()} :: ${m.text().slice(0, 300)}`); }); };
 
-  if (featureOn("TIN_TUC")) console.log("  (máy đang bật TIN_TUC: bỏ qua phần C1)");
+  if (featureOn("TRA_CUU")) console.log("  (máy đang bật TRA_CUU: bỏ qua phần C1)");
   else {
-    section("C1 · gia sư: bài tin tức cũ → Hộp việc + dòng nhắc");
+    section("C1 · gia sư: trang tra cứu cũ → Hộp việc + dòng nhắc");
     {
-      const r = await fetch(`${BASE}/tin-tuc/bai-cu`, { redirect: "manual", headers: { cookie: await cookieFor(T) } });
+      const r = await fetch(`${BASE}/tra-cuu`, { redirect: "manual", headers: { cookie: await cookieFor(T) } });
       const loc = new URL(r.headers.get("location") ?? "/", BASE);
-      check("307 (không 308) + no-store, Location = /lop-cua-toi?tam-dong=TIN_TUC", r.status === 307 && /no-store/.test(r.headers.get("cache-control") ?? "") && loc.pathname === "/lop-cua-toi" && loc.search === "?tam-dong=TIN_TUC", [r.status, loc.href]);
+      check("307 (không 308) + no-store, Location = /lop-cua-toi?tam-dong=TRA_CUU", r.status === 307 && /no-store/.test(r.headers.get("cache-control") ?? "") && loc.pathname === "/lop-cua-toi" && loc.search === "?tam-dong=TRA_CUU", [r.status, loc.href]);
       for (const w of [1280, 390]) {
         const c = await ctxFor(T, { width: w, height: 844 }); const p = await c.newPage(); watch(p);
-        await p.goto(`${BASE}/tin-tuc/bai-cu`, { waitUntil: "domcontentloaded", timeout: 240000 });
+        await p.goto(`${BASE}/tra-cuu`, { waitUntil: "domcontentloaded", timeout: 240000 });
         await p.waitForURL(u => u.pathname === "/lop-cua-toi", { timeout: 120000 });
-        const note = p.locator('[data-paused-notice="TIN_TUC"]');
+        const note = p.locator('[data-paused-notice="TRA_CUU"]');
         await note.waitFor({ timeout: 60000 }).catch(() => {});
         const t = await note.innerText().catch(() => "");
-        check(`${w}: gia sư thấy 'Phần này đang tạm đóng.' (không tên phần), nút 'Đã hiểu' ≥ 44px; không tràn ngang`, /Phần này đang tạm đóng\./.test(t) && !/Tin tức/i.test(t) && ((await note.getByRole("button", { name: "Đã hiểu" }).boundingBox())?.height ?? 0) >= 44 && await p.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean, t);
+        check(`${w}: gia sư thấy 'Phần này đang tạm đóng.' (không tên phần), nút 'Đã hiểu' ≥ 44px; không tràn ngang`, /Phần này đang tạm đóng\./.test(t) && !/Tra cứu/i.test(t) && ((await note.getByRole("button", { name: "Đã hiểu" }).boundingBox())?.height ?? 0) >= 44 && await p.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean, t);
         if (w === 390) await shot(p, "loi07-tam-dong-gia-su-390");
         await note.getByRole("button", { name: "Đã hiểu" }).click();
         await p.waitForTimeout(400);
@@ -39,12 +39,12 @@ import { launch, ctxFor, shot, closeAll, ADMIN, type Page } from "./ui";
         await c.close();
       }
     }
-    section("C1 · quản trị: bài tin tức cũ ở tên miền chính → /admin ở tên miền admin + dòng nhắc");
+    section("C1 · quản trị: trang tra cứu cũ ở tên miền chính → /admin ở tên miền admin + dòng nhắc");
     {
       const c = await ctxFor(SA, { width: 1600, height: 1000, rail: "mac-dinh" }); const p = await c.newPage(); watch(p);
-      await p.goto(`${BASE}/tin-tuc/bai-cu`, { waitUntil: "domcontentloaded", timeout: 240000 }).catch(() => {});
+      await p.goto(`${BASE}/tra-cuu`, { waitUntil: "domcontentloaded", timeout: 240000 }).catch(() => {});
       await p.waitForURL(u => u.hostname.startsWith("admin.") && u.pathname === "/admin", { timeout: 120000 }).catch(() => {});
-      const note = p.locator('[data-paused-notice="TIN_TUC"]');
+      const note = p.locator('[data-paused-notice="TRA_CUU"]');
       await note.waitFor({ timeout: 60000 }).catch(() => {});
       check("quản trị ở admin…/admin, thấy 'Phần này đang tạm đóng.'", new URL(p.url()).hostname.startsWith("admin.") && new URL(p.url()).pathname === "/admin" && await note.isVisible(), p.url());
       await c.close();
@@ -52,8 +52,8 @@ import { launch, ctxFor, shot, closeAll, ADMIN, type Page } from "./ui";
   }
 
   section("C2 · /admin/trang-chu: liên kết tự nhập trỏ vào phần đang tạm đóng ⇒ cảnh báo, KHÔNG chặn lưu");
-  const HIDDEN = featureOn("TIN_TUC") ? (featureOn("CONG_DONG") ? null : "/cong-dong") : "/tin-tuc";
-  if (!HIDDEN) console.log("  (máy đang bật cả TIN_TUC lẫn CONG_DONG: bỏ qua phần C2)");
+  const HIDDEN = featureOn("TRA_CUU") ? (featureOn("CONG_DONG") ? null : "/cong-dong") : "/tra-cuu";
+  if (!HIDDEN) console.log("  (máy đang bật cả TRA_CUU lẫn CONG_DONG: bỏ qua phần C2)");
   for (const w of HIDDEN ? [1600, 390] : []) {
     const c = await ctxFor(SA, { width: w, height: 1000, rail: "mac-dinh" }); const p = await c.newPage(); watch(p);
     await p.goto(`${ADMIN}/admin/trang-chu`, { waitUntil: "domcontentloaded", timeout: 240000 });

@@ -8,7 +8,7 @@
 //   4. Lịch sử yêu cầu nạp (pending/approved/rejected).
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/components/ui";
+import { useToast } from "@/components/kin/ToastProvider";
 import { MIN_TOPUP_VND, MAX_TOPUP_VND } from "@/lib/coinTopup-constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { TRIAL_MODE_BANNER_TITLE, TRIAL_MODE_BANNER_BODY } from "@/lib/trialMode";

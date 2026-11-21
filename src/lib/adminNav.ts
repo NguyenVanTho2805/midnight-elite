@@ -42,16 +42,11 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
       { label: "Đề thi", href: "/admin/thi-thu", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
       { label: "Ngân hàng câu hỏi", href: "/admin/thi-thu/ngan-hang-cau-hoi", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
       { label: "Ngân hàng đề", href: "/admin/thi-thu/ngan-hang-de-thi", permission: PERMISSIONS.MANAGE_CURRICULUM, group: "Đề và ngân hàng" },
-      { label: "Tin tức & Blog", href: "/admin/tin-tuc", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       // HOME-02: chữ trang chủ công khai sửa ở đây, không cần đổi mã.
       { label: "Chữ trang chủ", href: "/admin/trang-chu", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       // NC2-046: video YouTube do quản trị chọn, hiện ở ô tìm của trang Thư viện.
       { label: "Video tham khảo", href: "/admin/thu-vien-video", permission: PERMISSIONS.MANAGE_NEWS, group: "Truyền thông" },
       { label: "Cộng đồng", href: "/admin/cong-dong", permission: PERMISSIONS.MANAGE_COMMUNITY, group: "Truyền thông" },
-      { label: "Bảng vinh danh", href: "/admin/vinh-danh", permission: PERMISSIONS.MANAGE_HONOR, group: "Truyền thông" },
-      { label: "Điểm chuẩn", href: "/admin/diem-chuan", permission: PERMISSIONS.MANAGE_NEWS, group: "Tuyển sinh" },
-      // NC2-050: công thức tính điểm xét tuyển (công cụ "Tính điểm" ở trang công khai /diem-chuan).
-      { label: "Công thức tính điểm", href: "/admin/diem-chuan/cong-thuc", permission: PERMISSIONS.MANAGE_NEWS, group: "Tuyển sinh" },
     ],
   },
   {

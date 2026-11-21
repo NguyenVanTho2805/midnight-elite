@@ -44,8 +44,8 @@ const isProtected = (p: string) => PROTECTED.some(r => r.test(p));
 //   - Gia sư mở /admin/* thì 307 sang bí danh /lop-cua-toi/… hoặc về Hộp việc (BU-00 bước 3, xem expectedRedirect).
 // Bí danh cũ trong vỏ học viên (Quyết định S 15/10): thanh bên trỏ /student/thi-thu… rồi các trang này chuyển tới trang công khai tương ứng, mở TRONG khung thanh bên.
 const STUDENT_ALIASES: Record<string, string> = {
-  "/student/thi-thu": "/thi-thu", "/student/bang-xep-hang": "/bang-xep-hang", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong",
-  "/student/tin-tuc": "/tin-tuc", "/student/tra-cuu": "/tra-cuu",
+  "/student/thi-thu": "/thi-thu", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong",
+  "/student/tra-cuu": "/tra-cuu", // SCL F1: bí danh bảng xếp hạng / tin tức đã xoá
 };
 // Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
 // BU-00 bước 3: gia sư dùng bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi*; trang tao-moi của quản lớp chỉ chuyển tiếp; /lop-cua-toi/de-thi/tao-moi (BU-03) là trang thật (bốn lối tạo đề), không chuyển tiếp nữa.
@@ -158,6 +158,8 @@ function judge(sc: Scenario, requested: URL, r: { status: number | null; final: 
     if (crossHost && r.final.searchParams.get("redirect") === requested.pathname + requested.search) return HOSTGATE;
     return sc.user ? "bị đẩy về trang đăng nhập dù đã đăng nhập" : gated ? GATE : "bị đẩy về trang đăng nhập";
   }
+  // Đã đăng nhập mà mở /dang-nhap?redirect=<trang> (vd lối "Tôi có mã mời vào lớp" của SCL-E) ⇒ trang đăng nhập đưa thẳng tới <trang>: có chủ đích, mọi vai.
+  if (sc.user && reqP === "/dang-nhap" && norm(requested.searchParams.get("redirect") ?? "") === finP) return null;
   if (reqP !== finP) return expectedRedirect(sc, reqP, finP) ? null : `đổi đích: ${requested.host}${reqP} → ${r.final.host}${finP}`;
   return null;
 }
@@ -218,8 +220,7 @@ async function runScenario(browser: import("playwright").Browser, sc: Scenario, 
   const C = await mkCourse(T.id, { name: "Toán 9 Link" });
   await prisma.user.update({ where: { id: T.id }, data: { preferences: { modules: ["hop-viec", "lop", "bai-kt", "thu-vien"] } } });
   await prisma.enrollment.create({ data: { userId: S.id, courseId: C.id, status: "active" } });
-  // Dữ liệu mẫu để các danh sách có liên kết tới trang chi tiết (tin, bài cộng đồng, hỏi đáp, bài giảng, đề thi)
-  await prisma.article.create({ data: { slug: "tin-thu-nghiem", title: "Tin thử nghiệm", excerpt: "Tóm tắt", content: "Nội dung", category: "tuyen-sinh", author: "KiN", authorId: SA.id, published: true, publishedAt: new Date() } });
+  // Dữ liệu mẫu để các danh sách có liên kết tới trang chi tiết (bài cộng đồng, hỏi đáp, bài giảng, đề thi)
   await prisma.thread.create({ data: { content: "Bài cộng đồng thử nghiệm", authorId: S.id, category: "hoi-dap" } });
   await prisma.question.create({ data: { authorId: S.id, title: "Câu hỏi thử nghiệm", content: "Nội dung câu hỏi", bountyPaid: 0 } });
   const sec = await prisma.section.create({ data: { id: "sec-link", title: "Phần 1", courseId: C.id } });
@@ -227,7 +228,7 @@ async function runScenario(browser: import("playwright").Browser, sc: Scenario, 
   await prisma.lesson.create({ data: { id: "les-link", code: "B1", title: "Bài 1", type: "record", chapterId: chap.id, isLocked: false } });
   await prisma.exam.create({ data: { id: "exam-link", code: "DE-LINK", title: "Đề thử nghiệm", category: "toan", date: "2026-10-20", time: "08:00", duration: "60", questions: 0, status: "available", createdAt: new Date().toISOString(), ownerId: T.id, courseId: C.id } });
 
-  const PUBLIC_SEEDS = ["/", "/khoa-hoc", "/thi-thu", "/cong-dong", "/tin-tuc", "/giang-vien", "/diem-chuan", "/bang-xep-hang", "/phu-huynh", "/chinh-sach", "/dang-nhap", "/dang-ky", "/dang-ky?vai=gia-su", "/quen-mat-khau", "/dat-lai-mat-khau?token=" + "0".repeat(64), "/thu-vien"];
+  const PUBLIC_SEEDS = ["/", "/khoa-hoc", "/thi-thu", "/cong-dong", "/giang-vien", "/phu-huynh", "/chinh-sach", "/dang-nhap", "/dang-ky", "/dang-ky?vai=gia-su", "/quen-mat-khau", "/dat-lai-mat-khau?token=" + "0".repeat(64), "/thu-vien"];
   const scenarios: Scenario[] = [
     { name: "khách@chính", origin: MAIN, user: null, role: "guest", seeds: PUBLIC_SEEDS },
     { name: "khách@admin", origin: ADMIN, user: null, role: "guest", seeds: ["/dang-nhap?redirect=%2Fadmin", "/dang-nhap", "/admin", "/"] },

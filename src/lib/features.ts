@@ -14,7 +14,11 @@
 //   THI_THU_CONG_KHAI (danh sách thi thử công khai /thi-thu; đề được giao trong lớp /student/thi-thu/<mã đề> KHÔNG chặn),
 //   VAN_HANH_PHU (quản trị: phễu gia sư, số đo sản phẩm, lịch sử đánh giá, chữ trang chủ).
 //   Chỉ HIỂN THỊ + lối vào + chốt 307: không đụng logic tính tiền, API học phí, webhook, schema.
-export const FEATURES = ["TIM_GIA_SU", "CONG_DONG", "LICH", "TIN_TUC", "THU_VIEN", "TIENG_ANH", "XEP_HANG", "COIN", "DIEM_CHUAN",
+//
+// SCL F1 (21/11/2026, quyết định Q8 của chủ): XOÁ HẲN bốn phần Tiếng Anh, Điểm chuẩn, Tin tức, Xếp hạng chung (trang, API, lib, cron) — bỏ cờ TIENG_ANH,
+//   TIN_TUC, XEP_HANG. Cờ DIEM_CHUAN đổi tên TRA_CUU: chỉ còn chốt /tra-cuu (tra lớp theo SĐT, không phải điểm chuẩn). Bảng DB của bốn phần giữ nguyên (schema chỉ thêm).
+//   Đường cũ của bốn phần giờ là 404 (trang không còn). Học phí, Cộng đồng và các cờ khác: vẫn ẨN GIỮ MÃ như trên.
+export const FEATURES = ["TIM_GIA_SU", "CONG_DONG", "LICH", "THU_VIEN", "COIN", "TRA_CUU",
   "HOC_PHI", "KINH_DOANH", "DIEM_DANH", "SO_DIEM", "NHAC_HOC", "HOP_VIEC", "THI_THU_CONG_KHAI", "VAN_HANH_PHU"] as const;
 export type FeatureKey = (typeof FEATURES)[number];
 export type FeatureEnv = Partial<Record<FeatureKey, string | undefined>>;
@@ -28,12 +32,10 @@ export function readFeatureEnv(): FeatureEnv {
     TIM_GIA_SU: process.env.NEXT_PUBLIC_KIN_MO_TIM_GIA_SU,
     CONG_DONG: process.env.NEXT_PUBLIC_KIN_MO_CONG_DONG,
     LICH: process.env.NEXT_PUBLIC_KIN_MO_LICH,
-    TIN_TUC: process.env.NEXT_PUBLIC_KIN_MO_TIN_TUC,
     THU_VIEN: process.env.NEXT_PUBLIC_KIN_MO_THU_VIEN,
-    TIENG_ANH: process.env.NEXT_PUBLIC_KIN_MO_TIENG_ANH,
-    XEP_HANG: process.env.NEXT_PUBLIC_KIN_MO_XEP_HANG,
     COIN: process.env.NEXT_PUBLIC_KIN_MO_COIN,
-    DIEM_CHUAN: process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN,
+    // SCL F1: tên cũ NEXT_PUBLIC_KIN_MO_DIEM_CHUAN vẫn được đọc khi chưa đặt tên mới, để /tra-cuu không tự đóng trên máy đã đặt biến cũ.
+    TRA_CUU: process.env.NEXT_PUBLIC_KIN_MO_TRA_CUU ?? process.env.NEXT_PUBLIC_KIN_MO_DIEM_CHUAN,
     HOC_PHI: process.env.NEXT_PUBLIC_KIN_MO_HOC_PHI,
     KINH_DOANH: process.env.NEXT_PUBLIC_KIN_MO_KINH_DOANH,
     DIEM_DANH: process.env.NEXT_PUBLIC_KIN_MO_DIEM_DANH,
@@ -92,29 +94,16 @@ const PATH_RULES: readonly PathRule[] = [
   // HP-BO (17/11/2026): Lịch của GIA SƯ luôn hiện (cờ LICH chỉ còn ẩn Lịch học của học sinh) — đây là lối duy nhất tới trang buổi: điểm danh, ghi chú, "Đã dạy xong",
   //   dời / huỷ buổi, sửa khung giờ tuần. Rà soát 17/11: ẩn nó thì gia sư không vận hành được lớp.
   { feature: "LICH", path: "/student/lich-hoc", sub: true },
-  // 4. Tin tức.
-  { feature: "TIN_TUC", path: "/tin-tuc", sub: true, route: true },
-  { feature: "TIN_TUC", path: "/student/tin-tuc", sub: true, route: true },
-  { feature: "TIN_TUC", path: "/admin/tin-tuc", sub: true },
   // 5. Thư viện CHUNG (danh sách công khai của khách / quản trị). Cùng đường /thu-vien, học sinh thấy thư viện các lớp mình học và gia sư thấy "Thư viện của tôi"
   //    (module Thư viện của vỏ gia sư) — hai vai này KHÔNG bị chặn.
   { feature: "THU_VIEN", path: "/thu-vien", sub: true, route: ["guest", "admin"] },
   { feature: "THU_VIEN", path: "/admin/thu-vien-video", sub: true },
-  // 6. Tiếng Anh tự học.
-  { feature: "TIENG_ANH", path: "/student/tieng-anh", sub: true, route: true },
-  // 7. Xếp hạng / vinh danh.
-  { feature: "XEP_HANG", path: "/bang-xep-hang", sub: true, route: true },
-  { feature: "XEP_HANG", path: "/student/bang-xep-hang", sub: true, route: true },
-  { feature: "XEP_HANG", path: "/vinh-danh", sub: true, route: true }, // chưa có trang công khai /vinh-danh (chỉ /admin/vinh-danh); giữ chỗ để route mới sinh ra cũng ẩn theo cờ.
-  { feature: "XEP_HANG", path: "/admin/vinh-danh", sub: true },
   // 8. Coin: chỉ hiển thị (COIN_VISIBLE); route /student/vi tự xử lý trong layout của nó. Không đụng logic Coin.
   { feature: "COIN", path: "/student/vi", sub: true },
   { feature: "COIN", path: "/admin/topups", sub: true },
-  // 9. Điểm chuẩn / tra cứu.
-  { feature: "DIEM_CHUAN", path: "/diem-chuan", sub: true, route: true },
-  { feature: "DIEM_CHUAN", path: "/tra-cuu", sub: true, route: true },
-  { feature: "DIEM_CHUAN", path: "/student/tra-cuu", sub: true, route: true },
-  { feature: "DIEM_CHUAN", path: "/admin/diem-chuan", sub: true },
+  // 9. Tra cứu lớp theo SĐT (SCL F1: tách khỏi Điểm chuẩn đã xoá).
+  { feature: "TRA_CUU", path: "/tra-cuu", sub: true, route: true },
+  { feature: "TRA_CUU", path: "/student/tra-cuu", sub: true, route: true },
   // ── DG (14/11/2026): tám phần mới. Trang gia sư / học sinh: chặn route (307 về trang đầu theo vai). Trang quản trị: chặn với vai quản trị — chốt ở nhánh
   //    tên miền admin của hostRouting.decideRoute (307 về /admin?tam-dong=…). Chỉ trang; API giữ nguyên.
   // 10. Học phí. Chỉ TRANG; API /api/tutor/invoices…, webhook SePay, invoiceServer không đổi (TIỀN).
@@ -229,7 +218,7 @@ export const PAUSED_PARAM = "tam-dong";
 /** Chuỗi search gắn lên trang đích khi chặn phần `k`: "?tam-dong=CONG_DONG". */
 export const pausedSearch = (k: FeatureKey): string => `?${PAUSED_PARAM}=${k}`;
 
-/** Đọc dấu từ `search` ("?a=1&tam-dong=TIN_TUC", không "?" cũng được). Chỉ nhận ĐÚNG tên một cờ trong FEATURES mà cờ đó đang TẮT (phần đã mở lại thì không nhắc nữa);
+/** Đọc dấu từ `search` ("?a=1&tam-dong=CONG_DONG", không "?" cũng được). Chỉ nhận ĐÚNG tên một cờ trong FEATURES mà cờ đó đang TẮT (phần đã mở lại thì không nhắc nữa);
  *  thiếu / rỗng / rác / chữ thường / tên lạ → null. Nhiều giá trị: chỉ xét giá trị đầu. */
 export function pausedNoticeFrom(search: string | null | undefined, env: FeatureEnv = readFeatureEnv()): FeatureKey | null {
   if (typeof search !== "string" || !search) return null;

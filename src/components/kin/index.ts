@@ -1,6 +1,6 @@
 // TK-183 (09/10/2026) — bộ component KiN (tokens --kin-*).
-// Dùng trong các màn KiN mới. Component cũ ở src/components/ui/* vẫn
-// hoạt động cho đến khi được migrate dần.
+// Dùng trong các màn KiN mới. (SCL-F2: src/components/ui/* cũ đã xoá; toast chung ở ./ToastProvider —
+// import trực tiếp "@/components/kin/ToastProvider", không qua barrel này.)
 export { KinInput, type KinInputProps } from "./Input";
 export { KinButton, type KinButtonProps } from "./Button";
 // kinButtonClass xuất từ module thuần (không "use client") để Server Component gọi được — BU-00 sửa sau test 31/10/2026.

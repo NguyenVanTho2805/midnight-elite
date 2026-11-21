@@ -17,9 +17,9 @@ import { homeNavFor } from "@/lib/homeLayout";
 // Tắt hết: thanh module không có "Lịch học" (điện thoại 3 ô), bảng "Khác" chỉ còn "Lớp miễn phí", trang chủ không có bảng tin / quiz (nằm trong bảng tin) / tính điểm,
 // Navbar chỉ "Lớp học · Thi thử" (+ "Lớp của tôi" cho học sinh) — các phần C2, C3, D, E chỉ chạy khi phần tương ứng mở; khi ẩn thì kiểm khối KHÔNG có và không gọi API bảng tin.
 // Bật đủ 9 cờ: như trước LOI-01.
-const CD = featureOn("CONG_DONG"), DC = featureOn("DIEM_CHUAN"), LICH = featureOn("LICH");
+const CD = featureOn("CONG_DONG"), DC = false, LICH = featureOn("LICH"); // SCL F1: khối Tính điểm (Điểm chuẩn) đã xoá hẳn
 const QUIZ = CD && process.env.KIN_HOME_QUIZ !== "0"; // khối quiz nằm trong bảng tin (homeLayout.homeBlocksFor)
-const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(CD ? ["Cộng đồng"] : []), ...(featureOn("TIN_TUC") ? ["Tin tức"] : []), ...(featureOn("TIENG_ANH") ? ["Tiếng Anh tự học"] : [])];
+const MORE_EXPECT = ["Lớp miễn phí", ...(featureOn("TIM_GIA_SU") ? ["Gia sư"] : []), ...(CD ? ["Cộng đồng"] : [])]; // SCL F1: Tin tức, Tiếng Anh tự học đã xoá
 const NAV_GUEST = homeNavFor({ kind: "guest" }).map(i => i.label).join("|"), NAV_STUDENT = homeNavFor({ kind: "student" }).map(i => i.label).join("|");
 const NHAC = featureOn("NHAC_HOC");
 const BAR_CELLS = 3 + (LICH ? 1 : 0) + (NHAC ? 1 : 0); // Việc của tôi · (Nhắc học, cờ NHAC_HOC) · (Lịch học) · Lớp của tôi · Khác
@@ -78,8 +78,6 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
   for (let i = 0; i < 7; i++) await mkPost(i === 0 ? AUTH.id : T.id, `BAI-CHUNG-${stamp}-${i}`, { at: i });
   await mkPost(T.id, CLASS_ONLY, { courseId: C1.id });
   await mkPost(AUTH.id, `BAI-CHO-DUYET-${stamp}`, { status: "pending" });
-  // Công thức tính điểm công khai
-  const formula = await prisma.admissionFormula.create({ data: { name: "Khối A00", school: "Trường thử", year: 2026, scale: 30, inputs: [{ key: "m1", label: "Toán", max: 10, weight: 2 }, { key: "m2", label: "Lý", max: 10, weight: 1 }, { key: "m3", label: "Hoá", max: 10, weight: 1 }], multiplier: 0.75, bonuses: [{ key: "b1", label: "Điểm ưu tiên", max: 2.75 }], sourceUrl: "https://example.edu.vn/thong-bao", sourceName: "example.edu.vn", verified: false, published: true } });
 
   await launch();
   const errors: string[] = [];
@@ -106,7 +104,7 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
 
   // ═════════════════════════ A. Cửa về từ khu học sinh ═════════════════════════
   section("A1 · 1280 (thanh hẹp): MỌI màn có vỏ có đúng một liên kết 'Trang chủ' nhìn thấy trong thanh module + logo; bấm → '/' và Ở LẠI '/'");
-  const doors = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", `/student/hoc-tap?course=${C1.id}`, `/student/bai-giang/${lid}`, "/student/ho-so", "/student/hoc-phi", "/lop-cua-toi", `/lop-cua-toi/${C1.id}`, "/cong-dong", "/tin-tuc", "/giang-vien", "/khoa-hoc", "/cai-dat/chu-de"];
+  const doors = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", `/student/hoc-tap?course=${C1.id}`, `/student/bai-giang/${lid}`, "/student/ho-so", "/student/hoc-phi", "/lop-cua-toi", `/lop-cua-toi/${C1.id}`, "/cong-dong", "/giang-vien", "/khoa-hoc", "/cai-dat/chu-de"];
   {
     const c = await ctxFor(S, { width: 1280, height: 800, rail: "mo" });
     for (const [i, path] of doors.entries()) {
@@ -416,47 +414,12 @@ const keysIn = (v: unknown, out: string[] = []): string[] => {
   }
 
   // ═════════════════════════ E. Tính điểm ═════════════════════════
-  if (!DC) {
-    section("E · tính điểm ẨN (cờ DIEM_CHUAN tắt): không khối tính điểm, không thẻ dẫn /diem-chuan");
+  {
+    section("E · tính điểm ẨN (SCL F1: phần Điểm chuẩn đã xoá): không khối tính điểm, không thẻ dẫn /diem-chuan");
     const { c, p } = await open(null, 1280, "/");
     await homeReady(p);
     check("không [data-home-block=score], không [data-score-calc], không liên kết /diem-chuan trong thân trang", (await p.locator('[data-home-block="score"], [data-score-calc]').count()) === 0 && (await p.locator('main a[href^="/diem-chuan"]').count()) === 0);
     await c.close();
-  } else {
-    section("E · tính điểm: nhập điểm → kết quả đúng (24,94 / 30); KHÔNG có request nào phát sinh khi bấm; lưu ý thường trực; không công thức → thẻ dẫn /diem-chuan");
-    {
-      const { c, p } = await open(null, 1280, "/");
-      await homeReady(p);
-      const calc = p.locator("[data-score-calc]");
-      await calc.waitFor({ timeout: 60000 });
-      check("khối tính điểm state=ok; lưu ý 'Chỉ mang tính tham khảo. KiN không lưu điểm bạn nhập.' hiện NGAY (trước khi tính)", (await blockState(p, "score")) === "ok" && /Chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-disclaimer]").innerText()) && /KiN không lưu điểm bạn nhập/.test(await calc.locator("[data-calc-disclaimer]").innerText()));
-      await calc.locator("#tc-m1").fill("8,5"); await calc.locator("#tc-m2").fill("7.25"); await calc.locator("#tc-m3").fill("9");
-      await p.waitForTimeout(800);
-      const reqs: string[] = [];
-      const bodies: string[] = [];
-      p.on("request", r => { if (!r.url().startsWith("data:")) { reqs.push(`${r.method()} ${r.url()}`); const b = r.postData(); if (b) bodies.push(b); } });
-      await calc.getByRole("button", { name: "Tính điểm" }).click();
-      await calc.locator("[data-calc-result]").waitFor({ timeout: 15000 });
-      await p.waitForTimeout(1500);
-      const rt = await calc.locator("[data-calc-result]").innerText();
-      check("Toán 8,5 + Lý 7,25 + Hoá 9 → 24,94 / 30 kèm lời giải từng bước", /24,94/.test(rt) && /\/ 30/.test(rt) && /Toán: 8,5 × 2 = 17/.test(rt), rt);
-      check("KHÔNG có yêu cầu mạng nào khi bấm 'Tính điểm' (đếm mọi request trong 1,5 giây sau khi bấm)", reqs.length === 0, reqs);
-      check("điểm đã nhập không nằm trong bất kỳ thân yêu cầu nào", bodies.every(b => !/8,5|7\.25/.test(b)) && reqs.every(r => !/8,5|7\.25|8\.5/.test(r)));
-      check("kết quả KÈM câu lưu ý 'chỉ mang tính tham khảo'; ô bấm 'Tính điểm' / 'Xoá nhập' cao ≥ 44px", /chỉ mang tính tham khảo/.test(await calc.locator("[data-calc-result-note]").innerText()) && (await h(calc.getByRole("button", { name: "Tính điểm" }))) >= 44 && (await h(calc.getByRole("button", { name: "Xoá nhập" }))) >= 44);
-      await shot(p, "home-guest-tinh-diem-1280");
-      await c.close();
-    }
-    {
-      await prisma.admissionFormula.delete({ where: { id: formula.id } });
-      const { c, p } = await open(null, 1280, "/");
-      await homeReady(p);
-      const sc = p.locator('[data-home-block="score"]');
-      await sc.waitFor({ timeout: 30000 });
-      const btn = sc.getByRole("link", { name: "Mở Tra cứu điểm chuẩn" });
-      check("không có công thức công khai: state=empty, thẻ 'Tra cứu điểm chuẩn' + câu nói thật + nút → /diem-chuan (≥ 44px); không form tính điểm", (await blockState(p, "score")) === "empty" && /KiN chưa có công thức tính điểm nào được công khai/.test(await sc.innerText()) && (await btn.getAttribute("href")) === "/diem-chuan" && (await h(btn)) >= 44 && (await p.locator("[data-score-calc]").count()) === 0);
-      await c.close();
-      await prisma.admissionFormula.create({ data: { id: formula.id, name: formula.name, school: formula.school, year: formula.year, scale: formula.scale, inputs: formula.inputs as object, multiplier: formula.multiplier, bonuses: formula.bonuses as object, sourceUrl: formula.sourceUrl, sourceName: formula.sourceName, verified: false, published: true } });
-    }
   }
 
   // ═════════════════════════ F. Kích thước chạm, tràn ngang, chữ 130% ═════════════════════════

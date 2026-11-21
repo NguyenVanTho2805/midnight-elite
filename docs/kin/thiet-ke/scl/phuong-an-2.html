@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiN · Phương án 2 · Bàn làm việc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Token KiN — giá trị chép từ src/app/kin-tokens.css + kin-site.css (chủ đề Navy, sáng). --kin-lop-* từ globals.css. */
+:root{
+  --kin-nen-trang:#ffffff; --kin-nen-bang:#f7f8fa; --kin-nen-re-chuot:#f1f3f6; --kin-nen-dang-chon:#e8edf7; --kin-nen-nhan:#eff4ff;
+  --kin-vien-thuong:#e6e9ef; --kin-vien-nhat:#eef0f4; --kin-vien-o-nhap:#8b95a5;
+  --kin-chu-chinh:#111827; --kin-chu-phu:#374151; --kin-chu-mo:#6b7280; --kin-chu-mo-tren-nen-nhan:#5b6675;
+  --kin-nhan-nen:#1e3a8a; --kin-nhan-nen-re:#172554; --kin-nhan-chu-tren-nen:#ffffff; --kin-nhan-link:#2563eb; --kin-nhan-nen-nhat:#eff4ff; --kin-nhan-chu-tren-nhat:#1e3a8a;
+  --kin-tt-chu-xong:#047857; --kin-tt-chu-cho:#b45309; --kin-tt-chu-loi:#dc2626; --kin-tt-cham-xong:#059669; --kin-tt-cham-cho:#d97706; --kin-tt-cham-trung-tinh:#767f8e;
+  --kin-tt-nen-xong:color-mix(in srgb, var(--kin-tt-cham-xong) 11%, var(--kin-nen-trang));
+  --kin-tt-nen-cho:color-mix(in srgb, var(--kin-tt-cham-cho) 13%, var(--kin-nen-trang));
+  --kin-tt-nen-loi:color-mix(in srgb, var(--kin-tt-chu-loi) 9%, var(--kin-nen-trang));
+  --kin-kc-1:4px; --kin-kc-3:8px; --kin-kc-5:12px; --kin-kc-6:14px; --kin-kc-7:18px; --kin-kc-8:24px; --kin-kc-9:32px;
+  --kin-bo-sm:8px; --kin-bo-the:14px; --kin-bo-tron:999px; --kin-cham-toi-thieu:44px;
+  --kin-co-phu:12px; --kin-co-goc:14px; --kin-co-body:16px; --kin-co-tieu-de:18px; --kin-co-h3:23px; --kin-co-h2:27.6px;
+}
+:root{--kin-lop-17:oklch(0.62 0.14 240);--kin-lop-11:oklch(0.62 0.14 150);--kin-lop-03:oklch(0.62 0.14 30);--kin-lop-21:oklch(0.62 0.14 300)}
+*{box-sizing:border-box;margin:0}
+body{font-family:"Be Vietnam Pro",-apple-system,"Segoe UI",Arial,sans-serif;font-size:var(--kin-co-goc);line-height:20px;color:var(--kin-chu-chinh);background:var(--kin-nen-re-chuot);padding:var(--kin-kc-9)}
+svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.brief{max-width:1000px;background:var(--kin-nen-trang);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-the);padding:var(--kin-kc-8);margin-bottom:var(--kin-kc-9)}
+.brief h1{font-size:var(--kin-co-h2);line-height:36px;font-weight:600}
+.brief dl{display:grid;grid-template-columns:140px 1fr;gap:var(--kin-kc-3) var(--kin-kc-6);margin-top:var(--kin-kc-6)}
+.brief dt{color:var(--kin-chu-mo);font-weight:500}
+.row{display:flex;gap:var(--kin-kc-9);align-items:flex-start;width:max-content}
+.cap{color:var(--kin-chu-phu);font-weight:600;margin-bottom:var(--kin-kc-3)}
+.frame{background:var(--kin-nen-trang);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-the);overflow:hidden;position:relative}
+.w390{width:392px;min-height:844px}
+.w1280{width:1280px;height:800px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--kin-cham-toi-thieu);padding:0 var(--kin-kc-6);border-radius:var(--kin-bo-sm);border:1px solid transparent;font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn-chinh{background:var(--kin-nhan-nen);color:var(--kin-nhan-chu-tren-nen)}
+.btn-chinh:hover{background:var(--kin-nhan-nen-re)}
+.btn-phu{background:var(--kin-nen-trang);color:var(--kin-chu-chinh);border-color:var(--kin-vien-o-nhap)}
+.btn-ma{background:transparent;color:var(--kin-chu-phu)}
+.btn-ma:hover{background:var(--kin-nen-re-chuot)}
+:focus-visible{outline:2px solid var(--kin-nhan-link);outline-offset:2px}
+.mo{color:var(--kin-chu-mo)}
+kbd{font:inherit;font-size:var(--kin-co-phu);line-height:16px;border:1px solid var(--kin-vien-thuong);border-radius:6px;padding:1px 6px;color:var(--kin-chu-mo);background:var(--kin-nen-trang)}
+/* Trạng thái: biểu tượng hình khác nhau + CHỮ */
+.st{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--kin-chu-chinh)}
+.st i{width:14px;height:14px;border-radius:var(--kin-bo-tron);border:2px solid var(--c,var(--kin-tt-cham-trung-tinh));flex:none;display:inline-block}
+.st.chua i{border-style:dashed}
+.st.cho i{--c:var(--kin-tt-cham-cho);background:linear-gradient(90deg,var(--kin-tt-cham-cho) 50%,transparent 50%)}
+.st.duyet i{--c:var(--kin-nhan-link);background:conic-gradient(var(--kin-nhan-link) 0 75%,transparent 0)}
+.st.xong i{--c:var(--kin-tt-cham-xong);background:var(--kin-tt-cham-xong)}
+.dot{width:10px;height:10px;border-radius:3px;flex:none;background:var(--c)}
+
+/* (a) điện thoại */
+.m-top{display:flex;align-items:center;gap:var(--kin-kc-3);padding:0 var(--kin-kc-5);height:56px;border-bottom:1px solid var(--kin-vien-thuong)}
+.m-top b{font-size:var(--kin-co-body);font-weight:600;flex:1}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);margin:var(--kin-kc-5);padding:4px;background:var(--kin-nen-re-chuot);border-radius:var(--kin-bo-sm)}
+.seg button{min-height:var(--kin-cham-toi-thieu);border:0;border-radius:6px;background:transparent;font:inherit;font-weight:500;color:var(--kin-chu-phu)}
+.seg button[aria-selected=true]{background:var(--kin-nen-trang);color:var(--kin-chu-chinh);box-shadow:0 1px 2px rgba(15,15,15,.08)}
+.grp{display:flex;align-items:center;gap:var(--kin-kc-3);padding:0 var(--kin-kc-5);height:36px;background:var(--kin-nen-bang);border-block:1px solid var(--kin-vien-nhat);font-size:var(--kin-co-phu);line-height:16px;font-weight:600;color:var(--kin-chu-phu)}
+.grp span.n{color:var(--kin-chu-mo);font-weight:500}
+.it{display:flex;align-items:center;gap:var(--kin-kc-5);min-height:52px;padding:0 var(--kin-kc-5);border-bottom:1px solid var(--kin-vien-nhat)}
+.it .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it .r{color:var(--kin-chu-mo);font-size:var(--kin-co-phu);line-height:16px;white-space:nowrap}
+.it .r.cho{color:var(--kin-tt-chu-cho);font-weight:600}
+.fab{position:absolute;right:var(--kin-kc-5);bottom:76px;box-shadow:0 4px 12px rgba(15,15,15,.18);min-height:50px;padding:0 var(--kin-kc-7)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:60px;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--kin-vien-thuong);background:var(--kin-nen-trang)}
+.tabbar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:var(--kin-co-phu);line-height:16px;color:var(--kin-chu-mo);text-decoration:none}
+.tabbar a[aria-current]{color:var(--kin-nhan-nen);font-weight:600}
+.tabbar svg.i{width:20px;height:20px}
+
+/* (b)(c) máy tính */
+.app{display:grid;grid-template-columns:232px 1fr;height:800px}
+.sb{background:var(--kin-nen-bang);border-right:1px solid var(--kin-vien-thuong);padding:var(--kin-kc-5) var(--kin-kc-3);display:flex;flex-direction:column;gap:2px}
+.sb .ws{display:flex;align-items:center;gap:var(--kin-kc-3);padding:0 var(--kin-kc-3);min-height:var(--kin-cham-toi-thieu);font-weight:600}
+.sb .ws .lg{width:24px;height:24px;border-radius:6px;background:var(--kin-nhan-nen);color:var(--kin-nhan-chu-tren-nen);display:grid;place-items:center;font-size:var(--kin-co-phu);font-weight:700}
+.sb a{display:flex;align-items:center;gap:var(--kin-kc-3);min-height:var(--kin-cham-toi-thieu);padding:0 var(--kin-kc-3);border-radius:6px;color:var(--kin-chu-phu);text-decoration:none}
+.sb a:hover{background:var(--kin-nen-re-chuot)}
+.sb a[aria-current]{background:var(--kin-nen-dang-chon);color:var(--kin-chu-chinh);font-weight:500}
+.sb a .n{margin-left:auto;font-size:var(--kin-co-phu);line-height:16px;color:var(--kin-chu-phu)}
+.sb .lbl{font-size:var(--kin-co-phu);line-height:16px;font-weight:600;color:var(--kin-chu-mo);padding:var(--kin-kc-6) var(--kin-kc-3) 6px}
+.wk{display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;align-items:center;gap:var(--kin-kc-5);height:64px;padding:0 var(--kin-kc-8);border-bottom:1px solid var(--kin-vien-thuong)}
+.bar .crumb{font-weight:600;font-size:var(--kin-co-body)}
+.bar .crumb span{color:var(--kin-chu-mo);font-weight:400}
+.cmd{margin-left:auto;display:flex;align-items:center;gap:var(--kin-kc-3);width:300px;min-height:var(--kin-cham-toi-thieu);padding:0 var(--kin-kc-5);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-sm);color:var(--kin-chu-mo);background:var(--kin-nen-bang)}
+.cmd kbd{margin-left:auto}
+.sub{display:flex;align-items:center;gap:var(--kin-kc-3);height:60px;padding:0 var(--kin-kc-8);border-bottom:1px solid var(--kin-vien-nhat)}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:var(--kin-cham-toi-thieu);padding:0 var(--kin-kc-5);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-sm);color:var(--kin-chu-phu);background:var(--kin-nen-trang);font:inherit}
+.chip[aria-pressed=true]{background:var(--kin-nen-dang-chon);border-color:transparent;color:var(--kin-chu-chinh);font-weight:500}
+.body{display:grid;grid-template-columns:1fr 340px;flex:1;min-height:0}
+.lst{overflow:hidden}
+.lh,.lr{display:grid;grid-template-columns:28px minmax(0,1fr) 56px 64px 112px 48px;align-items:center;padding:0 var(--kin-kc-8);gap:var(--kin-kc-5)}
+.lh{height:36px;font-size:var(--kin-co-phu);line-height:16px;color:var(--kin-chu-mo);font-weight:600;border-bottom:1px solid var(--kin-vien-nhat)}
+.lr{height:44px;white-space:nowrap;border-bottom:1px solid var(--kin-vien-nhat)}
+.lr:hover{background:var(--kin-nen-bang)}
+.lr.on{background:var(--kin-nen-dang-chon)}
+.lr .p{display:inline-flex;gap:4px;align-items:center;color:var(--kin-chu-phu)}
+.lr.on .p,.lr.on .mo{color:var(--kin-chu-phu)}
+.ins{border-left:1px solid var(--kin-vien-thuong);padding:var(--kin-kc-8);overflow:hidden}
+.ins h3{font-size:var(--kin-co-tieu-de);line-height:28px;font-weight:600}
+.fld{margin-top:var(--kin-kc-7)}
+.fld label{display:block;font-size:var(--kin-co-phu);line-height:16px;font-weight:600;color:var(--kin-chu-phu);margin-bottom:6px}
+.inp{width:100%;min-height:var(--kin-cham-toi-thieu);border:1px solid var(--kin-vien-o-nhap);border-radius:var(--kin-bo-sm);padding:0 var(--kin-kc-5);font:inherit;color:var(--kin-chu-chinh)}
+.yt{display:flex;gap:var(--kin-kc-5);align-items:center;margin-top:var(--kin-kc-3);padding:var(--kin-kc-3);border:1px solid var(--kin-vien-nhat);border-radius:var(--kin-bo-sm)}
+.yt .thumb{width:72px;height:40px;border-radius:6px;background:var(--kin-nhan-nen-re);display:grid;place-items:center;color:var(--kin-nhan-chu-tren-nen)}
+.drop{border:1.5px dashed var(--kin-vien-o-nhap);border-radius:var(--kin-bo-sm);min-height:88px;display:flex;align-items:center;justify-content:center;gap:var(--kin-kc-3);color:var(--kin-chu-phu);background:var(--kin-nen-bang)}
+.f{display:flex;align-items:center;gap:var(--kin-kc-3);min-height:36px}
+.f span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved{color:var(--kin-tt-chu-xong);font-size:var(--kin-co-phu);line-height:16px;margin-top:var(--kin-kc-6);display:flex;gap:6px;align-items:center}
+/* Lưới điểm */
+.grid{margin:var(--kin-kc-6) var(--kin-kc-8);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-sm);overflow:hidden}
+.grid table{border-collapse:collapse;width:100%}
+.grid th,.grid td{border-right:1px solid var(--kin-vien-nhat);border-bottom:1px solid var(--kin-vien-nhat);height:44px;padding:0 var(--kin-kc-5);text-align:left;white-space:nowrap}
+.grid th{background:var(--kin-nen-bang);font-size:var(--kin-co-phu);line-height:16px;font-weight:600;color:var(--kin-chu-phu)}
+.grid td.c-cho{background:var(--kin-tt-nen-cho)} .grid td.c-xong{background:var(--kin-nen-trang)} .grid td.c-duyet{background:var(--kin-nen-nhan)}
+.grid td.sel{outline:2px solid var(--kin-nhan-link);outline-offset:-2px}
+.grid td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.grid .xong-txt{font-variant-numeric:tabular-nums;font-weight:600}
+.bulk{position:absolute;left:50%;bottom:var(--kin-kc-8);transform:translateX(-50%);display:flex;align-items:center;gap:var(--kin-kc-6);padding:6px 6px 6px var(--kin-kc-7);background:var(--kin-nen-trang);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-the);box-shadow:0 16px 48px -8px rgba(15,15,15,.16)}
+@media (prefers-reduced-motion:no-preference){.lr,.btn,.sb a{transition:background-color .12s}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+
+<section class="brief" aria-labelledby="t">
+  <h1 id="t">Phương án 2 · Bàn làm việc</h1>
+  <dl>
+    <dt>Ý tưởng</dt><dd>Kiểu Linear/Notion: thanh bên gọn có danh sách lớp (chấm màu theo môn), thanh lệnh <kbd>⌘K</kbd>, danh sách dày vừa (hàng 44px) có cột thuộc tính, ngăn "thanh tra" bên phải để sửa tại chỗ. Nút chính luôn ở cùng một góc (phải thanh trên). Sổ điểm là lưới như bảng tính, chọn nhiều ô rồi xử lý bằng thanh nổi.</dd>
+    <dt>Ưu</dt><dd>Nhanh nhất cho gia sư dạy nhiều lớp: chuyển lớp một cú bấm, ít cuộn, thấy tổng thể. Bố cục ổn định, mọi màn cùng một khung nên hết cảm giác "lẻ". Lưới điểm hợp với việc nhập/duyệt hàng loạt.</dd>
+    <dt>Nhược</dt><dd>Lạnh và "dân văn phòng" với học sinh cấp 2. Nhiều quy ước ngầm (phím tắt, chọn ô) cần chỉ dẫn. Trên điện thoại phải dựng lại riêng (thanh dưới + nút nổi), không chỉ co lại.</dd>
+    <dt>Công sức sửa mã</dt><dd><b>L</b>: vỏ gia sư mới (thanh bên có lớp, thanh lệnh), ngăn thanh tra dùng chung, lưới điểm có chọn nhiều ô và phím mũi tên.</dd>
+    <dt>Chuyển động</dt><dd>GSAP nhẹ: ngăn thanh tra trượt vào 200ms; hàng mới chèn có viền sáng mờ dần 400ms; thanh nổi hàng loạt trồi từ đáy 180ms. Bảng lệnh mở bằng co giãn 0,98→1 trong 120ms. Có <code>prefers-reduced-motion</code> thì bỏ hết trượt/co giãn. Không dùng Lenis.</dd>
+  </dl>
+</section>
+
+<div class="row">
+  <!-- (a) -->
+  <div>
+    <p class="cap">(a) Học sinh · trang lớp · 390px</p>
+    <div class="frame w390" id="man-a">
+      <header class="m-top">
+        <span class="dot" style="--c:var(--kin-lop-17)"></span>
+        <b>Toán 9 · Lớp thử A</b>
+        <button class="btn btn-ma" aria-label="Đổi lớp"><svg class="i"><use href="#i-down"/></svg></button>
+      </header>
+      <div class="seg" role="tablist">
+        <button role="tab" aria-selected="true">Nội dung</button><button role="tab" aria-selected="false">Video</button><button role="tab" aria-selected="false">Kết quả</button>
+      </div>
+      <div class="grp">Cần làm <span class="n">2</span></div>
+      <div class="it"><span class="st chua"><i></i></span><span class="t">Bài tập buổi 5 · Hệ phương trình</span><span class="r cho">Còn 3 ngày</span></div>
+      <div class="it"><span class="st chua"><i></i></span><span class="t">Kiểm tra 15' · Trắc nghiệm</span><span class="r">T5 26/11</span></div>
+      <div class="grp">Buổi học <span class="n">5</span></div>
+      <div class="it"><svg class="i mo"><use href="#i-book"/></svg><span class="t">05 · Hệ phương trình bậc nhất</span><span class="r">Video · 2 tệp</span></div>
+      <div class="it"><svg class="i mo"><use href="#i-book"/></svg><span class="t">04 · Phương trình chứa căn</span><span class="r">Video · 1 tệp</span></div>
+      <div class="it"><svg class="i mo"><use href="#i-book"/></svg><span class="t">03 · Căn bậc hai, rút gọn</span><span class="r">Video · 3 tệp</span></div>
+      <div class="it"><svg class="i mo"><use href="#i-book"/></svg><span class="t">02 · Ôn tập đại số 8 (thử)</span><span class="r">Video</span></div>
+      <div class="grp">Đã xong <span class="n">3</span></div>
+      <div class="it"><span class="st xong"><i></i></span><span class="t">Bài tập buổi 4</span><span class="r">Đã chấm 8,5</span></div>
+      <button class="btn btn-chinh fab"><svg class="i"><use href="#i-up"/></svg>Nộp bài buổi 5</button>
+      <nav class="tabbar" aria-label="Chính">
+        <a href="#"><svg class="i"><use href="#i-home"/></svg>Việc</a>
+        <a href="#" aria-current="page"><svg class="i"><use href="#i-book"/></svg>Lớp</a>
+        <a href="#"><svg class="i"><use href="#i-cal"/></svg>Lịch</a>
+        <a href="#"><svg class="i"><use href="#i-user"/></svg>Tôi</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- (b) -->
+  <div>
+    <p class="cap">(b) Gia sư · trang lớp · 1280px</p>
+    <div class="frame w1280"><div class="app">
+      <nav class="sb" aria-label="Chính">
+        <div class="ws"><span class="lg">K</span>Cô Lan (thử)</div>
+        <a href="#"><svg class="i"><use href="#i-home"/></svg>Hộp việc<span class="n">6</span></a>
+        <a href="#"><svg class="i"><use href="#i-cal"/></svg>Lịch dạy</a>
+        <a href="#"><svg class="i"><use href="#i-grid"/></svg>Sổ điểm</a>
+        <p class="lbl">Lớp của bạn</p>
+        <a href="#" aria-current="page"><span class="dot" style="--c:var(--kin-lop-17)"></span>Toán 9 · A<span class="n">12</span></a>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-11)"></span>Lý 8 · B<span class="n">8</span></a>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-03)"></span>Văn 9 · ôn thi<span class="n">15</span></a>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-21)"></span>Anh 7 · C<span class="n">6</span></a>
+      </nav>
+      <div class="wk">
+        <div class="bar">
+          <span class="crumb"><span>Lớp /</span> Toán 9 · Lớp thử A</span>
+          <div class="cmd"><svg class="i"><use href="#i-search"/></svg>Tìm bài, học sinh, lệnh…<kbd>⌘K</kbd></div>
+          <button class="btn btn-chinh">+ Giao bài</button>
+        </div>
+        <div class="sub">
+          <button class="chip" aria-pressed="true">Bài học</button><button class="chip" aria-pressed="false">Học sinh 12</button><button class="chip" aria-pressed="false">Xin vào 1</button><button class="chip" aria-pressed="false">Cài đặt</button>
+          <span class="mo" style="margin-left:auto">5 buổi · cập nhật 20:14</span>
+        </div>
+        <div class="body">
+          <div class="lst">
+            <div class="lh"><span>#</span><span>Buổi học</span><span>Video</span><span>Tài liệu</span><span>Bài tập</span><span>Nộp</span></div>
+            <div class="lr on"><span class="mo">05</span><b style="font-weight:500">Hệ phương trình bậc nhất</b><span class="p"><svg class="i"><use href="#i-play"/></svg>42′</span><span class="p"><svg class="i"><use href="#i-file"/></svg>2</span><span class="st cho"><i></i>Hạn 24/11</span><span class="mo">4/12</span></div>
+            <div class="lr"><span class="mo">04</span><span>Phương trình chứa căn</span><span class="p"><svg class="i"><use href="#i-play"/></svg>38′</span><span class="p"><svg class="i"><use href="#i-file"/></svg>1</span><span class="st xong"><i></i>Đã chấm</span><span class="mo">12/12</span></div>
+            <div class="lr"><span class="mo">03</span><span>Căn bậc hai, rút gọn</span><span class="p"><svg class="i"><use href="#i-play"/></svg>45′</span><span class="p"><svg class="i"><use href="#i-file"/></svg>3</span><span class="mo">Không có</span><span class="mo">–</span></div>
+            <div class="lr"><span class="mo">02</span><span>Ôn tập đại số 8 (thử)</span><span class="p"><svg class="i"><use href="#i-play"/></svg>30′</span><span class="mo">0</span><span class="mo">Không có</span><span class="mo">–</span></div>
+            <div class="lr"><span class="mo">01</span><span>Làm quen lớp (thử)</span><span class="mo">–</span><span class="p"><svg class="i"><use href="#i-file"/></svg>1</span><span class="mo">Không có</span><span class="mo">–</span></div>
+            <div class="lr"><span class="mo">+</span><span class="mo">Thêm buổi học… <kbd>N</kbd></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <aside class="ins" aria-label="Sửa buổi 5">
+            <p class="mo" style="font-size:var(--kin-co-phu);line-height:16px">Buổi 05</p>
+            <h3>Sửa buổi học</h3>
+            <div class="fld"><label for="b-ten">Tên buổi</label><input id="b-ten" class="inp" value="Hệ phương trình bậc nhất"></div>
+            <div class="fld"><label for="b-yt">Link YouTube</label><input id="b-yt" class="inp" value="https://youtu.be/thu-video-05">
+              <div class="yt"><span class="thumb"><svg class="i"><use href="#i-play"/></svg></span><span><b style="font-weight:500">Video thử buổi 5</b><br><span class="mo">42 phút · Không công khai</span></span></div></div>
+            <div class="fld"><label>Tài liệu</label>
+              <div class="drop"><svg class="i"><use href="#i-up"/></svg>Thả tệp vào đây hoặc <u>chọn tệp</u></div>
+              <div class="f"><svg class="i mo"><use href="#i-file"/></svg><span>de-cuong-buoi-5.pdf</span><span class="mo">1,2 MB</span></div>
+              <div class="f"><svg class="i mo"><use href="#i-file"/></svg><span>bai-tap-them.pdf</span><span class="mo">340 KB</span></div>
+            </div>
+            <p class="saved"><svg class="i"><use href="#i-check"/></svg>Đã tự lưu</p>
+          </aside>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- (c) -->
+  <div>
+    <p class="cap">(c) Gia sư · sổ điểm · 1280px</p>
+    <div class="frame w1280"><div class="app">
+      <nav class="sb" aria-label="Chính">
+        <div class="ws"><span class="lg">K</span>Cô Lan (thử)</div>
+        <a href="#"><svg class="i"><use href="#i-home"/></svg>Hộp việc<span class="n">6</span></a>
+        <a href="#"><svg class="i"><use href="#i-cal"/></svg>Lịch dạy</a>
+        <a href="#" aria-current="page"><svg class="i"><use href="#i-grid"/></svg>Sổ điểm</a>
+        <p class="lbl">Lớp của bạn</p>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-17)"></span>Toán 9 · A<span class="n">12</span></a>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-11)"></span>Lý 8 · B<span class="n">8</span></a>
+        <a href="#"><span class="dot" style="--c:var(--kin-lop-03)"></span>Văn 9 · ôn thi<span class="n">15</span></a>
+      </nav>
+      <div class="wk">
+        <div class="bar">
+          <span class="crumb"><span>Sổ điểm /</span> Toán 9 · Lớp thử A</span>
+          <div class="cmd"><svg class="i"><use href="#i-search"/></svg>Tìm học sinh…<kbd>⌘K</kbd></div>
+          <button class="btn btn-phu">Xuất CSV</button>
+        </div>
+        <div class="sub">
+          <button class="chip" aria-pressed="true">Tất cả 6</button><button class="chip" aria-pressed="false"><span class="st cho"><i></i>Chờ chấm 4</span></button><button class="chip" aria-pressed="false"><span class="st duyet"><i></i>Chờ duyệt 2</span></button><button class="chip" aria-pressed="false"><span class="st chua"><i></i>Chưa nộp 4</span></button>
+        </div>
+        <div class="grid"><table>
+          <thead><tr><th>Học sinh</th><th>B3 · Rút gọn</th><th>B4 · Chứa căn</th><th>B5 · Hệ PT</th><th>KT 15′</th><th style="text-align:right">TB</th></tr></thead>
+          <tbody>
+            <tr><td>Nguyễn Minh Anh (thử)</td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">8,0</span></span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">8,5</span></span></td><td class="c-cho sel"><span class="st cho"><i></i>Chờ chấm</span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">9,0</span></span></td><td class="num">8,5</td></tr>
+            <tr><td>Trần Gia Bảo (thử)</td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">7,0</span></span></td><td class="c-duyet"><span class="st duyet"><i></i>Chờ duyệt · 7,5</span></td><td class="c-cho sel"><span class="st cho"><i></i>Chờ chấm</span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">6,5</span></span></td><td class="num">6,8</td></tr>
+            <tr><td>Lê Khánh Chi (thử)</td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">9,5</span></span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">9,0</span></span></td><td><span class="st chua"><i></i>Chưa nộp</span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">10</span></span></td><td class="num">9,5</td></tr>
+            <tr><td>Phạm Đức Duy (thử)</td><td><span class="st chua"><i></i>Chưa nộp</span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">6,0</span></span></td><td class="c-cho sel"><span class="st cho"><i></i>Chờ chấm</span></td><td><span class="st chua"><i></i>Chưa nộp</span></td><td class="num">6,0</td></tr>
+            <tr><td>Hoàng Thu Hà (thử)</td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">8,0</span></span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">7,5</span></span></td><td class="c-cho sel"><span class="st cho"><i></i>Chờ chấm</span></td><td class="c-duyet"><span class="st duyet"><i></i>Chờ duyệt · 8,0</span></td><td class="num">7,8</td></tr>
+            <tr><td>Vũ Ngọc Lan (thử)</td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">7,5</span></span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">8,0</span></span></td><td><span class="st chua"><i></i>Chưa nộp</span></td><td class="c-xong"><span class="st xong"><i></i><span class="xong-txt">8,5</span></span></td><td class="num">8,0</td></tr>
+          </tbody>
+        </table></div>
+        <p class="mo" style="margin:0 var(--kin-kc-8)">Mũi tên để đi giữa các ô · Shift + bấm để chọn nhiều ô · Enter để mở bài nộp</p>
+      </div>
+    </div>
+    <div class="bulk" role="toolbar" aria-label="Ô đã chọn"><span><b>4 ô</b> đang chọn · đều "Chờ chấm"</span><button class="btn btn-ma">Bỏ chọn</button><button class="btn btn-chinh">Chấm 4 bài lần lượt</button></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

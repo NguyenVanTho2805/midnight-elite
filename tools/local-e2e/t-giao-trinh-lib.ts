@@ -190,7 +190,7 @@ check("tên tệp có đường dẫn (C:\\x\\a.pdf) lấy đúng đuôi", F("C:
 
 // ─── lessonTypeFor: bảng vàng với deriveTypes+serializeTypes của trang quản trị cũ ───
 section("lessonTypeFor = deriveTypes + serializeTypes của trang admin (bảng vàng 8 tổ hợp + biến thể)");
-// BẢN SAO NGUYÊN VĂN logic ở src/app/(admin)/admin/khoa-hoc/[id]/page.tsx:96-142 (parseUrls + deriveTypes + serializeTypes). Sửa trang đó thì phải sửa bản sao này.
+// BẢN SAO NGUYÊN VĂN logic cũ của src/app/(admin)/admin/khoa-hoc/[id]/page.tsx (parseUrls + deriveTypes + serializeTypes). SCL-F2: trang đó đã bỏ phần soạn; bảng vàng giữ để lessonTypeFor không lệch dữ liệu cũ.
 function parseUrls(raw: string | null | undefined): string[] { if (!raw) return [""]; try { const p = JSON.parse(raw); if (Array.isArray(p) && p.length) return p as string[]; } catch { /* chuỗi thường */ } return [raw]; }
 function deriveTypes(v: string[], z: string[], a: string[]): string[] { const t: string[] = []; if (v.some(u => u.trim())) t.push("record"); if (z.some(u => u.trim())) t.push("live"); if (a.some(u => u.trim())) t.push("quiz"); return t.length ? t : ["document"]; }
 function serializeTypes(t: string[]): string { return t.length === 1 ? t[0] : JSON.stringify(t); }

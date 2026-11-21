@@ -59,7 +59,7 @@ for (const [name, s, home] of [["học viên", student, "/student/viec-cua-toi"]
 check("khách mở /dang-nhap, /dang-ky → xem bình thường", eq(d(MAIN, "/dang-nhap", null), { kind: "next" }) && eq(d(MAIN, "/dang-ky", null), { kind: "next" }));
 // LOI-01 (11/11/2026): ĐỔI CÓ CHỦ ĐÍCH — /giang-vien, /diem-chuan, /tin-tuc thuộc phần đang ẨN (src/lib/features.ts) thì 307 về trang đầu theo vai; chỉ còn kỳ vọng
 // "next" khi cờ của phần đó đang bật. /thu-vien vẫn next với học viên / gia sư (thư viện lớp mình, Thư viện của tôi). Chốt chặn chi tiết: t-features-lib.ts.
-const openGuestPages = ["/thu-vien", "/khoa-hoc", ...(featureOn("TIM_GIA_SU") ? ["/giang-vien"] : []), ...(featureOn("DIEM_CHUAN") ? ["/diem-chuan"] : []), ...(featureOn("TIN_TUC") ? ["/tin-tuc"] : [])];
+const openGuestPages = ["/thu-vien", "/khoa-hoc", ...(featureOn("TIM_GIA_SU") ? ["/giang-vien"] : []), ...(featureOn("TRA_CUU") ? ["/tra-cuu"] : [])]; // SCL F1: /diem-chuan, /tin-tuc đã xoá
 check(`trang khách khác (${openGuestPages.join(", ")}) KHÔNG bị chặn bởi proxy — học viên/gia sư thấy chúng trong vỏ dashboard (GuestChrome)`, openGuestPages.every(p => eq(d(MAIN, p, student), { kind: "next" }) && eq(d(MAIN, p, tutor), { kind: "next" })));
 check("/quen-mat-khau, /dat-lai-mat-khau, /xac-thuc-email vẫn mở được khi đã đăng nhập (liên kết trong thư)", ["/quen-mat-khau", "/dat-lai-mat-khau", "/xac-thuc-email"].every(p => eq(d(MAIN, p, student), { kind: "next" })));
 check("API và đường khác → không đụng", eq(d(MAIN, "/api/auth/me", tutor), { kind: "next" }) && eq(d(MAIN, "/student/lich-hoc", student), { kind: "next" }) && eq(d(MAIN, TH, tutor), { kind: "next" }));
@@ -76,7 +76,7 @@ check("học viên ở tên miền admin: /dang-nhap và API KHÔNG bị đụng
 check("học viên ở tên miền admin mở trang công khai /khoa-hoc → vẫn sang tên miền chính ĐÚNG đường dẫn (không bị ép về dashboard)", eq(d(ADM, "/khoa-hoc", student, "?q=1"), { kind: "redirect", status: 307, host: "main", pathname: "/khoa-hoc", search: "?q=1" }));
 // 15/10/2026 (Thọ mở admin.midnightelite-edu.com/dang-nhap: mọi nút công khai quay lại chính trang đăng nhập): tên miền admin không phục vụ trang nào ngoài
 // /admin, nhưng các nút công khai (thanh trên, chân trang, "Quên mật khẩu?", liên kết trong thư) vẫn trỏ tới đó → chuyển sang tên miền CHÍNH, đúng đường dẫn + tham số.
-for (const [path, search] of [["/khoa-hoc", ""], ["/thi-thu", ""], ["/cong-dong", "?tab=hoi-dap-qa"], ["/tin-tuc", ""], ["/dang-ky", "?vai=gia-su"], ["/quen-mat-khau", "?email=a%40b.c"], ["/dat-lai-mat-khau", "?token=x"], ["/chinh-sach", ""], ["/student/nhap-ma-lop", ""], ["/mentor/abc", ""]] as const)
+for (const [path, search] of [["/khoa-hoc", ""], ["/thi-thu", ""], ["/cong-dong", "?tab=hoi-dap-qa"], ["/tra-cuu", ""], ["/dang-ky", "?vai=gia-su"], ["/quen-mat-khau", "?email=a%40b.c"], ["/dat-lai-mat-khau", "?token=x"], ["/chinh-sach", ""], ["/student/nhap-ma-lop", ""], ["/mentor/abc", ""]] as const)
   check(`${path}${search} trên tên miền admin → 307 sang tên miền chính, giữ đường dẫn và tham số`, eq(d(ADM, path, sup, search), { kind: "redirect", status: 307, host: "main", pathname: path, search }) && eq(d(ADM, path, null, search), { kind: "redirect", status: 307, host: "main", pathname: path, search }), d(ADM, path, null, search));
 check("tệp tĩnh (/plyr.svg, /og-kin.png) vẫn được phục vụ trên tên miền admin — không bị đẩy đi", ["/plyr.svg", "/og-kin.png", "/robots.txt"].every(p => eq(d(ADM, p, sup), { kind: "next" }) && eq(d(ADM, p, null), { kind: "next" })));
 check("'/' vẫn là dashboard admin (viết lại, không chuyển tên miền)", eq(d(ADM, "/", sup), { kind: "rewrite", pathname: "/admin" }));
@@ -87,13 +87,15 @@ check("gia sư vẫn gọi được API / đăng nhập trên tên miền admin 
 
 section("LOI-07: chuyển ra khỏi phần đang ẩn → Location mang dấu ?tam-dong=<CỜ>, trang đích không bị chuyển lại");
 // Ca phá cố ý (đã chạy): bỏ `search: paused` ở nhánh học sinh / gia sư của decideRoute → ca đầu đỏ; cho blockedRouteFeature chặn cả trang đầu khi có ?tam-dong= → ca "không vòng" đỏ.
-if (!featureOn("TIN_TUC")) {
-  check("bài tin tức cũ: học viên → /student/viec-cua-toi?tam-dong=TIN_TUC, gia sư → /lop-cua-toi?tam-dong=TIN_TUC, khách → /?tam-dong=TIN_TUC, quản trị → admin…/admin?tam-dong=TIN_TUC (vẫn 307)",
-    eq(d(MAIN, "/tin-tuc/bai-1", student, "?utm=thu"), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=TIN_TUC" })
-    && eq(d(MAIN, "/tin-tuc/bai-1", tutor), { kind: "redirect", status: 307, pathname: TH, search: "?tam-dong=TIN_TUC" })
-    && eq(d(MAIN, "/tin-tuc/bai-1", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=TIN_TUC" })
-    && eq(d(MAIN, "/tin-tuc/bai-1", sup), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "?tam-dong=TIN_TUC" }), [d(MAIN, "/tin-tuc/bai-1", student, "?utm=thu"), d(MAIN, "/tin-tuc/bai-1", sup)]);
-} else console.log("  (máy đang bật TIN_TUC: bỏ qua ca Location có dấu)");
+// SCL F1: phần Tin tức đã xoá ⇒ /tin-tuc/<bài> không còn luật chặn (trang tự 404). Ca "Location có dấu" chuyển sang /tra-cuu (cờ TRA_CUU).
+if (!featureOn("TRA_CUU")) {
+  check("tra cứu cũ: học viên → /student/viec-cua-toi?tam-dong=TRA_CUU, gia sư → /lop-cua-toi?tam-dong=TRA_CUU, khách → /?tam-dong=TRA_CUU, quản trị → admin…/admin?tam-dong=TRA_CUU (vẫn 307)",
+    eq(d(MAIN, "/tra-cuu", student, "?utm=thu"), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=TRA_CUU" })
+    && eq(d(MAIN, "/tra-cuu", tutor), { kind: "redirect", status: 307, pathname: TH, search: "?tam-dong=TRA_CUU" })
+    && eq(d(MAIN, "/tra-cuu", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=TRA_CUU" })
+    && eq(d(MAIN, "/tra-cuu", sup), { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "?tam-dong=TRA_CUU" }), [d(MAIN, "/tra-cuu", student, "?utm=thu"), d(MAIN, "/tra-cuu", sup)]);
+  check("đường đã xoá /tin-tuc/<bài> → next (không còn 307)", eq(d(MAIN, "/tin-tuc/bai-1", student), { kind: "next" }) && eq(d(MAIN, "/tin-tuc/bai-1", null), { kind: "next" }));
+} else console.log("  (máy đang bật TRA_CUU: bỏ qua ca Location có dấu)");
 check("không vòng: trang đầu kèm dấu (thật hay rác) vẫn next / như cũ — '/', Việc của tôi, Hộp việc; /admin?tam-dong= ở tên miền admin next",
   [["/", null], ["/", student], ["/student/viec-cua-toi", student], [TH, tutor]].every(([p, s]) => ["?tam-dong=CONG_DONG", "?tam-dong=%3Cx%3E"].every(q => eq(d(MAIN, p as string, s as RouteSession | null, q), { kind: "next" })))
   && eq(d(ADM, "/admin", sup, "?tam-dong=CONG_DONG"), { kind: "next" }));

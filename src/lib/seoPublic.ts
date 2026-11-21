@@ -1,9 +1,7 @@
-// BU-07 mục 5.4 — metadata công khai (OG, canonical, JSON-LD) cho Tin tức và Khoá học. Không sửa layout.tsx: URL tuyệt đối ghép ở đây bằng siteUrl().
+// BU-07 mục 5.4 — metadata công khai (OG, canonical) cho Khoá học (SCL F1: phần Tin tức đã xoá). Không sửa layout.tsx: URL tuyệt đối ghép ở đây bằng siteUrl().
 import type { Metadata } from "next";
 import { MAIN_HOST } from "@/lib/hostRouting";
 import { isReservedCourseId, RESERVED_COURSE_IDS } from "@/lib/courseIds";
-import { categoryLabel, isValidMuc } from "@/lib/articlesPublic";
-import { cleanArticleSource } from "@/lib/articleSource";
 
 export const OG_FALLBACK = "/og-kin.png";
 export const DESCRIPTION_MAX = 155;
@@ -29,63 +27,6 @@ export function clipText(s: string, max = DESCRIPTION_MAX): string {
 /** JSON-LD an toàn để nhúng trong <script type="application/ld+json">: thoát `<` (chặn </script>), U+2028/2029. */
 export function jsonLdSafe(obj: unknown): string {
   return JSON.stringify(obj).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
-}
-
-export interface ArticleMetaInput {
-  slug: string; title: string; excerpt: string; category: string; author?: string;
-  coverImage?: string | null; publishedAt?: Date | null; createdAt?: Date; updatedAt?: Date;
-}
-function articleImage(a: ArticleMetaInput): string {
-  const c = cleanArticleSource({ coverImage: a.coverImage });
-  return (c.ok && c.value.coverImage) || siteUrl() + OG_FALLBACK;
-}
-
-/** Title = tiêu đề (+ " — KiN" nếu cả chuỗi ≤60). */
-export function articleTitle(title: string): string {
-  const t = title.replace(/\s+/g, " ").trim();
-  return (t + " — KiN").length <= 60 ? t + " — KiN" : t;
-}
-
-export function articleMetadata(a: ArticleMetaInput): Metadata {
-  const url = `${siteUrl()}/tin-tuc/${encodeURIComponent(a.slug)}`;
-  const desc = clipText(a.excerpt);
-  const published = a.publishedAt ?? a.createdAt ?? undefined;
-  return {
-    title: articleTitle(a.title),
-    description: desc,
-    alternates: { canonical: url },
-    openGraph: {
-      type: "article", url, title: a.title, description: desc, siteName: "KiN",
-      section: categoryLabel(a.category),
-      ...(published ? { publishedTime: published.toISOString() } : {}),
-      images: [articleImage(a)],
-    },
-  };
-}
-export const articleNotFoundMetadata = (): Metadata => ({ title: "Không tìm thấy bài viết — KiN", robots: { index: false, follow: false } });
-
-export function articleJsonLd(a: ArticleMetaInput): Record<string, unknown> {
-  const published = a.publishedAt ?? a.createdAt;
-  return {
-    "@context": "https://schema.org", "@type": "NewsArticle",
-    headline: clipText(a.title, 110), description: clipText(a.excerpt),
-    image: [articleImage(a)],
-    ...(published ? { datePublished: published.toISOString() } : {}),
-    ...(a.updatedAt ? { dateModified: a.updatedAt.toISOString() } : {}),
-    author: { "@type": "Organization", name: !a.author || a.author === "Admin" ? "KiN" : a.author },
-    publisher: { "@type": "Organization", name: "KiN" },
-    mainEntityOfPage: `${siteUrl()}/tin-tuc/${encodeURIComponent(a.slug)}`,
-  };
-}
-
-/** Metadata danh sách /tin-tuc; `muc` lạ → coi như tất cả, canonical về /tin-tuc. `trang>1` canonical về chính nó. */
-export function newsListMetadata(muc?: string | null, trang = 1): Metadata {
-  const valid = isValidMuc(muc);
-  const base = valid ? `${siteUrl()}/tin-tuc?muc=${muc}` : `${siteUrl()}/tin-tuc`;
-  const url = trang > 1 ? `${base}${valid ? "&" : "?"}trang=${trang}` : base;
-  const title = valid ? `${categoryLabel(muc)} — Tin tức KiN` : "Tin tức tuyển sinh, học tập — KiN";
-  const description = "Tin tuyển sinh, kinh nghiệm học và thi, thông báo từ KiN và gia sư — ghi rõ nguồn, cập nhật thường xuyên.";
-  return { title, description, alternates: { canonical: url }, openGraph: { type: "website", url, title, description, siteName: "KiN", images: [siteUrl() + OG_FALLBACK] } };
 }
 
 /** Khoá học hiển thị công khai (cho sitemap và metadata): status=true và mã không trùng trang cố định. */

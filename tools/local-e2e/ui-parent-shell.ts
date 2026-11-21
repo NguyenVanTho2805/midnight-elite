@@ -88,9 +88,9 @@ const tok = (b: number) => b.toString(16).padStart(2, "0").repeat(16);
 
   section("Các trang guest khác KHÔNG bị ảnh hưởng");
   const gp = await gctx.newPage(); watch(gp);
-  await gp.goto(`${BASE}/diem-chuan`, { waitUntil: "networkidle", timeout: 120000 });
+  await gp.goto(`${BASE}/khoa-hoc`, { waitUntil: "networkidle", timeout: 120000 }); // SCL F1: /diem-chuan đã xoá
   await gp.getByRole("heading", { level: 1 }).waitFor({ timeout: 90000 });
-  check("/diem-chuan vẫn có thanh menu + nút Đăng ký + chân trang", await gp.getByRole("link", { name: "Đăng ký", exact: true }).first().isVisible() && await gp.getByText(/Công cụ học tập/).isVisible());
+  check("/khoa-hoc vẫn có thanh menu + nút Đăng ký + chân trang", await gp.getByRole("link", { name: "Đăng ký", exact: true }).first().isVisible() && await gp.getByText(/Công cụ học tập/).isVisible());
 
   const cg = await chrome(gp);
   check("bộ dò hoạt động thật: trang guest có navigation, nút miễn phí, link Đăng nhập, menu, chân trang quảng bá (không phải dò hụt)", cg.nav >= 1 && cg.freeBtn >= 1 && cg.login >= 1 && cg.menu >= 1 && cg.footerPromo >= 1, cg);

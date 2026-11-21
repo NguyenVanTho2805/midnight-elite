@@ -1,4 +1,4 @@
-// Shared GPA + completion formula — dùng trong admin/students và honor-leaderboard
+// Shared GPA + completion formula — dùng trong admin/students
 // GPA = 40% tiến độ + 60% điểm thi thử, cả hai normalize về /10
 
 export function computeCompletion(
