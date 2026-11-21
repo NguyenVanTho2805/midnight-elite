@@ -107,8 +107,8 @@ const GRAB = `(() => {
 
   await launch();
   const sizes = [[390, 844], [1280, 900]] as const;
-  const guestRoutes = ["/", "/cong-dong", "/tin-tuc", "/khoa-hoc", "/giang-vien", "/thi-thu", "/diem-chuan", "/dang-ky", "/dang-nhap", "/chinh-sach"];
-  const studentRoutes = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", "/student/bai-tap", "/student/ho-so", "/student/hoc-phi", "/student/nhap-ma-lop", "/student/tin-tuc", "/cong-dong", "/student/vi"];
+  const guestRoutes = ["/", "/cong-dong", "/khoa-hoc", "/giang-vien", "/thi-thu", "/dang-ky", "/dang-nhap", "/chinh-sach"];
+  const studentRoutes = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", "/student/bai-tap", "/student/ho-so", "/student/hoc-phi", "/student/nhap-ma-lop", "/cong-dong", "/student/vi"];
   const tutorRoutes = ["/lop-cua-toi", "/lop-cua-toi/goi", "/lop-cua-toi/ho-tro", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/ho-so"];
   const adminRoutes = ["/admin", "/admin/kiem-duyet", "/admin/kiem-duyet?loai=nap-coin", "/admin/doanh-thu", "/admin/goi-pro", "/admin/trien-khai", "/admin/nhat-ky", "/admin/hoc-sinh", "/admin/topups", "/admin/quan-tri-vien"];
   const jobs: [string, typeof S | null, string[], string][] = [

@@ -82,7 +82,7 @@ export async function countBlockers(userId: string, kind: AccountKind, db: Pick<
     db.proOrder.count({ where: { userId, status: "pending" } }),
     db.wallet.findUnique({ where: { userId }, select: { balance: true } }),
     db.coinTopupRequest.count({ where: { userId, status: "approved" } }),
-    isTutor ? db.tutorSubscription.count({ where: { userId, status: "active" } }) : Promise.resolve(0),
+    isTutor ? db.tutorSubscription.count({ where: { userId, status: "active", endDate: { gt: new Date() } } }) /* SCL F1: gói đã qua endDate không chặn dù cron chưa chuyển "expired" */ : Promise.resolve(0),
     db.tuitionCredit.findMany({ where: { OR: [{ tutorId: userId }, { studentId: userId }] }, select: { amount: true, usedAmount: true } }),
     isTutor ? db.bankTransaction.count({ where: { tutorId: userId, status: "pending" } }) : Promise.resolve(0),
   ]);

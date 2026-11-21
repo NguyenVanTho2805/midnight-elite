@@ -1,4 +1,4 @@
-// Hợp nhất công bố (QZ-08 + QZ-11): các phép TỔNG HỢP điểm (bảng xếp hạng, hạng + GPA của em, bảng vinh danh, báo cáo tháng, bảng điểm đề)
+// Hợp nhất công bố (QZ-08 + QZ-11): các phép TỔNG HỢP điểm (GPA của em, báo cáo tháng, bảng điểm đề — SCL F1 đã xoá bảng xếp hạng chung, hạng, vinh danh)
 // chỉ tính điểm của đề không giữ hoặc lượt đã công bố. Số của đề KHÔNG giữ phải y nguyên khi có thêm điểm đang giữ.
 // Dữ liệu dựng trực tiếp trong DB (kể cả dòng ExamResult "cũ" của đề đang giữ — trường hợp gia sư bật giữ điểm sau khi đã có điểm).
 // Cần máy chủ đang chạy (BASE). Mỗi bài wipe() DB riêng.
@@ -26,18 +26,14 @@ const mkResult = (userId: string, examId: string, score: number) => prisma.examR
   await mkResult(A.id, "agg-plain", 6); await mkResult(B.id, "agg-plain", 4);
 
   const snapshot = async () => {
-    const lb = await api("GET", "/api/leaderboard", { as: A });   // đã đăng nhập: khách chỉ thấy tên che, không userId (quyết định 1B, 04/11/2026)
     const stA = await api("GET", "/api/users/me/stats", { as: A });
     const stB = await api("GET", "/api/users/me/stats", { as: B });
-    const honor = await api("GET", "/api/honor-leaderboard", { as: A });   // bảng vinh danh bắt đăng nhập
     const board = await api("GET", "/api/exam-results?examId=agg-plain", { as: A });
     const month = await loadStudentMonth(T.id, A.id, YM);
     const rank = await api("GET", "/api/exam-results?mine=true", { as: A });
     const norm = (v: unknown) => JSON.stringify(v, (_k, x) => (x && typeof x === "object" && "completedAt" in (x as object)) ? { ...(x as object), completedAt: 0, id: 0 } : x);
     return JSON.stringify({
-      lb: lb.json.map((r: { userId: string; best: number; avg: number; count: number }) => [r.userId, r.best, r.avg, r.count]),
-      stA: [stA.json.gpa, stA.json.rank], stB: [stB.json.gpa, stB.json.rank],
-      honor: honor.json.map((r: { id: string; gpa: number; lastExamScore: number }) => [r.id, r.gpa, r.lastExamScore]),
+      stA: stA.json.gpa, stB: stB.json.gpa,
       board: board.json.map((r: { userId: string; score: number }) => [r.userId, r.score]),
       month: month?.subjects.map(s => s.mastery),
       rank: norm(rank.json.filter((r: { examId: string }) => r.examId === "agg-plain")),
@@ -47,7 +43,7 @@ const mkResult = (userId: string, examId: string, score: number) => prisma.examR
   section("Đường cơ sở: chỉ có đề không giữ");
   const base = await snapshot();
   const stA0 = await api("GET", "/api/users/me/stats", { as: A });
-  check("cơ sở: A đang hạng 1 (6 > 4), GPA 6", stA0.json.rank === 1 && stA0.json.gpa === 6, stA0.json);
+  check("cơ sở: GPA của A là 6; không còn trả hạng/EXP chung (SCL F1)", stA0.json.gpa === 6 && !("rank" in stA0.json) && !("exp" in stA0.json), stA0.json);
 
   section("Thêm đề có tự luận ĐANG GIỮ với điểm dở dang rất cao của B");
   await mkExam("agg-held", { createdAt: "2026-10-24", ownerId: T.id, courseId: C.id, questions: 2 });
@@ -59,14 +55,15 @@ const mkResult = (userId: string, examId: string, score: number) => prisma.examR
   check("dropHeldResults bỏ dòng của B ở đề giữ, giữ dòng ở đề không giữ", (await dropHeldResults(await prisma.examResult.findMany({ select: { userId: true, examId: true } }))).length === 2);
   check("heldAttemptIdsAmong: lượt của B đang giữ", (await heldAttemptIdsAmong([{ id: attB.id, examId: "agg-held" }])).has(attB.id));
   const held = await snapshot();
-  check("CHỨNG MINH: bảng xếp hạng, hạng/GPA, vinh danh, báo cáo tháng, bảng điểm đề KHÔNG ĐỔI khi có điểm đang giữ", held === base, { base, held });
+  check("CHỨNG MINH: GPA, báo cáo tháng, bảng điểm đề KHÔNG ĐỔI khi có điểm đang giữ", held === base, { base, held });
 
   section("Công bố lượt của B → điểm đó mới được tính");
   await prisma.examAttemptPublish.create({ data: { attemptId: attB.id, examId: "agg-held", publishedById: T.id } });
   const pub = await snapshot();
   check("sau công bố: số liệu đổi (điểm 10 của B vào) — PHÁ: không phải bộ lọc bỏ hết mọi thứ", pub !== base);
   const stA1 = await api("GET", "/api/users/me/stats", { as: A });
-  check("A giờ hạng 2 (B có 10 đã công bố)", stA1.json.rank === 2, stA1.json);
+  const stB1 = await api("GET", "/api/users/me/stats", { as: B });
+  check("GPA của B giờ tính cả điểm 10 đã công bố (4 → 7)", stB1.json.gpa === 7, stB1.json);
 
   section("Đề cũ có tự luận (trước mốc) không bị giữ: điểm tính như trước");
   await mkExam("agg-old", { createdAt: "2020", ownerId: T.id, courseId: C.id, questions: 2 });
@@ -74,7 +71,7 @@ const mkResult = (userId: string, examId: string, score: number) => prisma.examR
   await mkResult(A.id, "agg-old", 9);
   check("đề cũ không nằm trong tập đang giữ", !(await holdingExamIds(["agg-old"])).has("agg-old"));
   const stA2 = await api("GET", "/api/users/me/stats", { as: A });
-  check("điểm 9 của A ở đề cũ được tính (hạng vẫn 2 vì B có 10; GPA của A đổi)", stA2.json.rank === 2 && stA2.json.gpa !== stA1.json.gpa, stA2.json);
+  check("điểm 9 của A ở đề cũ được tính (GPA của A đổi)", stA2.json.gpa !== stA1.json.gpa, stA2.json);
 
   await done();
 })();

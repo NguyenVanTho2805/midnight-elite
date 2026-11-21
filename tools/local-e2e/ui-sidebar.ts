@@ -172,7 +172,7 @@ const H = 3_600_000;
   check("nội dung trang vẫn đủ: có tài liệu công khai", await ps.getByText("TAI-LIEU-CONG-KHAI").isVisible());
   check("có dải trên của vỏ (logo KiN + chuông)", await ps.getByRole("button", { name: "Thông báo" }).isVisible());
   await shot(ps, "sidebar-2-thu-vien");
-  for (const path of ["/khoa-hoc", "/giang-vien", "/diem-chuan", "/tin-tuc", "/ban-do"]) {
+  for (const path of ["/khoa-hoc", "/giang-vien", "/ban-do"]) {
     await ps.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await rail(ps, RAIL.student).waitFor({ timeout: 60000 });
     check(`${path}: học viên đã đăng nhập thấy thanh bên, không thấy Navbar khách`, await rail(ps, RAIL.student).isVisible() && await ps.getByRole("navigation", { name: "Điều hướng chính" }).count() === 0);

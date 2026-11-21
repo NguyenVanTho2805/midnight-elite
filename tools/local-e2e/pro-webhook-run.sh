@@ -5,7 +5,7 @@
 ME="$HOME/Documents/Code/midnight-elite"
 PAY=(KINPRO_BANK_BIN=970436 KINPRO_ACCOUNT_NO=9704360012345 "KINPRO_ACCOUNT_NAME=Kin Pro Thu")
 KEY=KINPRO_SEPAY_API_KEY=khoa-sepay-thu-nghiem-0123456789
-up() { ( source tools/local-e2e/env.sh; env "$@" bash "$ME/.local-dev/wt-up.sh" >/dev/null 2>&1 ) || { echo "máy chủ không lên"; return 1; }; }
+up() { ( source tools/local-e2e/env.sh; env NEXT_PUBLIC_KIN_MO_KINH_DOANH=1 "$@" bash "$ME/.local-dev/wt-up.sh" >/dev/null 2>&1 ) || { echo "máy chủ không lên"; return 1; }; }
 t() { ( source tools/local-e2e/env.sh; env "$@" npx tsx tools/local-e2e/t-pro-webhook.ts 2>&1 | grep -v "^  ✓"; exit "${PIPESTATUS[0]}" ); }
 rc=0
 for w in ${*:-on nokey noconfig preview}; do

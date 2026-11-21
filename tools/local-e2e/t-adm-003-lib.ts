@@ -1,4 +1,4 @@
-// ADM-003 — cron english-voa hiện trên "Triển khai và hạn mức" + trang mẫu _template ra khỏi src. THUẦN: không DB, không máy chủ.
+// ADM-003 — cron (từ SCL F1: english-voa đã xoá cùng Tiếng Anh; kiểm bằng remind-exam) hiện trên "Triển khai và hạn mức" + trang mẫu _template ra khỏi src. THUẦN: không DB, không máy chủ.
 // Chạy: DATABASE_URL=postgresql://x:x@localhost/x npx tsx tools/local-e2e/t-adm-003-lib.ts
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -10,8 +10,8 @@ const NOW = new Date("2026-10-24T05:00:00Z");
 const vercel = JSON.parse(read("vercel.json")) as { crons: { path: string; schedule: string }[] };
 
 section("CRON_JOBS ↔ vercel.json");
-const voa = CRON_JOBS.find(j => j.key === "english-voa");
-check("1. CRON_JOBS có english-voa đúng path/lịch/dung sai", !!voa && voa.path === "/api/cron/english-voa" && voa.schedule === "Mỗi ngày 06:30 giờ VN" && voa.maxGapHours === 36);
+const voa = CRON_JOBS.find(j => j.key === "remind-exam");
+check("1. CRON_JOBS có remind-exam đúng path/lịch/dung sai; không còn english-voa (SCL F1)", !!voa && voa.path === "/api/cron/remind-exam" && voa.schedule === "Mỗi ngày 07:00 giờ VN" && voa.maxGapHours === 36 && !CRON_JOBS.some(j => j.key === "english-voa"));
 const vPaths = vercel.crons.map(c => c.path).sort().join();
 const jPaths = CRON_JOBS.map(j => j.path).sort().join();
 check("2. vercel.json và CRON_JOBS khớp hai chiều (không thừa, không thiếu)", vPaths === jPaths, `${vPaths} ≠ ${jPaths}`);
@@ -29,10 +29,8 @@ for (const j of CRON_JOBS) {
   const src = ok ? read(f) : "";
   check(`4. ${j.key}: có route, import và gọi recordCronRun("${j.key}")`, ok && src.includes(`recordCronRun("${j.key}")`) && src.includes('import { recordCronRun } from "@/lib/adminOpsServer"'));
 }
-const voaSrc = read("src/app/api/cron/english-voa/route.ts");
-const iAuth = voaSrc.indexOf("checkCronAuth("), iRec = voaSrc.indexOf('recordCronRun("english-voa")'), iFeeds = voaSrc.indexOf("ENGLISH_VOA_FEEDS ??");
-check("5. recordCronRun sau khoá, trước nhánh thoát sớm thiếu ENGLISH_VOA_FEEDS, không bọc try", iAuth >= 0 && iAuth < iRec && iRec < iFeeds && !/try\s*\{\s*$/.test(voaSrc.slice(0, iRec).trimEnd().split("\n").pop() ?? ""));
-check("6. khoá SettingKV riêng từng job và đúng tên", new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === CRON_JOBS.length && cronSettingKey("english-voa") === "cron.english-voa.lastCall");
+check("5. SCL F1: route english-voa đã xoá", !existsSync(join(process.cwd(), "src/app/api/cron/english-voa")));
+check("6. khoá SettingKV riêng từng job và đúng tên", new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === CRON_JOBS.length && cronSettingKey("remind-exam") === "cron.remind-exam.lastCall");
 if (voa) {
   check("7a. cronView null → Chưa ghi nhận", cronView(voa, null, NOW).status === "Chưa ghi nhận");
   check("7b. 5 giờ trước → Đúng lịch", cronView(voa, new Date(NOW.getTime() - 5 * 3_600_000).toISOString(), NOW).status === "Đúng lịch");

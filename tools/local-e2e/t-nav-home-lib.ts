@@ -42,7 +42,7 @@ section("BU00_REMOVED_MENU_HREFS — danh sách đã rút khỏi menu học sinh
 check("mục Trang chủ ('/') không nằm trong danh sách bị rút", !BU00_REMOVED_MENU_HREFS.includes(HOME_HREF));
 check("không đích nào rỗng, đều bắt đầu '/', không trùng", BU00_REMOVED_MENU_HREFS.every(h => h.startsWith("/") && h.length > 1) && new Set(BU00_REMOVED_MENU_HREFS).size === BU00_REMOVED_MENU_HREFS.length);
 check("không dính 'Lớp miễn phí' (/khoa-hoc?gia=free là lối tìm lớp đã thêm 08/11)", !BU00_REMOVED_MENU_HREFS.includes("/khoa-hoc?gia=free"));
-for (const h of ["/thu-vien", "/thi-thu", "/bang-xep-hang", "/student/hoi-dap", "/khoa-hoc", "/khoa-hoc-da-luu", "/diem-chuan", "/student/vi"]) check(`có ${h}`, BU00_REMOVED_MENU_HREFS.includes(h));
+for (const h of ["/thu-vien", "/thi-thu", "/student/hoi-dap", "/khoa-hoc", "/khoa-hoc-da-luu", "/student/vi"]) check(`có ${h}`, BU00_REMOVED_MENU_HREFS.includes(h));
 
 section("Quét nguồn StudentShell.tsx / MorePanel.tsx — không đích hay nhãn đã rút");
 const BANNED_LABELS = ["Thư viện", "Thi thử", "Bảng xếp hạng", "Hỏi đáp", "Khoá học đang mở", "Lớp đang theo dõi", "Tra cứu điểm chuẩn", "Ví và Coin"];

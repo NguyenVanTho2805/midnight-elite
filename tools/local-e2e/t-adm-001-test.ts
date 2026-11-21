@@ -1,7 +1,7 @@
 // ADM-001 — BÀI BỔ SUNG của adm-test (mô hình kẻ tấn công / leo quyền miền quản trị). Bổ sung cho t-adm-001.ts (adm-code), KHÔNG lặp lại ca của bài đó.
-// A. Ma trận leo quyền: 5 phiên (khách, học sinh, gia sư, admin_content, admin_super) × route articles / students / restore / nhat-ky / enrollments.
+// A. Ma trận leo quyền: 5 phiên (khách, học sinh, gia sư, admin_content, admin_super) × route articles (SCL F1: đã xoá → 404) / students / restore / nhat-ky / enrollments.
 //    Gia sư KHÔNG BAO GIỜ nhận 2xx/3xx. Mọi lần bị chặn: AuditLog không tăng, bản ghi không đổi.
-// B. Body tấn công vào articles: authorId / id / createdAt / views / publishedAt không đổi được; update không ghi 'authorId' vào metadata.fields.
+// B, C (body tấn công / kiểu sai vào articles): SCL F1 bỏ cùng route.
 // C. Kiểu dữ liệu sai / rác (ghi nhận hành vi, KHÔNG bắt đỏ — validator thuộc ADM-002): chỉ bắt đỏ khi nó ghi DB hoặc để lại nhật ký.
 // D. Students: restore bởi admin_content/gia sư khi em ĐANG ẩn → 403 và vẫn ẩn; wasBanned; lớp suspended không chặn ẩn; cookie cũ của em vừa ẩn bị chặn khi GHI; ?includeHidden=… lạ không lọt bản ẩn.
 // E. Nhật ký: không metadata, không tên / email / SĐT / trường của học sinh ở bất kỳ trường nào; bộ lọc phá vẫn 200; chỉ cấp 1 đọc được.
@@ -11,7 +11,6 @@
 // CA PHÁ CỐ Ý (chạy tay từng thứ rồi hoàn lại):
 //   - Bỏ `banned: true` khỏi data của DELETE students/[id] → ca D3 đỏ (cookie cũ của em vừa ẩn không còn bị 403 khi ghi).
 //   - Đổi `requirePermission(MANAGE_STUDENTS)` ở restore thành MANAGE_NEWS → ca A2 / D1 đỏ (admin_content khôi phục được).
-//   - Thêm `authorId` vào `data` của PATCH articles → ca B2 đỏ.
 //   - Cho `includeHidden !== "0"` ở GET students → ca D5 đỏ.
 //   - Thêm 'authorId' vào UPDATABLE_FIELDS → ca B3 đỏ.
 import { prisma } from "@/lib/prisma";
@@ -33,10 +32,8 @@ const is2xx3xx = (s: number) => s >= 200 && s < 400;
   const X = await mkUser({ name: "Phạm Bé Kín Tiếng" });
   await prisma.user.update({ where: { id: X.id }, data: { phone: "0987654321", school: "THCS Bí Mật Xanh" } });
 
-  // Bài mẫu do CA tạo (nền cho ma trận và tấn công body).
-  const mk = await api("POST", ART, { as: CA, body: body("bai-nen") });
-  const A0 = mk.json?.id as string;
-  check("0. nền: CA tạo bài mẫu → 201", mk.status === 201 && !!A0, mk.json);
+  // SCL F1 (Q8): phần Tin tức đã xoá ⇒ /api/admin/articles không còn; ma trận A1 kiểm route đã mất hẳn (404) với mọi vai, phần B/C (body tấn công bài viết) bỏ.
+  const A0 = "bai-khong-con";
 
   // ───────────────────────────── A. LEO QUYỀN ─────────────────────────────
   section("A. Ma trận leo quyền (khách · học sinh · gia sư · admin_content · admin_super)");
@@ -46,16 +43,15 @@ const is2xx3xx = (s: number) => s >= 200 && s < 400;
     if (who?.id === T.id) seen.push(r.status);
     return r.status;
   };
-  const a0Before = await prisma.article.findUnique({ where: { id: A0 } });
   const xBefore = await prisma.user.findUnique({ where: { id: X.id } });
   const n0 = await auditCount();
 
-  // A1: articles — chỉ admin_content / admin_super. Khách 401; học sinh, gia sư 403.
+  // A1: articles — route đã xoá: mọi vai 404 (không còn 2xx nào).
   const artDenied: [string, string, unknown?][] = [["GET", ART], ["POST", ART, body("len-quyen")], ["GET", `${ART}/${A0}`], ["PATCH", `${ART}/${A0}`, { title: "Bị sửa" }], ["DELETE", `${ART}/${A0}`]];
   const resA1: Record<string, number[]> = {};
   for (const [m, p, b] of artDenied) resA1[`${m} ${p.replace(A0, ":id")}`] = [await run(m, p, undefined, b), await run(m, p, S, b), await run(m, p, T, b)];
-  check("A1. articles GET/POST/PATCH/DELETE: khách 401, học sinh 403, gia sư 403", Object.values(resA1).every(([a, s, t]) => a === 401 && s === 403 && t === 403), resA1);
-  check("A1b. admin_content và admin_super đọc danh sách tin → 200", (await run("GET", ART, CA)) === 200 && (await run("GET", ART, SA)) === 200);
+  check("A1. articles GET/POST/PATCH/DELETE (đã xoá): khách, học sinh, gia sư đều 404", Object.values(resA1).every(r => r.every(x => x === 404)), resA1);
+  check("A1b. admin_content và admin_super cũng 404", (await run("GET", ART, CA)) === 404 && (await run("GET", ART, SA)) === 404);
 
   // A2: students / restore / nhat-ky / enrollments — chỉ admin_super (MANAGE_STUDENTS / VIEW_STUDENTS / MANAGE_ADMINS). admin_content KHÔNG có.
   const supOnly: [string, string, unknown?][] = [
@@ -67,80 +63,12 @@ const is2xx3xx = (s: number) => s >= 200 && s < 400;
   for (const [m, p, b] of supOnly) resA2[`${m} ${p.replace(X.id, ":id")}`] = [await run(m, p, undefined, b), await run(m, p, S, b), await run(m, p, T, b), await run(m, p, CA, b)];
   check("A2. students (GET/POST/PUT/PATCH/DELETE), restore, enrollments POST, nhat-ky: khách 401; học sinh, gia sư, admin_content đều 403", Object.values(resA2).every(([a, s, t, c]) => a === 401 && s === 403 && t === 403 && c === 403), resA2);
   check("A3. GIA SƯ không nhận một mã 2xx/3xx nào trong cả ma trận", seen.length >= 14 && seen.every(s => !is2xx3xx(s)), seen);
-  const a0After = await prisma.article.findUnique({ where: { id: A0 } });
   const xAfter = await prisma.user.findUnique({ where: { id: X.id } });
-  check("A4. sau cả ma trận: AuditLog không tăng; bài mẫu giữ nguyên; học sinh X giữ nguyên (tên, deletedAt, banned); không có bài 'len-quyen'; không có user 'len@test.local'",
-    (await auditCount()) === n0 && a0After?.title === a0Before?.title && a0After?.updatedAt.getTime() === a0Before?.updatedAt.getTime() && xAfter?.name === xBefore?.name && xAfter?.deletedAt === null && xAfter?.banned === false
+  check("A4. sau cả ma trận: AuditLog không tăng; học sinh X giữ nguyên (tên, deletedAt, banned); không có bài 'len-quyen'; không có user 'len@test.local'",
+    (await auditCount()) === n0 && xAfter?.name === xBefore?.name && xAfter?.deletedAt === null && xAfter?.banned === false
       && (await prisma.article.count({ where: { slug: "len-quyen" } })) === 0 && (await prisma.user.count({ where: { email: "len@test.local" } })) === 0,
     { audit: [n0, await auditCount()], x: xAfter && [xAfter.name, xAfter.deletedAt, xAfter.banned] });
   check("A5. admin_super đọc danh sách học sinh → 200 (đối chứng: ma trận trên chặn đúng người, không chặn tất cả)", (await run("GET", STU, SA)) === 200 && (await run("GET", "/api/admin/nhat-ky", SA)) === 200);
-
-  // ───────────────────────────── B. BODY TẤN CÔNG ARTICLES ─────────────────────────────
-  section("B. Body tấn công vào articles: authorId / id / createdAt / views / publishedAt");
-  const evil = { authorId: SA.id, id: "id-gia-mao", createdAt: "2001-01-01T00:00:00.000Z", updatedAt: "2001-01-01T00:00:00.000Z", views: 999999, publishedAt: "2001-01-01T00:00:00.000Z" };
-  let r = await api("POST", ART, { as: CA, body: body("bai-tan-cong", evil) });
-  const B1 = r.status === 201 ? await prisma.article.findUnique({ where: { id: r.json.id } }) : null;
-  check("B1. POST kèm authorId=SA, id giả, createdAt 2001, views 999999, publishedAt 2001 → 201 nhưng authorId = CA, id ≠ 'id-gia-mao', createdAt gần đây, views 0, publishedAt null (bản nháp)",
-    r.status === 201 && B1?.authorId === CA.id && B1?.id !== "id-gia-mao" && B1!.createdAt.getFullYear() >= 2025 && B1?.views === 0 && B1?.publishedAt === null, B1 && { authorId: B1.authorId, id: B1.id, createdAt: B1.createdAt, views: B1.views, publishedAt: B1.publishedAt });
-
-  const beforeP = await prisma.article.findUnique({ where: { id: A0 } });
-  const nb = await auditCount();
-  r = await api("PATCH", `${ART}/${A0}`, { as: SA, body: evil });
-  const afterP = await prisma.article.findUnique({ where: { id: A0 } });
-  check("B2. PATCH (admin_super) kèm đủ trường tấn công → 200 nhưng authorId, id, createdAt, views, publishedAt KHÔNG đổi",
-    r.status === 200 && afterP?.authorId === beforeP?.authorId && afterP?.id === A0 && afterP?.createdAt.getTime() === beforeP?.createdAt.getTime() && afterP?.views === beforeP?.views && afterP?.publishedAt?.getTime() === beforeP?.publishedAt?.getTime(),
-    { status: r.status, before: beforeP && [beforeP.authorId, beforeP.views], after: afterP && [afterP.authorId, afterP.views] });
-  check("B2b. PATCH chỉ toàn trường tấn công (không trường nội dung) → KHÔNG ghi dòng article.update (fields rỗng)", (await auditCount()) === nb, [nb, await auditCount()]);
-
-  r = await api("PATCH", `${ART}/${A0}`, { as: CA, body: { ...evil, title: "Chỉ đổi tiêu đề" } });
-  const upd = await prisma.auditLog.findMany({ where: { resourceId: A0, action: "article.update" }, orderBy: { createdAt: "desc" }, take: 1 });
-  const fields = ((upd[0]?.metadata as { fields?: string[] } | null)?.fields) ?? [];
-  check("B3. PATCH { title + trường tấn công } → article.update.metadata.fields = ['title'] đúng, KHÔNG chứa authorId / id / views / createdAt / publishedAt",
-    r.status === 200 && fields.includes("title") && !fields.some(f => ["authorId", "id", "views", "createdAt", "publishedAt", "updatedAt"].includes(f)), fields);
-
-  // Chống tạo trùng slug / thiếu trường / nguồn sai: không để dòng nhật ký.
-  const nc = await auditCount();
-  const bad = [
-    await api("POST", ART, { as: CA, body: body("bai-nen") }),                                        // slug trùng → 409
-    await api("POST", ART, { as: CA, body: { ...body("thieu"), excerpt: "" } }),                      // thiếu → 400
-    await api("POST", ART, { as: CA, body: body("nguon-xau", { sourceUrl: "javascript:alert(1)", sourceName: "x" }) }), // nguồn sai → 400
-    await api("PATCH", `${ART}/khong-co`, { as: CA, body: { title: "x" } }),                          // 404
-    await api("DELETE", `${ART}/khong-co`, { as: CA }),                                               // 404
-    await api("PATCH", `${ART}/${A0}`, { as: CA, body: { slug: "bai-tan-cong" } }),                   // slug trùng → 409
-  ];
-  check("B4. thất bại hợp lệ (409 trùng slug, 400 thiếu/nguồn sai, 404, 409 PATCH trùng slug) → mã đúng và AuditLog KHÔNG tăng (logAction không nằm ở nhánh lỗi)",
-    bad.map(x => x.status).join() === "409,400,400,404,404,409" && (await auditCount()) === nc, [bad.map(x => x.status), nc, await auditCount()]);
-
-  // ───────────────────────────── C. KIỂU SAI / RÁC (ghi nhận) ─────────────────────────────
-  section("C. Kiểu dữ liệu sai: ghi nhận mã trả về (P2 ADM-002 nếu 500); đỏ CHỈ khi ghi DB hoặc để lại nhật ký sai");
-  const draft = await api("POST", ART, { as: CA, body: body("bai-kieu-sai") });
-  const D = draft.json.id as string;
-  const nd = await auditCount();
-  const junk: [string, unknown][] = [
-    ['published: "true" (chuỗi)', { published: "true" }], ["published: 1", { published: 1 }], ["published: null", { published: null }],
-    ["title: 12345 (số)", { title: 12345 }], ["title: {} (object)", { title: {} }], ["readTime: 'abc'", { readTime: "abc" }], ["isPinned: 'yes'", { isPinned: "yes" }],
-  ];
-  const observed: Record<string, number> = {};
-  for (const [label, patch] of junk) observed[label] = (await api("PATCH", `${ART}/${D}`, { as: CA, body: patch })).status;
-  const dRow = await prisma.article.findUnique({ where: { id: D } });
-  note("PATCH kiểu sai → mã (500 = P2 validator, thuộc ADM-002)", observed);
-  check("C1. sau các PATCH kiểu sai: bài vẫn là bản nháp (published === false, publishedAt null), tiêu đề cũ", dRow?.published === false && dRow?.publishedAt === null && dRow?.title === "Bài bai-kieu-sai", dRow && { published: dRow.published, title: dRow.title });
-  check("C2. không có 'article.publish' nào cho bài này và không dòng nhật ký nào lọt sau các PATCH lỗi (mọi mã 4xx/5xx → 0 dòng mới; mã 200 chỉ được kèm dòng update)",
-    (await prisma.auditLog.count({ where: { resourceId: D, action: "article.publish" } })) === 0 &&
-    ((await auditCount()) - nd) <= Object.values(observed).filter(s => s === 200).length, [nd, await auditCount(), observed]);
-  const rt = await api("POST", ART, { as: CA, body: { ...body("bai-title-so"), title: 12345 } });
-  const rp = await api("POST", ART, { as: CA, body: { ...body("bai-pub-chuoi"), published: "true" } });
-  note("POST title số → mã", rt.status); note("POST published:'true' → mã", rp.status);
-  check("C3. POST title số: không tạo bài 'bai-title-so' nếu không phải 201; POST published chuỗi: nếu 201 thì published là boolean thật",
-    (rt.status === 201 || (await prisma.article.count({ where: { slug: "bai-title-so" } })) === 0) && (rp.status !== 201 || typeof (await prisma.article.findUnique({ where: { slug: "bai-pub-chuoi" } }))?.published === "boolean"), [rt.status, rp.status]);
-  // Ghi nhận (không đỏ): slug rác, PATCH tiêu đề toàn khoảng trắng, JSON hỏng.
-  const rs = await api("POST", ART, { as: CA, body: body("dâd ầ fsegs") });
-  const rb = await api("PATCH", `${ART}/${D}`, { as: CA, body: { title: "   " } });
-  const rj = await api("POST", ART, { as: CA, raw: "{khong-phai-json", headers: { "content-type": "application/json" } });
-  note("POST slug 'dâd ầ fsegs' → mã (201 = chưa có validator slug, P2 ADM-002)", rs.status);
-  note("PATCH title '   ' → mã (200 = tiêu đề rỗng lọt, P2 ADM-002; POST thì chặn 400)", rb.status);
-  note("POST JSON hỏng → mã", rj.status);
-  check("C4. JSON hỏng không phải 2xx", !is2xx3xx(rj.status), rj.status);
 
   // ───────────────────────────── D. STUDENTS ─────────────────────────────
   section("D. Students: leo quyền khi ĐANG ẩn, wasBanned, lớp suspended, cookie cũ, includeHidden lạ");
@@ -175,7 +103,7 @@ const is2xx3xx = (s: number) => s >= 200 && s < 400;
   check("D3. cookie cũ của H (đã ẩn) POST /api/student/lich-rieng → 403 'khóa'; không có StudentPersonalEvent nào của H", wr.status === 403 && /khóa/.test(wrTxt) && (await prisma.studentPersonalEvent.count({ where: { userId: H.id } })) === 0, [wr.status, wrTxt.slice(0, 120)]);
   const rd = await fetch((process.env.BASE ?? "http://localhost:3100") + "/api/student/lich-rieng?from=2026-11-01&to=2026-11-07", { headers: { cookie: cookieOld } });
   note("cookie cũ của em ẩn GỌI ĐỌC (GET lich-rieng) → mã (200 = yêu cầu đọc chỉ tin token, theo thiết kế NC2-033; ghi nhận P3)", rd.status);
-  check("D3b. cookie cũ của H không gọi được route quản trị nào (role student): DELETE/PATCH students, POST articles → 403", [await fetch((process.env.BASE ?? "http://localhost:3100") + `${STU}/${X.id}`, { method: "DELETE", headers: { cookie: cookieOld } }), await fetch((process.env.BASE ?? "http://localhost:3100") + ART, { method: "POST", headers: { cookie: cookieOld, "content-type": "application/json" }, body: JSON.stringify(body("hs-an-dang-bai")) })].every(x => x.status === 403) && (await prisma.article.count({ where: { slug: "hs-an-dang-bai" } })) === 0);
+  check("D3b. cookie cũ của H không gọi được route quản trị nào (role student): DELETE students → 403 (SCL F1: articles đã xoá)", [await fetch((process.env.BASE ?? "http://localhost:3100") + `${STU}/${X.id}`, { method: "DELETE", headers: { cookie: cookieOld } })].every(x => x.status === 403) && (await prisma.article.count({ where: { slug: "hs-an-dang-bai" } })) === 0);
 
   // D4: khôi phục xong → cookie cũ dùng được lại (không bị 403 khoá) — chứng minh chặn thật nhờ cờ, không phải do cookie hỏng.
   const rr = await api("POST", `${STU}/${H.id}/restore`, { as: SA });

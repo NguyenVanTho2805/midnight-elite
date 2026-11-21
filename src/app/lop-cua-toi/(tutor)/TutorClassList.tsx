@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { classAccent, fillPercent } from "@/lib/classColor";
 import { giaoTrinhHref } from "@/lib/tutorRoutes";
+import { isLinkHidden } from "@/lib/features";
 
 const CARD = { background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)" } as const;
 
@@ -52,7 +53,8 @@ export default function TutorClassList({ classes, headingId }: { classes: TutorC
                   <div className="flex gap-x-4 flex-wrap mt-auto">
                     <Link href={giaoTrinhHref(c.id, true)} className="text-xs font-semibold min-h-[44px] inline-flex items-center whitespace-nowrap"
                       style={{ color: "var(--kin-nhan-link)" }}>Mở lớp</Link>
-                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Học sinh", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].map(([l, h]) => (
+                    {/* SCL F1 (P3): bỏ "Điểm danh" khi phần đó đang ẩn (route bị chặn 307). */}
+                    {[["Điểm danh", `/lop-cua-toi/quan-lop/${c.id}/diem-danh`], ["Học sinh", `/lop-cua-toi/quan-lop/${c.id}/hoc-vien`]].filter(([, h]) => !isLinkHidden(h)).map(([l, h]) => (
                       <Link key={h} href={h} className="text-xs min-h-[44px] inline-flex items-center whitespace-nowrap"
                         style={{ color: "var(--kin-chu-phu)" }}>{l}</Link>
                     ))}

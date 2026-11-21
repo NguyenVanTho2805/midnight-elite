@@ -124,9 +124,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await eventually("lọc 'Đang học' → chỉ còn Toán", async () => (await cards.count()) === 1 && (await cx.count()) === 1, 8000);
     await fl("tat-ca").click();
     await eventually("'Tất cả' → lại đủ 2 thẻ", async () => (await cards.count()) === 2, 8000);
-    // LOI-01: khối "Tự học" chỉ hiện khi cờ TIENG_ANH mở; mặc định ẩn.
+    // SCL F1: khối "Tự học" (Tiếng Anh) đã xoá hẳn.
     // SCL P2-13: "Nhập mã lớp" lên ĐẦU trang (khối [data-nhap-ma-dau]), mục "Tham gia lớp khác" dưới đáy đã bỏ.
-    check(`'Nhập mã lớp' ở đầu trang (một lối) + 'Tự học' ${featureOn("TIENG_ANH") ? "hiện" : "ẩn (cờ TIENG_ANH tắt)"}`, await p.locator("[data-nhap-ma-dau]").getByRole("link", { name: "Nhập mã lớp" }).isVisible() && (await p.getByRole("heading", { name: "Tham gia lớp khác" }).count()) === 0 && (await p.getByRole("heading", { name: "Tự học" }).isVisible()) === featureOn("TIENG_ANH") && (await p.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1);
+    check("'Nhập mã lớp' ở đầu trang (một lối), không còn khối 'Tự học'", await p.locator("[data-nhap-ma-dau]").getByRole("link", { name: "Nhập mã lớp" }).isVisible() && (await p.getByRole("heading", { name: "Tham gia lớp khác" }).count()) === 0 && (await p.getByRole("heading", { name: "Tự học" }).count()) === 0 && (await p.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1);
     if (w === 390) {
       check("390: không cuộn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);
       const s = await small(p, "main a, main button");

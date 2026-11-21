@@ -1,4 +1,4 @@
-// BU-HS-LANDING — bốn bộ tải dữ liệu thật của trang chủ công khai (src/lib/homeLandingServer.ts), chạy trên DB thật. KHÔNG cần máy chủ Next.
+// BU-HS-LANDING — ba bộ tải (SCL F1: Tin tức đã xoá) dữ liệu thật của trang chủ công khai (src/lib/homeLandingServer.ts), chạy trên DB thật. KHÔNG cần máy chủ Next.
 // Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-LANDING.md mục 5. Cần DATABASE_URL trỏ DB thử (h.ts có wipe() = TRUNCATE mọi bảng, KHÔNG chạy trên DB thật).
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-home-landing.ts   (lặp lại với TZ=Asia/Ho_Chi_Minh).
 //
@@ -7,7 +7,6 @@
 //    Bỏ `activeGuest/active/isDraft/supersededById/variantOfId` hoặc điều kiện giá → ca tương ứng đỏ. Thay `select` bằng `include` → ca "JSON không lộ" đỏ.
 //  - loadHomeTutors (tutorSearchServer.loadVisibleTutors): bỏ lọc `isProfileHidden` → "hồ sơ ẩn vắng" đỏ; bỏ `banned:false` → "gia sư bị cấm vắng" đỏ.
 //  - loadHomeCourses: bỏ `hasSeat` (ở pickHomeCourses) → "lớp đầy/đóng/tạm ngừng vắng" đỏ.
-//  - loadHomeArticles: bỏ `now` (dùng giờ khác) hoặc bỏ điều kiện đã đăng → "nháp / hẹn giờ vắng" đỏ.
 //  - loadHomeLanding: thêm `cookies()`/`headers()`/`getSession` → ca đọc nguồn đỏ.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -55,7 +54,7 @@ async function mkExam(o: {
     let threw = false, empty = null as Awaited<ReturnType<typeof loadHomeLanding>> | null;
     try { empty = await loadHomeLanding(); } catch { threw = true; }
     check("không ném lỗi", !threw);
-    check("trả đúng EMPTY_LANDING (bốn mảng + chip rỗng)", !!empty && JSON.stringify(empty) === JSON.stringify(EMPTY_LANDING), empty);
+    check("trả đúng EMPTY_LANDING (ba mảng + chip rỗng)", !!empty && JSON.stringify(empty) === JSON.stringify(EMPTY_LANDING), empty);
   }
 
   // ─── Dựng dữ liệu ─────────────────────────────────────────────────────────────────────────────────────────
@@ -111,20 +110,15 @@ async function mkExam(o: {
     badDate: await mkExam({ title: `VẮNG ngày rác ${stamp}`, owner: admin.id, date: "32/13/2026" }),
   };
 
-  const mkArticle = (slug: string, title: string, o: { published: boolean; publishedAt: Date | null }) =>
-    prisma.article.create({ data: { slug: `${slug}-${stamp}`, title, excerpt: `Tóm tắt ${title}`, content: `${BAIT} nội dung dài ${title}`, category: "tuyen-sinh", author: "KiN", authorId: admin.id, ...o } });
-  const aPosted = await mkArticle("da-dang", `Bài ĐÃ ĐĂNG ${stamp}`, { published: true, publishedAt: new Date(now.getTime() - 86_400_000) });
-  const aLegacy = await mkArticle("cu", `Bài CŨ không giờ đăng ${stamp}`, { published: true, publishedAt: null });
-  const aDraft = await mkArticle("nhap", `Bài NHÁP ${stamp}`, { published: false, publishedAt: null });
-  const aSched = await mkArticle("hen-gio", `Bài HẸN GIỜ ${stamp}`, { published: true, publishedAt: new Date(now.getTime() + 2 * 86_400_000) });
-  const aDraftPast = await mkArticle("nhap-qua-khu", `Bài NHÁP có giờ quá khứ ${stamp}`, { published: false, publishedAt: new Date(now.getTime() - 86_400_000) });
+  // SCL F1: khối Tin đã xoá. Bài đã đăng vẫn còn trong bảng articles (dữ liệu cũ) nhưng KHÔNG được vào trang chủ.
+  await prisma.article.create({ data: { slug: `da-dang-${stamp}`, title: `Bài ĐÃ ĐĂNG ${stamp}`, excerpt: "Tóm tắt", content: `${BAIT} nội dung`, category: "tuyen-sinh", author: "KiN", authorId: admin.id, published: true, publishedAt: new Date(now.getTime() - 86_400_000) } });
 
   const L = await loadHomeLanding(now);
   const json = JSON.stringify(L);
 
   // ─── JSON không lộ ────────────────────────────────────────────────────────────────────────────────────────
   section("Ca phá JSON lộ — mã mồi, khoá cấm, dữ liệu cá nhân");
-  check("dữ liệu có thật để thử (không rỗng cả bốn)", L.tutors.length > 0 && L.courses.length > 0 && L.exams.length > 0 && L.articles.length > 0, { t: L.tutors.length, c: L.courses.length, e: L.exams.length, a: L.articles.length });
+  check("dữ liệu có thật để thử (không rỗng cả ba); không còn khoá articles dù có bài đã đăng (SCL F1)", L.tutors.length > 0 && L.courses.length > 0 && L.exams.length > 0 && !("articles" in L) && !json.includes(`Bài ĐÃ ĐĂNG ${stamp}`), { t: L.tutors.length, c: L.courses.length, e: L.exams.length });
   check("không chứa mã mồi (lời giải, đáp án, nội dung câu, mật khẩu băm, azota, link nhóm Zalo, nội dung bài)", !json.includes(BAIT), json.slice(json.indexOf(BAIT) - 40, json.indexOf(BAIT) + 60));
   for (const k of ["passwordHash", "password", "azotaUrl", "ownerId", "explanation", "isCorrect", "participants", "clusterScorePercents", "capacity", "zaloGroupLink", "enrolled", "email", "phone", "dateOfBirth", "school", "content", "authorId", "views"]) {
     check(`không có khoá "${k}"`, !json.includes(`"${k}"`));
@@ -172,7 +166,7 @@ async function mkExam(o: {
   await prisma.user.update({ where: { id: TB.id }, data: { preferences: { profile: { hidden: true } } } });
   const one = await loadHomeLanding(now);
   check("chỉ còn 1 gia sư hợp lệ → tutors = []", one.tutors.length === 0, one.tutors.map(t => t.id));
-  check("các khối khác không bị ảnh hưởng khi khối gia sư rỗng", one.courses.length > 0 && one.exams.length === 3 && one.articles.length > 0);
+  check("các khối khác không bị ảnh hưởng khi khối gia sư rỗng", one.courses.length > 0 && one.exams.length === 3);
   await prisma.user.update({ where: { id: TB.id }, data: { preferences: {} } });
 
   // ─── Lớp ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -186,18 +180,6 @@ async function mkExam(o: {
   check("tiền chỉ để hiển thị: 900000 và 0 đúng như trong DB", L.courses.find(c => c.slug === lopA.id)?.price === 900000 && L.courses.find(c => c.slug === lopFree.id)?.price === 0);
   check("chip kỳ thi: đủ hai kỳ thi còn lớp có chỗ", L.courseChips.map(c => c.name).sort().join() === ["ĐGNL HCM", "ĐGNL HSA"].sort().join(), L.courseChips);
   check("lớp đầy KHÔNG tính vào chip (HSA chỉ còn 1 lớp có chỗ)", L.courseChips.find(c => c.name === "ĐGNL HSA")?.count === 1, L.courseChips);
-
-  // ─── Tin ──────────────────────────────────────────────────────────────────────────────────────────────────
-  section("Tin — đã đăng và đã tới giờ");
-  const aTitles = L.articles.map(a => a.title);
-  check("bài đã đăng và bài cũ không giờ đăng có mặt", aTitles.includes(aPosted.title) && aTitles.includes(aLegacy.title), aTitles);
-  check("vắng: bản nháp (published:false)", !json.includes(aDraft.title));
-  check("vắng: nháp dù giờ đăng ở quá khứ", !json.includes(aDraftPast.title));
-  check("vắng: bài hẹn giờ chưa tới giờ", !json.includes(aSched.title));
-  check("tối đa 3 bài, ngày đúng khuôn dd/mm/yyyy", L.articles.length <= 3 && L.articles.every(a => /^\d{2}\/\d{2}\/\d{4}$/.test(a.dateText)));
-  const afterSched = await loadHomeLanding(new Date(now.getTime() + 3 * 86_400_000));
-  check("mốc giờ do máy chủ truyền: qua giờ hẹn thì bài hiện, nháp vẫn vắng", afterSched.articles.some(a => a.title === aSched.title) && !afterSched.articles.some(a => a.title === aDraft.title || a.title === aDraftPast.title));
-  check("khoá của bài đúng bằng LandingArticle", L.articles.every(a => Object.keys(a).sort().join() === "categoryLabel,coverImage,dateText,excerpt,slug,title"));
 
   // ─── Tĩnh ─────────────────────────────────────────────────────────────────────────────────────────────────
   section("Tĩnh — homeLandingServer.ts không phụ thuộc người xem");

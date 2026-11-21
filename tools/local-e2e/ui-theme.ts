@@ -199,7 +199,7 @@ const luminanceOf = (rgb: string) => { const m = rgb.match(/\d+(\.\d+)?/g)?.map(
   const ca = await ctxFor(A, { width: 1280, height: 800 }); await noFonts(ca);
   await ca.addInitScript(`try { localStorage.setItem("kin.chu-de", "ca-phe"); localStorage.setItem("kin.che-do", "toi"); } catch (e) {}`);
   const badA: unknown[] = [];
-  for (const path of ["/admin", "/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/hoc-sinh", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/quan-tri-vien", "/admin/doanh-thu"]) {
+  for (const path of ["/admin", "/admin/kiem-duyet", "/admin/khoa-hoc", "/admin/hoc-sinh", "/admin/thi-thu", "/admin/cong-dong", "/admin/quan-tri-vien", "/admin/doanh-thu"]) {
     const pg = await ca.newPage(); watch(pg);
     await pg.goto(`${ADMIN}${path}`, { waitUntil: "load", timeout: 120000 });
     await pg.locator("#kin-rail").waitFor({ timeout: 90000 }).catch(() => {});
@@ -269,7 +269,7 @@ const luminanceOf = (rgb: string) => { const m = rgb.match(/\d+(\.\d+)?/g)?.map(
   const cg = await ctxFor(null, { width: 1280, height: 800 }); await noFonts(cg);
   await cg.addInitScript(`try { localStorage.setItem("kin.chu-de", "co-vit"); localStorage.setItem("kin.che-do", "toi"); } catch (e) {}`);
   const badG: unknown[] = [];
-  for (const path of ["/", "/khoa-hoc", "/thi-thu", "/cong-dong", "/diem-chuan", "/dang-nhap"]) {
+  for (const path of ["/", "/khoa-hoc", "/thi-thu", "/cong-dong", "/dang-nhap"]) {
     const pg = await cg.newPage(); watch(pg);
     await pg.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 120000 });
     await pg.waitForTimeout(2000);

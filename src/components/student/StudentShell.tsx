@@ -27,8 +27,8 @@ import { fetchStudentWork } from "@/lib/studentWorkClient";
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
 // BU-00 bước 6 (31/10/2026): bảng "Khác" rút từ 3 nhóm 15 mục còn 3 nhóm 8 mục (Tiếng Anh tự học được trả lại ngay sau đó) — học sinh chỉ thấy việc học. Bỏ khỏi MENU (route giữ nguyên, chỉ ẩn lối vào):
-// Thư viện, Tiếng Anh tự học, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin. Thi thử / Tiếng Anh
-// vẫn sáng đúng module nhờ `also` của "Việc của tôi" (/student/thi-thu) và "Lớp của tôi" (/student/tieng-anh).
+// Thư viện, Thi thử, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Ví và Coin (SCL F1 xoá hẳn Tiếng Anh, Bảng xếp hạng, Điểm chuẩn, Tin tức). Thi thử
+// vẫn sáng đúng module nhờ `also` của "Việc của tôi" (/student/thi-thu).
 // Điều hướng A6 (07/11/2026): "Nhập mã lớp" rút khỏi bảng này — lối vào nằm trong "Lớp của tôi" (màn trống + mục "Tham gia lớp khác"). Cộng đồng / Tin tức trỏ thẳng /cong-dong, /tin-tuc (file chuyển hướng /student/* giữ cho liên kết cũ).
 // NC2-048 (góp ý 28/10): "Hỏi đáp" là tab bên trong Cộng đồng; /student/hoi-dap vẫn chuyển tới /cong-dong?tab=hoi-dap-qa để liên kết và thông báo cũ không chết.
 // LOI-01 (11/11/2026): mục dẫn vào phần đang ẩn (Gia sư, Cộng đồng, Tin tức, Tiếng Anh tự học — src/lib/features.ts) bị lọc ở `MORE_GROUPS` bên dưới; nhóm hết mục thì bỏ cả nhóm.
@@ -39,21 +39,16 @@ const MORE_GROUPS_ALL: MoreGroup[] = [
     { label: "Lớp miễn phí", href: "/khoa-hoc?gia=free", also: ["/khoa-hoc"], icon: "lop" },
     { label: "Gia sư", href: "/giang-vien", icon: "nguoi" },
     { label: "Cộng đồng", href: "/cong-dong", also: ["/student/cong-dong"], icon: "nguoi" },
-    { label: "Tin tức", href: "/tin-tuc", also: ["/student/tin-tuc"], icon: "hop-thu" },
   ] },
-  { title: "Tự học", links: [
-    // Sửa sau BU-00 (01/11/2026): bước 6 đã bỏ mục này mà trang Lớp không có lối thay thế nên Tiếng Anh tự học không còn ai bấm tới được.
-    // Lối tắt `active: false`: /student/tieng-anh đã thuộc module "Lớp của tôi" (`also`) nên chỉ một mục sáng.
-    { label: "Tiếng Anh tự học", href: "/student/tieng-anh", icon: "lop", active: false },
-  ] },
+  // SCL F1 (Q8): mục Tin tức và nhóm "Tự học" (Tiếng Anh) đã xoá cùng hai phần đó.
 ];
 // DG (14/11/2026): "Lớp miễn phí" (/khoa-hoc?gia=free — danh mục công khai, không phải quy tắc đường vì /khoa-hoc còn dùng) đi cùng cờ TIM_GIA_SU: cả hai là lối
 // "khám phá sàn" ngoài các lớp em đã vào; học sinh vào lớp bằng mã mời trong "Lớp của tôi".
 const MORE_GROUPS: MoreGroup[] = MORE_GROUPS_ALL
   .map(g => ({ ...g, links: visibleLinks(g.links).filter(l => l.href !== "/khoa-hoc?gia=free" || featureOn("TIM_GIA_SU")) }))
   .filter(g => g.links.length > 0);
-/** DG: lối tắt của "Lớp của tôi" — bỏ trang thuộc phần đang ẩn (Tiếng Anh tự học khi cờ TIENG_ANH tắt) để mục không sáng ở trang đã chặn. */
-const LOP_ALSO = ["/student/bai-giang", "/student/nhap-ma-lop", "/student/tieng-anh", "/lop-cua-toi"].filter(h => !isLinkHidden(h));
+/** DG: lối tắt của "Lớp của tôi" — bỏ trang thuộc phần đang ẩn để mục không sáng ở trang đã chặn. */
+const LOP_ALSO = ["/student/bai-giang", "/student/nhap-ma-lop", "/lop-cua-toi"].filter(h => !isLinkHidden(h));
 // Chỉ các mục KHÔNG phải lối tắt mới làm nút "Khác" sáng (lối tắt `active: false` đã có module cha sáng).
 const MORE_HREFS = MORE_GROUPS.flatMap(g => g.links.filter(l => l.active !== false).flatMap(l => [l.href, ...(l.also ?? [])]));
 /** Phòng thi: /student/thi-thu/<mã đề> (không tính danh sách /student/thi-thu). */
@@ -98,7 +93,6 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     ...(isLinkHidden("/student/nhac-hoc") ? [] : [{ key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" } satisfies ModuleItem]),
     // LOI-01: "Lịch học" rời thanh khi phần Lịch đang ẩn; /student/lich-hoc vẫn chạy (Việc của tôi có "Xem lịch tuần", thông báo đổi lịch trỏ vào).
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich" } satisfies ModuleItem]),
-    // `also` có /student/tieng-anh (BU-00 bước 6): Tiếng Anh tự học rời menu "Khác" nhưng trang đó vẫn có mục sáng.
     { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" },
     // SCL-C (P1-1, HS4): điểm / trạng thái từng bài của các lớp đang học. Lên thanh dưới điện thoại.
     { key: "diem", label: "Điểm", href: "/student/diem", icon: "bai-kt" },

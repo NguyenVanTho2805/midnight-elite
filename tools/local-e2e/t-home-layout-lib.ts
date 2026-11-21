@@ -37,7 +37,7 @@ check("tutorPending ở vai admin không đổi gì (chỉ học sinh mới có 
 check("tutorPending dạng chuỗi 'true' không tính (chỉ true thật)", toHomeViewer({ role: "student", tutorPending: "true" as unknown as boolean }, false).kind === "student");
 
 section("homeBlocksFor — khối theo vai");
-for (const k of KINDS) check(`${k}: bảng tin và tính điểm luôn có`, homeBlocksFor(V(k), ON, FE).community === true && homeBlocksFor(V(k), ON, FE).score === true);
+for (const k of KINDS) check(`${k}: bảng tin luôn có; khối tính điểm không còn (SCL F1)`, homeBlocksFor(V(k), ON, FE).community === true && !("score" in homeBlocksFor(V(k), ON, FE)));
 check("loading → không Lớp của tôi, không CTA cuối", homeBlocksFor(V("loading"), ON, FE).myClass === false && homeBlocksFor(V("loading"), ON, FE).ctaFinal === false);
 check("guest → không Lớp của tôi, có CTA cuối", homeBlocksFor(V("guest"), ON, FE).myClass === false && homeBlocksFor(V("guest"), ON, FE).ctaFinal === true);
 check("student → có Lớp của tôi, không CTA cuối", homeBlocksFor(V("student"), ON, FE).myClass === true && homeBlocksFor(V("student"), ON, FE).ctaFinal === false);
@@ -52,22 +52,22 @@ section("homeNavFor — thanh trên");
 const labels = (v: HomeViewer) => homeNavFor(v, FE).map(i => i.label).join("|");
 const hrefs = (v: HomeViewer) => homeNavFor(v, FE).map(i => i.href).join("|");
 for (const k of ["loading", "guest", "tutor-pending", "tutor", "admin"] as const) {
-  check(`${k}: đúng 4 mục Lớp học|Thi thử|Cộng đồng|Tin tức`, labels(V(k)) === "Lớp học|Thi thử|Cộng đồng|Tin tức", labels(V(k)));
-  check(`${k}: đích /khoa-hoc|/thi-thu|/cong-dong|/tin-tuc`, hrefs(V(k)) === "/khoa-hoc|/thi-thu|/cong-dong|/tin-tuc", hrefs(V(k)));
+  check(`${k}: đúng 3 mục Lớp học|Thi thử|Cộng đồng (SCL F1: Tin tức đã xoá)`, labels(V(k)) === "Lớp học|Thi thử|Cộng đồng", labels(V(k)));
+  check(`${k}: đích /khoa-hoc|/thi-thu|/cong-dong`, hrefs(V(k)) === "/khoa-hoc|/thi-thu|/cong-dong", hrefs(V(k)));
 }
 const sn = homeNavFor(V("student"), FE);
-check("student: 5 mục, 'Lớp của tôi' ở cuối cùng, đích /student/hoc-tap", sn.length === 5 && sn[4].label === "Lớp của tôi" && sn[4].href === "/student/hoc-tap", sn);
-check("student: 4 mục đầu giống người khác", sn.slice(0, 4).map(i => i.label).join("|") === "Lớp học|Thi thử|Cộng đồng|Tin tức");
+check("student: 4 mục, 'Lớp của tôi' ở cuối cùng, đích /student/hoc-tap", sn.length === 4 && sn[3].label === "Lớp của tôi" && sn[3].href === "/student/hoc-tap", sn);
+check("student: 3 mục đầu giống người khác", sn.slice(0, 3).map(i => i.label).join("|") === "Lớp học|Thi thử|Cộng đồng");
 check("không mục nào ngoài danh sách (không Thư viện, Bảng xếp hạng, Ví, Hỏi đáp)", KINDS.every(k => homeNavFor(V(k), FE).every(i => !/thư viện|xếp hạng|ví|coin|hỏi đáp|điểm chuẩn/i.test(i.label) && !/thu-vien|bang-xep-hang|\/vi\b|hoi-dap|diem-chuan/.test(i.href))));
 check("mọi đích bắt đầu bằng '/' và không có nhãn rỗng", KINDS.every(k => homeNavFor(V(k), FE).every(i => i.href.startsWith("/") && i.label.trim().length > 0)));
-check("mỗi lần gọi trả mảng mới (sửa kết quả không làm hỏng lần sau)", ((): boolean => { const a = homeNavFor(V("guest"), FE); a.push({ label: "x", href: "/x" }); return homeNavFor(V("guest"), FE).length === 4; })());
+check("mỗi lần gọi trả mảng mới (sửa kết quả không làm hỏng lần sau)", ((): boolean => { const a = homeNavFor(V("guest"), FE); a.push({ label: "x", href: "/x" }); return homeNavFor(V("guest"), FE).length === 3; })());
 
 section("Ca phá — đầu vào rác không ném lỗi, không mở khối dành riêng");
 const junk = [undefined, null, {}, { kind: "" }, { kind: "STUDENT" }, { kind: "student " }, { kind: 1 }, "student"] as unknown as HomeViewer[];
 for (const j of junk) {
   let threw = false, b = null as ReturnType<typeof homeBlocksFor> | null, n = 0;
   try { b = homeBlocksFor(j, ON, FE); n = homeNavFor(j, FE).length; } catch { threw = true; }
-  check(`homeBlocksFor/homeNavFor(${JSON.stringify(j) ?? "undefined"}, FE) không ném lỗi, không Lớp của tôi, nav 4 mục`, !threw && b?.myClass === false && n === 4, { threw, b, n });
+  check(`homeBlocksFor/homeNavFor(${JSON.stringify(j) ?? "undefined"}, FE) không ném lỗi, không Lớp của tôi, nav 3 mục`, !threw && b?.myClass === false && n === 3, { threw, b, n });
 }
 let threw = false, fb = null as ReturnType<typeof homeBlocksFor> | null;
 try { fb = homeBlocksFor(V("student"), undefined as unknown as HomeFlags, FE); } catch { threw = true; }
@@ -76,7 +76,7 @@ check("toHomeViewer(undefined) không ném lỗi", toHomeViewer(undefined, false
 check("toHomeViewer với giá trị không phải object → guest", toHomeViewer("student" as unknown as null, false).kind === "guest");
 
 void section("LOI-01 — các phần đang ẩn (không cờ nào)");
-for (const k of KINDS) check(`${k}: ẩn bảng tin, quiz và tính điểm khi Cộng đồng / Điểm chuẩn tắt`, !homeBlocksFor(V(k), ON, {}).community && !homeBlocksFor(V(k), ON, {}).quiz && !homeBlocksFor(V(k), ON, {}).score);
+for (const k of KINDS) check(`${k}: ẩn bảng tin, quiz khi Cộng đồng tắt`, !homeBlocksFor(V(k), ON, {}).community && !homeBlocksFor(V(k), ON, {}).quiz);
 for (const k of KINDS) check(`${k}: thanh trên không có Cộng đồng, Tin tức`, homeNavFor(V(k), {}).every(i => i.href !== "/cong-dong" && i.href !== "/tin-tuc") && homeNavFor(V(k), {}).slice(0, 1).map(i => i.label).join("|") === "Lớp học");
 // DG (14/11/2026): ĐỔI CÓ CHỦ ĐÍCH — "Thi thử" rời thanh trên khi cờ THI_THU_CONG_KHAI tắt (mặc định); bật lại thì đứng ngay sau "Lớp học" như cũ.
 for (const k of KINDS) check(`${k}: thanh trên không có Thi thử khi THI_THU_CONG_KHAI tắt; có lại ngay sau Lớp học khi =1`, !homeNavFor(V(k), {}).some(i => i.href === "/thi-thu")

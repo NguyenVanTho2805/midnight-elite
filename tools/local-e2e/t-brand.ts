@@ -23,5 +23,6 @@ const layout = readFileSync("src/app/layout.tsx", "utf8");
 check("tiêu đề và Open Graph của trang gốc dùng KiN", /title:\s*"KiN —/.test(layout) && /openGraph:[\s\S]*title:\s*"KiN"/.test(layout));
 const email = readFileSync("src/lib/email.ts", "utf8");
 check("email gửi đi: tên người gửi và chủ đề là KiN", /const FROM\s*=\s*`KiN </.test(email) && /subject: "Xác thực email — KiN"/.test(email));
-check("khoá kỹ thuật giữ nguyên để không đăng xuất mọi người / không phải di chuyển dữ liệu: cookie midnight_session, chuyên mục tin 'tin-midnight'", readFileSync("src/lib/session.ts", "utf8").includes("midnight_session") && readFileSync("src/app/(admin)/admin/tin-tuc/page.tsx", "utf8").includes('value: "tin-midnight", label: "Tin KiN"'));
+// SCL F1: trang quản trị Tin tức đã xoá (chuyên mục 'tin-midnight' chỉ còn trong dữ liệu cũ của bảng articles).
+check("khoá kỹ thuật giữ nguyên để không đăng xuất mọi người: cookie midnight_session", readFileSync("src/lib/session.ts", "utf8").includes("midnight_session"));
 done();

@@ -83,7 +83,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   // Tên người viết cứng: \p{Lu}\p{Ll} (không chỉ [A-ZĐ][a-z]) để "Cô Ánh Nguyệt" cũng bị bắt; "Gia sư <tên từ dữ liệu>" không khớp vì "Gia sư" không nằm trong danh sách.
   const HARDCODED_PERSON = /(Thầy|Cô|ThS|TS)\.?\s+\p{Lu}\p{Ll}+/u;
   const homeFiles = src.filter(p => HOME_FILE.test(p));
-  check("có đủ tệp khối trang chủ để quét (HomeSections, HomeTutors, HomeCourses, HomeExams, HomeNews…)", ["HomeSections", "HomeTutors", "HomeCourses", "HomeExams", "HomeNews", "HomeLandingBlocks"].every(n => homeFiles.includes(`src/components/guest/${n}.tsx`)), homeFiles);
+  check("có đủ tệp khối trang chủ để quét (HomeSections, HomeTutors, HomeCourses, HomeExams…; HomeNews SCL F1 đã xoá)", ["HomeSections", "HomeTutors", "HomeCourses", "HomeExams", "HomeLandingBlocks"].every(n => homeFiles.includes(`src/components/guest/${n}.tsx`)), homeFiles);
   check("không có tệp khối lời chứng thực / bảng vàng / đánh giá (Home{Testimonials,Honor,Reviews}*.tsx)", src.filter(p => FAKE_BLOCK_FILE.test(p)).length === 0, src.filter(p => FAKE_BLOCK_FILE.test(p)));
   const testiHits = [...homeFiles, "src/lib/siteContent.ts"].filter(p => TESTIMONIAL_TEXT.test(stripComments(read(p))));
   check("HomeSections.tsx, Home*.tsx và chữ mặc định (siteContent.ts) không có 'Học viên nói gì', 'Bảng vàng', 'lời chứng thực', 'Phụ huynh nói'", testiHits.length === 0, testiHits);

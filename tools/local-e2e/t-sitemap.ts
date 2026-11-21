@@ -30,14 +30,9 @@ import { request as httpRequest } from "node:http";
   check("200 và là XML", sm.status === 200 && /<urlset/.test(sm.text), sm.status);
   const locs = [...sm.text.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
   // LOI-01 (11/11/2026): trang của phần đang ẩn (src/lib/features.ts) không vào sitemap. Cờ đọc ở tiến trình bài này — chạy bài với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
-  if (featureOn("TIN_TUC")) {
-    check("có trang tĩnh /tin-tuc và gốc", locs.some(l => /\/tin-tuc$/.test(l)) && locs.some(l => /^https:\/\/[^/]+$/.test(l)));
-    check("có bài đã đăng (cả bài cũ publishedAt=null)", locs.some(l => l.endsWith("/tin-tuc/hien-1")) && locs.some(l => l.endsWith("/tin-tuc/hien-cu")));
-  } else {
-    check("Tin tức đang ẩn: có gốc, KHÔNG có /tin-tuc và bài nào", locs.some(l => /^https:\/\/[^/]+$/.test(l)) && !locs.some(l => /\/tin-tuc(\/|$)/.test(l)), locs.filter(l => /tin-tuc/.test(l)));
-  }
-  check("trang của phần đang ẩn (/giang-vien, /diem-chuan) không có khi cờ tắt", (featureOn("TIM_GIA_SU") || !locs.some(l => /\/giang-vien$/.test(l))) && (featureOn("DIEM_CHUAN") || !locs.some(l => /\/diem-chuan$/.test(l))), locs);
-  check("KHÔNG có nháp và bài lên lịch tương lai", !locs.some(l => l.endsWith("/tin-tuc/nhap-x")) && !locs.some(l => l.endsWith("/tin-tuc/lich-x")));
+  // SCL F1: Tin tức, Điểm chuẩn đã xoá hẳn — bài cũ trong bảng articles (dựng ở trên) KHÔNG bao giờ vào sitemap.
+  check("có gốc; KHÔNG có /tin-tuc, bài tin nào, /diem-chuan (phần đã xoá)", locs.some(l => /^https:\/\/[^/]+$/.test(l)) && !locs.some(l => /\/(tin-tuc|diem-chuan)(\/|$)/.test(l)), locs.filter(l => /tin-tuc|diem-chuan/.test(l)));
+  check("trang của phần đang ẩn (/giang-vien) không có khi cờ tắt", featureOn("TIM_GIA_SU") || !locs.some(l => /\/giang-vien$/.test(l)), locs);
   check("có khoá học status=true, KHÔNG có khoá ẩn", locs.some(l => l.endsWith("/khoa-hoc/lop-hien")) && !locs.some(l => l.endsWith("/khoa-hoc/lop-an")));
   check("không có /admin, /api, /student, /lop-cua-toi, /phu-huynh, /thi-thu, ?muc=", !locs.some(l => /\/(admin|api|student|lop-cua-toi|phu-huynh|thi-thu)(\/|$)|\?muc=/.test(l)), locs.filter(l => /admin|api|student|lop-cua-toi|phu-huynh|thi-thu|muc=/.test(l)));
   check("≤ 5000 mục", locs.length <= 5000, locs.length);

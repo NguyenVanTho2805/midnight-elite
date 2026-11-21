@@ -45,8 +45,8 @@ import { COIN_VISIBLE, COIN_LOGIC_ON } from "@/lib/features"; // LOI-01: hàng c
   check("không lộ giá trị CRON_SECRET trong trang", !(await pg.content()).includes(process.env.CRON_SECRET!));
   const crons = pg.getByTestId("cron-gan-nhat");
   let cronOthers = true;
-  for (const k of ["remind-exam", "expire-tutor-subscriptions", "pro-renewal-reminders", "article-publish"]) cronOthers = cronOthers && /Chưa ghi nhận/.test(await crons.locator(`[data-cron="${k}"]`).innerText());
-  check("cron: remind-class 'Đúng lịch', bốn tác vụ kia (kể cả article-publish) 'Chưa ghi nhận'", /Đúng lịch/.test(await crons.locator('[data-cron="remind-class"]').innerText()) && cronOthers);
+  for (const k of ["remind-exam", "het-han-tep-nop-bai", "nhac-hoc-sang"]) cronOthers = cronOthers && /Chưa ghi nhận/.test(await crons.locator(`[data-cron="${k}"]`).innerText());
+  check("cron: remind-class 'Đúng lịch', ba tác vụ kia 'Chưa ghi nhận' (SCL F1: còn 4 tác vụ)", /Đúng lịch/.test(await crons.locator('[data-cron="remind-class"]').innerText()) && cronOthers);
   const hm = await pg.getByTestId("han-muc").innerText();
   check("hạn mức: học sinh + lượt AI có số; mẫu phiếu / dung lượng / Drive ghi 'Chưa có'", /Học sinh đang học\s+\d+\s+\d+/.test(hm) && /Mẫu phiếu[\s\S]*Chưa có hạn mức/.test(hm) && /Dung lượng[\s\S]*Chưa có hạn mức/.test(hm) && /Drive[\s\S]*Chưa có tích hợp/.test(hm), hm);
   check("chống spam lấy số thật từ mã (3 yêu cầu / ngày, 5 / giờ)", /3 yêu cầu \/ ngày/.test(await pg.content()) && /5 yêu cầu \/ giờ/.test(await pg.content()));

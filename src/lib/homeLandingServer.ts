@@ -1,4 +1,4 @@
-// BU-HS-LANDING — phần CHẠM DB của bốn khối dữ liệu thật trên trang chủ công khai (Gia sư, Lớp, Thi thử, Tin tức).
+// BU-HS-LANDING — phần CHẠM DB của ba khối dữ liệu thật trên trang chủ công khai (Gia sư, Lớp, Thi thử).
 // Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-LANDING.md mục 2.4, 2.5. Phần thuần (chọn/sắp/cắt): src/lib/homeLanding.ts.
 //
 // Trang chủ là trang TĨNH (revalidate = 3600): không đọc cookie/header/phiên ở đây, kết quả giống nhau cho mọi người xem.
@@ -7,11 +7,10 @@
 import { prisma } from "@/lib/prisma";
 import { loadPublicCatalog } from "@/lib/courseCatalogPublicServer";
 import { loadSearchableTutors } from "@/lib/tutorSearchServer";
-import { listPublicArticles } from "@/lib/articlesPublic";
 import { isListedToStudent } from "@/lib/examVariantRoute";
 import {
-  EMPTY_LANDING, HOME_LANDING_LIMITS, pickHomeCourses, pickHomeExams, pickHomeTutors, safeBlock, toLandingArticle,
-  type ExamRowLike, type HomeLanding, type LandingArticle, type LandingExam,
+  EMPTY_LANDING, HOME_LANDING_LIMITS, pickHomeCourses, pickHomeExams, pickHomeTutors, safeBlock,
+  type ExamRowLike, type HomeLanding, type LandingExam,
 } from "@/lib/homeLanding";
 import type { TutorListItem } from "@/lib/tutorSearch";
 import type { Chip, PublicCard } from "@/lib/courseCatalogPublic";
@@ -54,22 +53,15 @@ export async function loadHomeExams(now: Date): Promise<LandingExam[]> {
   return pickHomeExams(listed, now, HOME_LANDING_LIMITS.exams);
 }
 
-/** Tin: 3 bài mới nhất (ghim trước), luật sẵn của `publicArticleWhere` — đã đăng và (không có giờ hẹn hoặc giờ hẹn đã tới theo `now`). */
-export async function loadHomeArticles(now: Date): Promise<LandingArticle[]> {
-  const cards = await listPublicArticles({ limit: HOME_LANDING_LIMITS.articles, sort: "moi", now });
-  return cards.map(toLandingArticle);
-}
-
 /**
- * Cả bốn khối, song song. KHÔNG ném lỗi: bộ nào hỏng thì khối đó rỗng. `now` là giờ máy chủ (mặc định lúc dựng trang).
- * Không rỗng-cả-bốn thì trả đúng những gì có; rỗng cả bốn thì trả giá trị bằng `EMPTY_LANDING`.
+ * Cả ba khối, song song. KHÔNG ném lỗi: bộ nào hỏng thì khối đó rỗng. `now` là giờ máy chủ (mặc định lúc dựng trang).
+ * Không rỗng-cả-ba thì trả đúng những gì có; rỗng cả ba thì trả giá trị bằng `EMPTY_LANDING`.
  */
 export async function loadHomeLanding(now: Date = new Date()): Promise<HomeLanding> {
-  const [tutors, catalog, exams, articles] = await Promise.all([
+  const [tutors, catalog, exams] = await Promise.all([
     safeBlock(loadHomeTutors, EMPTY_LANDING.tutors, "tutors"),
     safeBlock(loadHomeCourses, { courses: EMPTY_LANDING.courses, chips: EMPTY_LANDING.courseChips }, "courses"),
     safeBlock(() => loadHomeExams(now), EMPTY_LANDING.exams, "exams"),
-    safeBlock(() => loadHomeArticles(now), EMPTY_LANDING.articles, "articles"),
   ]);
-  return { tutors, courses: catalog.courses, courseChips: catalog.chips, exams, articles };
+  return { tutors, courses: catalog.courses, courseChips: catalog.chips, exams };
 }
