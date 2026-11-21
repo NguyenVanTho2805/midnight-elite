@@ -48,6 +48,22 @@ export function variantCodeOf(groupSize: number, variantNo: number): number | nu
 }
 
 /**
+ * SCL-H (P2-31): điều kiện Prisma (đối tượng thường, không import prisma) khớp `grantedExamIds.has(id) || isListedToStudent(…, enrolledCourseIds)` — để lịch học sinh
+ * lọc ở SQL thay vì kéo cả bảng đề về rồi lọc. Chủ đề NULL hoặc adminRole NULL phải ghi riêng: `adminRole: { not: "teacher" }` trong SQL bỏ luôn hàng NULL.
+ * Chỉ phần "ai được thấy"; điều kiện đề còn dùng (active, không nháp…) do nơi gọi ghép thêm.
+ */
+export function listedToStudentWhere(enrolledCourseIds: readonly string[], grantedExamIds: readonly string[]) {
+  return {
+    variantOfId: null,
+    OR: [
+      { id: { in: [...grantedExamIds] } },
+      { courseId: { in: [...enrolledCourseIds] } },
+      { courseId: null, OR: [{ ownerId: null }, { owner: { adminRole: null } }, { owner: { adminRole: { not: "teacher" } } }] },
+    ],
+  };
+}
+
+/**
  * Đề này có được LIỆT KÊ cho học sinh không.
  *  - mã con: không bao giờ (vào bằng đường dẫn thì quy về gốc);
  *  - "giao theo link" (không gắn lớp, chủ đề là gia sư): không liệt kê, nhưng vẫn vào được bằng đường dẫn;

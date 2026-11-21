@@ -137,10 +137,12 @@ async function mkClass(ownerId: string, name: string) {
   ];
   const snapA = async () => JSON.stringify([await prisma.lesson.findMany({ where: { chapter: { section: { courseId: A.c.id } } }, orderBy: { id: "asc" }, select: { id: true, status: true, chapterId: true, order: true, videoUrl: true } }), await prisma.chapter.count({ where: { section: { courseId: A.c.id } } })]);
   const s0 = await snapA();
-  for (const [who, u] of [["gia sư B", TB], ["gia sư chờ duyệt", PEND], ["học sinh", S1], ["quản trị", SUP]] as const) {
+  // SCL Q2: quản trị (chủ nhiệm) thấy và sửa được mọi lớp ⇒ không còn nằm trong nhóm bị chặn; chỉ kiểm ĐỌC (không ghi để khỏi đổi dữ liệu các ca sau).
+  for (const [who, u] of [["gia sư B", TB], ["gia sư chờ duyệt", PEND], ["học sinh", S1]] as const) {
     const rs = await Promise.all(calls.map(([m, p, b]) => api(m, p, { as: u, body: b })));
     check(`K21/K25 ${who}: G1–G6 đều 403, không lộ dữ liệu`, rs.every(r => r.status === 403) && !rs.some(r => has(r.json, "BI-MAT")), rs.map(r => r.status));
   }
+  check("Q2 quản trị: G1 đọc giáo trình lớp A ⇒ 200", (await api("GET", gt(""), { as: SUP })).status === 200);
   const rsG = await Promise.all(calls.map(([m, p, b]) => api(m, p, { body: b })));
   check("K25 khách: G1–G6 đều 401", rsG.every(r => r.status === 401), rsG.map(r => r.status));
   check("K21 lớp không tồn tại ⇒ 404", (await api("PATCH", "/api/tutor/lop/khong-co/giao-trinh/trang-thai", { as: TA, body: { lessonIds: ["x"], status: "published" } })).status === 404);

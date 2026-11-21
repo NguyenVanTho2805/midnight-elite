@@ -1,60 +1,12 @@
-"use client";
+// Vỏ học sinh kiểu Outlook (Figma 11:98): thanh module trái / thanh dưới, dải trên có logo + xu + chuông. Phòng thi (/student/thi-thu/<mã đề>) không có vỏ — xem StudentShell.
+// SCL-H (P2-30, 21/11/2026): đọc phiên Ở MÁY CHỦ rồi truyền người dùng vào vỏ (trước đây cả nhóm là "use client": HTML chỉ có vòng xoay, phải chờ JS → /api/auth/me
+// → dữ liệu trang, 3 vòng mạng). Lỗi DB → undefined: vỏ tự hỏi /api/auth/me như cũ, không chặn nhầm.
+import { getSession } from "@/lib/session";
+import { loadAuthUser } from "@/lib/authUserServer";
+import StudentLayoutClient from "./StudentLayoutClient";
 
-import { Suspense } from "react";
-import { usePathname } from "next/navigation";
-import AuthGuard from "@/components/AuthGuard";
-import StudentShell, { isExamRoom } from "@/components/student/StudentShell";
-import TutorShellClient from "@/components/shell/TutorShellClient";
-import { useAuth } from "@/contexts/AuthContext";
-
-// Bong bóng "KiN AI" đã GỠ khỏi giao diện học sinh (14/10/2026): nó không nối với AI nào, chỉ chờ 2 giây rồi trả một trong năm
-// đoạn chữ viết sẵn (kể cả câu "đã đối chiếu 47 đề thi") — học sinh tưởng đang hỏi AI thật. Gắn lại khi đã nối AI thật; xem AIChatWidget.tsx.
-
-// "Việc của tôi" tự dàn hai khung sát mép (danh sách + khung đọc); phòng thi tự dàn toàn màn hình (thanh Navy + thân cuộn + chân trang,
-// Figma 27:2) nên cũng không có lề; các trang còn lại giữ lề như trước.
-function Content({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  // Ba màn dựng theo Figma (Việc của tôi, Lịch học, Lớp của tôi) tự đặt lề trang. (/student/bai-tap chỉ còn là chuyển hướng.)
-  const flush = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap"].some(p => pathname.startsWith(p)) || isExamRoom(pathname);
-  return (
-    <main className={flush ? "" : "px-4 md:px-8 py-6 max-w-screen-2xl mx-auto"}>
-      <Suspense fallback={
-        <div className="animate-pulse space-y-4 p-4 md:p-8">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-24 rounded-xl" style={{ background: "var(--kin-vien-thuong)" }} />
-          ))}
-        </div>
-      }>
-        <div className="page-enter">{children}</div>
-      </Suspense>
-    </main>
-  );
-}
-
-// Chọn vỏ theo người đang xem. Nhóm trang này có MỘT trang dùng chung nằm ngoài /student/*: /cai-dat/chu-de (Chủ đề màu), mà gia sư cũng bấm vào từ
-// Cài đặt của họ. Trước đây gia sư rơi vào vỏ HỌC SINH (thanh bên "HỌC SINH": Việc của tôi / Lịch / Lớp trỏ sang /student/*) rồi bấm tiếp là lạc sang khu học viên
-// (15/10/2026). Nay gia sư giữ vỏ GIA SƯ ở đúng trang đó; /student/* vẫn là khu học viên (quản trị / gia sư vào xem thử như trước).
-// BU-00 bước 5: gia sư CHỜ DUYỆT (cờ tutorPending) bấm "Cài đặt" ở vỏ chờ duyệt cũng tới đúng trang này → giữ vỏ chờ duyệt. Vào /student/* thì AuthGuard đã đẩy
-// họ về /lop-cua-toi/cho-duyet trước khi tới đây.
-function Shell({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const pathname = usePathname();
-  const shared = pathname === "/cai-dat/chu-de";
-  if (shared && user?.role === "admin" && user.adminRole === "teacher") return <TutorShellClient>{children}</TutorShellClient>;
-  if (shared && user?.role === "student" && user.tutorPending) return <TutorShellClient pending>{children}</TutorShellClient>;
-  return <StudentShell>{children}</StudentShell>;
-}
-
-// Vỏ học sinh kiểu Outlook (Figma 11:98): thanh module trái / thanh dưới, dải trên có logo + xu + chuông.
-// Phòng thi (/student/thi-thu/<mã đề>) không có vỏ — xem StudentShell.
-export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard requiredRole="student">
-      <div className="min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
-        <Shell>
-          <Content>{children}</Content>
-        </Shell>
-      </div>
-    </AuthGuard>
-  );
+export default async function StudentLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession().catch(() => undefined);
+  const initialUser = session === undefined ? undefined : session ? await loadAuthUser(session.userId).catch(() => undefined) : null;
+  return <StudentLayoutClient initialUser={initialUser}>{children}</StudentLayoutClient>;
 }

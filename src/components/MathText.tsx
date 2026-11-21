@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import katex from "katex";
+// SCL-H: CSS KaTeX đi cùng nơi duy nhất HIỂN THỊ công thức (trước nằm ở app/layout.tsx ⇒ mọi trang đều tải ~23 KB CSS chặn vẽ dù không có công thức).
+import "katex/dist/katex.min.css";
 import { svgFromFormulaImgB64, formulaImgLooseRegex, FORMULA_B64_MAX, FORMULA_MAX_TOKENS_PER_FIELD } from "@/lib/mathtype/formulaImg";
 
 // Quy ước: $...$ = công thức inline, $$...$$ = công thức khối riêng dòng.

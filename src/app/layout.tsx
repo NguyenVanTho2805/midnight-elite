@@ -1,7 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Inter, Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
-import "katex/dist/katex.min.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AgentationWrapper from "@/components/AgentationWrapper";
 import InitScript from "@/components/InitScript";
@@ -17,7 +16,8 @@ import { PausedNotice } from "@/components/kin/PausedNotice";
 
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  // SCL-H (P2-32): chỉ 400/600/700 (trước 7 độ đậm × 2 bộ chữ = 14 tệp preload). Lớp font-light/medium/extrabold/black rơi về độ đậm gần nhất có sẵn (300/500→400, 800/900→700).
+  weight: ["400", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -35,6 +35,8 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["800"],
   variable: "--font-jakarta",
   display: "swap",
+  // SCL-H: chỉ dùng cho 3 chữ "KiN" cạnh logo (.kin-chu-logo) — không preload, trình duyệt tải khi gặp chữ đó (lúc chờ thì hiện bằng --font-sans).
+  preload: false,
 });
 
 const spaceMono = Space_Mono({
@@ -42,6 +44,8 @@ const spaceMono = Space_Mono({
   weight: ["400", "700"],
   variable: "--font-space-mono",
   display: "swap",
+  // SCL-H: chỉ code/pre/.font-mono (màn soạn đề, không phải màn chính) — không preload.
+  preload: false,
 });
 
 export const metadata: Metadata = {

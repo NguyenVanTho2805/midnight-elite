@@ -331,7 +331,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await eventually("em không có bài hẹn (phiếu rỗng thật) ⇒ VẪN nói '3 ngày tới chưa có buổi học' (rỗng ≠ đang tải)", async () => (await p1.getByText("3 ngày tới chưa có buổi học").count()) === 1 && (await p1.locator("[data-aside-dang-tai]").count()) === 0, 60000);
     await c1.close();
   }
-  section("LOI-07 · 1600 · không giấu lỗi: hom-nay 500 / 403 không ẩn cột buổi học; /api/schedule 500 ⇒ khối lịch báo lỗi + Thử lại");
+  section("LOI-07 · 1600 · không giấu lỗi: hom-nay 500 / 403 không ẩn cột buổi học; viec-cua-toi 500 ⇒ khối lịch báo lỗi + Thử lại");
   {
     for (const [what, status] of [["500", 500], ["403 (gia sư / quản trị xem thử)", 403]] as const) {
       const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
@@ -345,11 +345,15 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     }
     const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
     let fail = true;
-    await p.route("**/api/schedule**", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
+    // SCL-H: lịch của lớp về cùng /api/student/viec-cua-toi (một yêu cầu ⇒ một lỗi: việc và lịch cùng báo lỗi); /api/schedule không còn được gọi.
+    let scheduleCalls = 0;
+    await p.route("**/api/schedule**", r => { scheduleCalls++; return r.continue(); });
+    await p.route("**/api/student/viec-cua-toi**", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
     await p.goto(`${BASE}/student/hoc-tap?course=${X.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     const loi = p.locator("[data-course-sessions] [data-course-sessions-loi]");
     await loi.waitFor({ timeout: 120000 }).catch(() => {});
-    check("lớp có bài hẹn hôm nay + /api/schedule 500 ⇒ khối 'Buổi học sắp tới' VẪN hiện, nói 'Không tải được lịch của lớp.' + 'Thử lại' ≥ 44px (không im lặng ẩn)",
+    check("trang lớp không gọi /api/schedule (lịch đi cùng viec-cua-toi)", scheduleCalls === 0, scheduleCalls);
+    check("lớp có bài hẹn hôm nay + /api/student/viec-cua-toi 500 ⇒ khối 'Buổi học sắp tới' VẪN hiện, nói 'Không tải được lịch của lớp.' + 'Thử lại' ≥ 44px (không im lặng ẩn)",
       await loi.isVisible() && /Không tải được lịch của lớp\./.test(await loi.innerText()) && ((await loi.getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44);
     fail = false;
     await loi.getByRole("button", { name: "Thử lại" }).click();
