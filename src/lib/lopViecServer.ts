@@ -35,26 +35,33 @@ export async function inboxCourseIds(s: Who): Promise<string[]> {
 }
 
 const inCourses = (ids: string[]) => ({ chapter: { section: { courseId: { in: ids } } } });
+// Chỉ học sinh ĐANG HỌC (cùng nguồn với sổ điểm và cột "Chờ chấm" của hàng bài): `where` thu hẹp, rồi lọc đúng cặp lớp–học sinh (học sinh có thể đang học lớp khác trong `ids`).
+const activeIn = (ids: string[]) => ({ user: { enrollments: { some: { courseId: { in: ids }, status: "active" } } } });
+async function activePairs(ids: string[]): Promise<Set<string>> {
+  const rows = await prisma.enrollment.findMany({ where: { courseId: { in: ids }, status: "active" }, select: { courseId: true, userId: true } });
+  return new Set(rows.map(r => `${r.courseId}|${r.userId}`));
+}
 
 /** Đếm việc theo lớp: bài nộp chưa chấm (bài tập nộp tệp), điểm tự khai chờ duyệt, xin vào lớp; và buổi sắp tới (từ hôm nay, giờ VN) chưa gắn video.
  *  "Xin vào lớp" chỉ tính lớp `joinOwnerId` làm chủ: duyệt / từ chối chỉ chủ lớp làm được (requireCourseTutor), Chủ nhiệm không nhận hộ. */
 export async function loadClassTodos(ids: string[], now: Date, joinOwnerId: string): Promise<Map<string, ClassTodo>> {
   const out = new Map(ids.map(id => [id, emptyTodo(id)]));
   if (!ids.length) return out;
-  const [subs, results, joins, lessons] = await Promise.all([
+  const [subs, results, joins, lessons, active] = await Promise.all([
     prisma.assignmentSubmission.findMany({
-      where: { score: null, assignment: { mode: { not: "azota" }, lesson: inCourses(ids) } },
-      select: { assignment: { select: { lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } } } }, take: MAX_ROWS,
+      where: { score: null, ...activeIn(ids), assignment: { mode: { not: "azota" }, lesson: inCourses(ids) } },
+      select: { userId: true, assignment: { select: { lesson: { select: { chapter: { select: { section: { select: { courseId: true } } } } } } } } }, take: MAX_ROWS,
     }),
-    prisma.examResult.findMany({ where: { pendingReview: true, exam: { courseId: { in: ids } } }, select: { exam: { select: { courseId: true } } }, take: MAX_ROWS }),
+    prisma.examResult.findMany({ where: { pendingReview: true, ...activeIn(ids), exam: { courseId: { in: ids } } }, select: { userId: true, exam: { select: { courseId: true } } }, take: MAX_ROWS }),
     prisma.classJoinRequest.groupBy({ by: ["courseId"], where: { status: "pending", courseId: { in: ids }, course: { ownerId: joinOwnerId } }, _count: { _all: true } }),
     prisma.lesson.findMany({
       where: { ...inCourses(ids), scheduledAt: { gte: vnDayStart(now) }, OR: [{ videoUrl: null }, { videoUrl: "" }] },
       select: { id: true, title: true, scheduledAt: true, chapter: { select: { section: { select: { courseId: true } } } } }, orderBy: { scheduledAt: "asc" }, take: MAX_ROWS,
     }),
+    activePairs(ids),
   ]);
-  for (const s of subs) { const t = out.get(s.assignment.lesson.chapter.section.courseId); if (t) t.choCham++; }
-  for (const r of results) { const t = r.exam.courseId ? out.get(r.exam.courseId) : undefined; if (t) t.choDuyet++; }
+  for (const s of subs) { const c = s.assignment.lesson.chapter.section.courseId; const t = out.get(c); if (t && active.has(`${c}|${s.userId}`)) t.choCham++; }
+  for (const r of results) { const t = r.exam.courseId ? out.get(r.exam.courseId) : undefined; if (t && active.has(`${r.exam.courseId}|${r.userId}`)) t.choDuyet++; }
   for (const j of joins) { const t = out.get(j.courseId); if (t) t.xinVao = j._count._all; }
   for (const l of lessons) {
     const t = out.get(l.chapter.section.courseId);
@@ -78,29 +85,30 @@ export interface InboxJoinItem { id: string; courseId: string; courseName: strin
 /** Từng việc (bản điện thoại: duyệt điểm, chấm từng bài, nhận học sinh ngay trên Hộp việc). Cũ nhất trước. */
 export async function loadInboxItems(ids: string[], joinOwnerId: string, limit = 50): Promise<{ grade: InboxGradeItem[]; approve: InboxApproveItem[]; join: InboxJoinItem[] }> {
   if (!ids.length) return { grade: [], approve: [], join: [] };
-  const [subs, results, joins] = await Promise.all([
+  const [subs, results, joins, active] = await Promise.all([
     prisma.assignmentSubmission.findMany({
-      where: { score: null, assignment: { mode: { not: "azota" }, lesson: inCourses(ids) } }, orderBy: { submittedAt: "asc" }, take: limit,
+      where: { score: null, ...activeIn(ids), assignment: { mode: { not: "azota" }, lesson: inCourses(ids) } }, orderBy: { submittedAt: "asc" }, take: limit,
       select: {
-        id: true, assignmentId: true, submittedAt: true, fileUrl: true, kind: true, user: { select: { name: true } },
+        id: true, userId: true, assignmentId: true, submittedAt: true, fileUrl: true, kind: true, user: { select: { name: true } },
         assignment: { select: { title: true, maxPoints: true, lesson: { select: { chapter: { select: { section: { select: { course: { select: { id: true, name: true } } } } } } } } } },
       },
     }),
     prisma.examResult.findMany({
-      where: { pendingReview: true, exam: { courseId: { in: ids } } }, orderBy: { completedAt: "asc" }, take: limit,
-      select: { id: true, score: true, totalPoints: true, completedAt: true, user: { select: { name: true } }, exam: { select: { title: true, course: { select: { id: true, name: true } } } } },
+      where: { pendingReview: true, ...activeIn(ids), exam: { courseId: { in: ids } } }, orderBy: { completedAt: "asc" }, take: limit,
+      select: { id: true, userId: true, score: true, totalPoints: true, completedAt: true, user: { select: { name: true } }, exam: { select: { title: true, course: { select: { id: true, name: true } } } } },
     }),
     prisma.classJoinRequest.findMany({
       where: { status: "pending", courseId: { in: ids }, course: { ownerId: joinOwnerId } }, orderBy: { createdAt: "asc" }, take: limit,
       select: { id: true, createdAt: true, user: { select: { name: true } }, course: { select: { id: true, name: true } } },
     }),
+    activePairs(ids),
   ]);
   return {
-    grade: subs.map(s => {
+    grade: subs.filter(s => active.has(`${s.assignment.lesson.chapter.section.course.id}|${s.userId}`)).map(s => {
       const c = s.assignment.lesson.chapter.section.course;
       return { submissionId: s.id, assignmentId: s.assignmentId, courseId: c.id, courseName: c.name, studentName: s.user.name ?? "Học sinh", title: s.assignment.title, maxPoints: s.assignment.maxPoints, submittedAt: s.submittedAt, fileUrl: s.fileUrl, kind: s.kind };
     }),
-    approve: results.filter(r => r.exam.course).map(r => ({ resultId: r.id, courseId: r.exam.course!.id, courseName: r.exam.course!.name, studentName: r.user.name ?? "Học sinh", title: r.exam.title, score: r.score, totalPoints: r.totalPoints, completedAt: r.completedAt })),
+    approve: results.filter(r => r.exam.course && active.has(`${r.exam.course.id}|${r.userId}`)).map(r => ({ resultId: r.id, courseId: r.exam.course!.id, courseName: r.exam.course!.name, studentName: r.user.name ?? "Học sinh", title: r.exam.title, score: r.score, totalPoints: r.totalPoints, completedAt: r.completedAt })),
     join: joins.map(j => ({ id: j.id, courseId: j.course.id, courseName: j.course.name, studentName: j.user.name ?? "Học sinh", createdAt: j.createdAt })),
   };
 }

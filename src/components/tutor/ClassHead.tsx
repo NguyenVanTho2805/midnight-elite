@@ -5,6 +5,7 @@ import Link from "next/link";
 import { KinStatus } from "@/components/kin/Status";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { kinButtonClass } from "@/components/kin/buttonClass";
+import { splitCategory } from "@/lib/classSubject";
 
 export interface ClassHeadProps {
   name: string;
@@ -20,11 +21,15 @@ export interface ClassHeadProps {
   giaoHref?: string | null;
   /** Màu lớp: vạch 4px trên đầu lớp (trang trí, không mang chữ). */
   color?: string;
+  /** SCL-G-GS (bản chốt 731): tên gia sư chủ lớp, lịch học, mã lớp (chỉ chủ lớp) trên dòng phụ. */
+  teacher?: string | null; schedule?: string | null; code?: string | null;
 }
 
 const TONE: Record<string, "xong" | "cho" | "mo"> = { open: "xong", paused: "cho", closed: "mo" };
 
-export default function ClassHead({ name, category, status, hidden, studentCount, examsHref, giaoHref, color }: ClassHeadProps) {
+export default function ClassHead({ name, category, status, hidden, studentCount, examsHref, giaoHref, color, teacher, schedule, code }: ClassHeadProps) {
+  // Môn · khối có dấu ("toan" cũ ⇒ "Toán"); bỏ hẳn khi tên lớp đã chứa môn.
+  const cat = (() => { const { subject, grade } = splitCategory(category); const t = [subject, grade].filter(Boolean).join(" · "); return t && !name.toLowerCase().includes(subject.toLowerCase()) ? t : ""; })();
   return (
     <header data-class-head className="pb-4 md:pb-5">
       {color && <span aria-hidden data-vach-lop className="block h-1 w-16 rounded-full mb-2" style={{ background: color }} />}
@@ -39,9 +44,12 @@ export default function ClassHead({ name, category, status, hidden, studentCount
         )}
       </div>
       {giaoHref && <p data-cau-dan className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Giao bài tập, gắn video hoặc tài liệu cho lớp</p>}
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[length:var(--kin-co-goc)] leading-[var(--kin-dong-goc)] text-[var(--kin-chu-mo)]">
-        {category && <span>{category}</span>}
+      <p data-dong-phu-lop className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[length:var(--kin-co-goc)] leading-[var(--kin-dong-goc)] text-[var(--kin-chu-phu)]">
+        {teacher && <span>{teacher}</span>}
+        {cat && <span>{cat}</span>}
+        {schedule && <span>{schedule}</span>}
         <span className="tabular-nums">{studentCount} học sinh</span>
+        {code && <span>Mã lớp <span className="font-medium text-[var(--kin-chu-chinh)]">{code}</span></span>}
         <KinStatus tone={TONE[status] ?? "mo"}>{CLASS_STATUS_LABEL[status] ?? status}</KinStatus>
         {hidden && <KinStatus tone="mo">Đang ẩn</KinStatus>}
       </p>

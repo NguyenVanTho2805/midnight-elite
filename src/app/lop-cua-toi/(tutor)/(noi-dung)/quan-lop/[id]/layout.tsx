@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { getSession } from "@/lib/session";
 import { redirectIfNotTutor } from "@/lib/tutorGateServer";
-import { loadClassHead } from "@/lib/tutorClassPageServer";
+import { loadClassHead, loadClassHeadMeta } from "@/lib/tutorClassPageServer";
 import { classBase } from "@/lib/tutorClassRoutes";
 import ClassHead from "@/components/tutor/ClassHead";
 import TutorContentTabs from "@/components/tutor/TutorContentTabs";
@@ -39,10 +39,12 @@ export default async function QuanLopLayout({ children, params }: { children: Re
       : <ClassNotice code="forbidden" title="Bạn không có quyền với lớp này" hint="Lớp này không thuộc về cô. Cô quay lại danh sách lớp của mình." />;
   }
   const h = gate.head;
+  const meta = await loadClassHeadMeta(id, gate.role === "owner" && !gate.centerAdmin);
   return (
     <div className="min-w-0">
       <div className="print:hidden"><ClassHead name={h.name} category={h.category} status={h.classStatus} hidden={h.hidden} studentCount={h.studentCount} examsHref={gate.role === "owner" ? `/lop-cua-toi/de-thi?lop=${encodeURIComponent(id)}` : null}
-        giaoHref={gate.role === "owner" ? `/lop-cua-toi/bai-tap/giao?lop=${encodeURIComponent(id)}` : null} color={h.color} /></div>
+        giaoHref={gate.role === "owner" ? `/lop-cua-toi/bai-tap/giao?lop=${encodeURIComponent(id)}` : null} color={h.color}
+        teacher={meta.teacher} schedule={meta.schedule} code={meta.code} /></div>
       <TutorContentTabs scope="quan-lop" role={gate.role} />
       <div className="pt-4 sm:pt-5">{children}</div>
     </div>

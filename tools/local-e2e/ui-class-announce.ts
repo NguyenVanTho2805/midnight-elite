@@ -31,7 +31,8 @@ async function fillBody(pg: import("playwright").Page, text: string) {
   await p.goto(`${BASE}/lop-cua-toi/quan-lop/${C.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   const strip = p.getByRole("navigation", { name: /Trang của Quản lớp/ });
   await strip.waitFor({ timeout: 120000 });
-  check("dải tab lớp có 'Thông báo'", (await strip.getByRole("link", { name: "Thông báo" }).count()) === 1);
+  await strip.locator("[data-tab-khac]").click(); // SCL-G-GS: Thông báo nằm trong "Khác" của dải lớp
+  check("dải tab lớp có 'Thông báo' (trong 'Khác')", (await strip.getByRole("link", { name: "Thông báo" }).count()) === 1);
   await strip.getByRole("link", { name: "Thông báo" }).click();
   await p.waitForURL(/\/thong-bao$/, { timeout: 90000 });
   await p.getByRole("heading", { name: "Đăng thông báo cho cả lớp" }).waitFor({ timeout: 90000 });

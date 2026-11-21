@@ -9,7 +9,7 @@ import { useId, useRef, type ReactNode } from "react";
 import { useModalDialog } from "@/components/kin/useModalDialog";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 
-export function Drawer({ open, title, onClose, onSave, saving, busy, inline = false, empty, closeLabel = "Huỷ", menu, children }: {
+export function Drawer({ open, title, onClose, onSave, saving, busy, inline = false, empty, closeLabel = "Huỷ", menu, autoSaved = false, status, children }: {
   open: boolean; title: string; onClose: () => void; onSave: () => void;
   saving?: boolean;
   /** Còn tệp đang tải lên: khoá nút Lưu (lưu lúc này sẽ bỏ sót tệp), hiện chữ "Đang tải tệp…". */
@@ -20,6 +20,9 @@ export function Drawer({ open, title, onClose, onSave, saving, busy, inline = fa
   closeLabel?: string;
   /** Nút ⋯ ở đầu ngăn (thao tác của bài đang sửa). */
   menu?: ReactNode;
+  /** SCL-G-GS: ngăn tự lưu (Sửa bài học) — KHÔNG có nút Lưu, chỉ "Đóng"; `status` ("Đã tự lưu lúc …") đứng dưới tiêu đề. */
+  autoSaved?: boolean;
+  status?: ReactNode;
   children: React.ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -30,18 +33,23 @@ export function Drawer({ open, title, onClose, onSave, saving, busy, inline = fa
       <section role="region" aria-labelledby={titleId} data-ngan-bai-hoc={open ? "mo" : "cho"} data-ngan-luon-mo
         className="sticky top-[calc(var(--kin-top,68px)+16px)] max-h-[calc(100vh-var(--kin-top,68px)-32px)] overflow-y-auto rounded-[var(--kin-bo-lg)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 px-5 py-3 border-b border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
-          <h2 id={titleId} className="min-w-0 [overflow-wrap:anywhere] text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-chu-chinh)]">{open ? title : "Sửa bài"}</h2>
+          <div className="min-w-0">
+            <h2 id={titleId} className="[overflow-wrap:anywhere] text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-chu-chinh)]">{open ? title : "Sửa bài"}</h2>
+            {open && status}
+          </div>
           {open && (
             <div className="flex items-center gap-2">
               {menu}
               <button type="button" onClick={onClose} className={kinButtonClass("ghost")}>{closeLabel}</button>
-              <button type="button" onClick={onSave} disabled={saving || busy} className={kinButtonClass("secondary")}>
+              {!autoSaved && <button type="button" onClick={onSave} disabled={saving || busy} className={kinButtonClass("secondary")}>
                 {saving ? "Đang lưu..." : busy ? "Đang tải tệp…" : "Lưu"}
-              </button>
+              </button>}
             </div>
           )}
         </div>
         <div key={open ? title : "cho"} className="kin-hop-vao p-5 space-y-5">{open ? children : empty}</div>
+        {/* Còn nội dung bên dưới: dải mờ dính đáy báo "cuộn tiếp" (ngăn cao tối đa bằng khung nhìn). */}
+        <div aria-hidden className="pointer-events-none sticky bottom-0 -mt-5 h-5 bg-gradient-to-t from-[var(--kin-nen-trang)] to-transparent" />
       </section>
     );
   }
@@ -60,14 +68,17 @@ export function Drawer({ open, title, onClose, onSave, saving, busy, inline = fa
         <div className="sticky top-0 bg-[var(--kin-nen-trang)] z-10 flex items-center justify-between px-5 py-4 border-b border-[var(--kin-vien-thuong)]">
           <div className="flex items-center gap-3">
             <button type="button" onClick={onClose} aria-label="Đóng" className="w-11 h-11 rounded-full flex items-center justify-center text-[var(--kin-chu-mo)] hover:bg-[var(--kin-nen-re-chuot)] text-xl font-light transition-colors">×</button>
-            <h2 id={titleId} className="text-base font-bold text-[var(--kin-chu-chinh)]">{title}</h2>
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-base font-bold text-[var(--kin-chu-chinh)]">{title}</h2>
+              {status}
+            </div>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="px-4 min-h-11 text-sm border border-[var(--kin-vien-o-nhap)] rounded-lg text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">{closeLabel}</button>
-            <button type="button" onClick={onSave} disabled={saving || busy}
+            {!autoSaved && <button type="button" onClick={onSave} disabled={saving || busy}
               className="px-4 min-h-11 text-sm font-semibold rounded-lg disabled:opacity-60 bg-[var(--kin-nhan-nen)] text-[var(--kin-chu-tren-nut-chinh)]">
               {saving ? "Đang lưu..." : busy ? "Đang tải tệp…" : "Lưu"}
-            </button>
+            </button>}
           </div>
         </div>
         <div className="p-5 space-y-5">{children}</div>

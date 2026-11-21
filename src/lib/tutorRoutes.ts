@@ -89,7 +89,8 @@ export function baiHocHref(courseId: string): string { return classBase(courseId
 export const giaoTrinhHref: (courseId: string, isTeacher?: boolean) => string = courseId => baiHocHref(courseId);
 
 // ─── Dải tab của vỏ nội dung gia sư (src/components/tutor/TutorContentTabs.tsx) ────────────────────────────────────────────────
-export interface ContentTab { label: string; href: string; active: boolean }
+/** `more` = không nằm trên dải mà trong nút "Khác" của dải (SCL-G-GS, §3.4: dải lớp chỉ "Bài học / Học sinh / Điểm"); đang mở thì dải vẫn hiện nó. */
+export interface ContentTab { label: string; href: string; active: boolean; more?: boolean }
 export interface ContentTabGroup { label: string; tabs: ContentTab[] }
 
 const isUnder = (p: string, root: string) => p === root || p.startsWith(root + "/");
@@ -138,11 +139,11 @@ export function contentTabsFor(pathname: string, tab: string | null = null, role
       // SCL-G-GS (QUYET-DINH §3.4): ba tab đầu là "Bài học / Học sinh / Điểm"; "Điểm" là liên kết sang sổ điểm của lớp (trang riêng, không sáng ở đây).
       { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
       { label: "Điểm", href: `/lop-cua-toi/so-diem?lop=${m[1]}`, active: false },
-      { label: "Video", href: `${base}/video`, active: onSub("video") }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
-      { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao") }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
+      { label: "Video", href: `${base}/video`, active: onSub("video"), more: true }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
+      { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao"), more: true }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
       // SCL F1 (P3): tab Điểm danh chỉ khi phần Điểm danh mở — cờ tắt thì route …/diem-danh bị chặn 307, tab là đường chết.
-      ...(featureOn("DIEM_DANH") ? [{ label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") }] : []),
-      { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: onRoot("cai-dat") },
+      ...(featureOn("DIEM_DANH") ? [{ label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh"), more: true }] : []),
+      { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: onRoot("cai-dat"), more: true },
     ],
   };
 }

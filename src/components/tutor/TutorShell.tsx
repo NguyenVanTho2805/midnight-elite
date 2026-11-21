@@ -27,7 +27,7 @@ import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 import { landingPath, TUTOR_HOME_NO_INBOX } from "@/lib/landing";
 import { ADMIN_HOST } from "@/lib/hostRouting";
 import { classBase } from "@/lib/tutorClassRoutes";
-import { groupByOwner } from "@/lib/lopViec";
+import { groupByOwner, withMobileInbox } from "@/lib/lopViec";
 
 /** SCL-G-GS: Hộp việc dạy học (chờ chấm · chờ duyệt · xin vào lớp, gom mọi lớp). KHÔNG theo cờ HOP_VIEC — cờ đó là Hộp việc cũ có học phí ở /lop-cua-toi. */
 export const TUTOR_INBOX_PATH = "/lop-cua-toi/hop-viec";
@@ -160,7 +160,7 @@ export default function TutorShell({
   ].filter(g => g.items.length > 0);
   // SCL-G-GS (QUYET-DINH §3.4, gia sư điện thoại): thanh dưới ĐÚNG 3 mục Hộp việc / Lớp / Tôi; các module còn lại vào qua "Tôi" (bảng Khác, nhóm "Dạy học" chỉ điện thoại).
   const items: ModuleItem[] = [
-    ...daily.map(m => ({ ...m, desktopOnly: m.key !== "viec-lop" })),
+    ...withMobileInbox(daily, inboxItem),
     // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản).
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
     { key: "lop-m", label: "Lớp", href: "/lop-cua-toi/lop", icon: "lop", active: isUnder(pathname, "/lop-cua-toi/lop") || isUnder(pathname, "/lop-cua-toi/quan-lop") || isUnder(pathname, "/lop-cua-toi/so-diem"), mobileOnly: true },

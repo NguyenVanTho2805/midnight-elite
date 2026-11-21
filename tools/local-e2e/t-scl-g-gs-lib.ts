@@ -1,5 +1,5 @@
 // SCL-G-GS — phần thuần của Hộp việc gia sư và thanh "Lớp của bạn" (src/lib/lopViec.ts) + đường quay về của form duyệt / nhận (enrollServer.joinDecideBack). Không cần máy chủ.
-import { emptyTodo, todoTotal, hasAnyTodo, inboxSummary, videoText, nopText, showClassFilter, filterClasses, groupByOwner } from "@/lib/lopViec";
+import { emptyTodo, todoTotal, hasAnyTodo, inboxSummary, videoText, nopText, showClassFilter, filterClasses, groupByOwner, withMobileInbox, scheduleText } from "@/lib/lopViec";
 import { joinDecideBack } from "@/lib/enrollServer";
 import { contentTabsFor } from "@/lib/tutorRoutes";
 import { check, section, done } from "./h";
@@ -34,6 +34,18 @@ const fd = (v: string | null) => { const f = new FormData(); if (v) f.set("ve", 
 check("ve=hop-viec ⇒ /lop-cua-toi/hop-viec", joinDecideBack("c1", fd("hop-viec"), "duyet=ok").startsWith("/lop-cua-toi/hop-viec?"));
 check("ve=hang-cho giữ như cũ; không ve ⇒ tab Học sinh của lớp", joinDecideBack("c1", fd("hang-cho"), "x=1").startsWith("/lop-cua-toi/xin-vao-lop?") && joinDecideBack("c1", fd(null), "x=1").startsWith("/lop-cua-toi/c1?tab=hoc-sinh"));
 check("ve lạ (đường tuỳ ý) ⇒ KHÔNG đi theo", !joinDecideBack("c1", fd("https://xau.vn"), "x=1").includes("xau"));
+
+section("Thanh dưới điện thoại: Hộp việc luôn là mục đầu (kể cả khi cờ HOP_VIEC bật module Hộp việc cũ)");
+const inb = { key: "viec-lop" };
+const phone = (xs: { key: string; desktopOnly?: boolean }[]) => xs.filter(m => !m.desktopOnly).map(m => m.key).join("|");
+check("không Hộp việc cũ: chỉ 'viec-lop' hiện trên điện thoại", phone(withMobileInbox([inb, { key: "lop" }, { key: "lich" }], inb)) === "viec-lop");
+const oldOn = withMobileInbox([{ key: "hop-viec" }, { key: "lop" }, { key: "lich" }], inb);
+check("HOP_VIEC bật (module 'hop-viec'): vẫn có 'viec-lop' chỉ cho điện thoại, đứng đầu; 'hop-viec' cũ chỉ trên máy tính", phone(oldOn) === "viec-lop" && (oldOn[0] as { mobileOnly?: boolean }).mobileOnly === true && oldOn.find(m => m.key === "hop-viec")?.desktopOnly === true, oldOn);
+
+section("Dòng phụ đầu lớp: lịch học");
+check("hai buổi cùng giờ ⇒ 'Thứ Ba, Thứ Năm, 19:00'", scheduleText([{ dayOfWeek: 4, startTime: "19:00" }, { dayOfWeek: 2, startTime: "19:00" }]) === "Thứ Ba, Thứ Năm, 19:00");
+check("Chủ nhật cuối; giờ khác nối '·'", scheduleText([{ dayOfWeek: 0, startTime: "08:00" }, { dayOfWeek: 6, startTime: "08:00" }, { dayOfWeek: 1, startTime: "18:00" }]) === "Thứ Bảy, Chủ nhật, 08:00 · Thứ Hai, 18:00");
+check("không khung ⇒ null", scheduleText([]) === null);
 
 section("Tab trong lớp: Bài học / Học sinh / Điểm là ba tab đầu (liên kết)");
 const tabs = contentTabsFor("/lop-cua-toi/quan-lop/c1", null, null)?.tabs.map(x => x.label) ?? [];

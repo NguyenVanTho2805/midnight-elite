@@ -16,7 +16,7 @@ export const SLOT_LABEL: Record<MediaSlot, string> = { video: "Video bài giản
 
 // ── Ô dán link có nhận diện ─────────────────────────────────────────────────
 
-function LinkVerdict({ value, slot, onMove }: { value: string; slot: MediaSlot; onMove?: (to: MediaSlot) => void }) {
+function LinkVerdict({ value, slot, onMove, quietYoutube }: { value: string; slot: MediaSlot; onMove?: (to: MediaSlot) => void; quietYoutube?: boolean }) {
   if (!value.trim()) return null;
   const r = checkLinkForSlot(value, slot);
   if (!r.ok) {
@@ -31,14 +31,17 @@ function LinkVerdict({ value, slot, onMove }: { value: string; slot: MediaSlot; 
       </p>
     );
   }
+  // SCL-G-GS: ô có sẵn dòng nhắc "Không công khai" thì link YouTube đúng chỉ báo "Nhận diện: YouTube", không lặp lời nhắc.
+  const warning = quietYoutube && r.info?.kind === "youtube" ? null : r.warning;
   return (
-    <p role="status" className="text-xs mt-1" style={{ color: r.warning ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-xong)" }}>
-      <span className="font-bold">Nhận diện: {r.info?.label}</span>{r.warning ? ` · ${r.warning}` : ""}
+    <p role="status" className="text-xs mt-1" style={{ color: warning ? "var(--kin-tt-chu-cho)" : "var(--kin-tt-chu-xong)" }}>
+      <span className="font-bold">Nhận diện: {r.info?.label}</span>{warning ? ` · ${warning}` : ""}
     </p>
   );
 }
 
-export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMove, extra, icon }: {
+export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMove, extra, icon, quietYoutube }: {
+  /** Ô đã có dòng nhắc "Không công khai" riêng ⇒ không lặp lời nhắc YouTube trong dòng nhận diện. */ quietYoutube?: boolean;
   label: string; slot: MediaSlot; placeholder: string; urls: string[]; onChange: (urls: string[]) => void;
   /** SCL-G-GS: hình nhỏ trước nhãn (vd. logo YouTube); có hình thì nhãn 14px màu chữ chính. */
   icon?: React.ReactNode;
@@ -60,7 +63,7 @@ export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMov
               <input className="flex-1 px-3 text-sm outline-none min-w-0" style={ctl} value={u} onChange={e => update(i, e.target.value)} placeholder={placeholder} inputMode="url" aria-label={`${label} ${urls.length > 1 ? i + 1 : ""}`.trim()} />
               {urls.length > 1 && <button type="button" onClick={() => remove(i)} aria-label="Bỏ link này" className="px-3 text-sm flex-shrink-0" style={{ ...btnGhost, color: "var(--kin-tt-chu-loi)" }}>✕</button>}
             </div>
-            <LinkVerdict value={u} slot={slot} onMove={onMove ? to => onMove(slot, i, to) : undefined} />
+            <LinkVerdict value={u} slot={slot} onMove={onMove ? to => onMove(slot, i, to) : undefined} quietYoutube={quietYoutube} />
           </div>
         ))}
       </div>

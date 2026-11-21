@@ -11,7 +11,9 @@ import { featureOn } from "@/lib/features";
 const RAIL = "Module của gia sư";
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH, mục Học phí của Cài đặt theo cờ HOC_PHI (mặc định ẨN). Bài đọc cờ ở tiến trình này: chạy cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
 const DIEM_DANH = featureOn("DIEM_DANH"), HOC_PHI = featureOn("HOC_PHI");
-const TABS = ["Bài học", "Học sinh", "Điểm", "Video", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: Bài học / Học sinh / Điểm đứng đầu
+// SCL-G-GS (rà soát): dải chỉ "Bài học / Học sinh / Điểm" (§3.4); trang phụ vào qua nút "Khác" của dải (trang phụ đang mở thì hiện trên dải).
+const TABS = ["Bài học", "Học sinh", "Điểm"];
+const MORE = ["Video", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: Bài học / Học sinh / Điểm đứng đầu
 
 (async () => {
   await wipe();
@@ -83,10 +85,12 @@ const TABS = ["Bài học", "Học sinh", "Điểm", "Video", "Thông báo", ...
 
     section(`Các tab của lớp, mỗi trang một h1 + một dải · ${tag}px`);
     const tabUrl: Record<string, RegExp> = {
-      "Học sinh": /\/hoc-vien/, "Thông báo": /\/thong-bao/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
+      "Học sinh": /\/hoc-vien/, "Video": /\/video/, "Thông báo": /\/thong-bao/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
     };
-    for (const name of [...TABS.slice(1).filter(n => n !== "Điểm"), "Bài học"]) { // SCL-G-GS: "Điểm" là liên kết sang sổ điểm (trang khác), không phải trang con của lớp
-      await pg.locator('nav[aria-label^="Trang của"]:visible').getByRole("link", { name, exact: true }).click();
+    for (const name of ["Học sinh", ...MORE, "Bài học"]) { // SCL-G-GS: "Điểm" là liên kết sang sổ điểm (trang khác), không phải trang con của lớp
+      const nav = pg.locator('nav[aria-label^="Trang của"]:visible');
+      if (MORE.includes(name)) await nav.locator("[data-tab-khac]").click(); // trang phụ nằm trong "Khác"
+      await nav.getByRole("link", { name, exact: true }).click();
       await pg.waitForURL(tabUrl[name], { timeout: 120000 });
       await pg.waitForFunction(n => [...document.querySelectorAll('nav[aria-label^="Trang của"] [aria-current=page]')].some(e => (e as HTMLElement).innerText.trim() === n), name, { timeout: 120000 });
       await oneStrip(`tab ${name}`); await oneH1(`tab ${name}`);

@@ -18,7 +18,8 @@ import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
-const TABS = ["Bài học", "Học sinh", "Điểm", "Video", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: ba tab đầu Bài học / Học sinh / Điểm (Điểm = liên kết sổ điểm)
+// SCL-G-GS (rà soát): dải lớp chỉ "Bài học / Học sinh / Điểm" (§3.4); Video, Thông báo, Điểm danh, Cài đặt vào qua nút "Khác" của dải.
+const TABS = ["Bài học", "Học sinh", "Điểm"]; // trước: TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: ba tab đầu Bài học / Học sinh / Điểm (Điểm = liên kết sổ điểm)
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };
@@ -83,6 +84,11 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     await openMore(pg);
   };
   // SCL-G-GS: ngăn "Sửa bài học" tự lưu nên nút đóng ghi "Đóng" (ngăn Thêm vẫn "Huỷ").
+  // SCL-G-GS (rà soát): "Sửa nhanh" nằm trong ⋯ của hàng bài; "Sao chép chương" trong ⋯ của tiêu đề chương.
+  const quickEdit = async (pg: any, title: string) => {
+    await lessonRow(pg, title).getByRole("button", { name: `Thêm thao tác cho bài "${title}"` }).click();
+    await pg.getByRole("menuitem", { name: "Sửa nhanh tên và ngày" }).click();
+  };
   const closePanel = async (pg: any) => { await pg.getByRole("button", { name: /^(Huỷ|Đóng)$/ }).first().click(); await pg.waitForTimeout(400); };
 
   // ── 1. Thư viện → thẻ → Bài học (1600 / 1280 / 390) ─────────────────────────────────────────────────
@@ -104,7 +110,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     check(`${tag}: dải tab đúng ${TABS.length} mục theo thứ tự`, JSON.stringify((await strip.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(TABS), await strip.getByRole("link").allInnerTexts());
     check(`${tag}: "Bài học" sáng (aria-current=page)`, (await strip.locator("[aria-current=page]").innerText()).trim() === "Bài học");
     check(`${tag}: không còn tab Giáo trình / Lịch học / Bài tập`, (await strip.getByRole("link", { name: /^(Giáo trình|Lịch học|Bài tập)$/ }).count()) === 0);
-    check(`${tag}: thấy cây Chương · Bài (dòng tóm tắt + chương + bài)`, (await pg.locator("[data-bai-hoc-tong]").innerText()).includes("1 phần · 1 chương · 3 bài") && (await pg.getByText("Chương 1: Hàm số").count()) > 0);
+    check(`${tag}: thấy cây Chương · Bài (dòng tóm tắt + chương + bài)`, (await pg.locator("[data-bai-hoc-tong]").innerText()).trim() === "1 chương · 3 bài" && (await pg.getByText("Chương 1: Hàm số").count()) > 0);
     check(`${tag}: thanh bên MỘT mục sáng`, (await railCurrent()) === 1);
     check(`${tag}: không còn dòng dẫn sang tab Giáo trình`, (await pg.locator("[data-bai-tap-dan]").count()) === 0 && (await pg.getByText("nằm ở tab").count()) === 0);
     check(`${tag}: bài Nháp có chip CHỮ "Nháp · học sinh chưa thấy"`, (await lessonRow(pg, "Bài soạn nháp").locator('[data-bai-trang-thai="draft"]').innerText()).includes("Nháp · học sinh chưa thấy"));
@@ -117,7 +123,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
       const handles = await pg.locator("[data-bai] svg.cursor-grab:visible").count();
       check("390: ẩn tay kéo ở hàng bài", handles === 0, handles);
       const rowH = await lessonRow(pg, "Bài soạn nháp").evaluate(e => e.getBoundingClientRect().height);
-      check("390: hàng bài xếp nhiều dòng (tên / chip / nút), không ép một dòng", rowH > 90, rowH);
+      // SCL-G-GS (rà soát): hàng bài là KinListRow gọn (tên / ngày + chip, cột phải), Sửa nhanh nằm trong ⋯ — không còn dòng nút riêng.
+      check("390: hàng bài KinListRow ≥ 56px, tên và chip không bị ép một dòng", rowH >= 56 && rowH < 200, rowH);
     }
     await ctx.close();
   }
@@ -178,8 +185,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await pg.getByRole("button", { name: 'Gỡ "Đề cương Drive"' }).click(); // SCL-G-GS: "Gỡ" có hỏi lại
   await pg.getByRole("dialog", { name: "Gỡ tài liệu này?" }).getByRole("button", { name: "Gỡ", exact: true }).click();
   check("bấm ✕ → hàng Drive cũ biến mất", (await pg.locator("[data-tai-lieu-hang]").count()) === 0);
-  check("ô thả: sẵn sàng, cao ≥ 160px, có 'Chọn tệp từ máy' ≥ 44px", (await pg.locator('[data-o-tha="san-sang"]').count()) === 1
-    && (await pg.locator("[data-o-tha]").evaluate(e => e.getBoundingClientRect().height >= 159.5))
+  check("ô thả: sẵn sàng, cao ≥ 120px (SCL-G-GS: cam kết ra ngoài viền), có 'Chọn tệp từ máy' ≥ 44px", (await pg.locator('[data-o-tha="san-sang"]').count()) === 1
+    && (await pg.locator("[data-o-tha]").evaluate(e => e.getBoundingClientRect().height >= 119.5))
     && (await pg.getByRole("button", { name: "Chọn tệp từ máy" }).evaluate(e => e.getBoundingClientRect().height >= 43.5)));
   check("ô chọn tệp cho chọn nhiều tệp, không nhận video", (await pg.locator("[data-o-tha-input]").getAttribute("multiple")) !== null && !/mp4|video/i.test((await pg.locator("[data-o-tha-input]").getAttribute("accept")) ?? ""));
   // DG (14/11/2026, vòng dạy thật): thả tệp khi CHƯA tích cam kết ⇒ câu báo nằm NGAY TRÊN ô thả (trước: dưới đoạn pháp lý dài, gia sư không thấy), không gọi init.
@@ -197,7 +204,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await pg.locator('[data-tai-lieu-tep] [role=progressbar]').first().waitFor({ timeout: 15000 });
   const pctText = await pg.locator("[data-tai-lieu-tep]").first().innerText();
   check("đang tải: thanh role=progressbar + chữ 'Đang tải lên… n%' hoặc 'Đang chờ tới lượt…'", /Đang tải lên… \d+%|Đang chờ tới lượt…/.test(pctText), pctText);
-  check("đang tải: nút Lưu khoá, đọc 'Đang tải tệp…'", await pg.getByRole("button", { name: "Đang tải tệp…" }).isDisabled());
+  // SCL-G-GS (rà soát): ngăn tự lưu không có nút Lưu — còn tệp đang lên thì "Đóng" KHÔNG đóng mà báo chờ (không mất tệp).
+  await pg.getByRole("button", { name: "Đóng", exact: true }).first().click();
+  check("đang tải: bấm Đóng ⇒ ngăn ở lại, báo 'Tệp đang tải lên…'", /Tệp đang tải lên/.test(await pg.locator("[data-panel-loi]").innerText().catch(() => "")) && await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).isVisible());
   await pg.screenshot({ path: `${SHOTS}/loi-02-panel-dang-tai-1600.png` });
   await pg.locator("[data-tai-lieu-hang]").nth(1).waitFor({ timeout: 60000 });
   await pg.unroute("**/api/media/upload/*");
@@ -211,12 +220,12 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("tệp 26 MB → 'nặng … vượt giới hạn' NGAY tại hàng", errs.some(t => /qua-nang\.pdf/.test(t) && /vượt giới hạn/.test(t)), errs);
   check("hai tệp sai: KHÔNG có yêu cầu /api/media/document/init nào", net.init === init0, { truoc: init0, sau: net.init });
   await pg.locator("#ls-ngay").fill("2026-11-20");
-  await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
-  check("chỉ có ngày, chưa có giờ → 'Chọn giờ học.' tại chỗ, không lưu", await pg.locator("[data-ngay-loi]").innerText().then(t => t.includes("Chọn giờ học.")).catch(() => false));
+  await pg.getByRole("button", { name: "Đóng", exact: true }).first().click(); // rời ngăn khi ô ngày chưa hợp lệ ⇒ không đóng, báo tại chỗ
+  check("chỉ có ngày, chưa có giờ → bấm Đóng: 'Chọn giờ học.' tại chỗ, ngăn ở lại, không lưu", await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).isVisible() && await pg.locator("[data-ngay-loi]").innerText().then(t => t.includes("Chọn giờ học.")).catch(() => false));
   await pg.locator("#ls-gio").fill("18:30");
   await shot(pg, "loi-02-panel-1600");
   await pg.screenshot({ path: `${SHOTS}/loi-02-panel-khung-1600.png` });
-  await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
+  await pg.getByRole("button", { name: "Đóng", exact: true }).first().click(); // đóng = lưu ngay phần chưa tự lưu rồi mới đóng
   await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 });
   let l1 = await prisma.lesson.findUnique({ where: { id: "loi-l1" } });
   for (let k = 0; k < 20 && !(l1?.documents ?? "").includes("/api/media/"); k++) { await sleep(400); l1 = await prisma.lesson.findUnique({ where: { id: "loi-l1" } }); }
@@ -243,7 +252,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await drop(pgOff, [{ name: "x.pdf", type: "application/pdf", bytes: PDF }]);
   await sleep(600);
   check("thả tệp khi kho tắt → không gọi mạng, trang không đổi hướng", netOff.init === 0 && pgOff.url().includes(base(A.id)));
-  check("nút Lưu vẫn dùng được", await pgOff.getByRole("button", { name: /^Lưu$/ }).first().isEnabled());
+  check("nút Đóng vẫn dùng được", await pgOff.getByRole("button", { name: "Đóng", exact: true }).first().isEnabled());
   await closePanel(pgOff);
   await pgOff.close();
 
@@ -251,7 +260,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   section("6. Sửa nhanh · 1600: đổi tên + ngày (Enter) → tải lại thấy chip đúng giờ VN");
   await pg.goto(`${BASE}${base(A.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await lessonRow(pg, "Bài soạn nháp").waitFor({ timeout: 120000 });
-  await lessonRow(pg, "Bài soạn nháp").getByRole("button", { name: "Sửa nhanh", exact: true }).click();
+  await quickEdit(pg, "Bài soạn nháp");
   const qf = pg.locator('[data-sua-nhanh="sua"]');
   await qf.waitFor({ timeout: 10000 });
   await qf.getByLabel("Tên bài").fill("Buổi 2 — đổi tên");
@@ -266,9 +275,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check(`tải lại: chip ngày "${want}" (giờ VN)`, chip === want && /T6 13\/11/.test(chip) && chip.endsWith("19:00"), chip);
   const l2 = await prisma.lesson.findUnique({ where: { id: "loi-l2" } });
   check("DB: tên mới + scheduledAt = 2026-11-13T12:00:00.000Z; vẫn Nháp", l2?.title === "Buổi 2 — đổi tên" && l2?.scheduledAt?.toISOString() === "2026-11-13T12:00:00.000Z" && l2?.status === "draft", l2);
-  await lessonRow(pg, "Buổi 2 — đổi tên").locator("[data-bai-ngay]").click();
+  await quickEdit(pg, "Buổi 2 — đổi tên");
   await qf.waitFor({ timeout: 10000 });
-  check("bấm chip ngày → mở Sửa nhanh với ngày giờ sẵn", (await qf.getByLabel("Ngày học").inputValue()) === "2026-11-13" && (await qf.getByLabel("Giờ học").inputValue()) === "19:00");
+  check("⋯ → Sửa nhanh mở với ngày giờ sẵn", (await qf.getByLabel("Ngày học").inputValue()) === "2026-11-13" && (await qf.getByLabel("Giờ học").inputValue()) === "19:00");
   await qf.getByLabel("Tên bài").fill("Không lưu tên này");
   await qf.getByLabel("Tên bài").press("Escape");
   await qf.waitFor({ state: "detached", timeout: 10000 });
@@ -294,19 +303,18 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await sel.click();
   await pg.locator('[role="option"]', { hasText: "Đã đăng" }).click();
   check("bấm chuột chọn 'Đã đăng' → đóng, hiện 'Đã đăng'", (await sel.innerText()).includes("Đã đăng") && (await sel.getAttribute("aria-expanded")) === "false");
+  // SCL-G-GS (rà soát): ngăn Sửa bài tự lưu, KHÔNG có nút Lưu ⇒ trạng thái tự lưu 1,5 giây sau lần chọn cuối (PATCH, ngăn ở lại).
   const p0 = net.patchStatus;
-  await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
-  await pg.getByRole("heading", { name: "Sửa bài học", level: 2 }).waitFor({ state: "hidden", timeout: 30000 })
-    .catch(async e => { console.log("  · panel còn mở:", await pg.locator("[data-trang-thai-loi], [data-panel-loi]").allInnerTexts()); throw e; });
+  check("ngăn Sửa bài học: không có nút Lưu (tự lưu), có nút Đóng", (await pg.getByRole("button", { name: /^Lưu$/ }).count()) === 0 && await pg.getByRole("button", { name: "Đóng", exact: true }).first().isVisible());
   let st = "";
   for (let k = 0; k < 20 && st !== "published"; k++) { await sleep(300); st = (await prisma.lesson.findUnique({ where: { id: "loi-l2" } }))?.status ?? ""; }
-  check("Lưu → đổi trạng thái qua PATCH …/giao-trinh/trang-thai (DB = published), chip Nháp biến mất", st === "published" && net.patchStatus === p0 + 1 && (await lessonRow(pg, "Buổi 2 — đổi tên").locator("[data-bai-trang-thai]").count()) === 0, { st, patch: net.patchStatus - p0 });
+  await sleep(500);
+  check("chọn trạng thái → tự lưu qua MỘT PATCH …/giao-trinh/trang-thai (DB = published), chip Nháp biến mất", st === "published" && net.patchStatus === p0 + 1 && (await lessonRow(pg, "Buổi 2 — đổi tên").locator("[data-bai-trang-thai]").count()) === 0, { st, patch: net.patchStatus - p0 });
   await pg.route("**/giao-trinh/trang-thai", r => r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Máy chủ đang bận." }) }));
   await openDetail(pg, "Bài đổi trạng thái lỗi");
   await pg.locator("#ls-ghi-chu").fill("Ghi chú mới đã lưu");
   await pg.locator("#ls-trang-thai").click();
-  await pg.locator('[role="option"]', { hasText: "Ẩn" }).click();
-  await pg.getByRole("button", { name: /^Lưu$/ }).first().click();
+  await pg.locator('[role="option"]', { hasText: "Ẩn" }).click(); // tự lưu ghi chú trước, rồi PATCH (bị chặn 500)
   await pg.locator("[data-trang-thai-loi]").waitFor({ timeout: 30000 });
   check("đổi trạng thái lỗi → báo riêng 'Đã lưu bài, chưa đổi được trạng thái: …'", (await pg.locator("[data-trang-thai-loi]").innerText()).includes("Đã lưu bài, chưa đổi được trạng thái: Máy chủ đang bận."));
   const l3 = await prisma.lesson.findUnique({ where: { id: "loi-l3" } });
@@ -351,7 +359,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("nhân bản bài Nháp → bản sao Nháp (DB + chip 'Nháp · học sinh chưa thấy'), POST mang status:'draft'", cp1?.status === "draft"
     && (await lessonRow(pg, "Bài mới để nháp (bản sao)").locator('[data-bai-trang-thai="draft"]').innerText()).includes("Nháp · học sinh chưa thấy") && posts[posts.length - 1].body.status === "draft", cp1?.status);
   const src = await prisma.lesson.findMany({ where: { chapterId: "loi-c" }, select: { title: true, status: true } });
-  await pg.getByRole("button", { name: "Sao chép chương" }).first().click();
+  await pg.getByRole("button", { name: 'Thêm thao tác cho chương "Chương 1: Hàm số"' }).first().click();
+  await pg.getByRole("menuitem", { name: "Sao chép chương" }).click();
   let copies: { title: string; status: string }[] = [];
   for (let k = 0; k < 60; k++) {
     await sleep(300);
@@ -417,7 +426,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const pm = await cm.newPage(); watch(pm);
   await pm.goto(`${BASE}${base(A.id)}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await lessonRow(pm, "Buổi 2 — đổi tên").waitFor({ timeout: 120000 });
-  await lessonRow(pm, "Buổi 2 — đổi tên").getByRole("button", { name: "Sửa nhanh", exact: true }).click();
+  await quickEdit(pm, "Buổi 2 — đổi tên");
   await pm.locator('[data-sua-nhanh="sua"]').waitFor({ timeout: 10000 });
   check("390: form Sửa nhanh không tràn ngang", await noOverflow(pm));
   const dY = await pm.locator('[data-sua-nhanh="sua"]').evaluate(f => { const t = f.querySelector('input[type="date"]')!.getBoundingClientRect(), g = f.querySelector('input[type="time"]')!.getBoundingClientRect(); return Math.abs(t.top - g.top); });
@@ -429,7 +438,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   check("390: panel phủ toàn màn, không tràn ngang", await noOverflow(pm) && (await pm.locator("[data-tai-lieu]").first().locator("xpath=ancestor::*[@data-ngan-bai-hoc][1]").evaluate(e => Math.round(e.getBoundingClientRect().width))) === 390);
   const tiny = await pm.evaluate(`[...document.querySelectorAll("[data-tai-lieu] button, [data-ngay-hoc] button, #ls-trang-thai")].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5).map(e => (e.textContent||"").trim().slice(0,16) + ":" + Math.round(e.getBoundingClientRect().height))`) as string[];
   check("390: nút trong panel ≥ 44px", tiny.length === 0, tiny);
-  check("390: nút Lưu / Huỷ dính đầu panel", await pm.getByRole("button", { name: /^Lưu$/ }).first().isVisible());
+  check("390: ngăn Sửa bài học tự lưu — nút Đóng dính đầu panel, không nút Lưu", await pm.getByRole("button", { name: "Đóng", exact: true }).first().isVisible() && (await pm.getByRole("button", { name: /^Lưu$/ }).count()) === 0);
   // DG (14/11/2026, vòng dạy thật): khối "Bài tập tự nộp" trong panel — nút ≥ 44px (trước: "+ Thêm bài tập" 16px, "Lưu bài tập" 28px) và
   // không còn hứa "tab Giáo trình (sắp có)" (tab đã bỏ ở LOI-02); chỉ đúng chỗ thả tệp đề là ô Tài liệu của bài.
   {

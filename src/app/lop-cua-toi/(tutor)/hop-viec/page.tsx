@@ -63,7 +63,7 @@ export default async function HopViecPage({ searchParams }: { searchParams: Prom
   const total = list.reduce((a, x) => a + todoTotal(x.t), 0);
 
   return (
-    <KinPage className="pb-[160px] md:pb-10">
+    <KinPage className="pb-[calc(var(--kin-cao-thanh-duoi)+48px+24px+12px)] md:pb-10">
       <KinPageHeader title="Hộp việc" sub={inboxSummary(list.map(x => x.t))} actions={giao} />
       {msg && <div role={msg.tone === "err" ? "alert" : "status"} data-hop-viec-ghi><KinCallout title={msg.text} className="mb-6" /></div>}
 
@@ -131,15 +131,15 @@ export default async function HopViecPage({ searchParams }: { searchParams: Prom
                   {items.join.map(j => {
                     const base = `/api/tutor/lop/${encodeURIComponent(j.courseId)}/yeu-cau/${encodeURIComponent(j.id)}`;
                     return (
-                      <li key={j.id} data-xin-vao className="border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-[var(--kin-kc-4)]">
-                        <p className="font-medium text-[length:var(--kin-co-body)] leading-6 text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{j.studentName}</p>
-                        <p className="mt-0.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]">Xin vào {j.courseName} · {dayAt(j.createdAt)}</p>
-                        <div className="mt-3 flex flex-wrap gap-3">
-                          <form method="post" action={`${base}/duyet`}><input type="hidden" name="ve" value="hop-viec" />
-                            <button type="submit" aria-label={`Nhận ${j.studentName} vào lớp`} className={kinButtonClass("secondary")}>Nhận</button></form>
-                          <form method="post" action={`${base}/tu-choi`}><input type="hidden" name="ve" value="hop-viec" />
-                            <HoiLaiGui label="Từ chối" aria={`Từ chối ${j.studentName}`} title="Từ chối học sinh này?" confirmLabel="Từ chối" message="Học sinh sẽ không vào lớp. Em có thể xin lại bằng mã lớp." /></form>
-                        </div>
+                      // Bản chốt 730: "Từ chối" (hỏi lại) và "Nhận" ngay trên hàng, bên phải — như hàng "Duyệt".
+                      <li key={j.id} data-xin-vao>
+                        <KinListRow size="lg" title={j.studentName} sub={`Xin vào ${j.courseName} · ${dayAt(j.createdAt)}`}
+                          aside={<span className="flex items-center gap-2">
+                            <form method="post" action={`${base}/tu-choi`}><input type="hidden" name="ve" value="hop-viec" />
+                              <HoiLaiGui label="Từ chối" aria={`Từ chối ${j.studentName}`} title="Từ chối học sinh này?" confirmLabel="Từ chối" message="Học sinh sẽ không vào lớp. Em có thể xin lại bằng mã lớp." /></form>
+                            <form method="post" action={`${base}/duyet`}><input type="hidden" name="ve" value="hop-viec" />
+                              <button type="submit" aria-label={`Nhận ${j.studentName} vào lớp`} className={kinButtonClass("secondary")}>Nhận</button></form>
+                          </span>} />
                       </li>
                     );
                   })}

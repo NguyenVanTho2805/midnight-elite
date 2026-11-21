@@ -64,3 +64,21 @@ export function groupByOwner<T extends { ownerName?: string | null }>(list: read
   }
   return [...by.entries()].map(([title, items]) => ({ title, items }));
 }
+
+/** Thanh dưới gia sư điện thoại (§3.4: đúng Hộp việc / Lớp / Tôi): mục daily chỉ hiện trên máy tính, trừ Hộp việc mới ("viec-lop").
+ *  Hộp việc cũ (cờ HOP_VIEC, module "hop-viec") còn bật thì `daily` không có "viec-lop" ⇒ thêm nó chỉ cho điện thoại, để thanh dưới không mất mục đầu. */
+export function withMobileInbox<T extends { key: string; desktopOnly?: boolean; mobileOnly?: boolean }>(daily: readonly T[], inbox: T): T[] {
+  const has = daily.some(m => m.key === inbox.key);
+  return [...(has ? [] : [{ ...inbox, mobileOnly: true }]), ...daily.map(m => ({ ...m, desktopOnly: m.key !== inbox.key }))];
+}
+
+const DAY_VI = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+/** Lịch học trên dòng phụ đầu lớp: "Thứ Ba, Thứ Năm, 19:00"; nhiều giờ khác nhau thì nối "·". Thứ Hai trước, Chủ nhật cuối. Không có khung ⇒ null. */
+export function scheduleText(slots: readonly { dayOfWeek: number; startTime: string }[]): string | null {
+  const byTime = new Map<string, Set<number>>();
+  for (const s of slots) { const d = byTime.get(s.startTime) ?? new Set<number>(); d.add(s.dayOfWeek); byTime.set(s.startTime, d); }
+  if (!byTime.size) return null;
+  const order = (d: number) => (d === 0 ? 7 : d);
+  return [...byTime].sort(([a], [b]) => a.localeCompare(b))
+    .map(([t, ds]) => `${[...ds].sort((a, b) => order(a) - order(b)).map(d => DAY_VI[d] ?? "").join(", ")}, ${t}`).join(" · ");
+}

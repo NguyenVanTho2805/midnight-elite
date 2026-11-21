@@ -125,7 +125,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const strip = p.getByRole("navigation", { name: /Trang của Quản lớp/ });
     await strip.waitFor({ timeout: 120000 });
     const tabs = (await strip.getByRole("link").allInnerTexts()).map(t => t.trim());
-    check("trang lớp: dải tab Bài học · Học sinh · Điểm · Video · Thông báo · Cài đặt (không Điểm danh; SCL-G-GS: ba tab đầu Bài học / Học sinh / Điểm)", tabs.join("|") === "Bài học|Học sinh|Điểm|Video|Thông báo|Cài đặt", tabs);
+    // SCL-G-GS (rà soát, §3.4): dải chỉ ba tab; Video · Thông báo · Cài đặt nằm trong nút "Khác" của dải (không Điểm danh khi cờ tắt).
+    await strip.locator("[data-tab-khac]").click();
+    const khac = (await strip.locator("#dai-tab-khac").getByRole("link").allInnerTexts()).map(t => t.trim());
+    check("trang lớp: dải tab Bài học · Học sinh · Điểm + 'Khác' (Video · Thông báo · Cài đặt), không Điểm danh", tabs.join("|") === "Bài học|Học sinh|Điểm" && khac.join("|") === "Video|Thông báo|Cài đặt", { tabs, khac });
     await p.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const muc = p.getByRole("navigation", { name: "Mục của Cài đặt" });
     await muc.waitFor({ timeout: 120000 });
