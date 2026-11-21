@@ -2,7 +2,8 @@
 // sửa giáo trình được; nhóm "Quản lý" trỏ sang trang quản người ở tên miền admin. Gia sư thường chỉ thấy lớp mình, lớp người khác 403; học sinh không vào trang lớp gia sư.
 // Chạy (máy chủ dev KHÔNG cờ): source tools/local-e2e/env.sh && TZ=Asia/Ho_Chi_Minh npx tsx tools/local-e2e/ui-chu-nhiem.ts
 // Ca phá cố ý: (1) bỏ `|| isCenterAdmin(s)` trong tutorGate.tutorShellKind → các ca "vỏ gia sư / CHỦ NHIỆM" đỏ; (2) bỏ `allowAdmin: true` ở quan-lop/[id]/layout.tsx
-// → ca "mở lớp của gia sư khác" đỏ; (3) trả `if (acc.role === "admin") return forbidden` vào loadClassHead → ca "Bạn không có quyền" đỏ.
+// → ca "mở lớp của gia sư khác" đỏ; (3) trả `if (acc.role === "admin") return forbidden` vào loadClassHead → ca "Bạn không có quyền" đỏ;
+// (4) xoá de-thi/layout.tsx → ca "ngân hàng câu hỏi đẩy Chủ nhiệm đi" đỏ; (5) bỏ dòng `if (gate.centerAdmin)` ở hoc-vien/page.tsx → ca "Học sinh: không nút ghi" đỏ.
 import { api, BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -72,6 +73,24 @@ const RAIL = "Module của gia sư";
   await ps.goto(`${BASE}/lop-cua-toi/${cB.id}`, GOTO);
   await ps.waitForURL(u => u.pathname.startsWith(`/lop-cua-toi/quan-lop/${cB.id}`), { timeout: 60000 }).catch(() => {});
   check("trang lớp cũ /lop-cua-toi/<lớp> → dải tab quan-lop", new URL(ps.url()).pathname.startsWith(`/lop-cua-toi/quan-lop/${cB.id}`), ps.url());
+
+  // Rà soát SCL-B: các nút ghi chỉ-gia-sư (thêm em, mã mời, duyệt, học online, học phí) không vẽ cho Chủ nhiệm — thay bằng một dòng sang trang quản trị.
+  await ps.goto(`${BASE}/lop-cua-toi/quan-lop/${cB.id}/hoc-vien?muc=them`, GOTO);
+  await ps.locator("[data-admin-manage-note]").waitFor({ timeout: 90000 }).catch(() => {});
+  check("tab Học sinh: dòng 'Thêm học sinh ở trang quản trị' → /admin/khoa-hoc/<lớp>, không nút thêm em / mã mời", await ps.locator(`[data-admin-manage-note] a[href="/admin/khoa-hoc/${cB.id}"]`).count() === 1
+    && await ps.locator("[data-lop-them]").count() === 0 && await ps.getByRole("button", { name: /vào lớp$/ }).count() === 0);
+  await ps.goto(`${BASE}/lop-cua-toi/quan-lop/${cB.id}?tab=cai-dat&muc=hoc-online`, GOTO);
+  await ps.locator("[data-cai-dat-tab]").waitFor({ timeout: 90000 }).catch(() => {});
+  check("Cài đặt: không form Học online, không mục Học phí / Học online, có dòng sang trang quản trị", await ps.locator(`form[action$="/hoc-online"]`).count() === 0
+    && await ps.locator("[data-cai-dat-tab] [data-admin-manage-note]").count() === 1 && await ps.getByRole("link", { name: "Học online" }).count() === 0 && await ps.getByRole("link", { name: "Học phí", exact: true }).count() === 0);
+  // Nhóm (tutor) có loading.tsx ⇒ redirect() đi kiểu stream (200 + <meta refresh>); /admin lại bị proxy đưa sang tên miền admin ⇒ kiểm bằng API, không mở trình duyệt.
+  const toAdmin = (r: { status: number; text: string; headers: Headers }) => (r.status >= 300 && r.status < 400 && /\/admin/.test(r.headers.get("location") ?? "")) || /__next-page-redirect[^>]*url=[^"]*\/admin/.test(r.text);
+  for (const path of ["/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/cau-hoi"]) {
+    const r = await api("GET", path, { as: SA });
+    check(`${path} (trang riêng gia sư, bí danh mỏng) đẩy Chủ nhiệm về /admin`, toAdmin(r), { status: r.status, loc: r.headers.get("location") });
+  }
+  const rt = await api("GET", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi", { as: TA });
+  check("gia sư vẫn vào ngân hàng câu hỏi (200, không chuyển hướng)", rt.status === 200 && !/__next-page-redirect/.test(rt.text), rt.status);
   await cs.close();
 
   section("Điện thoại 390: không tràn ngang");

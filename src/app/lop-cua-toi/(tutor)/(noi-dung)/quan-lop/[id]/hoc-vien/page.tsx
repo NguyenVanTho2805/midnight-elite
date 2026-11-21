@@ -6,6 +6,7 @@ import { redirectIfNotTutor } from "@/lib/tutorGateServer";
 import { gateClassPage, loadStudentsTab } from "@/lib/tutorClassPageServer";
 import { classBase } from "@/lib/tutorClassRoutes";
 import HocSinhTab from "@/components/tutor/HocSinhTab";
+import AdminManageNote from "@/components/tutor/quan-lop/AdminManageNote";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ export default async function HocSinhPage({ params, searchParams }: { params: Pr
   const session = await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: `${classBase(id)}/hoc-vien`, adminTo: "/admin" });
   const gate = await gateClassPage(session, id, { ownerOnly: true });
   if (!gate.ok) return null;
+  // SCL-B: thêm em / mã mời / duyệt đều là API chỉ của gia sư chủ lớp (403 với Chủ nhiệm) ⇒ không vẽ các nút đó.
+  if (gate.centerAdmin) return <AdminManageNote courseId={id} what="Thêm học sinh" />;
   const d = await loadStudentsTab(session, id, sp);
   if (!d) return null;
   return <HocSinhTab d={d} />;

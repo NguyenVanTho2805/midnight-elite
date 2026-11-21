@@ -60,7 +60,8 @@ export default function LopHoc() {
   const shown = filterClassRows(all, { q, category, status });
   const filtering = q.trim() !== "" || category !== "" || status !== "";
   const noStudents = allScope ? undefined : all.find(r => r.students === 0);
-  const createBtn = allScope ? undefined : <Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>;
+  // Chưa tải xong thì chưa biết vai ⇒ chưa hiện nút (Chủ nhiệm không được thấy thoáng qua nút tạo lớp).
+  const createBtn = rows === null || allScope ? undefined : <Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>;
 
   return (
     <KinPage>
@@ -69,7 +70,9 @@ export default function LopHoc() {
         actions={createBtn} />
 
       {error && <ErrorStrip message="Không tải được danh sách lớp." onRetry={load} />}
-      {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 ? (
+      {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 && allScope ? (
+        <KinEmptyState title="Trung tâm chưa có lớp nào">Lớp do gia sư mở sẽ hiện ở đây, nhóm theo gia sư phụ trách.</KinEmptyState>
+      ) : all.length === 0 ? (
         <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
           Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp. Lớp có lịch và học sinh sẽ hiện thành thẻ ở đây.
         </KinEmptyState>

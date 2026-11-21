@@ -15,6 +15,7 @@ import { classBase, MUC_CAI_DAT, type MucCaiDat } from "@/lib/tutorClassRoutes";
 import type { ClassSettingsData } from "@/lib/tutorClassPageServer";
 import { featureOn } from "@/lib/features";
 import HocOnlineMuc from "@/components/tutor/HocOnlineMuc"; // DG-HOC-ONLINE
+import AdminManageNote from "@/components/tutor/quan-lop/AdminManageNote";
 
 const LABEL: Record<MucCaiDat, string> = { "thong-tin": "Thông tin", "hoc-phi": "Học phí", "dong-giang": "Đồng giảng", "cong-dong": "Cộng đồng", "ban-ghi": "Bản ghi", "hoc-online": "Học online" };
 
@@ -32,7 +33,9 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
   const base = `${classBase(d.courseId)}?tab=cai-dat`;
   const mucHref = (m: MucCaiDat) => (m === "thong-tin" ? base : `${base}&muc=${m}`);
   // DG (14/11/2026): mục "Học phí" ẩn khi cờ HOC_PHI tắt (mặc định); mở thẳng ?muc=hoc-phi thì hiện mục đầu (Thông tin). Không đụng LopHocPhi / LopPhiKhac (TIỀN).
-  const mucs = MUC_CAI_DAT.filter(m => m !== "hoc-phi" || featureOn("HOC_PHI"));
+  // SCL-B: Chủ nhiệm không có mục Học phí / Học online (API chỉ của gia sư chủ lớp ⇒ 403); một dòng chỉ sang trang quản trị thay vào.
+  const adminOnly: MucCaiDat[] = d.centerAdmin ? ["hoc-phi", "hoc-online"] : [];
+  const mucs = MUC_CAI_DAT.filter(m => (m !== "hoc-phi" || featureOn("HOC_PHI")) && !adminOnly.includes(m));
   const muc: MucCaiDat = mucs.includes(d.muc) ? d.muc : "thong-tin";
   return (
     <div data-cai-dat-tab className="min-w-0 max-w-5xl">
@@ -68,7 +71,9 @@ export default function CaiDatTab({ d }: { d: ClassSettingsData }) {
       )}
 
       {/* DG-HOC-ONLINE: link Google Meet chung của lớp + email nhắc học sinh trước giờ học. */}
-      {d.muc === "hoc-online" && d.online && (
+      {d.centerAdmin && adminOnly.includes(d.muc) && <AdminManageNote courseId={d.courseId} what="Học phí và học online" />}
+
+      {muc === "hoc-online" && d.online && (
         <HocOnlineMuc courseId={d.courseId} joinUrl={d.online.joinUrl} leadMinutes={d.online.leadMinutes} flash={d.online.flash} />
       )}
     </div>

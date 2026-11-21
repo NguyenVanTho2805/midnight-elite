@@ -22,7 +22,7 @@ export interface ClassHeadData {
   id: string; name: string; category: string; classStatus: string; hidden: boolean; studentCount: number;
 }
 export type ClassGate =
-  | { ok: true; role: ClassViewRole; head: ClassHeadData }
+  | { ok: true; role: ClassViewRole; head: ClassHeadData; centerAdmin: boolean }
   | { ok: false; reason: "not_found" | "forbidden" };
 
 /**
@@ -37,13 +37,15 @@ export async function loadClassHead(session: SessionPayload, courseId: string): 
     prisma.enrollment.count({ where: { courseId, status: "active" } }),
   ]);
   if (!c) return { ok: false, reason: "not_found" };
-  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
+  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, centerAdmin: acc.role === "admin", head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
 }
 
 export interface ClassPageGate {
   /** false = người này không có quyền với lớp: layout đã hiện màn "Bạn không có quyền với lớp này"; trang trả null và KHÔNG tải dữ liệu lớp. */
   ok: boolean;
   role: ClassViewRole;
+  /** SCL-B: người xem là Chủ nhiệm (quản trị trung tâm) — đi nhánh "owner" nhưng các API ghi chỉ-gia-sư (thêm em, mã mời, duyệt, học online, học phí) vẫn 403 ⇒ trang ẩn nút ghi đó. */
+  centerAdmin: boolean;
 }
 
 /**
@@ -54,10 +56,10 @@ export async function gateClassPage(session: SessionPayload, courseId: string, o
   const g = await loadClassHead(session, courseId);
   if (!g.ok) {
     if (g.reason === "not_found") notFound();
-    return { ok: false, role: "owner" };
+    return { ok: false, role: "owner", centerAdmin: false };
   }
   if (o.ownerOnly && g.role !== "owner") redirect(coTeacherClassHref(courseId));
-  return { ok: true, role: g.role };
+  return { ok: true, role: g.role, centerAdmin: g.centerAdmin };
 }
 
 // ─── Tab Học sinh ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -124,6 +126,8 @@ export async function loadStudentsTab(session: SessionPayload, courseId: string,
 // ─── Tab Cài đặt ───────────────────────────────────────────────────────────────────────────────────────────────
 export interface ClassSettingsData {
   courseId: string; courseName: string; feeMode: FeeMode; muc: MucCaiDat;
+  /** SCL-B: Chủ nhiệm xem — ẩn mục Học phí / Học online (API chỉ của gia sư chủ lớp). */
+  centerAdmin?: boolean;
   /** DG-HOC-ONLINE: link học online chung (Course.classJoinUrl) + nhắc email trước giờ học (Course.reminderLeadMinutes, null = tắt). `onlineFlash` từ ?luu= / ?loi= sau POST + 303. */
   online?: { joinUrl: string | null; leadMinutes: number | null; flash: "ok" | "link" | "lead" | null };
 }

@@ -1,6 +1,6 @@
 // Vỏ gia sư kiểu Outlook (Figma "Vỏ — Gia sư" 9:2): thanh module trái 79px / thanh dưới 60px, Hộp việc (danh sách + khung đọc),
 // bảng "Khác", Tổng quan dời sang /lop-cua-toi/tong-quan, trạng thái trống / tải / lỗi, điện thoại 390px, quyền.
-import { api, BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+import { api, BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
@@ -268,6 +268,23 @@ if (missing.length) { console.log(`BỎ QUA: bài này cần cờ ${missing.map(
     check(`${path} khi chưa đăng nhập → đăng nhập xong quay lại đúng trang (redirect=)`, new URL(pa.url()).searchParams.get("redirect") === path, pa.url());
   }
   await ca.close();
+
+  section("SCL-B: Chủ nhiệm (admin_super) khi bật đủ cờ — vẫn chỉ module Lớp + nhóm Quản lý");
+  // Ca phá cố ý: bỏ `.filter(m => !head || m.key === "lop")` ở TutorShell.tsx → Hộp việc / Học phí hiện lại trên thanh của Chủ nhiệm → ca đỏ.
+  const SA = await mkSuper("Chủ nhiệm Thọ");
+  const cad = await ctxFor(SA, { width: 1280, height: 800 });
+  const pad = await cad.newPage(); watch(pad);
+  await pad.goto(`${BASE}/lop-cua-toi/lop`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await pad.getByRole("heading", { name: "Lớp học", level: 1 }).waitFor({ timeout: 90000 });
+  const railA = pad.getByRole("navigation", { name: RAIL });
+  const hrefs = await railA.locator("a[href]").evaluateAll(els => els.map(e => e.getAttribute("href") ?? ""));
+  check("thanh Chủ nhiệm: có Lớp, không Hộp việc / Lịch / Học phí / Học sinh của gia sư", hrefs.includes("/lop-cua-toi/lop") && !hrefs.some(h => ["/lop-cua-toi", "/lop-cua-toi/lich", "/lop-cua-toi/hoc-phi", "/lop-cua-toi/hoc-sinh", "/lop-cua-toi/bai-tap"].includes(h)), hrefs);
+  check("nhãn vai 'CHỦ NHIỆM', không số đỏ", await railA.getByText("CHỦ NHIỆM").count() > 0 && await railA.locator(".kin-badge-dem:visible").count() === 0);
+  check("có nhóm 'Quản lý' trỏ trang quản trị (gia-su · hoc-sinh · kiem-duyet)", ["gia-su", "hoc-sinh", "kiem-duyet"].every(k => hrefs.some(h => h.endsWith(`/admin/${k}`))), hrefs);
+  check("không nhóm Tài khoản của gia sư (Gói của tôi / Cài đặt gia sư) và không Trợ giúp", !hrefs.some(h => ["/lop-cua-toi/goi", "/lop-cua-toi/cai-dat", "/lop-cua-toi/ho-tro"].includes(h)) && await pad.locator("[data-help-link]").count() === 0, hrefs);
+  check("không nút 'Tạo lớp'", await pad.getByRole("link", { name: "Tạo lớp" }).count() === 0);
+  await shot(pad, "tutor-shell-chu-nhiem-co");
+  await cad.close();
 
   section("Không lỗi trình duyệt");
   check("không lỗi console / pageerror", errors.length === 0, errors.slice(0, 4));

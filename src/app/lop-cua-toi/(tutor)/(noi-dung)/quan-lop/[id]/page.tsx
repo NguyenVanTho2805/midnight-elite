@@ -38,5 +38,5 @@ export default async function QuanLopPage({ params, searchParams }: { params: Pr
   if (gate.role !== "owner") redirect(classBase(id)); // Cài đặt chỉ của chủ lớp: đồng giảng về "Bài học" của họ
   const settings = await loadClassSettings(id, sp);
   if (!settings) return null;
-  return <CaiDatTab d={settings} />;
+  return <CaiDatTab d={{ ...settings, centerAdmin: gate.centerAdmin }} />;
 }
