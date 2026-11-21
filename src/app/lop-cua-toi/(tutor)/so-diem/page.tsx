@@ -27,7 +27,9 @@ export const dynamic = "force-dynamic";
 // Ô nhập điểm 16px (iOS không phóng to trang khi chạm vào ô).
 const SCORE_FIELD = `${KIN_FIELD.replace("text-[length:var(--kin-co-goc)]", "text-base")} w-28`;
 const CELL = "px-[14px] py-[6px] h-14 border-b border-r border-[var(--kin-vien-nhat)] align-middle";
-const STICKY = "sticky left-0 z-[1] min-w-[180px] sm:min-w-[210px]";
+// Điện thoại: cột tên hẹp (tên xuống dòng) và cột Trung bình dính mép phải, để cùng lúc thấy tên, ít nhất một bài và Trung bình.
+const STICKY = "sticky left-0 z-[1] w-[120px] min-w-[120px] max-w-[128px] sm:w-auto sm:min-w-[210px] sm:max-w-none";
+const TB = "max-sm:sticky max-sm:right-0 max-sm:z-[1] max-sm:border-l";
 const ddmm = (d: Date) => { const k = vnDateKeyOf(d); return `${k.slice(8, 10)}/${k.slice(5, 7)}`; };
 
 /** Nội dung hộp "bài nộp" của một ô. Máy chủ dựng; form ghi giữ nguyên luồng đợt 2, thêm mo=<ô> để quay lại đúng chỗ. */
@@ -129,8 +131,10 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
         sub={book && cols.length > 0 ? `${name} · ${queue.length ? `Còn ${queue.length} bài phải chấm` : "Không còn bài nào phải chấm"}` : "Điểm từng bài của từng học sinh trong lớp."}
         actions={book && cols.length > 0 && rows.length > 0 ? (
           <>
-            <a href={`/api/tutor/so-diem?courseId=${encodeURIComponent(lop!)}&format=csv`} download data-so-diem-csv className={kinButtonClass("secondary", "lg")}>Xuất CSV</a>
-            {queue.length > 0 && <Link href={href({ mo: queue[0] })} scroll={false} data-so-diem-cham-loat className={kinButtonClass("primary", "lg")}>Chấm {queue.length} bài đang chờ</Link>}
+            <a href={`/api/tutor/so-diem?courseId=${encodeURIComponent(lop!)}&format=csv`} download data-so-diem-csv className={kinButtonClass("ghost", "lg")}>Xuất CSV</a>
+            {/* Điện thoại (§3.1.6): nút chính thành dock đáy rộng hết màn, cách thanh dưới 12px, trong tầm ngón cái. */}
+            {queue.length > 0 && <Link href={href({ mo: queue[0] })} scroll={false} data-so-diem-cham-loat
+              className={`${kinButtonClass("primary", "lg")} max-md:fixed max-md:inset-x-4 max-md:bottom-[calc(var(--kin-cao-thanh-duoi)+12px)] max-md:z-20 max-md:min-h-12 max-md:shadow-[var(--kin-bong-hop)]`}>Chấm {queue.length} bài đang chờ</Link>}
           </>
         ) : undefined}
       />
@@ -158,7 +162,7 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
             <KinEmptyState title="Lớp chưa có bài nào" action={<Link href={`/lop-cua-toi/bai-tap/giao?lop=${encodeURIComponent(lop!)}`} className={kinButtonClass("primary")}>Giao bài đầu tiên</Link>}>Bài tập, quiz và đề Azota của lớp sẽ thành các cột ở đây.</KinEmptyState>
           ) : (
             <>
-              <form method="get" data-so-diem-loc role="group" aria-label="Lọc học sinh theo trạng thái" className="flex flex-wrap items-center gap-2">
+              <form method="get" data-so-diem-loc role="group" aria-label="Lọc học sinh theo trạng thái, số là số học sinh" className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="lop" value={lop!} />
                 {LOC_FILTERS.map(f => {
                   const n = rows.filter(r => rowHas(r.cells, f.id)).length, on = f.id === loc, g = f.id === "tat-ca" ? null : GRADE_STATUS[f.id];
@@ -168,7 +172,7 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
                         ? "bg-[var(--kin-nhan-nen-nhat)] border-[var(--kin-nhan-nen)] text-[var(--kin-nhan-chu-tren-nhat)] font-semibold"
                         : "bg-[var(--kin-nen-trang)] border-[var(--kin-vien-thuong)] text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
                       {g && <KinStatusIcon shape={g.shape} color={STATUS_DOT[g.tone]} />}
-                      {f.label} {n}
+                      {f.label} · {n} em
                     </button>
                   );
                 })}
@@ -181,13 +185,13 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
                     <tr className="text-left text-[var(--kin-chu-chinh)]">
                       <th scope="col" className={`${CELL} ${STICKY} bg-[var(--kin-nen-bang)] font-semibold`}>Học sinh</th>
                       {cols.map(c => (
-                        <th key={c.id} scope="col" className={`${CELL} bg-[var(--kin-nen-bang)] font-semibold align-bottom min-w-[160px] max-w-[240px] leading-5`}>
+                        <th key={c.id} scope="col" className={`${CELL} bg-[var(--kin-nen-bang)] font-semibold align-bottom min-w-[132px] sm:min-w-[160px] max-w-[240px] leading-5`}>
                           <span className="block [overflow-wrap:anywhere]">{c.title}</span>
                           {c.dueLabel && <span className="block font-normal text-[var(--kin-chu-phu)]">{c.dueLabel}</span>}
                           <span className="block font-normal text-xs text-[var(--kin-chu-mo)]">{fmtThang(c.max)}</span>
                         </th>
                       ))}
-                      <th scope="col" className={`${CELL} border-r-0 bg-[var(--kin-nen-bang)] font-semibold align-bottom leading-5 whitespace-nowrap`}>
+                      <th scope="col" className={`${CELL} ${TB} border-r-0 bg-[var(--kin-nen-bang)] font-semibold align-bottom leading-5 whitespace-nowrap`}>
                         Trung bình<span className="block font-normal text-xs text-[var(--kin-chu-mo)]">/10</span>
                       </th>
                     </tr>
@@ -214,7 +218,7 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
                               </td>
                             );
                           })}
-                          <td data-so-diem-tb className={`${CELL} border-r-0 bg-[var(--kin-nen-bang)] whitespace-nowrap ${avg === null ? "text-[var(--kin-chu-phu)]" : "font-bold text-base tabular-nums text-[var(--kin-chu-chinh)]"}`}>
+                          <td data-so-diem-tb className={`${CELL} ${TB} border-r-0 bg-[var(--kin-nen-bang)] whitespace-nowrap ${avg === null ? "text-[var(--kin-chu-phu)]" : "font-bold text-base tabular-nums text-[var(--kin-chu-chinh)]"}`}>
                             {avg === null ? "Chưa có" : fmtDiem(avg)}
                           </td>
                         </tr>
@@ -231,13 +235,13 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
                 <span><b className="font-semibold">Chờ duyệt:</b> điểm học sinh tự khai (đề Azota), bạn duyệt xong học sinh mới thấy. Trung bình chỉ tính điểm đã duyệt, đổi về thang 10.</span>
               </p>
               {book.truncated && <p className="mt-3 text-[var(--kin-chu-phu)]">Sổ điểm hiện 200 học sinh đầu tiên của lớp.</p>}
+              {queue.length > 0 && <div aria-hidden className="md:hidden h-20" /> /* chừa chỗ cho dock để không che dòng cuối */}
             </>
           )}
         </>
       )}
       {open && (
-        <SoDiemHop key={open.k} title={`${open.row.name} · ${open.col.title}`} closeHref={href()}
-          footer={next ? <Link href={href({ mo: next })} scroll={false} data-so-diem-bai-tiep className={kinButtonClass("secondary")}>Bài tiếp</Link> : undefined}>
+        <SoDiemHop key={open.k} title={`${open.row.name} · ${open.col.title}`} closeHref={href()} nextHref={next ? href({ mo: next }) : undefined}>
           {msgBox}
           {inQueue >= 0 && <p className="mb-3 text-[var(--kin-chu-phu)]">Bài {inQueue + 1} trên {queue.length} bài đang chờ chấm</p>}
           <CellDetail k={open.k} row={open.row} col={open.col} now={now} />

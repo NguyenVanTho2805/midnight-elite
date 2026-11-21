@@ -90,13 +90,13 @@ function pure() {
   check("có 'Quá hạn', 'Chờ chấm', 'Chờ duyệt · 7,5', 'Chưa nộp'", ["Quá hạn", "Chờ chấm", "Chờ duyệt · 7,5", "Chưa nộp"].every(t => statusCells.some(s => s.t === t)), statusCells.map(s => s.t));
   check("Trung bình Nguyễn Minh Anh = 8,5 (8 và 9)", (await pg.locator("[data-so-diem-hang]:visible", { hasText: "Nguyễn Minh Anh" }).locator("[data-so-diem-tb]").innerText()).trim() === "8,5");
   const chips = await pg.locator("[data-so-diem-loc]:visible button").evaluateAll(bs => bs.map(b => ({ t: (b as HTMLElement).innerText.trim(), p: b.getAttribute("aria-pressed"), h: b.getBoundingClientRect().height })));
-  check("4 chip lọc Chờ chấm/Chờ duyệt/Chưa nộp/Tất cả, có số, aria-pressed, ≥ 44px; 'Tất cả' đang bật",
-    chips.length === 4 && /^Chờ chấm \d+$/.test(chips[0].t) && /^Chờ duyệt 1$/.test(chips[1].t) && /^Chưa nộp \d+$/.test(chips[2].t) && chips[3].t === "Tất cả 4"
+  check("4 chip lọc Chờ chấm/Chờ duyệt/Chưa nộp/Tất cả, số ghi rõ đơn vị 'em' (đếm học sinh, khác số bài của nút chính), aria-pressed, ≥ 44px; 'Tất cả' đang bật",
+    chips.length === 4 && chips[0].t === "Chờ chấm · 3 em" && chips[1].t === "Chờ duyệt · 1 em" && /^Chưa nộp · \d+ em$/.test(chips[2].t) && chips[3].t === "Tất cả · 4 em"
     && chips.every(c => c.h >= 44 && (c.p === "true" || c.p === "false")) && chips[3].p === "true", chips);
   const primaries = await pg.evaluate(cls => [...document.querySelectorAll("a, button")].filter(e => (e as HTMLElement).offsetParent && !e.hasAttribute("data-kin-skip") && e.className.includes(cls)) /* liên kết "Bỏ qua tới nội dung" (G0) chỉ hiện khi có tiêu điểm */.map(e => (e as HTMLElement).innerText.trim()), PRIMARY);
   check(`MỘT nút chính duy nhất: 'Chấm ${pending} bài đang chờ'`, primaries.length === 1 && primaries[0] === `Chấm ${pending} bài đang chờ`, primaries);
   const csvBtn = pg.locator("[data-so-diem-csv]:visible");
-  check("'Xuất CSV' là nút phụ", (await csvBtn.count()) === 1 && !(await csvBtn.getAttribute("class"))!.includes(PRIMARY));
+  check("'Xuất CSV' là nút phụ (không phải nút chính)", (await csvBtn.count()) === 1 && !(await csvBtn.getAttribute("class"))!.includes(PRIMARY));
   const small = await pg.evaluate(() => [...document.querySelectorAll("main a, main button")].filter(e => { const r = e.getBoundingClientRect(); return (e as HTMLElement).offsetParent && r.width > 0 && r.height < 44; }).map(e => (e as HTMLElement).innerText.trim()));
   check("mọi nút / ô bấm trong trang ≥ 44px", small.length === 0, small);
   await snap(pg, "so-diem-1280");
@@ -129,9 +129,31 @@ function pure() {
   await dlg.locator("[data-so-diem-bai-tiep]").click();
   await pg.waitForFunction(t => document.querySelector("[role=dialog] h2")?.textContent !== t, first, { timeout: 60000 });
   check("'Bài tiếp' sang bài chờ chấm khác", (await pg.getByRole("dialog").locator("h2").innerText()) !== first);
+  const h2 = await pg.getByRole("dialog").locator("h2").innerText();
+  await pg.getByRole("dialog").locator("[data-cham] input[name=score]").fill("6");
+  await pg.keyboard.press("Escape");
+  const ask = pg.locator("[data-kin-confirm]");
+  await ask.waitFor({ timeout: 30000 });
+  check("gõ điểm rồi Escape ⇒ hỏi 'Điểm chưa lưu, vẫn đóng?', hộp chưa đóng", (await ask.innerText()).includes("Điểm chưa lưu, vẫn đóng?") && (await pg.getByRole("dialog", { name: h2 }).count()) === 1);
+  await ask.getByRole("button", { name: "Ở lại" }).click();
+  await ask.waitFor({ state: "detached", timeout: 30000 });
+  check("'Ở lại' ⇒ vẫn ở bài đó, số vừa gõ còn nguyên", pg.url().includes("mo=") && (await pg.getByRole("dialog").locator("[data-cham] input[name=score]").inputValue()) === "6");
+  await pg.getByRole("dialog").locator("[data-so-diem-bai-tiep]").click();
+  await ask.waitFor({ timeout: 30000 });
+  check("gõ điểm rồi 'Bài tiếp' ⇒ cũng hỏi lại", (await ask.innerText()).includes("vẫn sang bài tiếp?") && (await pg.getByRole("dialog").locator("h2").first().innerText()) === h2);
+  await ask.getByRole("button", { name: "Ở lại" }).click();
+  await ask.waitFor({ state: "detached", timeout: 30000 });
+  await pg.keyboard.press("Escape");
+  await ask.waitFor({ timeout: 30000 });
+  await ask.getByRole("button", { name: "Vẫn rời đi" }).click();
+  await pg.getByRole("dialog").waitFor({ state: "detached", timeout: 30000 });
+  await pg.waitForURL(u => !u.toString().includes("mo="), { timeout: 30000 });
+  check("'Vẫn rời đi' ⇒ đóng hộp, bỏ ?mo; điểm không bị lưu", !pg.url().includes("mo=") && (await prisma.assignmentSubmission.count({ where: { score: 6 } })) === 0);
+  await pg.locator("[data-so-diem-cham-loat]:visible").click();
+  await pg.getByRole("dialog").waitFor({ timeout: 60000 });
   await pg.keyboard.press("Escape");
   await pg.getByRole("dialog").waitFor({ state: "detached", timeout: 30000 });
-  check("Escape đóng hộp, bỏ ?mo khỏi địa chỉ", !pg.url().includes("mo="));
+  check("chưa gõ gì thì Escape đóng thẳng, không hỏi", !pg.url().includes("mo=") && (await pg.locator("[data-kin-confirm]").count()) === 0);
   await pg.locator("[data-so-diem-cham-loat]:visible").click();
   for (let i = 0; i < pending; i++) {
     const d = pg.getByRole("dialog");
@@ -186,6 +208,13 @@ function pure() {
   check("390: chip lọc xuống dòng, không tràn", chipTops >= 2 && await m.locator("[data-so-diem-loc]:visible").evaluate(f => f.scrollWidth <= f.clientWidth + 1), chipTops);
   const pb = await m.locator("[data-so-diem-cham-loat]:visible").evaluate(e => e.getBoundingClientRect().height);
   check("390: nút chính ≥ 48px", pb >= 48, pb);
+  const dock = await m.locator("[data-so-diem-cham-loat]:visible").evaluate(e => { const r = e.getBoundingClientRect(); return { pos: getComputedStyle(e).position, top: r.top, w: r.width, gap: window.innerHeight - r.bottom }; });
+  check("390: nút chính là dock đáy (fixed, nửa dưới màn, rộng gần hết, cách đáy ≥ 60+12px)", dock.pos === "fixed" && dock.top > 844 / 2 && dock.w >= 390 - 40 && dock.gap >= 72, dock);
+  const csvPos = await m.locator("[data-so-diem-csv]:visible").evaluate(e => getComputedStyle(e).backgroundColor);
+  check("390: 'Xuất CSV' là nút chữ (nền trong suốt)", csvPos === "rgba(0, 0, 0, 0)", csvPos);
+  await region.evaluate(r => { r.scrollLeft = 0; });
+  const vis = await region.evaluate(r => { const rr = r.getBoundingClientRect(); const ths = [...r.querySelectorAll("thead th")].map(t => t.getBoundingClientRect()); return { name: ths[0].width, tb: ths[ths.length - 1].right <= rr.right + 1 && ths[ths.length - 1].left >= rr.left, fullCol: ths.slice(1, -1).some(t => t.right <= rr.right - (ths[ths.length - 1].width) + 1) }; });
+  check("390: cột tên ≤ 128px, cột Trung bình luôn trong khung, thấy trọn ít nhất một cột bài", vis.name <= 128 && vis.tb && vis.fullCol, vis);
   await region.evaluate(r => { r.scrollLeft = 0; });
   await snap(m, "so-diem-390");
   await m.locator("[data-so-diem-cham-loat]:visible").click();
