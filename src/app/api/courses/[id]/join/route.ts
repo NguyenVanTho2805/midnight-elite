@@ -5,7 +5,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionChecked } from "@/lib/session";
-import { effectivePolicy, isFreeClass, joinDecision } from "@/lib/joinRequest";
+import { effectivePolicy, canUseOpenPolicy, joinDecision } from "@/lib/joinRequest";
+import { isTeacher } from "@/lib/tutorGate";
 import { denyNonStudent, enrollInTx, issuePersonalCode, loadFeeRateCourseIds, logEnrollment } from "@/lib/enrollServer";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const course = await prisma.course.findUnique({
     where: { id },
-    select: { id: true, name: true, status: true, classStatus: true, capacity: true, ownerId: true, joinPolicy: true, price: true, tag: true },
+    select: { id: true, name: true, status: true, classStatus: true, capacity: true, ownerId: true, owner: { select: { role: true, adminRole: true } }, joinPolicy: true, price: true, tag: true },
   });
   if (!course || !course.status) return see(`${page}?join=khong-co`);
 
@@ -34,7 +35,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   ]);
   // "open" chỉ có nghĩa khi lớp CÒN miễn phí (gia sư có thể đã nhập đơn giá sau khi chọn "open"): lúc đó coi như chỉ-mã-mời.
   let policy = effectivePolicy(course.joinPolicy);
-  if (policy === "open" && !isFreeClass({ price: course.price, tag: course.tag, hasFeeRate: rated.has(id) })) policy = "invite_only";
+  //   Lớp GVCN (chủ lớp không phải gia sư) không thu học phí: chỉ cần giá 0 + chưa có đơn giá (Q13).
+  if (policy === "open" && !canUseOpenPolicy({ price: course.price, tag: course.tag, hasFeeRate: rated.has(id), centerClass: !isTeacher(course.owner) })) policy = "invite_only";
 
   const d = joinDecision({ policy, classOpen: course.classStatus === "open", hasEnrollment: !!enr, request: (req0?.status as "pending" | "approved" | "rejected" | "cancelled" | undefined) ?? null });
   switch (d.action) {

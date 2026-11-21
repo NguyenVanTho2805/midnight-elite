@@ -1,5 +1,6 @@
 // MD-02 / MD-07 / MD-17 / MD-11 — trình duyệt thật, 390px và 1280px: gia sư dán bản ghi bằng form (gắn buổi), thấy bảng ai đã xem; học sinh thấy bản ghi trong
-// tab "Tài liệu & bản ghi" của Lớp của tôi (LOI-03, 11/11/2026: khối này dời vào tab "Tổng quan" của trang lớp — chỉ đổi tên tab được bấm); không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
+// tab "Tài liệu & bản ghi" của Lớp của tôi (LOI-03, 11/11/2026: khối này dời vào tab "Tổng quan" của trang lớp — chỉ đổi tên tab được bấm; SCL-G-HS 21/11/2026: cuối màn
+// "Tất cả bài học", tới qua /lop-cua-toi/<lớp>/ban-ghi); không tràn ngang, nút ≥ 44px, liên kết ngoài mở tab mới có rel an toàn. Ảnh chụp ra scratchpad/shots/recordings-*.png.
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, wipe, check, section, done } from "./h";
 import { prisma } from "@/lib/prisma";
 import { launch, ctxFor, closeAll, shot, type Page, kinSelect, kinSelectValue } from "./ui";
@@ -65,19 +66,17 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     section(`Học sinh — tab Tài liệu & bản ghi ở ${label}px`);
     const sctx = await ctxFor(S, { width: w, height: h });
     const sp = await sctx.newPage(); watch(sp);
-    await sp.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    // SCL-D: bản ghi nay ở tab "Video" (cùng video bài giảng); tài liệu đính kèm bài vẫn ở Tổng quan.
-    await sp.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
-    await sp.locator("[data-materials-tab]").waitFor({ timeout: 60000 });
-    const mats = await sp.locator("[data-materials-tab]").innerText();
-    await sp.getByRole("tab", { name: "Video" }).click();
-    await sp.locator("[data-video-tab] [data-recording-row]").first().waitFor({ timeout: 60000 });
-    const body = await sp.locator("[data-video-tab]").innerText();
+    // SCL-G-HS: tab Video / Tổng quan đã bỏ; bản ghi ở cuối màn "Tất cả bài học" — học sinh tới đó qua đúng lối cũ /lop-cua-toi/<lớp>/ban-ghi (chuyển hướng).
+    await sp.goto(`${BASE}/lop-cua-toi/${C.id}/ban-ghi`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    await sp.waitForURL(u => u.pathname === "/student/hoc-tap" && u.searchParams.get("course") === C.id && u.searchParams.get("xem") === "bai-hoc" && u.hash === "#ban-ghi", { timeout: 120000 });
+    await sp.locator("[data-ban-ghi] [data-recording-row]").first().waitFor({ timeout: 120000 });
+    const mats = await sp.locator("[data-chuong]").first().innerText();
+    const body = await sp.locator("[data-ban-ghi]").innerText();
     check("thấy bản ghi theo buổi: 'Buổi 16/10/2026' + nguồn YouTube + 'có thể cần quyền truy cập'", /Buổi 16\/10\/2026/.test(body) && /YouTube/.test(body) && /có thể cần quyền truy cập/.test(body), body.slice(0, 400));
-    check("có tài liệu đính kèm bài (dinh-ly-vi-et.pdf) ở Tổng quan", /dinh-ly-vi-et\.pdf/.test(mats));
+    check("hàng bài ghi '1 tài liệu' (tài liệu đính kèm bài mở ở trang bài)", /1 tài liệu/.test(mats), mats);
     check("chữ trung thực: bản ghi là link gia sư chia sẻ, KiN không biết đã xem chưa", /link gia sư chia sẻ/.test(body) && /không biết bạn đã xem/.test(body));
     check("không có số giả: không 'lượt xem', không 'Thiết bị 1/2'", !/lượt xem|Thiết bị 1\/2/.test(await sp.locator("body").innerText()));
-    const sopen = sp.locator("[data-video-tab] [data-recording-row] button").first();
+    const sopen = sp.locator("[data-ban-ghi] [data-recording-row] button").first();
     check("YouTube: nút 'Xem' ≥ 44px phát ngay qua youtube-nocookie (SCL-D, Q4)", ((await sopen.boundingBox())?.height ?? 0) >= 44 && await (async () => { await sopen.click(); return /youtube-nocookie\.com\/embed\//.test((await sp.locator("iframe[data-ban-ghi-video]").getAttribute("src")) ?? ""); })());
     check("không tràn ngang", (await overflow(sp)) <= 0, await overflow(sp));
     await shot(sp, `recordings-student-${label}`);

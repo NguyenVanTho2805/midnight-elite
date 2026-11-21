@@ -1,6 +1,7 @@
 // Bộ component KiN (Figma Nút 6:50 · Thẻ trạng thái 8:139 · Tab 106:30 · Toast 106:23 · Hộp xác nhận 106:51) trên trang mẫu /kin-mau.
 // Đo bằng style tính ra: kích thước, màu theo token, trạng thái rê chuột / focus / tắt, bàn phím, tương phản, điện thoại 390px.
 import { BASE, check, section, done, eventually } from "./h";
+import { featureOn } from "@/lib/features";
 import { launch, ctxFor, closeAll, kinSelect, kinSelectValue, kinSelectOptions, ADMIN } from "./ui";
 
 type Rgb = [number, number, number];
@@ -77,17 +78,41 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   await pg.evaluate(`document.documentElement.setAttribute("data-chu-de", "navy")`);
 
   // ───────── Thẻ trạng thái
-  section("Thẻ trạng thái (Figma 8:139): chấm 7px + chữ, hai bộ màu");
+  section("Thẻ trạng thái (Figma 8:139 · SCL-G-0 §3.6): HÌNH 16px + chữ, hai bộ màu");
   const tt = pg.locator('[data-mau="tt"] [data-kin-status]');
-  check("4 thẻ: xong / cho / loi / mo, mỗi thẻ có chữ", await tt.count() === 4 && (await tt.allInnerTexts()).join("|") === "Đã chấm|Cần nhắc|Cần xử lý|Chờ 1 ngày", (await tt.allInnerTexts()).join("|"));
+  check("5 thẻ: xong / cho / loi / mo / qua-han, mỗi thẻ có chữ", await tt.count() === 5 && (await tt.allInnerTexts()).join("|") === "Đã chấm|Cần nhắc|Cần xử lý|Chờ 1 ngày|Quá hạn", (await tt.allInnerTexts()).join("|"));
   // 23/10/2026 (ac8b8e8): thẻ trạng thái theo chữ gốc 14px (--kin-co-goc, khớp chữ dòng phụ cạnh nó trong ảnh Figma gia sư), cao 20px (dòng 20). Đọc cỡ chữ từ token, không gán cứng.
   check("cao 20px, chữ = --kin-co-goc (14px)", (await tt.evaluateAll((els, goc) => els.every(e => Math.round(e.getBoundingClientRect().height) === 20 && getComputedStyle(e).fontSize === goc), coGoc)));
-  const dots = await tt.evaluateAll(els => els.map(e => { const d = e.firstElementChild as HTMLElement; const r = d.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bg: getComputedStyle(d).backgroundColor, hidden: d.getAttribute("aria-hidden"), text: getComputedStyle(e).color }; }));
-  check("chấm 7×7, aria-hidden (chấm chỉ để trang trí)", dots.every(d => d.w === 7 && d.h === 7 && d.hidden === "true"), dots);
-  const want = [["rgb(5, 150, 105)", "rgb(4, 120, 87)"], ["rgb(217, 119, 6)", "rgb(180, 83, 9)"], ["rgb(220, 38, 38)", "rgb(220, 38, 38)"], ["rgb(118, 127, 142)", "rgb(107, 114, 128)"]];
-  check("màu chấm / màu chữ đúng bảng Figma (#059669/#047857, #D97706/#B45309, #DC2626, #767F8E/#6B7280)", dots.every((d, i) => same(d.bg, want[i][0]) && same(d.text, want[i][1])), dots);
-  check("chữ đạt 4,5:1, chấm đạt 3:1 trên nền trắng", dots.every(d => ratio(parse(d.text), WHITE) >= 4.5 && ratio(parse(d.bg), WHITE) >= 3), dots.map(d => [ratio(parse(d.text), WHITE).toFixed(2), ratio(parse(d.bg), WHITE).toFixed(2)]));
-  check("chấm xong ≠ chữ xong (hai bộ mã, không gộp)", !same(dots[0].bg, dots[0].text) && !same(dots[1].bg, dots[1].text));
+  // Màu của hình = fill của vòng đầu tiên nếu tô kín, không thì nét vẽ (vòng rỗng / nét đứt).
+  const dots = await tt.evaluateAll(els => els.map(e => { const d = e.firstElementChild as SVGSVGElement; const r = d.getBoundingClientRect(); const c = d.querySelector("circle")!; const cs = getComputedStyle(c); return { w: Math.round(r.width), h: Math.round(r.height), shape: d.getAttribute("data-kin-hinh"), bg: cs.fill !== "none" ? cs.fill : cs.stroke, hidden: d.getAttribute("aria-hidden"), text: getComputedStyle(e).color }; }));
+  check("hình 16×16, aria-hidden (hình chỉ để trang trí); mỗi tone một hình", dots.every(d => d.w === 16 && d.h === 16 && d.hidden === "true") && dots.map(d => d.shape).join() === "kin,nua,loi,chua,qua-han", dots);
+  const want = [["rgb(5, 150, 105)", "rgb(4, 120, 87)"], ["rgb(217, 119, 6)", "rgb(180, 83, 9)"], ["rgb(220, 38, 38)", "rgb(220, 38, 38)"], ["rgb(118, 127, 142)", "rgb(55, 65, 81)"], ["rgb(185, 28, 28)", "rgb(185, 28, 28)"]];
+  check("màu hình / màu chữ đúng bảng (#059669/#047857, #D97706/#B45309, #DC2626, #767F8E/#374151 chữ phụ, #B91C1C quá hạn)", dots.every((d, i) => same(d.bg, want[i][0]) && same(d.text, want[i][1])), dots);
+  check("chữ đạt 4,5:1, hình đạt 3:1 trên nền trắng", dots.every(d => ratio(parse(d.text), WHITE) >= 4.5 && ratio(parse(d.bg), WHITE) >= 3), dots.map(d => [ratio(parse(d.text), WHITE).toFixed(2), ratio(parse(d.bg), WHITE).toFixed(2)]));
+  check("hình xong ≠ chữ xong (hai bộ mã, không gộp)", !same(dots[0].bg, dots[0].text) && !same(dots[1].bg, dots[1].text));
+  const diem = pg.locator('[data-mau="tt-diem"] [data-kin-status]');
+  check("nhãn điểm dùng chung: Chưa nộp / Quá hạn / Chờ chấm / Chờ duyệt / Đã nộp / Đã chấm, chờ chấm ≠ chờ duyệt về hình", (await diem.allInnerTexts()).join("|") === "Chưa nộp|Quá hạn|Chờ chấm|Chờ duyệt|Đã nộp|Đã chấm"
+    && (await diem.evaluateAll(els => els.map(e => e.firstElementChild!.getAttribute("data-kin-hinh")))).join() === "chua,qua-han,nua,ba-phan-tu,kin,kin");
+
+  section("Dòng danh sách (SCL-G-0 §3.3): tiêu đề xuống dòng, cột phải, hàng đang chọn");
+  const hang = pg.locator('[data-mau="hang"] [data-kin-list-row]');
+  const t0r = await hang.nth(0).locator("[data-kin-list-title]").evaluate(e => ({ lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), ov: getComputedStyle(e).textOverflow, fs: getComputedStyle(e).fontSize }));
+  check("tiêu đề dài xuống ≥ 2 dòng, không cắt '…', 16px (size lg)", t0r.lines >= 2 && t0r.ov !== "ellipsis" && t0r.fs === "16px", t0r);
+  check("hàng lg cao ≥ 56px; hàng đang chọn có aria-current + nền đang chọn", (await hang.nth(0).evaluate(e => e.getBoundingClientRect().height)) >= 56 && (await hang.nth(1).getAttribute("aria-current")) === "true" && same(await css(hang.nth(1), "backgroundColor"), await tok("--kin-nen-dang-chon")));
+  check("cột phải ở bên phải tiêu đề, có KinStatus kèm chữ", await hang.nth(0).locator("[data-kin-list-aside] [data-kin-status]").innerText() === "Chờ chấm 4"
+    && await hang.nth(0).evaluate(e => e.querySelector("[data-kin-list-aside]")!.getBoundingClientRect().left > e.querySelector("[data-kin-list-title]")!.getBoundingClientRect().right - 1));
+
+  section("Hộp thoại chung (SCL-G-0): Escape, giữ tiêu điểm, trả tiêu điểm");
+  const moHop = pg.locator('[data-mau="hop-chung"] button');
+  await moHop.click();
+  const dlg = pg.getByRole("dialog", { name: "Gắn link YouTube" });
+  await dlg.waitFor();
+  check("mở: role=dialog aria-modal, tiêu điểm vào ô nhập đầu tiên, nút 'Đóng' có chữ ≥ 44px", (await dlg.getAttribute("aria-modal")) === "true" && await pg.locator('[data-mau="hop-o"]').evaluate(e => e === document.activeElement)
+    && (await dlg.getByRole("button", { name: "Đóng" }).evaluate(e => e.getBoundingClientRect().height)) >= 44);
+  for (let i = 0; i < 6; i++) await pg.keyboard.press("Tab");
+  check("Tab 6 lần vẫn ở trong hộp (xoay vòng)", await dlg.evaluate(e => e.contains(document.activeElement)));
+  await pg.keyboard.press("Escape");
+  await eventually("Escape đóng hộp và trả tiêu điểm về nút mở", async () => await dlg.count() === 0 && await moHop.evaluate(e => e === document.activeElement));
 
   // ───────── Tab
   section("Tab (Figma 106:30): gạch chân 2px màu nhấn, bàn phím, cao ≥ 44px");
@@ -285,20 +310,23 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
     })()`) as Promise<{ inView: boolean; hitFirst: boolean; hitLast: boolean; n: number; r: number[] }>;
     const noHScroll = (pg: import("playwright").Page) => pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1") as Promise<boolean>;
     for (const [W, H] of [[1600, 900], [390, 844]] as const) {
-      // 1. Khách (/dang-ky) — <label htmlFor="dk-city"> riêng: tên đọc = nhãn + giá trị; getByLabel vẫn tìm được; chọn có ô tìm (34 tỉnh).
+      // 1. Nhãn riêng <label htmlFor> (trang mẫu /kin-mau; ô tỉnh của /dang-ky đã bỏ ở SCL-E): tên đọc = nhãn + giá trị; getByLabel vẫn tìm được.
       const cg = await ctxFor(null, { width: W, height: H }), pgG = await cg.newPage();
       pgG.on("pageerror", e => errors.push(String(e)));
-      await pgG.goto(`${BASE}/dang-ky`, { waitUntil: "domcontentloaded", timeout: 170000 });
-      const dk = pgG.locator("#dk-city");
+      await pgG.goto(`${BASE}/kin-mau`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const dk = pgG.locator("#mau-tinh");
       await dk.waitFor({ timeout: 120000 });
-      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Tỉnh / Thành phố * Chọn tỉnh / thành phố')`, async () => (await pgG.getByRole("combobox", { name: "Tỉnh / Thành phố * Chọn tỉnh / thành phố", exact: true }).count()) === 1);
-      check(`${W}: getByLabel('Tỉnh / Thành phố *', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Tỉnh / Thành phố *", { exact: true }).getAttribute("role")) === "combobox");
+      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Tỉnh / Thành phố Chọn tỉnh / thành phố')`, async () => (await pgG.getByRole("combobox", { name: "Tỉnh / Thành phố Chọn tỉnh / thành phố", exact: true }).count()) === 1);
+      check(`${W}: getByLabel('Tỉnh / Thành phố', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Tỉnh / Thành phố", { exact: true }).getAttribute("role")) === "combobox");
       await kinSelect(dk, "Thành phố Hà Nội");
       check(`${W}: chọn tỉnh → nút mang giá trị, danh sách đóng`, (await kinSelectValue(dk)) === "Thành phố Hà Nội" && (await dk.getAttribute("aria-expanded")) === "false");
-      check(`${W}: /dang-ky không cuộn ngang`, await noHScroll(pgG));
+      check(`${W}: /kin-mau không cuộn ngang`, await noHScroll(pgG));
       await cg.close();
 
       // 2. Quản trị — nhãn BỌC ô ("Khoảng thời gian"): tên đọc gọn, bấm mục không bị nhãn mở lại, giá trị đổi, máy chủ nhận ?days=7.
+      //    /admin/so-do sau cờ VAN_HANH_PHU (mặc định tắt, LOI-01) ⇒ chỉ chạy khi bật cờ cho cả máy chủ lẫn bài.
+      if (!featureOn("VAN_HANH_PHU")) console.log(`  - ${W}: BỎ QUA mục 2 (cần NEXT_PUBLIC_KIN_MO_VAN_HANH_PHU=1)`);
+      else {
       const ca = await ctxFor(SU, { width: W, height: H }), pa = await ca.newPage();
       pa.on("pageerror", e => errors.push(String(e)));
       const asked: string[] = [];
@@ -315,6 +343,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
 
       // 3. (SCL-F2) Ngăn kéo "Tạo khoá học" của /admin/khoa-hoc đã bỏ — tạo lớp chỉ còn TaoLop; ca danh sách trong khối có transform không còn chỗ kiểm.
       await ca.close();
+      }
 
       // 4. Panel bên (Modal "Thêm khung giờ") — ô "Kết thúc" nhiều lựa chọn: không bị panel cắt; ở 390 (ngăn dưới) lật lên khi thiếu chỗ.
       const ct = await ctxFor(T, { width: W, height: H }), pt = await ct.newPage();
@@ -336,7 +365,9 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
 
     // 5. Học phí (cờ TIỀN = không): chỉ đổi giao diện — giá trị GỬI ĐI y hệt <select> cũ.
     section("KinSelect (LOI-06) · màn học phí gửi đúng giá trị cũ");
-    {
+    // /student/hoc-phi sau cờ HOC_PHI (mặc định tắt, HP-BO) ⇒ chỉ chạy khi bật cờ cho cả máy chủ lẫn bài.
+    if (!featureOn("HOC_PHI")) console.log("  - BỎ QUA mục học phí (cần NEXT_PUBLIC_KIN_MO_HOC_PHI=1)");
+    else {
       const cs = await ctxFor(S, { width: 390, height: 844 }), ps = await cs.newPage();
       const got: string[] = [];
       ps.on("request", r => { const m = r.url().match(/\/api\/users\/me\/invoices\?yearMonth=([^&]*)/); if (m) got.push(m[1]); });

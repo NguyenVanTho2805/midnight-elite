@@ -35,7 +35,7 @@ const H = 3_600_000;
   const accountRail = async (id: string) => ((await prisma.user.findUnique({ where: { id }, select: { preferences: true } }))?.preferences as any)?.rail ?? null;
   // 23/10/2026: "Việc của tôi" của học viên nay là TRANG DỌC (tiêu đề h1 + mục "Cần làm"…), không còn listbox / khung "Danh sách" "Chi tiết".
   // Đợi tiêu đề trang hiện và khung xương "Đang tải Việc của tôi" biến mất; "khung nội dung" = thẻ gốc chứa tiêu đề (đệm ngang nằm bên trong nó).
-  const h1 = (p: any) => p.getByRole("heading", { name: "Việc của tôi", level: 1 });
+  const h1 = (p: any) => p.getByRole("heading", { name: "Cần làm", level: 1 });
   const ready = async (p: any) => { await h1(p).waitFor({ timeout: 90000 }); await p.locator('[aria-busy="true"][aria-label="Đang tải Việc của tôi"]').waitFor({ state: "detached", timeout: 90000 }).catch(() => {}); };
   const pageBox = (p: any) => h1(p).locator("xpath=ancestor::div[contains(@class,'pt-6')][1]");
   const focusIs = (p: any, sel: string) => p.evaluate(`document.activeElement?.matches(${JSON.stringify(sel)}) ?? false`) as Promise<boolean>;

@@ -109,9 +109,9 @@ type FreeInput = { price: number; tag: string | null; hasFeeRate: boolean };
 export function isFreeClass(c: FreeInput): boolean {
   return c.price === 0 && c.tag === FREE_CLASS_TAG && !c.hasFeeRate;
 }
-/** "open" chỉ hợp lệ khi lớp miễn phí (Q2). */
-export function canUseOpenPolicy(c: FreeInput): boolean {
-  return isFreeClass(c);
+/** "open" chỉ hợp lệ khi lớp miễn phí (Q2). Lớp của GVCN (chủ lớp không phải gia sư) không thu học phí ⇒ chỉ cần price 0 + chưa có đơn giá (chủ chốt 21/11). */
+export function canUseOpenPolicy(c: FreeInput & { centerClass?: boolean }): boolean {
+  return c.centerClass ? c.price === 0 && !c.hasFeeRate : isFreeClass(c);
 }
 
 /** Lời nhắn của gia sư. Rỗng → value null; >200 ký tự → lỗi (không tự cắt). Ký tự điều khiển (kể cả xuống dòng) bị bỏ. */

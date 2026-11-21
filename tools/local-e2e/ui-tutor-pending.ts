@@ -113,7 +113,7 @@ const RAIL = "Module của gia sư";
   check("bị từ chối: thẻ 'Bị từ chối' (tone loi) + lý do 'Chưa đủ kinh nghiệm'", await pr.locator('[data-kin-status="loi"]').count() === 1 && /Bị từ chối/.test(rt) && /Chưa đủ kinh nghiệm/.test(rt), rt);
   check("bị từ chối là học sinh thường: vỏ 'Module của học sinh', không băng chờ duyệt", await pr.getByRole("navigation", { name: "Module của học sinh" }).count() === 1 && await pr.locator("[data-tutor-pending-band]").count() === 0);
   await pr.goto(`${BASE}/student/viec-cua-toi`, GOTO);
-  await pr.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
+  await pr.getByRole("heading", { name: "Cần làm", level: 1 }).first().waitFor({ timeout: 90000 });
   check("bị từ chối vào /student/viec-cua-toi bình thường", new URL(pr.url()).pathname === "/student/viec-cua-toi");
   await cr2.close();
 
@@ -148,7 +148,7 @@ const RAIL = "Module của gia sư";
   await pa.getByRole("heading", { name: "Lớp học", level: 1 }).waitFor({ timeout: 90000 });
   check("SCL-B: quản trị cấp 1 ở /lop-cua-toi → /lop-cua-toi/lop trong vỏ gia sư (không băng xem thử)", new URL(pa.url()).pathname === "/lop-cua-toi/lop" && await pa.getByRole("navigation", { name: "Module của gia sư" }).count() === 1 && await pa.locator("[data-admin-preview]").count() === 0, pa.url());
   await pa.goto(`${BASE}/student/viec-cua-toi`, GOTO);
-  await pa.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
+  await pa.getByRole("heading", { name: "Cần làm", level: 1 }).first().waitFor({ timeout: 90000 });
   check("quản trị cấp 1 vào /student/viec-cua-toi vẫn được (xem thử), cũng có băng", new URL(pa.url()).pathname === "/student/viec-cua-toi" && await pa.locator("[data-admin-preview]").count() === 1);
   await ca.close();
 

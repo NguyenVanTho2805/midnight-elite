@@ -17,10 +17,21 @@ Ngoài ra `danger` (viền, chữ đỏ), `danger-solid` (hộp xác nhận). Pr
 <KinButton variant="secondary" loading loadingLabel="Đang lưu…">Lưu</KinButton>
 ```
 
-## Trạng thái — `KinStatus` (Status.tsx)
-Chấm 7px + CHỮ (màu không nói một mình). Props: `tone` = `xong` (xanh lá) | `cho` (cam) | `loi` (đỏ) | `mo` (xám trung tính), `children` là chữ.
+## Trạng thái — `KinStatus`, `KinGradeStatus` (Status.tsx)
+HÌNH 16px + CHỮ (màu không nói một mình; SCL-G-0 21/11/2026 thay chấm 7px bằng hình theo QUYET-DINH-GIAO-DIEN §3.6). Props: `tone` = `xong` (xanh lá) | `cho` (cam) | `loi` (đỏ, lỗi) | `qua-han` (đỏ đậm `--kin-tt-chu-loi-dam`, chữ đậm) | `mo` (trung tính, chữ `--kin-chu-phu`), `shape?` đổi hình khi cùng tone hai nghĩa, `children` là chữ.
+| Hình (`shape`) | Nghĩa | Tone mặc định dùng |
+|---|---|---|
+| `chua` vòng nét đứt | chưa có gì | `mo` |
+| `qua-han` vòng đứt + "!" | quá hạn | `qua-han` |
+| `nua` nửa tô | đã nộp, chờ chấm | `cho` |
+| `ba-phan-tu` tô 3/4 | có điểm, chờ duyệt | — (truyền `shape`) |
+| `kin` tô kín + ✓ | xong | `xong` |
+| `loi` tô kín + "!" | lỗi | `loi` |
+**Đỏ chỉ cho lỗi và quá hạn.** Nhãn bài/điểm dùng chung — đừng tự viết chữ: `<KinGradeStatus state="chua-nop|qua-han|cho-cham|cho-duyet|da-nop|da-cham">` (chữ "Chưa nộp / Quá hạn / Chờ chấm / Chờ duyệt / Đã nộp / Đã chấm", `children` thay chữ khi cần thêm điểm). Bảng `GRADE_STATUS` cho chỗ cần chữ/tone mà không cần thẻ. `KinStatusIcon` là riêng hình (ô sổ điểm).
 ```tsx
-<KinStatus tone="cho">Chưa nộp</KinStatus>
+<KinStatus tone="cho">Cần nhắc</KinStatus>
+<KinGradeStatus state="qua-han" />
+<KinGradeStatus state="cho-duyet">Chờ duyệt · 7,5</KinGradeStatus>
 ```
 
 ## Số liệu — `KinStat`, `KinStatRow` (Stat.tsx)
@@ -39,10 +50,18 @@ Tiêu đề 18px trái, `aside` phải (phụ đề hoặc liên kết), kẻ m�
 ```
 
 ## Dòng danh sách — `KinListRow` (ListRow.tsx)
-Không khung, kẻ mảnh đáy. Props: `title`, `sub?` (dòng phụ xám), `status?` (thường `<KinStatus>`), `trailing?` (mốc giờ hoặc nút), `href?` (cả dòng là liên kết).
+Không khung, kẻ mảnh đáy. Props: `title`, `sub?` (dòng phụ), `status?` (thường `<KinStatus>`), `aside?` (cột phải căn giữa: "Nộp 4/12", KinStatus, điểm), `trailing?` (mốc giờ hoặc nút, sát trên), `href?` (cả dòng là liên kết), `current?` (hàng đang chọn: nền nhạt + `aria-current`), `size?` (`md` mặc định | `lg` = hàng 56px của trang lớp: tiêu đề 16px, dòng phụ 14px `--kin-chu-phu`).
+**Tiêu đề xuống dòng, không bao giờ cắt "…"** (từ quá dài bẻ giữa từ). Đừng thêm `truncate` vào `title`.
 ```tsx
 <KinListRow title="Đỗ Hà xin nghỉ buổi Toán 9 tối nay" sub="Báo lúc 18:15 · trước buổi học 45 phút"
   status={<KinStatus tone="cho">Quyết định học phí và học bù</KinStatus>} trailing="18:15" href="/lop-cua-toi/..." />
+<KinListRow size="lg" title="05 · Hệ phương trình bậc nhất" sub="Video 42 phút · 2 tài liệu" aside={<><span>Nộp 4/12</span><KinGradeStatus state="cho-cham" /></>} href="…" />
+```
+
+## Hộp thoại — `KinDialog` (Dialog.tsx)
+SCL-G-0. Mọi hộp không phải câu hỏi Có/Không (câu đó dùng `KinConfirm`). Escape đóng, Tab xoay vòng trong hộp, khoá cuộn, trả tiêu điểm khi đóng (`useModalDialog`); nút "Đóng" có chữ; điện thoại là tờ dưới, máy tính là hộp giữa. Props: `open`, `title`, `onClose`, `children`, `footer?` (tối đa một nút chính), `size?` (`md` 480px | `lg` 640px). Hiện ra mờ dần + trượt 8px 180ms, tắt dưới `prefers-reduced-motion`.
+```tsx
+<KinDialog open={o} title="Gắn link YouTube" onClose={close} footer={<KinButton onClick={save}>Lưu</KinButton>}>…</KinDialog>
 ```
 
 ## Khối nhắc — `KinCallout` (Callout.tsx)
@@ -83,6 +102,14 @@ Quy tắc dùng:
 <KinPanel variant="nhan"><p>16:00 – 17:30</p> … <Link className={kinButtonClass("primary")}>Mở buổi học</Link></KinPanel>
 ```
 Đã áp: Hộp việc (dải 4 số, hàng việc, buổi sắp tới, ô học phí điện thoại, lưu ý), Gói của tôi (dải số, thanh x/N, bảng so sánh, thẻ kỳ, "Chưa mở bán", khối hết hạn), Học phí (dải số), Lớp (cả bảng), Chi tiết lớp (Học sinh, Lịch sử buổi, ô cách tính học phí), Bài tập (từng nhóm lớp, khối đang chọn), Chấm quiz (dải số, hộp giữ/công bố điểm, khối điểm đang chọn), học sinh (Cần làm, Đã nộp, Kết quả, Buổi học tiếp theo, đề thi sắp mở, danh sách đề), phụ huynh (4 ô tóm tắt Sổ của con, thẻ phiếu học phí, trang phiếu), khách (thẻ gia sư), quản trị (dải số của Số đo). Thẻ cũ dùng `CARD_STYLE` (tutor/shared.tsx) cũng đổi viền sang `--kin-khung-vien` cho cùng một độ đậm.
+
+## Quy tắc chung (SCL-G-0, QUYET-DINH-GIAO-DIEN §3.1–3.3 và phần I)
+- **Mọi nút và liên kết dạng nút đi qua `KinButton` / `kinButtonClass(variant)`**; mỗi màn ĐÚNG MỘT `primary` (nút chính điện thoại ≥ 48px: `size="lg"`). Không tự tô `bg-[var(--kin-nhan-nen)]` lên `<button>`.
+- Màu chỉ token `--kin-*`. Token mới của đợt: `--kin-tt-chu-loi-dam` (chữ "Quá hạn": 6,47:1 trên trắng, 5,61:1 trên `--kin-tt-nen-loi`; tối `#fca5a5` 10,18:1 / 9,21:1), `--kin-cao-thanh-duoi` (64px: thanh dưới, dock, đệm đáy thân trang). Vạch màu lớp dùng `--kin-lop-NN` có sẵn (trang trí, không mang chữ — không cần 4,5:1); thẻ "Cần làm" nền `--kin-nen-trang` + viền trái 4px màu trạng thái: không cần token mới.
+- Ô nhập trên điện thoại (< 768px) tự lên 16px (`kin-site.css`, chống Safari phóng to); ô cố ý to hơn (CodeBoxes, cỡ tiêu đề/số) giữ cỡ.
+- Mỗi vỏ (học sinh, gia sư, quản trị) có liên kết "Bỏ qua tới nội dung" là phần tử Tab đầu tiên (`shell/SkipLink.tsx`: `KinSkipLink` đầu vỏ, `KinSkipTarget` ngay trước nội dung trang). Thanh bên giữ vị trí trước nội dung trong DOM (khớp thứ tự nhìn — WCAG 2.4.3); liên kết bỏ qua là lối tắt qua nó.
+- Chữ thông tin ≥ 14px; 12px chỉ cho nhãn phụ không mang thông tin chính. Tiêu đề xuống dòng, không cắt "…" (tên tệp được cắt giữa, giữ đuôi).
+- Chuyển động: chỉ CSS `transition`/`animation` trên `transform`/`opacity` 150–200ms, tắt dưới `prefers-reduced-motion`; không gsap/lenis, không animate `height`.
 
 ## Đã có từ trước (cùng thư mục)
 `KinInput`, `KinTabs`, `KinToast`, `KinConfirm` + `useKinConfirm` (thay `window.confirm`), `KinLoader`, `KinFold`, `KinLogo`, `KinCopyButton`, `KinSubmitButton`, `CodeBoxes`, `ProgressRing`.

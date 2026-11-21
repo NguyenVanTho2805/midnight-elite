@@ -1,4 +1,4 @@
-// BU-HS-TRANG-CHU mục 8 — cây chương của lớp: chương xổ ra / thu vào, tìm bài (không dấu / đ), Mở hết / Thu hết, thụt cấp, đếm x/y, bài đang học, bài khoá có chữ,
+// BU-HS-TRANG-CHU mục 8 — cây chương (SCL-G-HS: nay chỉ ở thanh bên / tờ trượt bài giảng; trang lớp là danh sách "Tất cả bài học"): chương xổ ra / thu vào, tìm bài (không dấu / đ), Mở hết / Thu hết, thụt cấp, đếm x/y, bài đang học, bài khoá có chữ,
 // thanh bên bài giảng (rail 268px, 1280) và tờ trượt (sheet, 390). 1280 / 390 / 320. Dữ liệu: 2 phần × 3 chương × 4 bài (tên có dấu), học sinh đã học 3 bài chương 1 và đủ 4 bài chương 4.
 // Ca phá cố ý (stu-test chạy THẬT 09/11/2026 trên cổng 3100, mỗi ca sửa src rồi `git checkout` hoàn lại; nền = 88 pass / 0 fail):
 //   (1) `filterOutline` so tên bài bằng `l.title.toLowerCase()` thay vì `fold(l.title)` (lessonOutline.ts:77) → 7 đỏ ("duong thang" ra 4 bài / 1 chương, không tự mở chương 4, đ / hoa-thường / dấu cách) rồi bài dừng;
@@ -72,16 +72,19 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
   const status = async (p: Page, v: string) => (await p.locator(`[data-outline-variant="${v}"] [data-outline-status]`).innerText()).trim();
   const sameSet = (a: string[], b: string[]) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
 
-  // ═════════ 1280: trang lớp ═════════
-  section("1280 · trang lớp /student/hoc-tap?course=: cây Phần > Chương > Bài, chương mở sẵn là chương chứa bài kế");
-  const { c: c1, p } = await open(S, 1280, `/student/hoc-tap?course=${C.id}`);
-  await waitTree(p, "page");
-  const V = "page";
+  // ═════════ 1280: cây Phần > Chương > Bài ═════════
+  // SCL-G-HS (bản chốt khung 4): trang lớp KHÔNG còn cây CourseOutline (variant "page") — thay bằng màn "Tất cả bài học" (danh sách theo chương, kiểm ở dưới).
+  // Cây vẫn là component dùng chung của thanh bên bài giảng ⇒ mọi kiểm tra hành vi cây (mở/thu, bàn phím, Mở hết, tìm, đếm, thụt cấp, 44px) chạy trên variant "rail",
+  // mở ở bài 4 chương 1 (chương mở sẵn = chương chứa bài đang xem, thay cho "bài kế" của trang lớp cũ).
+  section("1280 · thanh bên bài giảng: cây Phần > Chương > Bài, chương mở sẵn là chương chứa bài đang xem");
+  const { c: c1, p } = await open(S, 1280, `/student/bai-giang/${L["A1-4"]}`);
+  await waitTree(p, "rail");
+  const V = "rail";
   const e0 = await exp(p, V);
   check("6 nút chương, đúng 2 hàng phần", Object.keys(e0).length === 6 && (await p.locator(`[data-outline-variant="${V}"] [data-outline-section]`).count()) === 2, e0);
-  check("chỉ chương chứa bài kế (A1, bài 4 chưa học) mở sẵn: aria-expanded=true đúng 1 chương, 5 chương còn lại 'false'", sameSet(await openIds(p, V), [CH("A1")]) && Object.values(e0).filter(x => x === "false").length === 5, e0);
+  check("chỉ chương chứa bài đang xem (A1) mở sẵn: aria-expanded=true đúng 1 chương, 5 chương còn lại 'false'", sameSet(await openIds(p, V), [CH("A1")]) && Object.values(e0).filter(x => x === "false").length === 5, e0);
   const ctl = await p.locator(`[data-outline-variant="${V}"] [data-outline-chapter]`).evaluateAll(els => els.map(e => { const id = e.getAttribute("aria-controls") ?? ""; const t = document.getElementById(id); return { id, ok: !!t, inert: t?.hasAttribute("inert") ?? null, exp: e.getAttribute("aria-expanded") }; }));
-  check("mỗi nút chương có aria-controls trỏ tới panel có thật (id lop-ch-<id>); panel của chương thu có `inert`, chương mở không", ctl.every(x => x.ok && x.id.startsWith("lop-ch-") && x.inert === (x.exp !== "true")), ctl);
+  check("mỗi nút chương có aria-controls trỏ tới panel có thật (id bg-cot-ch-<id>); panel của chương thu có `inert`, chương mở không", ctl.every(x => x.ok && x.id.startsWith("bg-cot-ch-") && x.inert === (x.exp !== "true")), ctl);
   check("chỉ 4 bài của chương mở đang hiện (A1)", sameSet((await shownLessons(p, V)) as string[], ["A1-1", "A1-2", "A1-3", "A1-4"].map(k => L[k])), await shownLessons(p, V));
 
   section("1280 · thụt cấp rõ (đo left): tên phần < tên chương < tên bài");
@@ -100,8 +103,8 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
   const secTxt = (await p.locator(`[data-outline-variant="${V}"] [data-outline-section] h3`).allInnerTexts()).map(x => x.replace(/\s+/g, " "));
   check("tiêu đề phần có đếm: 'Đại số 3/12 bài', 'Hình học 4/12 bài'", /Đại số.*3\/12 bài/.test(secTxt[0]) && /Hình học.*4\/12 bài/.test(secTxt[1]), secTxt);
   const cur = await p.locator(`[data-outline-variant="${V}"] [data-outline-lesson][aria-current]`).evaluateAll(els => els.map(e => [e.getAttribute("data-outline-lesson"), e.getAttribute("aria-current")]));
-  check("đúng MỘT hàng aria-current (bài kế = Bài 4 chương 1)", cur.length === 1 && cur[0][0] === L["A1-4"], cur);
-  check("bài kế có chữ 'Học tiếp', bài đã học có chữ 'Đã học' (không chỉ màu)", await p.locator(`[data-outline-lesson="${L["A1-4"]}"]`).getByText("Học tiếp").isVisible() && await p.locator(`[data-outline-lesson="${L["A1-1"]}"]`).getByText("Đã học").isVisible());
+  check("đúng MỘT hàng aria-current='page' (bài đang xem = Bài 4 chương 1)", cur.length === 1 && cur[0][0] === L["A1-4"] && cur[0][1] === "page", cur);
+  // Nhãn chữ 'Học tiếp' / 'Đã học' chỉ có ở variant "page" — đã bỏ cùng cây ở trang lớp (bản chốt). Thanh bên giữ nhãn chữ 'Đã khoá' (kiểm ở phần người chưa vào lớp).
   check("học sinh đã vào lớp: không có bài nào aria-disabled", (await p.locator(`[data-outline-variant="${V}"] [aria-disabled="true"]`).count()) === 0);
   await shot(p, "lop-outline-1280-page");
 
@@ -174,11 +177,12 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
   await c1.close();
 
   // ═════════ Người chưa vào lớp: bài khoá ═════════
-  section("1280 · học sinh CHƯA vào lớp: cây vẫn hiện, bài khoá là role=link aria-disabled + chữ 'Đã khoá', không bấm sang bài");
+  section("1280 · học sinh CHƯA vào lớp (thanh bên bài miễn phí): cây vẫn hiện, bài khoá là role=link aria-disabled + chữ 'Đã khoá', không bấm sang bài");
   {
-    const { c, p: q } = await open(OUT, 1280, `/student/hoc-tap?course=${C.id}`);
-    await waitTree(q, "page");
-    await q.locator(`[data-outline-variant="page"] [data-outline-open-all]`).click();
+    // SCL-G-HS: chạy ở thanh bên của một bài MIỄN PHÍ (người chưa vào lớp vẫn xem được), vì trang lớp không còn cây.
+    const { c, p: q } = await open(OUT, 1280, `/student/bai-giang/${L["A1-1"]}`);
+    await waitTree(q, "rail");
+    await q.locator(`[data-outline-variant="rail"] [data-outline-open-all]`).click();
     const lk = q.locator(`[data-outline-lesson="${L["B2-3"]}"]`);
     check("bài khoá: role=link, aria-disabled=true, không phải thẻ <a> có href", (await lk.getAttribute("role")) === "link" && (await lk.getAttribute("aria-disabled")) === "true" && (await lk.evaluate(e => e.tagName === "DIV" && !e.hasAttribute("href"))));
     check("bài khoá có CHỮ 'Đã khoá' (không chỉ làm mờ)", await lk.getByText("Đã khoá").isVisible());
@@ -186,8 +190,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await lk.click({ force: true });
     await q.waitForTimeout(800);
     check("bấm bài khoá: không chuyển trang", q.url() === url0, q.url());
-    check("bài không khoá của lớp vẫn là liên kết <a> tới /student/bai-giang/<id>", (await q.locator(`[data-outline-lesson="${L["A1-1"]}"]`).getAttribute("href")) === `/student/bai-giang/${L["A1-1"]}`);
-    check("hero báo 'Bạn chưa vào lớp này'", await q.getByText("Bạn chưa vào lớp này").isVisible());
+    await q.locator(`[data-outline-lesson="${L["A1-2"]}"]`).click();
+    await q.waitForURL(new RegExp(L["A1-2"]), { timeout: 90000 });
+    check("bài không khoá (miễn phí) của lớp vẫn bấm được, sang /student/bai-giang/<id>", new URL(q.url()).pathname === `/student/bai-giang/${L["A1-2"]}`, q.url());
     await c.close();
   }
 
@@ -242,33 +247,47 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await c.close();
   }
 
-  // ═════════ 390 / 320 ═════════
-  for (const w of [390, 320]) {
-    section(`${w}px · trang lớp: thanh công cụ xếp dọc, hàng ≥ 44px, không tràn ngang, bài 200 ký tự xuống dòng`);
+  // ═════════ Trang lớp: "Tất cả bài học" (thay cây variant "page") ═════════
+  // Bản chốt khung 4: nhóm theo chương, chương mới nhất (cuối giáo trình) lên đầu, ô tìm THEO TÊN BÀI (không dấu / hoa thường), hàng bài là link thật.
+  for (const w of [1280, 390, 320]) {
+    section(`${w}px · trang lớp → 'Tất cả bài học': theo chương, tìm bài, hàng ≥ 44px, không tràn ngang, bài 200 ký tự xuống dòng`);
     const { c, p: m } = await open(S, w, `/student/hoc-tap?course=${C.id}`, 844);
-    await waitTree(m, "page");
-    const g = await m.evaluate(`(() => { const t = document.querySelector('[data-outline-toolbar]'); const s = t.querySelector('[data-outline-search]').getBoundingClientRect(); const a = t.querySelector('[data-outline-open-all]').getBoundingClientRect(); const b = t.querySelector('[data-outline-close-all]').getBoundingClientRect(); return { sx: s.left, sw: s.width, sh: s.height, aTop: a.top, bTop: b.top, aw: a.width, bw: b.width, h: Math.min(a.height, b.height), vw: innerWidth, sBottom: s.bottom }; })()`) as any;
-    check(`${w}px: ô tìm rộng gần hết bề ngang (một cột), cao ≥ 44px`, g.sw >= g.vw - 56 && g.sh >= 44, g);
-    check(`${w}px: Mở hết / Thu hết cạnh nhau, nằm DƯỚI ô tìm, mỗi nút ≥ 44px`, Math.abs(g.aTop - g.bTop) <= 1 && g.aTop >= g.sBottom - 1 && g.h >= 44 && g.aw >= 44 && g.bw >= 44, g);
-    check(`${w}px: chương chứa bài kế mở sẵn, aria-expanded đúng`, sameSet(await openIds(m, "page"), [CH("A1")]));
-    await m.locator(`[data-outline-variant="page"] [data-outline-open-all]`).click();
-    const szm = await m.evaluate(`[...document.querySelectorAll('[data-outline] [data-outline-chapter], [data-outline] [data-outline-lesson]')].filter(e => !e.closest('[inert]')).map(e => Math.round(e.getBoundingClientRect().height))`) as number[];
-    check(`${w}px: ${szm.length} hàng chương / bài đều cao ≥ 44px`, szm.length === 30 && szm.every(h => h >= 44), szm.filter(h => h < 44));
-    const lgm = await m.locator(`[data-outline-lesson="${L["B3-4"]}"] [data-outline-title]`).evaluate(e => { const r = e.getBoundingClientRect(); return { h: Math.round(r.height), right: Math.round(r.right), vw: innerWidth }; });
+    await m.locator("[data-tat-ca-bai]:visible").waitFor({ timeout: 90000 });
+    check(`${w}px: trang lớp không còn cây (variant page); lối 'Tất cả bài học (24)'`, (await m.locator(`[data-outline-variant="page"]`).count()) === 0 && /Tất cả bài học \(24\)/.test(await m.locator("[data-tat-ca-bai]:visible").innerText()));
+    await m.locator("[data-tat-ca-bai]:visible").click();
+    await m.waitForURL(u => u.searchParams.get("xem") === "bai-hoc", { timeout: 90000 });
+    await m.locator("[data-chuong]:visible").first().waitFor({ timeout: 90000 });
+    const chs = await m.locator("[data-chuong]:visible").evaluateAll(els => els.map(e => e.getAttribute("data-chuong")));
+    check(`${w}px: 6 chương, chương mới nhất (Chương 6) trên cùng`, JSON.stringify(chs) === JSON.stringify(["B3", "B2", "B1", "A3", "A2", "A1"].map(CH)), chs);
+    const rows = m.locator("[data-lesson-row]:visible");
+    check(`${w}px: đủ 24 bài, mỗi bài một link thật tới /student/bai-giang/<id>`, (await rows.count()) === 24 && (await m.locator(`[data-lesson-row="${L["A1-1"]}"]:visible a`).getAttribute("href")) === `/student/bai-giang/${L["A1-1"]}`);
+    const hs = await rows.evaluateAll(els => els.map(e => Math.round((e.querySelector("a") ?? e).getBoundingClientRect().height)));
+    const box = m.locator("[data-tim-bai]:visible");
+    check(`${w}px: ${hs.length} hàng bài và ô tìm đều cao ≥ 44px`, hs.every(h => h >= 44) && ((await box.boundingBox())?.height ?? 0) >= 44, hs.filter(h => h < 44));
+    const lgm = await m.locator(`[data-lesson-row="${L["B3-4"]}"]:visible [data-kin-list-title]`).evaluate(e => { const r = e.getBoundingClientRect(); return { h: Math.round(r.height), right: Math.round(r.right), vw: innerWidth }; });
     check(`${w}px: bài 200 ký tự xuống nhiều dòng, mép phải trong màn hình`, lgm.h >= 40 && lgm.right <= lgm.vw, lgm);
-    const ind = await m.evaluate(`(() => { const L = s => Math.round(document.querySelector(s).getBoundingClientRect().left); return [L('[data-outline-section] h3 [data-outline-title]'), L('[data-outline-chapter] [data-outline-title]'), L('[data-outline-lesson] [data-outline-title]')]; })()`) as number[];
-    check(`${w}px: thụt cấp phần < chương < bài (${ind.join(" < ")})`, ind[0] < ind[1] && ind[1] < ind[2], ind);
     check(`${w}px: không tràn ngang`, await m.evaluate(NOT_OVERFLOW) as boolean);
-    await m.getByRole("searchbox", { name: "Tìm bài trong lớp" }).fill("duong thang");
-    check(`${w}px: tìm 'duong thang' ra 5 bài / 2 chương, không tràn ngang`, (await status(m, "page")) === "Tìm thấy 5 bài trong 2 chương." && (await m.evaluate(NOT_OVERFLOW) as boolean));
-    // ô tìm dính đầu vùng nội dung khi cuộn (sticky) — đo vị trí sau khi cuộn xuống giữa cây
-    await m.getByRole("searchbox", { name: "Tìm bài trong lớp" }).fill("");
-    await m.locator(`[data-outline-variant="page"] [data-outline-open-all]`).click();
-    await m.evaluate(`window.scrollTo(0, document.querySelector('[data-outline-lesson="${L["B1-2"]}"]').getBoundingClientRect().top + scrollY - 300)`);
-    await m.waitForTimeout(300);
-    const st = await m.locator(`[data-outline-variant="page"] [data-outline-toolbar]`).evaluate(e => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), vh: innerHeight }; });
-    check(`${w}px: sau khi cuộn sâu, thanh công cụ (ô tìm + 2 nút) vẫn nằm trong khung nhìn (dính đầu)`, st.top >= -1 && st.top < 120 && st.bottom <= st.vh, st);
-    if (w === 390) await shot(m, "lop-outline-390-page");
+    for (const q of ["duong thang", "đường thẳng", "DUONG THANG"]) {
+      await box.fill(q);
+      const hit = await m.locator("[data-lesson-row]:visible").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
+      check(`${w}px: tìm '${q}' → chỉ Bài 6 (tên bài có 'đường thẳng'), chỉ còn chương của nó`, sameSet(hit as string[], [L["A2-2"]]) && (await m.locator("[data-chuong]:visible").count()) === 1, hit);
+    }
+    await box.fill("zzz");
+    check(`${w}px: 'zzz' → thông báo role=status 'Không có bài nào có tên khớp'`, /Không có bài nào có tên khớp/.test(await m.locator("[role=status]:visible").filter({ hasText: "khớp" }).innerText()) && (await m.locator("[data-lesson-row]:visible").count()) === 0);
+    await box.fill("");
+    check(`${w}px: xoá từ khoá → đủ 24 bài lại`, (await m.locator("[data-lesson-row]:visible").count()) === 24);
+    if (w === 390) await shot(m, "lop-outline-390-tat-ca-bai");
+    await c.close();
+  }
+  section("1280 · người CHƯA vào lớp: 'Bạn chưa vào lớp này'; ở 'Tất cả bài học' bài khoá không phải link, bài miễn phí là link");
+  {
+    const { c, p: q } = await open(OUT, 1280, `/student/hoc-tap?course=${C.id}`);
+    await q.getByText("Bạn chưa vào lớp này").waitFor({ timeout: 90000 });
+    check("trang lớp báo 'Bạn chưa vào lớp này'", await q.getByText("Bạn chưa vào lớp này").isVisible());
+    await q.goto(`${BASE}/student/hoc-tap?course=${C.id}&xem=bai-hoc`, { waitUntil: "networkidle", timeout: 240000 });
+    await q.locator("[data-lesson-row]:visible").first().waitFor({ timeout: 90000 });
+    check("bài khoá (Chương 5 bài 3, 4): hàng không có link", (await q.locator(`[data-lesson-row="${L["B2-3"]}"]:visible a`).count()) === 0 && (await q.locator(`[data-lesson-row="${L["B2-4"]}"]:visible a`).count()) === 0);
+    check("bài miễn phí vẫn là link tới /student/bai-giang/<id>", (await q.locator(`[data-lesson-row="${L["A1-1"]}"]:visible a`).getAttribute("href")) === `/student/bai-giang/${L["A1-1"]}`);
     await c.close();
   }
 
@@ -298,7 +317,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await prisma.enrollment.create({ data: { userId: S.id, courseId: E.id, status: "active" } });
     const { c, p: e } = await open(S, 1280, `/student/hoc-tap?course=${E.id}`);
     await e.getByText("Lớp chưa có bài học nào").waitFor({ timeout: 90000 });
-    check("lớp 0 bài: 'Lớp chưa có bài học nào' kèm lời giải thích, không có cây", await e.getByText("Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.").isVisible() && (await e.locator("[data-outline]").count()) === 0);
+    check("lớp 0 bài: 'Lớp chưa có bài học nào' kèm lời giải thích, không có hàng bài", await e.getByText("Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.").isVisible() && (await e.locator("[data-lesson-row]").count()) === 0);
     await c.close();
   }
   {
@@ -312,14 +331,15 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await e.goto(`${BASE}/student/hoc-tap?course=${C.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
     const retry = e.getByRole("button", { name: "Thử lại" }).first();
     await retry.waitFor({ timeout: 90000 });
-    check("lỗi tải lớp: có thông báo lỗi và nút 'Thử lại' bấm được (cao ≥ 44px); không có cây", ((await retry.boundingBox())?.height ?? 0) >= 44 && (await e.locator("[data-outline]").count()) === 0);
+    check("lỗi tải lớp: có thông báo lỗi và nút 'Thử lại' bấm được (cao ≥ 44px); không có hàng bài", ((await retry.boundingBox())?.height ?? 0) >= 44 && (await e.locator("[data-lesson-row]").count()) === 0);
     fail = false; delay = 2500;
     await retry.click();
     await e.waitForTimeout(500);
     const busy = await e.locator("[aria-busy=true]").count();
-    check("sau 'Thử lại' trong lúc chờ: có khung xương (aria-busy), chưa hiện cây", busy >= 1 && (await e.locator("[data-outline]").count()) === 0, busy);
-    await waitTree(e, "page");
-    check("tải xong: cây hiện, khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-outline] [data-outline-chapter]").count()) === 6);
+    check("sau 'Thử lại' trong lúc chờ: có khung xương (aria-busy), chưa hiện bài", busy >= 1 && (await e.locator("[data-lesson-row]").count()) === 0, busy);
+    await e.locator("[data-tat-ca-bai]:visible").waitFor({ timeout: 90000 });
+    await e.waitForTimeout(500);
+    check("tải xong: 'Buổi gần đây' có bài + lối 'Tất cả bài học (24)', khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-lop-gan-day] [data-lesson-row]:visible").count()) > 0 && /\(24\)/.test(await e.locator("[data-tat-ca-bai]:visible").innerText()));
     await c.close();
   }
 

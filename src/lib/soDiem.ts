@@ -5,7 +5,8 @@ import { canDo, type CourseRole } from "@/lib/courseAccess";
 export type CellState = "chua-nop" | "cho-cham" | "cho-duyet" | "da-cham";
 export interface Cell { state: CellState; label: string; score: number | null; max: number | null }
 export type ColumnKind = "bai-tap" | "quiz" | "azota";
-export interface Column { id: string; kind: ColumnKind; title: string; max: number }
+/** dueAt: hạn nộp (ISO) để báo "Quá hạn"; dueLabel: "Hạn 24/11" (bài tập) / "Ngày 12/11" (đề) ở đầu cột. */
+export interface Column { id: string; kind: ColumnKind; title: string; max: number; dueAt?: string | null; dueLabel?: string | null }
 
 export const CELL_LABEL: Record<CellState, string> = { "chua-nop": "Chưa nộp", "cho-cham": "Chờ chấm", "cho-duyet": "Chờ duyệt", "da-cham": "Đã chấm" };
 /** Học sinh đọc ô của mình: điểm tự khai chưa duyệt thì nói rõ là gia sư chưa duyệt. */
@@ -51,6 +52,80 @@ export const SO_DIEM_MESSAGE: Record<string, string> = {
   "diem-sai": "Điểm chưa đúng. Nhập số từ 0 tới điểm tối đa của bài.",
   "khong-co": "Không tìm thấy điểm này, có thể đã được xử lý.",
 };
+
+// ── SCL-G-SD (21/11/2026, QUYET-DINH-GIAO-DIEN §2.3, §3.5): phần thuần của màn sổ điểm gia sư. ──
+/** Trạng thái HIỆN ở ô: như CellState, thêm "qua-han" = chưa nộp mà đã qua hạn (§3.6). */
+export type ShownState = CellState | "qua-han";
+export const shownState = (c: Cell, col: Column, now: Date): ShownState =>
+  c.state === "chua-nop" && col.dueAt && Date.parse(col.dueAt) < now.getTime() ? "qua-han" : c.state;
+
+/** Điểm trong sổ: luôn có phần thập phân — 8 → "8,0", 8.5 → "8,5", 8.25 → "8,25". */
+export function fmtDiem(n: number): string {
+  const r = Math.round(n * 100);
+  return (r / 100).toFixed(r % 10 === 0 ? 1 : 2).replace(".", ",");
+}
+/** Thang điểm ở đầu cột: "/10", "/7,5". */
+export const fmtThang = (n: number) => `/${String(Math.round(n * 100) / 100).replace(".", ",")}`;
+
+/** Trung bình thang 10 của một hàng: chỉ ô Đã chấm (điểm Chờ duyệt chưa tính). Không có ô nào ⇒ null. Làm tròn 1 chữ số. */
+export function rowAverage(cells: Record<string, Cell>, cols: Column[]): number | null {
+  const xs = cols.map(c => cells[c.id]).filter(x => x?.state === "da-cham" && x.score !== null && !!x.max).map(x => (x.score! / x.max!) * 10);
+  return xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null;
+}
+
+export type LocFilter = "cho-cham" | "cho-duyet" | "chua-nop" | "tat-ca";
+export const LOC_FILTERS: { id: LocFilter; label: string }[] = [
+  { id: "cho-cham", label: "Chờ chấm" }, { id: "cho-duyet", label: "Chờ duyệt" }, { id: "chua-nop", label: "Chưa nộp" }, { id: "tat-ca", label: "Tất cả" },
+];
+export const isLoc = (v: unknown): v is LocFilter => LOC_FILTERS.some(f => f.id === v);
+/** Lọc theo HÀNG (§3.5): học sinh có ít nhất một ô ở trạng thái đó ("Chưa nộp" gồm cả Quá hạn). */
+export const rowHas = (cells: Record<string, Cell>, loc: LocFilter): boolean => loc === "tat-ca" || Object.values(cells).some(c => c.state === loc);
+
+/** Khoá một ô trong địa chỉ (?mo=): "<mã học sinh>~<mã cột>". */
+export const cellKey = (studentId: string, colId: string) => `${studentId}~${colId}`;
+export const isCellKey = (v: unknown): v is string => typeof v === "string" && /^[\w-]{1,100}~[\w-]{1,100}$/.test(v);
+
+type QueueRow = { studentId: string; cells: Record<string, Cell & { submissionId?: string }> };
+/** "Chấm N bài đang chờ": bài nộp chưa có điểm chấm được ngay trong sổ (quiz tự luận đang giữ điểm không có bài nộp ⇒ không vào).
+ *  Theo cột rồi theo hàng: chấm hết một bài cho cả lớp rồi mới sang bài sau. */
+export const cellQueue = (rows: QueueRow[], cols: Column[]): string[] =>
+  cols.flatMap(c => rows.filter(r => r.cells[c.id]?.state === "cho-cham" && r.cells[c.id].submissionId).map(r => cellKey(r.studentId, c.id)));
+/** Bài kế sau `cur` (cur có thể vừa chấm xong nên không còn trong hàng đợi); hết phía sau thì quay về đầu. Không còn bài nào khác ⇒ null. */
+export function queueAfter(queue: string[], cur: string, rows: { studentId: string }[], cols: Column[]): string | null {
+  const ri = new Map(rows.map((r, i) => [r.studentId, i])), ci = new Map(cols.map((c, i) => [c.id, i]));
+  const pos = (k: string) => { const [s, c] = k.split("~"); return (ci.get(c) ?? -1) * rows.length + (ri.get(s) ?? -1); };
+  const rest = queue.filter(k => k !== cur);
+  return rest.find(k => pos(k) > pos(cur)) ?? rest[0] ?? null;
+}
+
+/** Chỗ quay về sau POST (303): điểm sai ⇒ mở lại đúng ô đó; chấm xong ⇒ mở bài kế (&tiep=1); việc khác ⇒ đóng hộp. `mo` rác bị bỏ. */
+export function soDiemBack(courseId: string, ghi: string, mo: unknown, ve?: unknown): string {
+  // SCL-G-GS: chấm/duyệt từ Hộp việc (điện thoại) gửi ve=hop-viec ⇒ về lại Hộp việc. Chỉ đúng một giá trị, không nhận đường tuỳ ý.
+  if (ve === "hop-viec") return `/lop-cua-toi/hop-viec?ghi=${ghi}`;
+  const base = `/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`;
+  if (!isCellKey(mo)) return base;
+  return ghi === "diem-sai" ? `${base}&mo=${mo}` : ghi === "da-cham" ? `${base}&mo=${mo}&tiep=1` : base;
+}
+
+/** Chữ của một ô (nhãn trong bảng và ô CSV). */
+export function cellText(c: Cell, s: ShownState): string {
+  if (c.state === "da-cham" && c.score !== null) return fmtDiem(c.score);
+  if (c.state === "cho-duyet" && c.score !== null) return `Chờ duyệt · ${fmtDiem(c.score)}`;
+  return s === "qua-han" ? "Quá hạn" : CELL_LABEL[c.state];
+}
+
+/** Bảng chữ của "Xuất CSV": đầu cột = tên bài · hạn · thang, thêm cột Trung bình. Chỉ tên học sinh và điểm, không mã nào. */
+export function gradebookCsvMatrix(cols: Column[], rows: { name: string; cells: Record<string, Cell> }[], now: Date): string[][] {
+  const head = ["Học sinh", ...cols.map(c => [c.title, c.dueLabel, fmtThang(c.max)].filter(Boolean).join(" · ")), "Trung bình /10"];
+  return [head, ...rows.map(r => {
+    const avg = rowAverage(r.cells, cols);
+    return [r.name, ...cols.map(c => (r.cells[c.id] ? cellText(r.cells[c.id], shownState(r.cells[c.id], c, now)) : "")), avg === null ? "" : fmtDiem(avg)];
+  })];
+}
+/** Ô CSV luôn trong ngoặc kép; chữ mở đầu bằng = + - @ được thêm ' để bảng tính không chạy như công thức. */
+export const csvCell = (v: string) => `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`;
+/** CSV có BOM UTF-8 (Excel đọc đúng dấu tiếng Việt). */
+export const toCsv = (m: string[][]) => "﻿" + m.map(r => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
 
 // ── "+ Giao bài" thẳng (P2-2): lớp, tiêu đề, tệp đề hoặc quiz có sẵn, hạn nộp — không bắt gắn vào bài học. ──
 export const GIAO_TITLE_MAX = 200;

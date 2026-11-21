@@ -25,7 +25,7 @@ export interface OThaTepProps {
   onPledgeChange: (v: boolean) => void;
 }
 
-const FRAME = "flex min-h-[160px] w-full flex-col items-center justify-center gap-2 rounded-[var(--kin-bo-lg)] border-2 px-4 py-5 text-center text-[length:var(--kin-co-goc)] leading-5";
+const FRAME = "flex min-h-[120px] w-full flex-col items-center justify-center gap-2 rounded-[var(--kin-bo-lg)] border-2 px-4 py-5 text-center text-[length:var(--kin-co-goc)] leading-5";
 
 export function OThaTep({ state, onFiles, onRetry, accept, hint, pledge, onPledgeChange }: OThaTepProps) {
   const [over, setOver] = useState(false);
@@ -95,25 +95,28 @@ export function OThaTep({ state, onFiles, onRetry, accept, hint, pledge, onPledg
     );
   }
 
+  // SCL-G-GS: ô cam kết bản quyền và lời nhắc nằm NGOÀI viền đứt (không khối lồng khối); vẫn chỉ hiện khi ô sẵn sàng nhận tệp.
   return (
-    <div {...handlers} data-o-tha={shown}
-      className={`${FRAME} ${over ? "border-solid border-[var(--kin-nhan-nen)] bg-[var(--kin-nhan-nen-nhat)]" : "border-dashed border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)]"} text-[var(--kin-chu-chinh)] transition-colors`}>
-      {over ? (
-        <p className="py-10 text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-nhan-link)]">Thả tệp để tải lên</p>
-      ) : (
-        <>
-          <p className="font-medium">Kéo thả tệp Word, PDF, Excel, PowerPoint hoặc ảnh vào đây</p>
-          {hint && <p data-o-tha-goi-y className="text-[var(--kin-chu-mo)] break-words">{hint}</p>}
-          <input ref={input} type="file" multiple accept={accept} className="sr-only" tabIndex={-1} aria-hidden data-o-tha-input
-            onChange={e => { const l = e.target.files; if (l && l.length) onFiles(Array.from(l)); e.target.value = ""; }} />
-          <KinButton type="button" variant="secondary" className="mt-1" onClick={() => input.current?.click()}>Chọn tệp từ máy</KinButton>
-          <label className="mt-1 flex min-h-[var(--kin-cham-toi-thieu)] w-full cursor-pointer items-start gap-3 py-2 text-left">
-            <input type="checkbox" data-tai-lieu-cam-ket checked={pledge} onChange={e => onPledgeChange(e.target.checked)} className="mt-0.5 h-5 w-5 flex-shrink-0" />
-            <span className="leading-5">{COPYRIGHT_PLEDGE_LABEL}</span>
-          </label>
-          <p data-tai-lieu-nhac className="w-full text-left text-[var(--kin-chu-mo)]">Tệp sẽ hiện cho học sinh của lớp ngay khi bài được lưu.</p>
-        </>
-      )}
+    <div className="space-y-2">
+      <div {...handlers} data-o-tha={shown}
+        className={`${FRAME} ${over ? "border-solid border-[var(--kin-nhan-nen)] bg-[var(--kin-nhan-nen-nhat)]" : "border-dashed border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)]"} text-[var(--kin-chu-chinh)] transition-colors`}>
+        {over ? (
+          <p className="py-6 text-[length:var(--kin-co-tieu-de)] font-medium text-[var(--kin-nhan-link)]">Thả tệp để tải lên</p>
+        ) : (
+          <>
+            <p className="font-medium">Kéo thả tệp Word, PDF, Excel, PowerPoint hoặc ảnh vào đây</p>
+            {hint && <p data-o-tha-goi-y className="text-[var(--kin-chu-mo)] break-words">{hint}</p>}
+            <input ref={input} type="file" multiple accept={accept} className="sr-only" tabIndex={-1} aria-hidden data-o-tha-input
+              onChange={e => { const l = e.target.files; if (l && l.length) onFiles(Array.from(l)); e.target.value = ""; }} />
+            <KinButton type="button" variant="secondary" className="mt-1" onClick={() => input.current?.click()}>Chọn tệp từ máy</KinButton>
+          </>
+        )}
+      </div>
+      <label className="flex min-h-[var(--kin-cham-toi-thieu)] w-full cursor-pointer items-start gap-3 py-2 text-left text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
+        <input type="checkbox" data-tai-lieu-cam-ket checked={pledge} onChange={e => onPledgeChange(e.target.checked)} className="mt-0.5 h-5 w-5 flex-shrink-0" />
+        <span className="leading-5">{COPYRIGHT_PLEDGE_LABEL}</span>
+      </label>
+      <p data-tai-lieu-nhac className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Tệp sẽ hiện cho học sinh của lớp ngay khi bài được lưu.</p>
     </div>
   );
 }

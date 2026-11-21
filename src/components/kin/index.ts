@@ -5,10 +5,12 @@ export { KinInput, type KinInputProps } from "./Input";
 export { KinButton, type KinButtonProps } from "./Button";
 // kinButtonClass xuất từ module thuần (không "use client") để Server Component gọi được — BU-00 sửa sau test 31/10/2026.
 export { kinButtonClass, type KinButtonVariant, type KinButtonSize } from "./buttonClass";
-export { KinStatus, STATUS_DOT, STATUS_TEXT, type StatusTone } from "./Status";
+export { KinStatus, KinStatusIcon, KinGradeStatus, GRADE_STATUS, STATUS_DOT, STATUS_TEXT, type StatusTone, type StatusShape, type GradeState } from "./Status";
 export { KinTabs, KinTabInner, KIN_TAB_BOX, type KinTabsProps, type KinTabItem } from "./Tabs";
 export { KinToast, type KinToastProps, type ToastTone } from "./Toast";
 export { KinConfirm, type KinConfirmProps } from "./Confirm";
+// SCL-G-0 (21/11/2026): hộp thoại chung (Escape, giữ tiêu điểm) cho mọi hộp không phải câu hỏi Có/Không.
+export { KinDialog, type KinDialogProps } from "./Dialog";
 export { useKinConfirm, type AskOptions } from "./useConfirm";
 export { KinMark, KinLogo } from "./KinLogo";
 export { KinLoader } from "./KinLoader";

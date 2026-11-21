@@ -300,9 +300,9 @@ export default function TaoLop({ centerAdmin = false }: { centerAdmin?: boolean 
                 <KinSectionHead id="tl-vao" title="Cách vào lớp" aside="Đổi được sau" />
                 <fieldset className="pt-5">
                   <legend className="sr-only">Cách học sinh vào lớp</legend>
-                  <div className={`grid gap-3 ${feeOn ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                    {POLICY_CARDS.filter(c => feeOn || c.value !== "open").map(c => {
-                      const locked = c.value === "open" && !free;
+                  <div className={`grid gap-3 ${feeOn || centerAdmin ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                    {POLICY_CARDS.filter(c => feeOn || centerAdmin || c.value !== "open").map(c => {
+                      const locked = c.value === "open" && !free && !centerAdmin; // lớp GVCN không thu học phí
                       return (
                         <label key={c.value} data-policy={c.value} className={`flex items-start gap-3 min-h-[var(--kin-cham-toi-thieu)] p-3 rounded-[var(--kin-bo-md)] border text-[length:var(--kin-co-goc)] ${locked ? "opacity-60" : ""} ${policy === c.value ? "border-[var(--kin-nhan-nen)] bg-[var(--kin-nen-nhan)]" : "border-[var(--kin-vien-o-nhap)]"}`}>
                           <input type="radio" name="tl-policy" className="mt-1" checked={policy === c.value} disabled={locked} onChange={() => { setPolicy(c.value); setError(null); }} />

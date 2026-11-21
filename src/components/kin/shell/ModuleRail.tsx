@@ -14,11 +14,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ShellIcon } from "./ShellIcon";
 import { chooseRail, lastOpenRail, readRail, useRail } from "./railStore";
 import { isRailShortcut, toggleRail, widenRail } from "@/lib/railState";
 import { activeIndex } from "@/lib/navActive";
+import { filterClasses, showClassFilter } from "@/lib/lopViec";
 
 /** Mục của thanh rộng (nằm trong một nhóm). `active` để nơi gọi tự quyết; không có thì so đường dẫn như ModuleItem. */
 export interface NavItem {
@@ -30,8 +31,15 @@ export interface NavItem {
   active?: boolean;
   badge?: number;
   external?: boolean;
+  /** SCL-G-GS: mục là MỘT LỚP ("Lớp của bạn") — chấm màu lớp (token, chỉ trang trí) thay biểu tượng, sĩ số ở cột phải, tên lớp xuống dòng. */
+  dot?: string;
+  /** Sĩ số hiện cạnh tên lớp (đọc là "n học sinh"). */
+  count?: number;
+  /** Tên gia sư (Chủ nhiệm lọc được theo tên gia sư). */
+  ownerName?: string | null;
 }
-export interface NavGroup { title: string; items: NavItem[] }
+/** `classes`: nhóm là danh sách lớp — mọi nhóm `classes` dùng chung MỘT ô lọc, chỉ hiện khi tổng số lớp > 8 (QUYET-DINH §2.2). */
+export interface NavGroup { title: string; items: NavItem[]; classes?: boolean }
 
 export interface ModuleItem {
   key: string;
@@ -53,21 +61,24 @@ export interface ModuleItem {
   desktopOnly?: boolean;
   /** Chỉ hiện ở thanh dưới (điện thoại). */
   mobileOnly?: boolean;
+  /** SCL-G-HS: nhãn ngắn trên thanh dưới điện thoại ("Lớp" thay "Lớp của tôi"). Thiếu thì dùng `label`. */
+  mobileLabel?: string;
 }
 
+const railText = (m: NavItem) => `${m.label} ${m.ownerName ?? ""}`;
 const matches = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
 export const isModuleActive = (pathname: string, m: ModuleItem) =>
   m.active ?? (!!m.href && (matches(pathname, m.href) || (m.also ?? []).some(p => matches(pathname, p))));
 
-function Badge({ n, mobile }: { n: number; mobile: boolean }) {
+function Badge({ n, mobile, navy }: { n: number; mobile: boolean; navy?: boolean }) {
   return (
-    <span className={`kin-badge-dem absolute top-[3px] ${mobile ? "left-[calc(50%+4px)]" : "left-[40px]"}`} aria-label={`${n} việc cần xử lý`}>
+    <span className={`kin-badge-dem absolute top-[3px] ${mobile ? "left-[calc(50%+4px)]" : "left-[40px]"} ${navy ? "!bg-[var(--kin-nhan-nen)] !text-[var(--kin-nhan-chu-tren-nen)]" : ""}`} aria-label={`${n} việc cần xử lý`}>
       {n > 99 ? "99+" : n}
     </span>
   );
 }
 
-export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote, mobileMore = false }: {
+export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, onCollapse, home, footnote, mobileMore = false, tallBar = false }: {
   roleLabel: string;
   modules: ModuleItem[];
   /** Các mục xếp theo nhóm cho thanh RỘNG (Figma "Điều hướng" 272px). Không truyền thì thanh rộng không có gì để hiện, nên mọi vỏ đều truyền. */
@@ -84,9 +95,16 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
   /** Điều hướng B3 (08/11/2026): bật thì mục `desktopOnly` có `onClick` (nút "Khác" mở bảng) CŨNG nằm trên thanh dưới điện thoại, để các trang còn lại cách 2 bấm thay vì 3
    *  (Avatar → "Tất cả mục" → mục). Mặc định TẮT: vỏ nào muốn thì tự bật; mục `desktopOnly` là liên kết thường vẫn chỉ ở thanh bên. Số ô thanh dưới do nơi gọi giữ ≤ 5 và đo ≥ 44px ở 320 / 390px. */
   mobileMore?: boolean;
+  /** SCL-G-HS (§3.4): thanh dưới cao --kin-cao-thanh-duoi (64px) thay 60px, nhãn 13,3px, chỉ mục đang chọn có viên nền, số đếm màu navy (đếm việc, không phải lỗi).
+   *  Vỏ nào bật thì thân trang chừa đúng token đó. */
+  tallBar?: boolean;
 }) {
   const pathname = usePathname();
   const [rail] = useRail();
+  const [classQ, setClassQ] = useState("");
+  const classItems = (groups ?? []).filter(g => g.classes).flatMap(g => g.items.filter(m => m.dot));
+  const classCount = classItems.length;
+  const classMatches = classQ ? filterClasses(classItems, classQ, railText).length : classCount;
   const itemsRef = useRef<HTMLDivElement>(null);
   const hlRef = useRef<HTMLSpanElement>(null);
 
@@ -143,10 +161,10 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
   const renderItem = (m: ModuleItem, mobile: boolean, index = 0) => {
     const active = isModuleActive(pathname, m);
     const cls = mobile
-      ? "relative flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-caption)] tracking-[0.02em]"
+      ? `relative flex-1 min-w-0 min-h-[44px] flex flex-col items-center justify-center gap-0.5 rounded-[var(--kin-bo-md)] ${tallBar ? "text-[length:var(--kin-co-small)]" : "text-[length:var(--kin-co-caption)] tracking-[0.02em]"}`
       : "kin-rail-it relative w-[66px] min-h-[44px] flex flex-col items-center justify-center gap-1 rounded-[var(--kin-bo-sm)] pt-2 pb-[6px] px-0 text-[length:var(--kin-co-caption)] tracking-[-0.01em]";
     const style = {
-      background: active ? "var(--kin-nen-nhan)" : mobile ? "var(--kin-nen-re-chuot)" : "transparent",
+      background: active ? "var(--kin-nen-nhan)" : mobile && !tallBar ? "var(--kin-nen-re-chuot)" : "transparent", // tallBar (SCL-G-HS): chỉ mục đang chọn có viên nền
       color: active ? "var(--kin-nhan-diem)" : "var(--kin-chu-mo)",
       fontWeight: 600,
       "--i": index,
@@ -154,8 +172,8 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
     const inner = (
       <>
         <ShellIcon name={m.icon} />
-        <span className="kin-rail-lab truncate max-w-full leading-tight">{m.label}</span>
-        {m.badge && m.badge > 0 ? <Badge n={m.badge} mobile={mobile} /> : null}
+        <span className="kin-rail-lab truncate max-w-full leading-tight">{mobile ? m.mobileLabel ?? m.label : m.label}</span>
+        {m.badge && m.badge > 0 ? <Badge n={m.badge} mobile={mobile} navy={tallBar} /> : null}
       </>
     );
     const common = { className: `${cls} hover:bg-[var(--kin-nen-re-chuot)] transition-colors`, style, "aria-current": active ? ("page" as const) : undefined };
@@ -178,8 +196,11 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
     };
     const inner = (
       <>
-        <ShellIcon name={m.icon} />
-        <span className="min-w-0 flex-1 truncate">{m.label}</span>
+        {m.dot
+          ? <span aria-hidden data-cham-lop className="w-[21px] flex-shrink-0 flex justify-center"><span className="block size-2.5 rounded-full" style={{ background: m.dot }} /></span>
+          : <ShellIcon name={m.icon} />}
+        <span className={`min-w-0 flex-1 ${m.dot ? "[overflow-wrap:anywhere]" : "truncate"}`}>{m.label}</span>
+        {m.count !== undefined && <span data-si-so className="flex-shrink-0 tabular-nums text-[var(--kin-chu-phu)] font-normal"><span aria-hidden>{m.count}</span><span className="sr-only">, {m.count} học sinh</span></span>}
         {m.badge && m.badge > 0 ? <span className="kin-badge-dem flex-shrink-0" aria-label={`${m.badge} việc cần xử lý`}>{m.badge > 99 ? "99+" : m.badge}</span> : null}
       </>
     );
@@ -209,12 +230,20 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
           </div>
           {groups && (
             <div className="kin-rail-groups kin-chu-than w-full flex-col gap-[6px]">
-              {groups.map(g => {
+              {groups.map((g, gi) => {
                 const lit = activeIndex(pathname, g.items);
+                const firstClasses = g.classes && groups.findIndex(x => x.classes) === gi;
+                const shown = g.classes && classQ ? [...filterClasses(g.items.filter(m => m.dot), classQ, railText), ...g.items.filter(m => !m.dot)] : g.items;
+                if (g.classes && classQ && !firstClasses && !shown.some(m => m.dot)) return null; // Chủ nhiệm: nhóm gia sư không còn lớp nào khớp thì ẩn cả nhóm
                 return (
-                  <div key={g.title} role="group" aria-label={g.title} className="flex flex-col gap-[2px] pt-[10px]">
+                  <div key={g.title} role="group" aria-label={g.title} data-rail-classes={g.classes ? "" : undefined} className="flex flex-col gap-[2px] pt-[10px]">
                     <p aria-hidden className="kin-rail-gh h-4 text-[length:var(--kin-co-caption)] leading-4 font-semibold uppercase text-[var(--kin-chu-mo)]">{g.title}</p>
-                    {g.items.map((m, i) => renderWide(m, i === lit))}
+                    {firstClasses && showClassFilter(classCount) && (
+                      <input type="search" value={classQ} onChange={e => setClassQ(e.target.value)} aria-label="Lọc lớp theo tên" placeholder="Lọc lớp" data-loc-lop
+                        className="my-1 min-h-11 w-full px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]" />
+                    )}
+                    {shown.map(m => renderWide(m, g.items.indexOf(m) === lit))}
+                    {firstClasses && classQ && classMatches === 0 && <p role="status" className="px-3 py-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Không có lớp nào khớp &quot;{classQ}&quot;.</p>}
                   </div>
                 );
               })}
@@ -238,7 +267,7 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
         </nav>
       </div>
       <nav aria-label={ariaLabel}
-        className="md:hidden fixed bottom-0 inset-x-0 h-[60px] flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]">
+        className={`md:hidden fixed bottom-0 inset-x-0 ${tallBar ? "h-[var(--kin-cao-thanh-duoi)]" : "h-[60px]"} flex items-center gap-2 px-2 z-30 bg-[var(--kin-nen-trang)] border-t border-[var(--kin-vien-thuong)]`}>
         {modules.filter(m => !m.desktopOnly || (mobileMore && !!m.onClick)).map((m, i) => renderItem(m, true, i))}
       </nav>
     </>

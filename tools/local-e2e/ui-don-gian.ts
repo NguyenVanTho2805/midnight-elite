@@ -110,7 +110,9 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     check("thấy thẻ lớp đang quản lý", await visible(p.getByText("Toán 9 gọn")));
     const nav = p.getByRole("navigation", { name: "Module của gia sư" });
     const navText = (await nav.allInnerTexts()).join("\n");
-    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
+    // SCL-G-GS (QUYET-DINH §3.4): "Hộp việc" DẠY HỌC (chờ chấm / chờ duyệt / xin vào lớp, /lop-cua-toi/hop-viec) nay luôn ở đầu thanh — không phải Hộp việc cũ có học phí (cờ HOP_VIEC).
+    check("thanh gia sư: 'Hộp việc' là Hộp việc dạy học (/lop-cua-toi/hop-viec), không phải Hộp việc cũ có học phí", (await nav.getByRole("link", { name: /^Hộp việc/ }).evaluateAll(as => as.map(a => a.getAttribute("href")))).every(h => h === "/lop-cua-toi/hop-viec"));
+    for (const gone of ["Học phí", "Doanh thu", "Báo cáo tháng", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
       check(`thanh gia sư KHÔNG có '${gone}'`, !navText.split("\n").some(t => t.trim() === gone), navText);
     }
     for (const keep of ["Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Sổ điểm", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
@@ -123,7 +125,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const strip = p.getByRole("navigation", { name: /Trang của Quản lớp/ });
     await strip.waitFor({ timeout: 120000 });
     const tabs = (await strip.getByRole("link").allInnerTexts()).map(t => t.trim());
-    check("trang lớp: dải tab Bài học · Video · Học sinh · Thông báo · Cài đặt (không Điểm danh)", tabs.join("|") === "Bài học|Video|Học sinh|Thông báo|Cài đặt", tabs);
+    // SCL-G-GS (rà soát, §3.4): dải chỉ ba tab; Video · Thông báo · Cài đặt nằm trong nút "Khác" của dải (không Điểm danh khi cờ tắt).
+    await strip.locator("[data-tab-khac]").click();
+    const khac = (await strip.locator("#dai-tab-khac").getByRole("link").allInnerTexts()).map(t => t.trim());
+    check("trang lớp: dải tab Bài học · Học sinh · Điểm + 'Khác' (Video · Thông báo · Cài đặt), không Điểm danh", tabs.join("|") === "Bài học|Học sinh|Điểm" && khac.join("|") === "Video|Thông báo|Cài đặt", { tabs, khac });
     await p.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const muc = p.getByRole("navigation", { name: "Mục của Cài đặt" });
     await muc.waitFor({ timeout: 120000 });
@@ -141,9 +146,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const ctx = await ctxFor(T, { width: 390, height: 844 });
     const p = await ctx.newPage(); watch(p);
     await p.goto(`${BASE}/lop-cua-toi/lop`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await p.getByText("Toán 9 gọn").first().waitFor({ timeout: 120000 });
+    await p.getByText("Toán 9 gọn").filter({ visible: true }).first().waitFor({ timeout: 120000 }); // thanh bên rộng (ẩn ở 390) cũng có tên lớp
     const cells = await p.evaluate(`[...document.querySelectorAll('nav[aria-label="Module của gia sư"] a, nav[aria-label="Module của gia sư"] button')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.top > innerHeight - 80; }).map(e => (e.textContent || '').trim())`) as string[];
-    check("điện thoại: thanh dưới có Lớp, Bài tập, Thư viện, Khác; không Hộp việc / Học phí", ["Lớp", "Bài tập", "Thư viện", "Khác"].every(c => cells.some(t => t.startsWith(c))) && !cells.some(t => /Hộp việc|Học phí/.test(t)), cells);
+    // SCL-G-GS (QUYET-DINH §3.4): thanh dưới gia sư đúng 3 mục Hộp việc (dạy học) / Lớp / Tôi; Bài tập, Thư viện vào qua "Tôi".
+    check("điện thoại: thanh dưới đúng Hộp việc / Lớp / Tôi; không Học phí", cells.length === 3 && ["Hộp việc", "Lớp", "Tôi"].every((c, i) => cells[i].startsWith(c)) && !cells.some(t => /Học phí/.test(t)), cells);
     check("390: không tràn ngang", await p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"));
     await shot(p, "dg-gia-su-lop-390");
     await ctx.close();
@@ -156,20 +162,21 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const nav = p.getByRole("navigation", { name: "Module của học sinh" });
     await nav.waitFor({ timeout: 120000 });
-    await p.getByRole("heading", { name: "Đề thi được giao" }).waitFor({ timeout: 120000 });
+    await p.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 120000 });
     const navText = (await nav.allInnerTexts()).join("\n");
     for (const gone of ["Nhắc học", "Lớp miễn phí", "Lịch học", "Tiếng Anh tự học"]) check(`thanh học sinh KHÔNG có '${gone}'`, !navText.includes(gone), navText);
-    for (const keep of ["Việc của tôi", "Lớp của tôi"]) check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
-    check("Việc của tôi: không nút 'Xem lịch tuần', không lối 'Đề thi thử' (danh sách công khai)", await p.getByRole("link", { name: "Xem lịch tuần" }).count() === 0 && await p.getByRole("link", { name: "Đề thi thử", exact: true }).count() === 0);
+    for (const keep of ["Cần làm", "Lớp của tôi"]) check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
+    check("Cần làm: không nút 'Xem lịch tuần', không lối 'Đề thi thử' (danh sách công khai)", await p.getByRole("link", { name: "Xem lịch tuần" }).count() === 0 && await p.getByRole("link", { name: "Đề thi thử", exact: true }).count() === 0);
     await p.getByRole("button", { name: /Minh Anh|Tài khoản/ }).first().click();
     const menu = p.getByRole("menu").first();
     await menu.waitFor({ timeout: 30000 }).catch(() => {});
     const menuText = await menu.innerText().catch(() => "");
     check("menu tên: có Hồ sơ, KHÔNG có Học phí", /Hồ sơ/.test(menuText) && !/Học phí/.test(menuText), menuText);
     await p.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await p.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
-    await p.locator("[data-lop-thong-tin]").waitFor({ timeout: 60000 });
-    check("trang lớp › Tổng quan: không 'Phiếu học phí của bạn →'", await p.locator("[data-lop-hoc-phi]").count() === 0);
+    // SCL-G-HS: trang lớp không còn tab; lối phụ của lớp (hỏi gia sư, phiếu học phí theo cờ) nằm ở đầu trang.
+    await p.locator("[data-dau-lop]").waitFor({ timeout: 120000 });
+    await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+    check("trang lớp: không 'Phiếu học phí của bạn'", await p.locator("[data-lop-hoc-phi]").count() === 0);
     await ctx.close();
   }
 

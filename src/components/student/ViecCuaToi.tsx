@@ -1,224 +1,172 @@
-// "Việc của tôi" của học sinh (Figma "Học sinh · Desktop · Việc của tôi" 299:114360, điện thoại 299:116497): TRANG DỌC, không còn hai khung.
-// Tiêu đề + "Xem lịch tuần"; cột trái "Cần làm" (bài chưa nộp + hạn nộp ngoài KiN), "Đã nộp · đang chờ chấm", "Kết quả gần đây";
-// cột phải "Buổi học tiếp theo", "Đề thi được giao", "Kiểm tra sắp mở" và "Thi thử sắp tới". Điện thoại: một cột, buổi học tiếp theo lên đầu.
-// ĐIỀU HƯỚNG B1 (08/11/2026): đây là NƠI DUY NHẤT cho cần làm / chờ chấm / kết quả; trang "Bài tập" đã bỏ khỏi thanh module (/student/bai-tap chuyển về đây), phần chỉ nó có
-// (đề thi được giao, thi thử sắp tới) nằm ở cột phải. "Kết quả gần đây" chỉ hiện 5 bài mới nhất kèm nút "Xem thêm" khi nhiều hơn.
-// KHÔNG có dữ liệu thật nên BỎ khỏi Figma: "Chuẩn bị cho buổi học" (danh sách tích), "Học trực tuyến · Buổi 3/5", số trang ảnh đã nộp, số câu của bài tự luận.
-// Dữ liệu: /api/student/viec-cua-toi ({ items }) + /api/schedule (buổi thi); tải lại khi cửa sổ lấy lại focus.
-// LOI-03 (11/11/2026): ngay dưới tiêu đề là phiếu "Hôm nay có lớp" (components/student/HomNayCoLop, GET /api/student/hom-nay) — full-width ở mọi cỡ màn.
+// "Cần làm" của học sinh (/student/viec-cua-toi) theo bản chốt SCL-G (QUYET-DINH-GIAO-DIEN §2.1, §3.3, §3.4, §3.9; khung 2 "Học sinh · Cần làm").
+// Một câu hỏi: "hôm nay em phải làm gì". Gom MỌI việc của MỌI lớp (bài tập + kiểm tra + hạn nộp ngoài KiN) thành thẻ, nhóm Quá hạn / Tuần này / Tuần sau / Sau đó,
+// xếp theo hạn; chỉ thẻ bài tập hạn gần nhất mang nút chính, các thẻ sau nút phụ (bài quá hạn xếp đầu nên không bao giờ nhạt hơn bài ít khẩn hơn, §3.2).
+// "Nộp bài" ngay trong thẻ (ảnh → PDF, components/student/CanLam) → POST + 303 về đây (?nop=ok&bt=<mã bài>): role=status + thẻ "Đã nộp lúc …".
+// Dưới thẻ: "Đã nộp, chờ chấm" (hàng mảnh), "Buổi học sắp tới" (hàng, có link học online), "Đề thi được giao" (hàng mảnh, cả hàng là link, bỏ đề đã có thẻ).
+// Kết quả đã chấm nằm ở mục Điểm.
+// Giữ từ trước: thẻ "chờ duyệt" của gia sư mới đăng ký (NC2-029), lối "Nhập mã lớp" ở đầu trang (SCL P2-13), tải lại khi cửa sổ lấy lại focus.
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { ScheduleEvent } from "@/lib/studentSchedule";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo } from "react";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
-import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinEmptyState } from "@/components/kin/EmptyState";
-import { KinStatus } from "@/components/kin/Status";
-import { choCham, chuaNop, examTarget, nextExam, NextSession, TaskRow, todayLine, useStudentWork, WorkSkeleton } from "@/components/student/shared";
-import { dmOfKey } from "@/components/student/shared";
+import { KinListRow } from "@/components/kin/ListRow";
+import { KinGradeStatus, KinStatus } from "@/components/kin/Status";
+import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { DaNopCard, TodoCardView } from "@/components/student/CanLam";
 import { useAuth } from "@/contexts/AuthContext";
-import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
-import HomNayCoLop from "@/components/student/HomNayCoLop";
-import { asideState } from "@/lib/studentLop";
-import { isLinkHidden } from "@/lib/features";
+import { useMyClasses } from "@/hooks/useMyClasses";
+import { useAssignments } from "@/components/student/exam-room/AssignmentList";
+import { ASSIGNMENT_ACTION, ASSIGNMENT_STATE_LABEL } from "@/components/student/exam-room/roomLogic";
+import { daysLeftLabel } from "@/lib/examRoomLib";
+import type { AssignmentState } from "@/lib/examRoomApi";
+import { classAccent } from "@/lib/classColor";
+import { nopTepResultMessage } from "@/lib/nopTep";
+import { BUCKET_TITLE, buildTodoCards, todoBucket, type TodoBucket } from "@/lib/studentClassPage";
 
-const RESULT_LIMIT = 5; // "Kết quả gần đây": 5 bài mới nhất, còn lại sau nút "Xem thêm"
-const ASSIGN_LIMIT = 3; // "Đề thi được giao": 3 đề đầu (đã sắp theo hạn), còn lại sau nút "Xem thêm"
-const moreBtn = "mt-2 inline-flex items-center min-h-11 px-1 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline";
+const H2 = "text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)]";
+const GOC = "text-[length:var(--kin-co-goc)]";
+const BUCKETS: TodoBucket[] = ["qua-han", "tuan-nay", "tuan-sau", "sau"];
+const EXAM_TONE: Record<AssignmentState, "xong" | "cho" | "mo"> = { "dang-lam": "cho", "dang-mo": "xong", "chua-mo": "mo", "da-dong": "mo", "cho-cong-bo": "cho", "da-lam": "xong" };
 
-function UpcomingExam({ e }: { e: ScheduleEvent }) {
-  const t = examTarget(e);
-  const cls = "inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline";
+function CanLamPage() {
+  const { user } = useAuth();
+  const tutorPending = user?.tutorPending === true;
+  const { items, events, error, load } = useStudentWork();
+  const { classes } = useMyClasses();
+  const as = useAssignments();
+  const params = useSearchParams();
+  const nop = params.get("nop"), bt = params.get("bt");
+
+  const now = useMemo(() => new Date(), [items]); // eslint-disable-line react-hooks/exhaustive-deps -- mốc "bây giờ" lấy lại mỗi lần dữ liệu về
+  const nameOf = (id: string) => classes.find(c => c.id === id)?.name ?? "";
+  const cards = items ? buildTodoCards(items, events ?? [], now, nameOf) : null;
+  const waiting = (items ?? []).filter(i => i.task?.phase === "cho-cham");
+  const sessions = (items ?? []).filter(i => i.kind === "buoi-hoc" && !i.done && i.session).slice(0, 3);
+  const sent = nop === "ok" && bt ? waiting.find(i => i.id === `bai-tap:${bt}`) ?? null : null;
+  const nopErr = nop && nop !== "ok" ? nopTepResultMessage(nop) : null;
+  const nothing = items !== null && items.length === 0 && (as.data?.items.length ?? 0) === 0;
+  const lopCount = new Set((cards ?? []).map(c => c.courseId ?? c.courseName)).size;
+
+  // "Đề thi được giao" (§3.2, §3.3): hàng mảnh, cả hàng là link, KHÔNG nút — và bỏ đề đã có thẻ kiểm tra ở trên (không lặp một đề hai lần).
+  const carded = new Set((cards ?? []).flatMap(c => (c.action.type === "thi" ? [c.action.event.id.replace(/^exam-/, "")] : [])));
+  const exams = (as.data?.items ?? []).filter(it => !carded.has(it.id));
+  const assignBlock = ((as.error && !as.data) || exams.length > 0) && (
+    <section aria-labelledby="vc-giao" className="mt-10">
+      <h2 id="vc-giao" className={`${H2} pb-2`}>Đề thi được giao</h2>
+      {as.error && !as.data ? <ErrorStrip message="Không tải được danh sách đề được giao." onRetry={as.load} />
+        : <ul aria-label="Đề thi được giao" className="border-t border-[var(--kin-vien-nhat)]">
+          {exams.map(it => {
+            const due = as.data ? daysLeftLabel(it.dueAt, as.data.serverNow) : "";
+            const act = ASSIGNMENT_ACTION[it.state];
+            return (
+              <li key={it.id} data-de-thi-hang data-trang-thai={it.state}>
+                <KinListRow size="lg" href={act ? `/student/thi-thu/${it.id}` : undefined} title={it.title}
+                  sub={[it.courseName ?? (it.source === "link" ? "Giao qua đường dẫn" : "Thư viện thi thử"), it.durationMinutes ? `${it.durationMinutes} phút` : "", due].filter(Boolean).join(" · ")}
+                  aside={<>
+                    <KinStatus tone={EXAM_TONE[it.state]}>{ASSIGNMENT_STATE_LABEL[it.state]}</KinStatus>
+                    {act && <span className="font-medium text-[var(--kin-nhan-link)] underline">{act}</span>}
+                  </>} />
+              </li>
+            );
+          })}
+        </ul>}
+    </section>
+  );
+
   return (
-    <li data-exam-card className="py-[var(--kin-kc-6)] px-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)]">
-      <p className="text-[length:var(--kin-co-body)] leading-6 text-[var(--kin-chu-chinh)]">{e.topic}</p>
-      <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{dmOfKey(e.isoDate)} · {e.time}{e.meta ? ` · ${e.meta}` : ""}</p>
-      {t.external ? <a href={t.href} target="_blank" rel="noopener noreferrer" className={cls}>Xem thông tin đề</a> : <Link href={t.href} className={cls}>Xem thông tin đề</Link>}
-    </li>
+    <div className="px-4 md:px-10 pt-5 md:pt-8 pb-10 max-w-[800px] bg-[var(--kin-nen-trang)]">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Cần làm</h1>
+          {cards && (
+            <p data-can-lam-tom-tat className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>
+              {cards.length > 0 ? `${cards.length} việc${lopCount > 1 ? ` ở ${lopCount} lớp` : ""}, xếp theo hạn` : "Không còn việc nào cần làm"}
+            </p>
+          )}
+        </div>
+        {!nothing && <Link href="/student/nhap-ma-lop" data-nhap-ma-dau className={kinButtonClass("secondary")}>Nhập mã lớp</Link>}
+      </header>
+
+      {tutorPending && (
+        <div role="status" data-tutor-pending className="mt-6">
+          <KinPanel variant="canh-bao"><p className={`${GOC} font-medium text-[var(--kin-chu-chinh)]`}>Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</p><p className={`mt-1.5 ${GOC} text-[var(--kin-chu-phu)]`}>KiN sẽ báo khi xong.</p></KinPanel>
+        </div>
+      )}
+      {nop === "ok" && <p role="status" data-nop-xong className={`mt-4 ${GOC} font-medium text-[var(--kin-tt-chu-xong)]`}>Đã nộp {sent?.task?.name ?? "bài"}. Gia sư sẽ chấm và báo điểm cho bạn.</p>}
+      {nopErr && <p role="alert" className={`mt-4 ${GOC} font-medium text-[var(--kin-tt-chu-loi-dam)]`}>{nopErr}</p>}
+      {error && <div className="mt-4"><ErrorStrip message="Không tải được danh sách." onRetry={load} /></div>}
+
+      {items === null ? (!error ? <WorkSkeleton label="Đang tải việc cần làm" /> : null) : nothing ? (
+        <div className="mt-6">
+          <KinEmptyState title="Chưa có việc nào cho bạn" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
+            Khi bạn vào lớp và thầy cô giao bài, bài phải nộp, hạn nộp và buổi học sắp tới sẽ hiện ở đây.
+          </KinEmptyState>
+        </div>
+      ) : (
+        <>
+          {sent?.task && <div className="mt-4"><DaNopCard title={sent.task.name} line={(sent.task.sentText ?? "Đã nộp").replace(/^Nộp /, "Đã nộp ")} href={sent.task.href} /></div>}
+          {cards && cards.length === 0 && (
+            <div className="mt-6"><KinEmptyState title="Bạn không còn bài nào cần làm">Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.</KinEmptyState></div>
+          )}
+          {BUCKETS.map(b => {
+            const group = (cards ?? []).filter(c => todoBucket(c.dueIso, now) === b);
+            if (!group.length) return null;
+            return (
+              <section key={b} aria-labelledby={`vc-${b}`} data-can-lam-nhom={b} className="mt-6">
+                <h2 id={`vc-${b}`} className={`${H2} flex flex-wrap items-baseline justify-between gap-x-2`}>
+                  {BUCKET_TITLE[b]}{b === "qua-han" && <span className={`${GOC} font-normal text-[var(--kin-chu-phu)]`}>vẫn còn nhận bài</span>}
+                </h2>
+                <div className="mt-3 space-y-3">
+                  {group.map(c => <TodoCardView key={c.key} card={c} now={now} ve="can-lam" classColor={classAccent(c.courseId ?? c.courseName)} />)}
+                </div>
+              </section>
+            );
+          })}
+
+          {waiting.length > 0 && (
+            <section aria-labelledby="vc-wait" className="mt-10">
+              <h2 id="vc-wait" className={`${H2} pb-2`}>Đã nộp, chờ chấm</h2>
+              <ul aria-label="Đã nộp, đang chờ chấm" className="border-t border-[var(--kin-vien-nhat)]">
+                {waiting.map(i => i.task && (
+                  <li key={i.id} data-cho-cham={i.id}>
+                    <KinListRow size="lg" href={i.task.href} title={`${i.task.name} · ${i.task.courseLine.split(" · ")[0]}`}
+                      sub={(i.task.sentText ?? "").replace(/^Nộp /, "Đã nộp ")} aside={<KinGradeStatus state="cho-cham" />} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {sessions.length > 0 && (
+            <section aria-labelledby="vc-buoi" className="mt-10">
+              <h2 id="vc-buoi" className={`${H2} pb-2`}>Buổi học sắp tới</h2>
+              <ul className="border-t border-[var(--kin-vien-nhat)]">
+                {sessions.map(i => { const s = i.session!; return (
+                  <li key={i.id} data-buoi-sap-toi className="flex flex-wrap items-center justify-between gap-3 py-3 px-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)]">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[length:var(--kin-co-body)] leading-6 font-medium text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{s.courseLine}</p>
+                      <p className={`mt-0.5 ${GOC} text-[var(--kin-chu-phu)] tabular-nums`}>{s.dayText} · {s.range}{s.place ? ` · ${s.place}` : ""}</p>
+                      {s.cancelled && <p className="mt-1"><KinStatus tone="loi">Buổi học đã huỷ</KinStatus></p>}
+                    </div>
+                    {!s.cancelled && s.joinUrl
+                      ? <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" data-join-soon={s.joinSoon ? "" : undefined} className={kinButtonClass("secondary")}>Mở link học online</a>
+                      : <Link href={s.href} className={kinButtonClass("secondary")}>Vào lớp</Link>}
+                  </li>
+                ); })}
+              </ul>
+            </section>
+          )}
+        </>
+      )}
+      {assignBlock}
+    </div>
   );
 }
 
 export default function ViecCuaToi() {
-  // NC2-029: gia sư vừa đăng ký, hồ sơ chưa duyệt → thẻ báo "chờ duyệt" (cờ lấy từ /api/auth/me qua AuthContext, chỉ của chính người dùng).
-  const { user } = useAuth();
-  const tutorPending = user?.tutorPending === true;
-  const { items, events, error, load } = useStudentWork();
-  const [today, setToday] = useState("");
-  useEffect(() => { void Promise.resolve().then(() => setToday(todayLine())); }, []);
-
-  const list = items ?? [];
-  const todo = list.filter(i => !i.done && i.kind !== "buoi-hoc");
-  const waiting = list.filter(i => i.task?.phase === "cho-cham");
-  const graded = list.filter(i => i.task?.phase === "da-cham");
-  const next = list.find(i => i.kind === "buoi-hoc" && !i.done) ?? null;
-  const exam = nextExam(events);
-  const moreExams = (events ?? []).filter(e => e.type === "exam").sort((a, b) => a.isoDate.localeCompare(b.isoDate) || a.time.localeCompare(b.time)).filter(e => e.id !== exam?.id).slice(0, 3);
-  const [allResults, setAllResults] = useState(false);
-  const [allAssign, setAllAssign] = useState(false);
-  const as = useAssignments();
-  const nothing = items !== null && list.length === 0;
-
-  const sessionBlock = next && <NextSession item={next} />;
-  // LOI-03 (vòng test 2): phiếu "Hôm nay có lớp" (Lesson.scheduledAt) đang có bài mà khung buổi học rỗng ⇒ KHÔNG vẽ "3 ngày tới chưa có buổi học" (hai khối nói ngược nhau);
-  // bỏ hẳn cột aside, khối đề thi lên hàng 1 cột phải. Phiếu rỗng / lỗi ⇒ như cũ.
-  // LOI-07 (nợ P3 LOI-03): null = phiếu CHƯA tải xong. Đang tải ≠ rỗng: chưa biết thì giữ chỗ bằng khung xương, KHÔNG vẽ "3 ngày tới chưa có buổi học"
-  // (bản cũ mặc định false nên khối trống chớp lên rồi biến mất khi phiếu có bài). Logic thuần: asideState (src/lib/studentLop.ts).
-  const [homNayHas, setHomNayHas] = useState<boolean | null>(null);
-  const aside = asideState(!!sessionBlock, homNayHas);
-  const showAside = aside !== "an";
-  const examBlock = exam && (
-    <KinPanel data-exam-card>
-      <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Kiểm tra sắp mở</p>
-      <p className="mt-1.5 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-phu)]">{exam.topic}{exam.meta ? ` · ${exam.meta}` : ""} · mở {dmOfKey(exam.isoDate)} lúc {exam.time}.</p>
-      {examTarget(exam).external
-        ? <a href={examTarget(exam).href} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Xem thông tin đề</a>
-        : <Link href={examTarget(exam).href} className="mt-1 inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Xem thông tin đề</Link>}
-    </KinPanel>
-  );
-
-  // Đề được giao: ba trạng thái riêng (đang tải / lỗi + Thử lại / rỗng). Lối tới đề thi thử công khai là liên kết "Đề thi thử" ở đầu khối (một đường chính), nên khối rỗng không thêm nút nữa.
-  const assignCount = as.data?.items.length ?? 0;
-  const assignBlock = (
-    <section aria-labelledby="vc-giao">
-      {/* DG: lối "Đề thi thử" (danh sách công khai) đi cùng cờ THI_THU_CONG_KHAI; đề được giao bên dưới không đổi. */}
-      <KinSectionHead id="vc-giao" title="Đề thi được giao" aside={isLinkHidden("/thi-thu") ? undefined : <Link href="/thi-thu" className="text-[var(--kin-nhan-link)] underline inline-flex items-center min-h-11">Đề thi thử</Link>} />
-      {as.error && !as.data
-        ? <ErrorStrip message="Không tải được danh sách đề được giao." onRetry={as.load} />
-        : !as.data ? <div aria-busy="true" aria-label="Đang tải đề được giao" className="mt-4 h-[96px] rounded kin-skel kin-skel--soft" />
-        : <AssignmentList items={as.data.items} serverNow={as.data.serverNow} limit={allAssign ? undefined : ASSIGN_LIMIT} emptyLink={false} />}
-      {assignCount > ASSIGN_LIMIT && (
-        <button type="button" data-assign-more aria-expanded={allAssign} onClick={() => setAllAssign(v => !v)} className={moreBtn}>
-          {allAssign ? "Thu gọn" : `Xem thêm ${assignCount - ASSIGN_LIMIT} đề`}
-        </button>
-      )}
-    </section>
-  );
-  const moreExamBlock = moreExams.length > 0 && (
-    <section aria-labelledby="vc-next-exam" className="mt-8">
-      <KinSectionHead id="vc-next-exam" title="Thi thử sắp tới" />
-      <KinPanel flush className="mt-4"><ul>{moreExams.map(e => <UpcomingExam key={e.id} e={e} />)}</ul></KinPanel>
-    </section>
-  );
-
-  return (
-    <div className="px-4 md:px-10 pt-6 md:pt-8 pb-10 bg-[var(--kin-nen-trang)]">
-      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Việc của tôi</h1>
-          <p className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">
-            {today ? `${today} · ` : ""}<span className="md:hidden">Bài phải nộp và buổi sắp tới</span><span className="hidden md:inline">Ưu tiên bài đến hạn và buổi học tiếp theo.</span>
-          </p>
-        </div>
-        {/* DG (14/11/2026): "Xem lịch tuần" đi cùng cờ LICH (Lịch học đã rời thanh bên từ LOI-01). */}
-        <div className="flex flex-wrap gap-3 self-start flex-shrink-0">
-          {/* SCL P2-13: trang chủ học sinh có lối nhập mã lớp ngay đầu trang. */}
-          {!(items !== null && nothing) && <Link href="/student/nhap-ma-lop" data-nhap-ma-dau className={kinButtonClass("secondary")}>Nhập mã lớp</Link>}
-          {!isLinkHidden("/student/lich-hoc") && <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} max-md:hidden`}>Xem lịch tuần</Link>}
-        </div>
-      </header>
-
-      {/* LOI-03 mục 4.4: phiếu "Hôm nay có lớp" (bài có ngày học hôm nay + 7 ngày tới). Không có bài hẹn thì không vẽ gì. */}
-      <HomNayCoLop onHasItems={setHomNayHas} />
-
-      {tutorPending && (
-        <div role="status" data-tutor-pending className="mb-6">
-          <KinPanel variant="canh-bao"><p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</p><p className="mt-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">KiN sẽ báo khi xong.</p></KinPanel>
-        </div>
-      )}
-      {error && <ErrorStrip message="Không tải được danh sách." onRetry={load} />}
-      {items === null ? (!error ? <WorkSkeleton label="Đang tải Việc của tôi" /> : null) : nothing ? (
-        <>
-        <KinEmptyState title="Chưa có việc nào cho bạn" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
-          Khi bạn vào lớp và thầy cô giao bài, bài phải nộp, hạn nộp và buổi học sắp tới sẽ hiện ở đây.
-        </KinEmptyState>
-        <div className="mt-8 max-w-[560px]">{assignBlock}{exam && <div className="mt-8">{examBlock}</div>}{moreExamBlock}</div>
-        </>
-      ) : (
-        <div className="mt-2 grid lg:grid-cols-[minmax(0,1fr)_354px] gap-x-8 gap-y-8 items-start">
-          {/* Điện thoại: buổi học lên đầu; máy tính: cột phải. */}
-          {showAside && (
-            <aside aria-label="Buổi học tiếp theo" className="lg:col-start-2 lg:row-start-1 min-w-0">
-              {aside === "buoi-hoc" ? sessionBlock : aside === "dang-tai" ? (
-                <div role="status" aria-busy="true" aria-label="Đang tải buổi học tiếp theo" data-aside-dang-tai className="h-[112px] rounded kin-skel kin-skel--soft" />
-              ) : (
-                <KinEmptyState title="3 ngày tới chưa có buổi học">
-                  Khi lớp có khung giờ học, buổi gần nhất sẽ hiện ở đây.
-                </KinEmptyState>
-              )}
-            </aside>
-          )}
-
-          <div className="lg:col-start-1 lg:row-start-1 lg:row-span-2 min-w-0">
-            <section aria-labelledby="vc-todo">
-              <KinSectionHead id="vc-todo" title="Cần làm" aside={todo.length > 0 ? <><span className="md:hidden">{todo.length} bài</span><span className="hidden md:inline">Theo hạn nộp</span></> : undefined} />
-              {todo.length === 0 ? (
-                <KinEmptyState title="Bạn không còn bài nào cần làm">
-                  Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.
-                </KinEmptyState>
-              ) : (
-                <KinPanel flush className="mt-4">
-                <ul aria-label="Cần làm">
-                  {todo.map(i => i.task ? (
-                    <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.dueText}`}
-                      status={i.status.tone === "loi" ? <KinStatus tone="loi">{i.status.label}</KinStatus> : chuaNop}
-                      href={i.task.href} action={i.task.interactive ? "Làm bài" : "Nộp bài"} />
-                  ) : (
-                    <TaskRow key={i.id} title={i.title} sub={i.subtitle} status={<KinStatus tone={i.status.tone}>{i.status.label}</KinStatus>}
-                      href={i.detail.commands[0]?.href ?? "/student/lich-hoc"} external={i.detail.commands[0]?.external} action={i.detail.commands[0]?.label ?? "Xem lịch"} />
-                  ))}
-                </ul>
-                </KinPanel>
-              )}
-            </section>
-
-            {waiting.length > 0 && (
-              <section aria-labelledby="vc-wait" className="mt-8">
-                <KinSectionHead id="vc-wait" title="Đã nộp · đang chờ chấm" />
-                <KinPanel flush className="mt-4">
-                <ul aria-label="Đã nộp, đang chờ chấm">
-                  {waiting.map(i => i.task && (
-                    <TaskRow key={i.id} title={i.task.name} sub={`${i.task.courseLine} · ${i.task.sentText ?? ""}`} status={choCham} href={i.task.href} action="Xem bài nộp" />
-                  ))}
-                </ul>
-                </KinPanel>
-                <p className="pt-4 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Bài đã nộp không nằm trong danh sách cần làm.</p>
-              </section>
-            )}
-
-            {graded.length > 0 && (
-              <section aria-labelledby="vc-done" className="mt-8">
-                <KinSectionHead id="vc-done" title="Kết quả gần đây" />
-                <KinPanel flush className="mt-4">
-                <ul aria-label="Kết quả gần đây">
-                  {(allResults ? graded : graded.slice(0, RESULT_LIMIT)).map(i => i.task && (
-                    <li key={i.id} data-student-task className="py-[var(--kin-kc-7)] px-[var(--kin-kc-6)] border-b border-[var(--kin-vien-nhat)] flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-[length:var(--kin-co-body)] leading-6 text-[var(--kin-chu-chinh)]">{i.task.name}</p>
-                        <p className="mt-2 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">{i.task.gradedText}{i.task.comment ? ` · “${i.task.comment}”` : ""}</p>
-                        <Link href={i.task.href} className="mt-1 inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">Xem nhận xét</Link>
-                      </div>
-                      <p className="flex-shrink-0 text-[22px] leading-7 font-medium tabular-nums text-[var(--kin-chu-chinh)]">{i.task.scoreText}</p>
-                    </li>
-                  ))}
-                </ul>
-                </KinPanel>
-                {graded.length > RESULT_LIMIT && (
-                  <button type="button" data-results-more aria-expanded={allResults} onClick={() => setAllResults(v => !v)} className={moreBtn}>
-                    {allResults ? "Thu gọn" : `Xem thêm ${graded.length - RESULT_LIMIT} bài`}
-                  </button>
-                )}
-              </section>
-            )}
-          </div>
-          <div className={`lg:col-start-2 ${showAside ? "lg:row-start-2" : "lg:row-start-1"} min-w-0`}>
-            {assignBlock}
-            {exam && <div className="mt-8">{examBlock}</div>}
-            {moreExamBlock}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return <Suspense><CanLamPage /></Suspense>;
 }

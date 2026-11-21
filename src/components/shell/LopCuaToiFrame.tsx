@@ -19,6 +19,7 @@ import { isCenterAdmin, tutorShellKind } from "@/lib/tutorGate";
 import { tutorShellManageLinks } from "@/lib/adminNav";
 import type { AdminRole } from "@/lib/permissions";
 import TutorShell from "@/components/tutor/TutorShell";
+import { loadInboxTotal, loadRailClasses } from "@/lib/lopViecServer";
 import StudentFrame from "@/components/shell/StudentFrame";
 
 export default async function LopCuaToiFrame({ children }: { children: ReactNode }) {
@@ -38,7 +39,9 @@ export default async function LopCuaToiFrame({ children }: { children: ReactNode
   if (kind === "student") return <StudentFrame>{children}</StudentFrame>;
   if (kind !== "tutor") return <StudentFrame preview>{children}</StudentFrame>; // quản trị không rõ cấp: xem thử
   // Chủ nhiệm: không Hộp việc / Lịch / Học phí riêng ⇒ không số đếm; nhóm Quản lý theo quyền từng trang quản trị.
-  if (isCenterAdmin(session)) return <TutorShell badges={{}} manage={tutorShellManageLinks(session.adminRole as AdminRole)}>{children}</TutorShell>;
+  // SCL-G-GS: thanh "Lớp của bạn" (Chủ nhiệm: mọi lớp, nhóm theo gia sư) + số việc của Hộp việc dạy học. Lỗi DB → vỏ vẫn hiện, không danh sách / số.
+  const [classes, lopViec] = await Promise.all([loadRailClasses(session).catch(() => undefined), loadInboxTotal(session, new Date()).catch(() => 0)]);
+  if (isCenterAdmin(session)) return <TutorShell badges={{}} classes={classes} inbox={lopViec} manage={tutorShellManageLinks(session.adminRole as AdminRole)}>{children}</TutorShell>;
 
   const prefs = readPreferences(me?.preferences);
   const inboxOn = isTutorModuleVisible(prefs, "hop-viec");
@@ -53,5 +56,5 @@ export default async function LopCuaToiFrame({ children }: { children: ReactNode
   else if (sched) badges["lich"] = sched.pendingAbsences + sched.remindersDue;
 
   // BU-00: truyền nguyên `prefs.modules` — vắng mặt là đủ module, không ép về `[]` (= chế độ gọn tường minh).
-  return <TutorShell modules={prefs.modules} badges={badges}>{children}</TutorShell>;
+  return <TutorShell modules={prefs.modules} badges={badges} classes={classes} inbox={lopViec}>{children}</TutorShell>;
 }

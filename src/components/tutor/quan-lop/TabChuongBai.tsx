@@ -11,9 +11,16 @@
 //    "Chi tiết…" mở panel. Cuối chương "+ Thêm bài" cùng form một dòng (thêm nhanh = Đã đăng như cây cũ). Lớp rỗng ⇒ "Tạo chương đầu tiên".
 //  - Hàng chương giữ "Giao cho giáo viên" (GiaoChoNhom, TUT-dong-giang) — trước chỉ có ở màn Giáo trình phẳng; chỉ hiện khi lớp có giáo viên bộ môn hoặc chương đã giao.
 //  - 390: hàng bài 3 dòng (tên / chip / nút ≥ 44px), ẩn tay kéo; không cuộn ngang. Xoá hỏi bằng KinConfirm (không window.confirm / alert).
+// SCL-G-GS (QUYET-DINH §2.2, khung Figma 731:2): ≥1024px hai cột — trái "Cần bạn xử lý" (máy chủ vẽ, `todo`) + danh sách Chương › Bài hàng mảnh có cột
+//   "Video 42 phút" · "Nộp 4/12" · trạng thái chấm; phải ngăn "Sửa bài" LUÔN MỞ (Drawer inline, mở sẵn bài mới nhất). Lớp chỉ có 1 phần thì ẩn tầng Phần.
+//   "+ Bài" đầu danh sách thêm vào chương mới nhất. Sửa bài TỰ LƯU (PUT như nút Lưu, không gồm trạng thái) sau 1,5 giây ngừng gõ — "Đã tự lưu lúc HH:MM".
+//   Không còn nút nền navy trong cây (nút chính của màn là "+ Giao bài" ở đầu lớp). Dữ liệu Phần › Chương › Bài KHÔNG đổi.
+// SCL-G-GS rà soát: rời ngăn (Đóng, bấm bài khác, mở ngăn khác) LƯU NGAY phần chưa tự lưu, hỏng thì giữ ngăn và báo; tự lưu chờ lượt trước (không đua) và chỉ báo
+//   "Đã tự lưu" khi bản cuối đã lên máy chủ; trạng thái cũng tự lưu (không còn nút Lưu ở ngăn Sửa). Hàng bài = KinListRow (Sửa nhanh / Sao chép / Xoá trong ⋯);
+//   chương, phần: Sửa / Sao chép / Xoá trong ⋯; một hàng thêm ở đầu; ô "Chương" trong ngăn.
 "use client";
 import Link from "next/link";
-import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { SlotLinkEditor, AzotaStatusTable } from "@/components/media/TutorLessonMedia";
 import { YOUTUBE_UNLISTED_NOTE, type MediaSlot } from "@/lib/mediaLink";
 import { KinButton } from "@/components/kin/Button";
@@ -21,6 +28,11 @@ import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinConfirm } from "@/components/kin/Confirm";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinFold, KinChevron } from "@/components/kin/Fold";
+import { KinStatus, KinGradeStatus } from "@/components/kin/Status";
+import { KinListRow } from "@/components/kin/ListRow";
+import { videoText, nopText } from "@/lib/lopViec";
+import type { LessonStat } from "@/lib/lopViecServer";
+import { parseYoutubeId, thumbUrl } from "@/lib/youtubeLink";
 import { KinSelect } from "@/components/kin/KinSelect";
 import { baiHocHref } from "@/lib/tutorRoutes";
 import { parseVnDateTime, isoToVnParts, formatVnLessonWhen } from "@/lib/tutorLessonDate";
@@ -30,7 +42,7 @@ import { AssignmentEditor } from "./AssignmentEditor";
 import GiaoChoNhom, { useGiaoVienLop } from "@/components/tutor/giao-trinh/GiaoChoNhom";
 import {
   type SectionDB, type ChapterDB, type LessonDB, type PanelMode, type DelTarget, type LsForm, type LessonStatusValue, INIT_LS,
-  parseUrls, serializeUrls, firstBadLink, parseTypes, deriveTypes, serializeTypes, TYPE_BADGE, ASSIGNMENT_BADGE, hasRealDocuments,
+  parseUrls, serializeUrls, firstBadLink, deriveTypes, serializeTypes,
   LESSON_STATUS_OPTIONS, LESSON_STATUS_CHIP, lessonStatusOf,
 } from "./lessonForm";
 
@@ -50,6 +62,25 @@ function statusAllowed(from: LessonStatusValue, to: LessonStatusValue): boolean 
   return (from === "draft" && to === "published") || (from === "published" && to === "hidden") || (from === "hidden" && (to === "published" || to === "draft"));
 }
 
+// ≥1024px: ngăn sửa nằm cạnh danh sách (inline). Máy chủ / lần vẽ đầu coi là điện thoại.
+const DESKTOP_MQ = "(min-width: 1024px)";
+const subscribeMq = (cb: () => void) => { const m = window.matchMedia(DESKTOP_MQ); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); };
+const useDesktop = () => useSyncExternalStore(subscribeMq, () => window.matchMedia(DESKTOP_MQ).matches, () => false);
+const docCount = (raw: string | null | undefined) => { try { const v = JSON.parse(raw || "[]"); return Array.isArray(v) ? v.length : 0; } catch { return 0; } };
+/** Khoá so sánh của tự lưu: mọi ô của ngăn trừ trạng thái (trạng thái đổi qua PATCH khi bấm Lưu). */
+const autoKey = (f: LsForm) => JSON.stringify({ ...f, status: null });
+const hhmm = (d: Date) => new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(d);
+
+/** Logo YouTube một màu (không đỏ: đỏ chỉ dành cho lỗi / quá hạn). Trang trí, đã có chữ "Link YouTube". */
+function YoutubeMark() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden className="flex-shrink-0">
+      <rect x="2" y="5" width="20" height="14" rx="4" fill="var(--kin-chu-chinh)" />
+      <path d="M10 9v6l5-3z" fill="var(--kin-nen-trang)" />
+    </svg>
+  );
+}
+
 function DragHandle() {
   return (
     <svg viewBox="0 0 10 16" className="w-2.5 h-4 flex-shrink-0 cursor-grab active:cursor-grabbing" fill="var(--kin-chu-mo)" aria-hidden>
@@ -60,17 +91,16 @@ function DragHandle() {
   );
 }
 
-const SMALL_BTN = "inline-flex items-center justify-center min-h-11 px-3 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-phu)] font-medium transition-colors";
+const SMALL_BTN = "inline-flex items-center justify-center min-h-11 px-3 rounded-[var(--kin-bo-md)] text-[length:var(--kin-co-goc)] font-medium transition-colors";
 const BTN_LINE = `${SMALL_BTN} border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)]`;
-const BTN_FILL = `${SMALL_BTN} bg-[var(--kin-nhan-nen)] text-[var(--kin-chu-tren-nut-chinh)] hover:bg-[var(--kin-nhan-nen-re)]`;
 const BTN_TEXT = `${SMALL_BTN} text-[var(--kin-nhan-link)] hover:bg-[var(--kin-nen-re-chuot)]`;
-const BTN_DANGER = `${SMALL_BTN} text-[var(--kin-tt-chu-loi)] hover:bg-[var(--kin-tt-nen-loi)]`;
 const ICON_BTN = "inline-flex items-center justify-center w-11 h-11 rounded-[var(--kin-bo-md)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors flex-shrink-0";
 const CHIP = "inline-flex items-center px-2 py-0.5 text-xs rounded-full font-medium";
 const FIELD = "w-full min-h-11 px-3 text-sm rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)] outline-none focus:border-[var(--kin-nhan-link)] placeholder:text-[var(--kin-chu-mo)]";
 
-/** Nút "⋯" của hàng bài: Sao chép bài · Xoá bài. Đóng khi bấm ngoài / Esc / chọn. */
-function LessonMenu({ title, onCopy, onDelete, disabled }: { title: string; onCopy: () => void; onDelete: () => void; disabled?: boolean }) {
+/** Nút "⋯" (QUYET-DINH §3.2: thao tác phụ và nguy hiểm nằm trong menu, nguy hiểm có hỏi lại): hàng bài, tiêu đề chương / phần, hàng thêm. Đóng khi bấm ngoài / Esc / chọn. */
+type MenuItem = { label: string; onClick: () => void; danger?: boolean; disabled?: boolean };
+function RowMenu({ label, items, className = "" }: { label: string; items: MenuItem[]; className?: string }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -81,22 +111,28 @@ function LessonMenu({ title, onCopy, onDelete, disabled }: { title: string; onCo
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
   return (
-    <div ref={box} className="relative" onKeyDown={e => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); btn.current?.focus(); } }}>
-      <button ref={btn} type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="menu" aria-label={`Thêm thao tác cho bài "${title}"`}
-        className={`${ICON_BTN} text-[var(--kin-chu-mo)]`}>⋯</button>
+    <div ref={box} className={`relative ${className}`} onKeyDown={e => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); btn.current?.focus(); } }}>
+      <button ref={btn} type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="menu" aria-label={label}
+        className={`${ICON_BTN} text-[var(--kin-chu-phu)]`}>⋯</button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-44 max-w-[calc(100vw-2rem)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] py-1 shadow-[var(--kin-bong-noi)]">
-          <button type="button" role="menuitem" disabled={disabled} onClick={() => { setOpen(false); onCopy(); }}
-            className="flex w-full min-h-11 items-center px-3 text-left text-sm text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)] disabled:opacity-45">Sao chép bài</button>
-          <button type="button" role="menuitem" onClick={() => { setOpen(false); onDelete(); }}
-            className="flex w-full min-h-11 items-center px-3 text-left text-sm text-[var(--kin-tt-chu-loi)] hover:bg-[var(--kin-tt-nen-loi)]">Xoá bài</button>
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-52 max-w-[calc(100vw-2rem)] rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] py-1 shadow-[var(--kin-bong-noi)]">
+          {items.map(it => (
+            <button key={it.label} type="button" role="menuitem" disabled={it.disabled} onClick={() => { setOpen(false); it.onClick(); }}
+              className={`flex w-full min-h-11 items-center px-3 text-left text-[length:var(--kin-co-goc)] disabled:opacity-45 ${it.danger ? "text-[var(--kin-tt-chu-loi)] hover:bg-[var(--kin-tt-nen-loi)]" : "text-[var(--kin-chu-chinh)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>{it.label}</button>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-export function TabChuongBai({ courseSlug, initialSections, canUpload = false }: { courseSlug: string; initialSections: SectionDB[]; /** Chỉ chủ lớp tải được tệp lên KiN (API init trả 403 với người khác). */ canUpload?: boolean }) {
+export function TabChuongBai({ courseSlug, initialSections, canUpload = false, stats = {}, todo }: {
+  courseSlug: string; initialSections: SectionDB[];
+  /** Chỉ chủ lớp tải được tệp lên KiN (API init trả 403 với người khác). */ canUpload?: boolean;
+  /** SCL-G-GS: số liệu nộp bài theo bài (cột "Nộp x/y"). */ stats?: Record<string, LessonStat>;
+  /** SCL-G-GS: khối "Cần bạn xử lý" của lớp, đầu cột trái. */ todo?: ReactNode;
+}) {
+  const desktop = useDesktop();
   const [sections, setSections] = useState<SectionDB[]>(initialSections);
   const [expanded, setExpanded] = useState<{ sections: Set<string>; chapters: Set<string> }>({
     sections: new Set(initialSections.map(s => s.id)),
@@ -131,6 +167,14 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
   const [uploadBusy, setUploadBusy] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gv = useGiaoVienLop(courseSlug);
+  // Tự lưu (chỉ "Sửa bài học"): `autoBase` = khoá của lần lưu cuối; khác thì chờ 1,5 giây rồi PUT.
+  const autoBase = useRef("");
+  // Lần PUT tự lưu đang chạy (lần sau chờ nó xong rồi mới gửi, không bỏ lượt) và bản ô mới nhất (so khi PUT xong: khác thì lưu tiếp).
+  const autoRun = useRef<Promise<boolean> | null>(null);
+  const lsNow = useRef<LsForm>(INIT_LS);
+  useEffect(() => { lsNow.current = ls; }, [ls]);
+  const [autoTick, setAutoTick] = useState(0);
+  const [autoSave, setAutoSave] = useState<{ phase: "cho" | "dang" | "xong" | "loi"; at?: string }>({ phase: "cho" });
   /** Sau khi giao chương: đọc lại teacherId của các chương (một lần tải lớp, không đụng phần khác của cây). */
   async function reloadChapterTeachers() {
     const r = await fetch(`/api/courses/${encodeURIComponent(courseSlug)}`, { credentials: "same-origin", cache: "no-store" }).catch(() => null);
@@ -324,7 +368,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
     const when = isoToVnParts(l.scheduledAt);
     const st = lessonStatusOf(l.status);
     const videoUrls = parseUrls(l.videoUrl), azotaUrls = parseUrls(l.azotaUrl);
-    setLs({
+    const form: LsForm = {
       title: l.title,
       videoUrls, zoomUrls: parseUrls(l.zoomUrl),
       azotaUrls, azotaDeadline: l.azotaDeadline ?? "",
@@ -332,8 +376,11 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
       documentsRaw: l.documents ?? "[]",
       adminNote: l.adminNote ?? "",
       scheduledDate: when.date, scheduledTime: when.time, status: st,
-    });
+    };
+    setLs(form);
     setOrigStatus(st);
+    autoBase.current = autoKey(form);
+    setAutoSave({ phase: "cho" });
     setLinksOpen(false); // SCL-D: "Tuỳ chọn khác" gập sẵn — ngăn chỉ còn Tên · Video · Tài liệu.
     setPanel({ type: "edit-lesson", sectionId, chapterId, lessonId });
   }
@@ -387,16 +434,129 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
       void fetch(`/api/media/document/${id}`, { method: "DELETE", credentials: "same-origin" }).catch(() => {});
     }
   }
-  function closePanel() { discardUploads(); setPanel({ type: "none" }); }
+  function closePanel() { void leaveThen(() => { discardUploads(); setPanel({ type: "none" }); }); }
 
   // Danh sách tài liệu chuẩn hoá (tệp tải lên lúc thả + tài liệu cũ dạng link).
-  function documentsJson(): string {
-    const existing: DocItem[] = (() => { try { return JSON.parse(ls.documentsRaw || "[]"); } catch { return []; } })();
+  function documentsJson(f: LsForm = ls): string {
+    const existing: DocItem[] = (() => { try { return JSON.parse(f.documentsRaw || "[]"); } catch { return []; } })();
     return JSON.stringify(existing);
   }
 
+  /** Thân PUT / POST của một bài từ ô của ngăn (dùng chung nút Lưu và tự lưu). */
+  function buildLesson(f: LsForm) {
+    if (!f.title.trim()) return { ok: false as const, field: "title", error: "Nhập tên bài học." };
+    const when = parseVnDateTime(f.scheduledDate, f.scheduledTime);
+    if (!when.ok) return { ok: false as const, field: "date", error: when.error };
+    const bad = firstBadLink(f);
+    if (bad) return { ok: false as const, field: "link", error: bad };
+    const type = serializeTypes(deriveTypes(f.videoUrls, f.zoomUrls, f.azotaUrls)); // zoomUrls cũ vẫn tính ⇒ bài cũ giữ nhãn "Live"
+    // KHÔNG có khoá zoomUrl: PUT chỉ ghi khoá có mặt ⇒ link Zoom cũ còn nguyên; POST bài mới không có Zoom.
+    const common = {
+      title: f.title.trim(), type, videoUrl: serializeUrls(f.videoUrls), azotaUrl: serializeUrls(f.azotaUrls), azotaDeadline: f.azotaDeadline || null,
+      duration: f.duration || null, isLocked: f.isLocked, isFree: f.isFree, documents: documentsJson(f), adminNote: f.adminNote || null,
+      scheduledAt: when.iso,
+    };
+    return { ok: true as const, common, type, when };
+  }
+
+  // Máy tính: ngăn "Sửa bài" luôn mở ⇒ lần đầu thấy màn rộng thì mở sẵn bài cuối của chương mới nhất (chương cuối có bài).
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (!desktop || autoOpened.current || panel.type !== "none") return;
+    autoOpened.current = true;
+    for (let si = sections.length - 1; si >= 0; si--) for (let ci = sections[si].chapters.length - 1; ci >= 0; ci--) {
+      const ch = sections[si].chapters[ci];
+      if (ch.lessons.length) { openEditLesson(sections[si].id, ch.id, ch.lessons[ch.lessons.length - 1].id); return; }
+    }
+  }, [desktop]); // eslint-disable-line react-hooks/exhaustive-deps -- chỉ một lần, khi màn rộng xuất hiện
+
+  /** PUT một bản ô của bài đang sửa (dùng chung tự lưu, đóng ngăn, đổi bài). true = khoá này đã nằm trên máy chủ. */
+  async function autoPut(target: Extract<PanelMode, { type: "edit-lesson" }>, f: LsForm): Promise<boolean> {
+    while (autoRun.current) await autoRun.current;
+    const key = autoKey(f);
+    if (key === autoBase.current) return true;
+    const b = buildLesson(f);
+    if (!b.ok) return false;
+    const run = (async () => {
+      setAutoSave({ phase: "dang" });
+      try {
+        await apiPut(`/api/lessons/${target.lessonId}`, b.common);
+        autoBase.current = key;
+        setLessonLocal(target.sectionId, target.chapterId, target.lessonId, { ...b.common, type: b.type as LessonDB["type"] });
+        discardUploads(f.documentsRaw + lsNow.current.documentsRaw); // tệp còn trong bài (đã lưu hoặc đang chờ lưu tiếp) giữ; tệp đã bỏ thì xoá
+        // Chỉ báo "Đã tự lưu" khi bản vừa lưu ĐÚNG là bản đang thấy; ô đã đổi tiếp trong lúc gửi ⇒ hẹn lượt sau (effect chạy lại nhờ autoTick).
+        if (autoKey(lsNow.current) === key) setAutoSave({ phase: "xong", at: hhmm(new Date()) });
+        else { setAutoSave({ phase: "cho" }); setAutoTick(n => n + 1); }
+        return true;
+      } catch { setAutoSave({ phase: "loi" }); return false; }
+    })();
+    autoRun.current = run;
+    try { return await run; } finally { autoRun.current = null; }
+  }
+
+  // Tự lưu bài đang sửa sau 1,5 giây ngừng sửa: không khi đang Lưu tay / còn tệp đang lên / ô chưa hợp lệ (lúc rời ngăn sẽ báo lỗi đúng chỗ).
+  useEffect(() => {
+    if (panel.type !== "edit-lesson" || saving || uploadBusy) return;
+    if (autoKey(ls) === autoBase.current) return;
+    const target = panel, f = ls;
+    const t = setTimeout(() => { void autoPut(target, f); }, 1500);
+    return () => clearTimeout(t);
+  }, [ls, panel, saving, uploadBusy, autoTick]); // eslint-disable-line react-hooks/exhaustive-deps -- hàm gọi API ổn định theo courseSlug
+
+  /** Lưu NGAY phần chữ chưa tự lưu (không gồm trạng thái). Hỏng thì báo trong ngăn và trả false. */
+  async function flushText(): Promise<boolean> {
+    if (panel.type !== "edit-lesson") return true;
+    if (uploadBusy) { setPanelErr("Tệp đang tải lên. Bạn chờ tải xong rồi hãy rời bài này."); return false; }
+    if (autoKey(ls) === autoBase.current && !autoRun.current) return true;
+    const b = buildLesson(ls);
+    if (!b.ok) {
+      if (b.field === "date") { setDateErr(b.error); setLinksOpen(true); }
+      setPanelErr(`Chưa lưu được chữ vừa sửa: ${b.error}`);
+      return false;
+    }
+    const ok = await autoPut(panel, ls);
+    if (!ok) setPanelErr("Chưa lưu được chữ vừa sửa. Bạn kiểm tra mạng rồi bấm Đóng lần nữa.");
+    return ok;
+  }
+
+  // Trạng thái cũng tự lưu (ngăn không có nút Lưu): 1,5 giây sau lần chọn cuối — đi phím lướt qua các mục không gửi gì —, sau phần chữ, qua PATCH theo luật G4.
+  const origNow = useRef<LessonStatusValue>("published");
+  useEffect(() => { origNow.current = origStatus; }, [origStatus]);
+  const statusRun = useRef<Promise<boolean> | null>(null);
+  async function applyStatus(pl: Extract<PanelMode, { type: "edit-lesson" }>): Promise<boolean> {
+    while (statusRun.current) await statusRun.current;
+    const v = lsNow.current.status, from = origNow.current;
+    if (v === from) return true;
+    const run = (async () => {
+      setStatusNote(null);
+      const err = await patchStatus(pl.lessonId, v);
+      if (err) { setStatusNote(`Đã lưu bài, chưa đổi được trạng thái: ${err}`); setLs(f => ({ ...f, status: from })); return false; }
+      origNow.current = v; setOrigStatus(v);
+      setLessonLocal(pl.sectionId, pl.chapterId, pl.lessonId, { status: v });
+      flash("Đã đổi trạng thái");
+      return true;
+    })();
+    statusRun.current = run;
+    try { return await run; } finally { statusRun.current = null; }
+  }
+  useEffect(() => {
+    if (panel.type !== "edit-lesson" || ls.status === origStatus) return;
+    const pl = panel;
+    const t = setTimeout(() => { void (async () => { if (await flushText()) await applyStatus(pl); })(); }, 1500);
+    return () => clearTimeout(t);
+  }, [ls.status, origStatus, panel]); // eslint-disable-line react-hooks/exhaustive-deps -- hàm gọi API ổn định theo courseSlug
+
+  /** Trước khi đóng ngăn hoặc đổi sang bài / ngăn khác: chữ và trạng thái chưa lưu thì lưu NGAY. Hỏng thì giữ ngăn mở và báo (QUYET-DINH 4.2 #7). */
+  async function flushAuto(): Promise<boolean> {
+    if (!(await flushText())) return false;
+    return panel.type !== "edit-lesson" || applyStatus(panel);
+  }
+  /** Mở ngăn khác chỉ khi bài đang sửa đã lưu xong. */
+  async function leaveThen(next: () => void) { if (await flushAuto()) next(); }
+
   async function savePanel() {
     if (panel.type === "none") return;
+    if (panel.type === "edit-lesson") { if (await flushAuto()) flash("Đã lưu bài học"); return; } // bài đang sửa tự lưu: Enter = lưu ngay, ngăn ở lại
     setPanelErr(null); setStatusNote(null);
     setSaving(true);
     try {
@@ -427,23 +587,14 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           ? { ...s, chapters: s.chapters.map(c => c.id === panel.chapterId ? { ...c, title: title.trim() } : c) } : s));
         flash("Đã cập nhật chương");
 
-      } else if (panel.type === "add-lesson" || panel.type === "edit-lesson") {
-        if (!ls.title.trim()) { setPanelErr("Nhập tên bài học."); return; }
-        const when = parseVnDateTime(ls.scheduledDate, ls.scheduledTime);
-        if (!when.ok) { setDateErr(when.error); setLinksOpen(true); return; }
-        const bad = firstBadLink(ls);
-        if (bad) { setPanelErr(bad); return; }
-        const documents = documentsJson();
-        const type = serializeTypes(deriveTypes(ls.videoUrls, ls.zoomUrls, ls.azotaUrls)); // zoomUrls cũ vẫn tính ⇒ bài cũ giữ nhãn "Live"
-        const vUrl = serializeUrls(ls.videoUrls), aUrl = serializeUrls(ls.azotaUrls);
-        // KHÔNG có khoá zoomUrl: PUT chỉ ghi khoá có mặt ⇒ link Zoom cũ còn nguyên; POST bài mới không có Zoom.
-        const common = {
-          title: ls.title.trim(), type, videoUrl: vUrl, azotaUrl: aUrl, azotaDeadline: ls.azotaDeadline || null,
-          duration: ls.duration || null, isLocked: ls.isLocked, isFree: ls.isFree, documents, adminNote: ls.adminNote || null,
-          scheduledAt: when.iso,
-        };
-        if (panel.type === "add-lesson") {
-          // Bài mới: trạng thái đi THẲNG trong POST (Đã đăng / Nháp), KHÔNG PATCH sau — POST-rồi-PATCH sang Ẩn để lộ bài cho học sinh nếu PATCH hỏng.
+      } else if (panel.type === "add-lesson") {
+        const b = buildLesson(ls);
+        if (!b.ok) {
+          if (b.field === "date") { setDateErr(b.error); setLinksOpen(true); } else setPanelErr(b.error);
+          return;
+        }
+        const { common } = b;
+        // Bài mới: trạng thái đi THẲNG trong POST (Đã đăng / Nháp), KHÔNG PATCH sau — POST-rồi-PATCH sang Ẩn để lộ bài cho học sinh nếu PATCH hỏng.
           // Ô Trạng thái của bài mới không có "Ẩn" (API chặn Nháp → Ẩn nên cũng không tạo Nháp trước được); muốn chưa hiện thì chọn Nháp.
           const lesson = await apiPost<LessonDB>(`/api/chapters/${panel.chapterId}/lessons`, { ...common, ...(ls.status === "published" ? {} : { status: "draft" as const }) });
           addLessonLocal(panel.sectionId, panel.chapterId, lesson);
@@ -454,11 +605,13 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
             const got = lessonStatusOf(lesson.status);
             setStatusNote("Đã lưu bài, chưa đặt được trạng thái Nháp — bài đang Đã đăng. Cô đổi sang Ẩn nếu chưa muốn học sinh thấy.");
             setOrigStatus(got); setLs(f => ({ ...f, status: got })); setLinksOpen(true);
+            autoBase.current = autoKey(ls); setAutoSave({ phase: "cho" });
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
             return;
           }
           if (stayAfterAdd.current) {
             setOrigStatus(lessonStatusOf(lesson.status)); setLinksOpen(true);
+            autoBase.current = autoKey(ls); setAutoSave({ phase: "cho" });
             setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId: lesson.id });
             requestAnimationFrame(() => document.querySelector("[data-bai-tap-cua-bai]")?.scrollIntoView({ block: "start", behavior: "smooth" }));
             return;
@@ -466,28 +619,6 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           setPanel({ type: "none" });
           return;
         }
-        await apiPut(`/api/lessons/${panel.lessonId}`, common);
-        setLessonLocal(panel.sectionId, panel.chapterId, panel.lessonId, {
-          ...common, type: type as LessonDB["type"], scheduledAt: when.iso,
-        });
-        const lessonId = panel.lessonId, from = origStatus;
-        flash("Đã cập nhật bài học");
-        // Đã lưu: tệp đã bị bỏ khỏi danh sách trước khi lưu thì xoá, tệp còn trong bài thì giữ.
-        discardUploads(ls.documentsRaw);
-        if (ls.status !== from) {
-          const err = await patchStatus(lessonId, ls.status);
-          if (err) {
-            // Giữ phần đã lưu; panel ở lại (đã thành "Sửa bài học") để cô thấy câu lỗi và thử đổi lại.
-            setStatusNote(`Đã lưu bài, chưa đổi được trạng thái: ${err}`);
-            setOrigStatus(from); setLs(f => ({ ...f, status: from })); setLinksOpen(true);
-            setPanel({ type: "edit-lesson", sectionId: panel.sectionId, chapterId: panel.chapterId, lessonId });
-            return;
-          }
-          setLessonLocal(panel.sectionId, panel.chapterId, lessonId, { status: ls.status });
-        }
-        setPanel({ type: "none" });
-        return;
-      }
       setPanel({ type: "none" });
     } catch (e) {
       setPanelErr(e instanceof Error ? e.message : "Chưa lưu được. Cô thử lại sau ít giây.");
@@ -509,6 +640,8 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
       else if (del.kind === "chapter") setSections(p => p.map(s => s.id === del.sectionId ? { ...s, chapters: s.chapters.filter(c => c.id !== del.chapterId) } : s));
       else setSections(p => p.map(s => s.id === del.sectionId
         ? { ...s, chapters: s.chapters.map(c => c.id === del.chapterId ? { ...c, lessons: c.lessons.filter(l => l.id !== del.lessonId) } : c) } : s));
+      // Ngăn luôn mở đang sửa đúng thứ vừa xoá ⇒ đóng (không để tự lưu PUT vào bài đã mất).
+      if (panel.type === "edit-lesson" && (del.kind === "section" ? panel.sectionId === del.sectionId : del.kind === "chapter" ? panel.chapterId === del.chapterId : panel.lessonId === del.lessonId)) setPanel({ type: "none" });
       flash("Đã xoá");
     } catch (e) {
       flash(`Chưa xoá được: ${e instanceof Error ? e.message : "lỗi không rõ"}`, "loi");
@@ -634,12 +767,45 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
     : LESSON_STATUS_OPTIONS.map(o => ({ ...o, disabled: panel.type === "edit-lesson" ? !statusAllowed(origStatus, o.value) : false }));
   const hasOldZoom = ls.zoomUrls.some(u => u.trim());
 
+  // Chương mới nhất (chương cuối của phần cuối có chương): "+ Bài" đầu danh sách thêm vào đây.
+  const newest = (() => {
+    for (let si = sections.length - 1; si >= 0; si--) { const chs = sections[si].chapters; if (chs.length) return { sectionId: sections[si].id, chapter: chs[chs.length - 1] }; }
+    return null;
+  })();
+  const onePart = sections.length === 1; // lớp chỉ một phần ⇒ ẩn tầng Phần
+  const chapterOptions = sections.flatMap(sc => sc.chapters.map(c => ({ value: c.id, label: onePart ? c.title : `${sc.title} › ${c.title}` })));
+  /** Ô "Chương" của ngăn: chuyển bài đang sửa sang chương khác (cùng API kéo-thả), ngăn đi theo bài. */
+  function moveLessonTo(pl: Extract<PanelMode, { type: "edit-lesson" }>, toChapterId: string) {
+    if (toChapterId === pl.chapterId) return;
+    const fSI = sections.findIndex(x => x.id === pl.sectionId), fCI = sections[fSI]?.chapters.findIndex(x => x.id === pl.chapterId) ?? -1;
+    const fLI = fCI >= 0 ? sections[fSI].chapters[fCI].lessons.findIndex(x => x.id === pl.lessonId) : -1;
+    const tSI = sections.findIndex(x => x.chapters.some(c => c.id === toChapterId));
+    if (fLI < 0 || tSI < 0) return;
+    const tCI = sections[tSI].chapters.findIndex(c => c.id === toChapterId);
+    moveLessonAcross(fSI, fCI, fLI, tSI, tCI, sections[tSI].chapters[tCI].lessons.length);
+    setExpanded(p => ({ sections: new Set([...p.sections, sections[tSI].id]), chapters: new Set([...p.chapters, toChapterId]) }));
+    setPanel({ ...pl, sectionId: sections[tSI].id, chapterId: toChapterId });
+  }
   const totals = { ch: sections.reduce((a, s) => a + s.chapters.length, 0), ls: sections.reduce((a, s) => a + s.chapters.reduce((b, c) => b + c.lessons.length, 0), 0) };
   const delKind = del?.kind === "section" ? "phần" : del?.kind === "chapter" ? "chương" : "bài học";
 
   return (
-    <div data-bai-hoc className="min-w-0">
-      <Drawer open={panelIsOpen} title={panelTitle} onClose={closePanel} onSave={savePanel} saving={saving} busy={uploadBusy && isLsPanel}>
+    <div data-bai-hoc className="min-w-0 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:items-start">
+      <div className="lg:order-2 min-w-0">
+      <Drawer open={panelIsOpen} title={panelTitle} onClose={closePanel} onSave={savePanel} saving={saving} busy={uploadBusy && isLsPanel}
+        inline={desktop} closeLabel={panel.type === "edit-lesson" ? "Đóng" : "Huỷ"} autoSaved={panel.type === "edit-lesson"}
+        status={panel.type === "edit-lesson" ? (
+          <p role="status" data-tu-luu={autoSave.phase} className="mt-0.5 flex items-center gap-1.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">
+            {autoSave.phase === "xong" && <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden className="flex-shrink-0"><circle cx="8" cy="8" r="7" fill="var(--kin-tt-cham-xong)" /><path d="m5 8.2 2 2 4-4.4" stroke="var(--kin-nen-trang)" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            {autoSave.phase === "xong" ? `Đã tự lưu lúc ${autoSave.at}` : autoSave.phase === "dang" ? "Đang tự lưu…" : autoSave.phase === "loi" ? "Chưa tự lưu được, đang thử lại khi bạn sửa tiếp." : "Bài tự lưu sau mỗi lần sửa."}
+          </p>
+        ) : null}
+        empty={<p data-ngan-trong className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Chọn một bài ở danh sách bên trái để sửa tên, link YouTube và tài liệu. Bài đang sửa tự lưu.</p>}
+        menu={desktop && panel.type === "edit-lesson" ? (() => { const pl = panel; const l = sections.find(x => x.id === pl.sectionId)?.chapters.find(x => x.id === pl.chapterId)?.lessons.find(x => x.id === pl.lessonId);
+          return l ? <RowMenu label={`Thêm thao tác cho bài "${l.title}" đang sửa`} items={[
+            { label: "Sao chép bài", disabled: saving, onClick: () => void duplicateLesson(pl.sectionId, pl.chapterId, pl.lessonId) },
+            { label: "Xoá bài", danger: true, onClick: () => setDel({ kind: "lesson", sectionId: pl.sectionId, chapterId: pl.chapterId, lessonId: pl.lessonId, label: l.title }) },
+          ]} /> : null; })() : null}>
         {panelErr && <p role="alert" data-panel-loi className="rounded-[var(--kin-bo-md)] border border-[var(--kin-tt-vien-loi)] bg-[var(--kin-tt-nen-loi)] px-3 py-2 text-sm font-medium text-[var(--kin-tt-chu-loi)]">{panelErr}</p>}
         {statusNote && <p role="status" data-trang-thai-loi className="rounded-[var(--kin-bo-md)] border border-[var(--kin-tt-vien-cho)] bg-[var(--kin-tt-nen-cho)] px-3 py-2 text-sm font-medium text-[var(--kin-tt-chu-cho)]">{statusNote}</p>}
         {isTitlePanel && (
@@ -663,19 +829,40 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                 onKeyDown={e => { if (e.key === "Enter") void savePanel(); }}
                 placeholder="VD: Buổi 1: Hệ phương trình" />
             </div>
+            {panel.type === "edit-lesson" && chapterOptions.length > 1 && (
+              <div data-chuong-cua-bai>
+                <p id="ls-chuong-nhan" className="block text-sm font-medium text-[var(--kin-chu-chinh)] mb-1.5">Chương</p>
+                <KinSelect id="ls-chuong" aria-labelledby="ls-chuong-nhan" value={panel.chapterId} options={chapterOptions}
+                  onChange={v => { const pl = panel; void leaveThen(() => moveLessonTo(pl, v)); }} />
+              </div>
+            )}
 
             {/* SCL-D (P2-3): ngăn chỉ còn 3 phần — Tên · Link YouTube · Tài liệu. Drive, Azota, Khoá bài, Học thử không còn hiện (dữ liệu cũ giữ nguyên,
                 PUT vẫn gửi lại đúng giá trị đã nạp). Ngày học, trạng thái, bài tập, ghi chú vào mục gập "Tuỳ chọn khác". */}
             <div data-video-bai>
               <SlotLinkEditor
-                label="Link video YouTube"
+                label="Link YouTube"
+                icon={<YoutubeMark />}
                 slot="video"
                 placeholder="https://youtube.com/watch?v=..."
                 urls={ls.videoUrls}
                 onChange={urls => setLs(f => ({ ...f, videoUrls: urls }))}
                 onMove={moveLink}
+                quietYoutube
               />
-              <p data-youtube-luu-y className="mt-1 text-xs text-[var(--kin-chu-mo)]">{YOUTUBE_UNLISTED_NOTE}</p>
+              <p data-youtube-luu-y className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Để video ở chế độ Không công khai là đủ.
+                <span className="block text-[var(--kin-chu-mo)]">{YOUTUBE_UNLISTED_NOTE}</span></p>
+              {/* Xem trước: KiN không gọi YouTube — ảnh nhỏ dựng từ mã video; thời lượng là ô "Thời lượng" của bài (nếu có). */}
+              {ls.videoUrls.map(u => parseYoutubeId(u)).filter((id): id is string => !!id).map(id => (
+                <div key={id} data-xem-truoc-youtube className="mt-3 flex items-center gap-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-bang)] p-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={thumbUrl(id)} alt="" loading="lazy" width={120} height={68} className="h-[68px] w-[120px] flex-shrink-0 rounded-[var(--kin-bo-md)] object-cover bg-[var(--kin-vien-nhat)]" />
+                  <div className="min-w-0">
+                    <p className="font-medium text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{ls.title.trim() || "Video YouTube"}</p>
+                    <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">{ls.duration.trim() ? videoText(id, ls.duration) : "Video YouTube"} · học sinh xem ngay trong bài</p>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <DocumentsEditor
@@ -766,7 +953,10 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
           </>
         )}
       </Drawer>
+      </div>
 
+      <div className="lg:order-1 min-w-0">
+      {todo}
       <KinConfirm open={!!del} tone="nguy-hiem" title={`Xoá ${delKind}?`} confirmLabel="Xoá" loading={deleting} loadingLabel="Đang xoá…"
         message={del ? <>Xoá <strong>&quot;{del.label}&quot;</strong>{del.kind !== "lesson" ? " sẽ xoá toàn bộ nội dung bên trong." : "."} Không thể hoàn tác.</> : null}
         onConfirm={delConfirm} onCancel={() => { if (!deleting) setDel(null); }} />
@@ -787,20 +977,27 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
         </KinEmptyState>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <p data-bai-hoc-tong className="text-sm text-[var(--kin-chu-mo)]">{sections.length} phần · {totals.ch} chương · {totals.ls} bài</p>
-            <button type="button" onClick={openAddSection} className={BTN_LINE}>+ Thêm phần</button>
+          <div className="mb-3">
+            <h2 className="text-[length:var(--kin-co-tieu-de)] font-semibold text-[var(--kin-chu-chinh)]">Bài học</h2>
+            <p data-bai-hoc-tong className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">{onePart ? "" : `${sections.length} phần · `}{totals.ch} chương · {totals.ls} bài</p>
+            {/* MỘT hàng thêm (bản chốt 731): "Thêm vào <chương mới nhất> [+ Bài] + Chương"; "Thêm phần mới" vào ⋯. */}
+            <div data-hang-them className="mt-2 flex items-center gap-2">
+              {newest && <span className="min-w-0 flex-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]">Thêm vào {newest.chapter.title}</span>}
+              {newest && <button type="button" data-them-bai-dau onClick={() => openQuickAdd(newest.sectionId, newest.chapter.id)} className={`${BTN_LINE} flex-shrink-0`} aria-label={`Thêm bài vào ${newest.chapter.title}`}>+ Bài</button>}
+              {newest && <button type="button" onClick={() => void leaveThen(() => openAddChapter(newest.sectionId))} className={`${BTN_TEXT} flex-shrink-0`}>+ Chương</button>}
+              <RowMenu label="Thêm thao tác cho danh sách bài" className="flex-shrink-0" items={[{ label: "Thêm phần mới", onClick: () => void leaveThen(openAddSection) }]} />
+            </div>
           </div>
 
           <div className="space-y-3">
             {sections.map((section, si) => (
               <div key={section.id || `s-${si}`} data-phan
-                className="border rounded-xl transition-colors"
-                style={{
+                className={onePart ? "border-t border-[var(--kin-vien-thuong)]" : "border rounded-[var(--kin-bo-lg)] transition-colors"}
+                style={onePart ? undefined : {
                   borderColor: dragOverKey === `s-${section.id}` ? "var(--kin-tt-chu-xong)" : "var(--kin-vien-thuong)",
                   boxShadow: dragItem?.type === "section" && dragItem.sectionIdx === si ? "var(--kin-bong-noi)" : undefined,
                 }}
-                draggable={!quick}
+                draggable={!quick && !onePart}
                 onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "section", sectionIdx: si }); }}
                 onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "section" || dragItem?.type === "chapter") setDragOverKey(`s-${section.id}`); }}
                 onDrop={e => {
@@ -811,26 +1008,26 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                 }}
                 onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
               >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-t-xl px-2 sm:px-4 py-1.5" style={{ background: "var(--kin-tt-nen-xong)" }}>
-                  <span className="hidden sm:inline-flex"><DragHandle /></span>
+                {!onePart && <div className="flex items-center gap-2 rounded-t-[var(--kin-bo-lg)] px-2 sm:px-4 py-1 bg-[var(--kin-nen-bang)]">
+                  <span className="hidden lg:inline-flex"><DragHandle /></span>
                   <button type="button" onClick={() => toggleSec(section.id)} aria-expanded={expanded.sections.has(section.id)} aria-label={`${expanded.sections.has(section.id) ? "Thu gọn" : "Mở"} phần ${section.title}`}
-                    className={`${ICON_BTN} text-xs text-[var(--kin-tt-chu-xong)]`}>
+                    className={`${ICON_BTN} text-xs text-[var(--kin-chu-phu)]`}>
                     {expanded.sections.has(section.id) ? "▼" : "▶"}
                   </button>
-                  <span className="text-sm font-bold flex-1 min-w-[8rem] break-words" style={{ color: "var(--kin-tt-chu-xong)" }}>{section.title}</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button type="button" onClick={() => openAddChapter(section.id)} className={BTN_FILL}>+ Chương</button>
-                    <button type="button" onClick={() => openEditSection(section.id)} className={BTN_LINE}>Sửa</button>
-                    <button type="button" onClick={() => setDel({ kind: "section", sectionId: section.id, label: section.title })} className={BTN_DANGER}>Xoá</button>
-                  </div>
-                </div>
+                  <span className="min-w-0 flex-1 text-[length:var(--kin-co-goc)] font-semibold [overflow-wrap:anywhere] text-[var(--kin-chu-chinh)]">{section.title}</span>
+                  <RowMenu label={`Thêm thao tác cho phần "${section.title}"`} className="flex-shrink-0" items={[
+                    { label: "Thêm chương", onClick: () => void leaveThen(() => openAddChapter(section.id)) },
+                    { label: "Sửa tên phần", onClick: () => void leaveThen(() => openEditSection(section.id)) },
+                    { label: "Xoá phần", danger: true, onClick: () => setDel({ kind: "section", sectionId: section.id, label: section.title }) },
+                  ]} />
+                </div>}
 
-                {expanded.sections.has(section.id) && (
+                {(onePart || expanded.sections.has(section.id)) && (
                   <div>
                     {section.chapters.length === 0 && (
                       <div className="px-4 py-5 text-center">
-                        <p className="text-sm text-[var(--kin-chu-mo)] mb-1">Chưa có chương nào.</p>
-                        <button type="button" onClick={() => openAddChapter(section.id)} className={BTN_TEXT}>+ Thêm chương đầu tiên</button>
+                        <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] mb-1">Chưa có chương nào.</p>
+                        <button type="button" onClick={() => void leaveThen(() => openAddChapter(section.id))} className={BTN_TEXT}>+ Thêm chương đầu tiên</button>
                       </div>
                     )}
                     {section.chapters.map((chapter, ci) => (
@@ -848,16 +1045,21 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                         }}
                         onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
                       >
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pl-2 sm:pl-8 pr-2 sm:pr-4 py-1 bg-[var(--kin-nen-trang)]">
-                          <span className="hidden sm:inline-flex"><DragHandle /></span>
+                        {/* Tiêu đề chương: tên được trọn dòng (390 không bị chen); Sửa / Sao chép / Xoá vào ⋯. */}
+                        <div className={`flex items-center gap-2 pl-1 ${onePart ? "sm:pl-2" : "sm:pl-8"} pr-1 sm:pr-3 py-1 bg-[var(--kin-nen-bang)]`}>
+                          <span className="hidden lg:inline-flex"><DragHandle /></span>
                           <button type="button" onClick={() => toggleCh(chapter.id)} aria-expanded={expanded.chapters.has(chapter.id)} aria-label={`${expanded.chapters.has(chapter.id) ? "Thu gọn" : "Mở"} chương ${chapter.title}`}
-                            className={`${ICON_BTN} text-xs text-[var(--kin-chu-mo)]`}>
+                            className={`${ICON_BTN} text-xs text-[var(--kin-chu-phu)]`}>
                             {expanded.chapters.has(chapter.id) ? "▼" : "▶"}
                           </button>
-                          <span className="text-sm font-semibold text-[var(--kin-chu-chinh)] flex-1 min-w-[8rem] break-words">{chapter.title}</span>
-                          <span className="text-xs text-[var(--kin-chu-mo)] flex-shrink-0">{chapter.lessons.length} bài</span>
-                          <button type="button" onClick={() => openEditChapter(section.id, chapter.id)} className={BTN_TEXT}>Sửa</button>
-                          <button type="button" onClick={() => setDel({ kind: "chapter", sectionId: section.id, chapterId: chapter.id, label: chapter.title })} className={BTN_DANGER}>Xoá</button>
+                          <span className="min-w-0 flex-1 text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]"><span>{chapter.title}</span>
+                            <span className="ml-2 font-normal text-[var(--kin-chu-phu)] whitespace-nowrap">{chapter.lessons.length} bài</span></span>
+                          <RowMenu label={`Thêm thao tác cho chương "${chapter.title}"`} className="flex-shrink-0" items={[
+                            { label: "Sửa tên chương", onClick: () => void leaveThen(() => openEditChapter(section.id, chapter.id)) },
+                            { label: "Sao chép chương", disabled: saving, onClick: () => void duplicateChapter(section.id, chapter.id) },
+                            { label: "Thêm chương", onClick: () => void leaveThen(() => openAddChapter(section.id)) },
+                            { label: "Xoá chương", danger: true, onClick: () => setDel({ kind: "chapter", sectionId: section.id, chapterId: chapter.id, label: chapter.title }) },
+                          ]} />
                         </div>
                         {gv.phase === "ready" && (gv.assignable.length > 0 || !!chapter.teacherId) && (
                           <div className="pl-3 sm:pl-[4.5rem] pr-2 sm:pr-4 pb-2">
@@ -867,20 +1069,20 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                         {expanded.chapters.has(chapter.id) && (
                           <div>
                             {chapter.lessons.length === 0 && !(quick?.mode === "add" && quick.chapterId === chapter.id) && (
-                              <p className="px-4 sm:px-12 py-3 text-xs text-[var(--kin-chu-mo)]">Chưa có bài học trong chương này.</p>
+                              <p className="px-4 sm:px-6 py-3 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Chưa có bài học trong chương này.</p>
                             )}
                             {chapter.lessons.map((lesson, li) => {
-                              const lessonTypes = parseTypes(lesson.type);
+                              const st = stats[lesson.id];
+                              const nop = nopText(st);
+                              const docs = docCount(lesson.documents);
+                              const current = panel.type === "edit-lesson" && panel.lessonId === lesson.id;
                               const editingHere = quick?.mode === "edit" && quick.lessonId === lesson.id;
                               const when = formatVnLessonWhen(lesson.scheduledAt);
                               const stChip = LESSON_STATUS_CHIP[lesson.status ?? "published"];
+                              const nAssign = lesson._count?.assignments ?? 0;
                               return (
                                 <div key={lesson.id || `${chapter.id}-l-${li}`} data-bai={lesson.id}
-                                  className="pl-3 sm:pl-12 pr-2 sm:pr-4 py-2 transition-colors"
-                                  style={{
-                                    borderTop: "1px dashed var(--kin-vien-thuong)",
-                                    background: dragOverKey === `l-${lesson.id}` ? "var(--kin-tt-nen-xong)" : undefined,
-                                  }}
+                                  style={{ background: dragOverKey === `l-${lesson.id}` ? "var(--kin-tt-nen-xong)" : undefined }}
                                   draggable={!quick}
                                   onDragStart={e => { e.stopPropagation(); e.dataTransfer.effectAllowed = "move"; setDragItem({ type: "lesson", sectionIdx: si, chapterIdx: ci, lessonIdx: li }); }}
                                   onDragOver={e => { e.preventDefault(); e.stopPropagation(); if (dragItem?.type === "lesson") setDragOverKey(`l-${lesson.id}`); }}
@@ -891,49 +1093,37 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
                                   }}
                                   onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
                                 >
-                                  {editingHere ? renderQuickForm(chapter.id) : (
-                                    <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-3">
-                                      <div className="flex min-w-0 items-center gap-2 lg:flex-1">
-                                        <span className="hidden sm:inline-flex"><DragHandle /></span>
-                                        <span data-bai-ten className="min-w-0 text-sm font-medium text-[var(--kin-chu-chinh)] break-words">{lesson.title}</span>
-                                      </div>
-                                      <div className="flex flex-wrap items-center gap-1.5">
-                                        {lessonTypes.map(t => { const tb = TYPE_BADGE[t] ?? TYPE_BADGE.record; return <span key={t} className={CHIP} style={{ background: tb.bg, color: tb.color, border: "1px solid var(--kin-vien-nhat)" }}>{tb.label}</span>; })}
-                                        {!lessonTypes.includes("document") && hasRealDocuments(lesson.documents) && (
-                                          <span className={CHIP} style={{ background: TYPE_BADGE.document.bg, color: TYPE_BADGE.document.color, border: "1px solid var(--kin-vien-nhat)" }}>{TYPE_BADGE.document.label}</span>
-                                        )}
+                                  {editingHere ? <div className={`pl-3 ${onePart ? "sm:pl-6" : "sm:pl-12"} pr-2 sm:pr-4 py-2 border-b border-[var(--kin-vien-nhat)]`}>{renderQuickForm(chapter.id)}</div> : (
+                                    // Hàng KinListRow (§3.3): dòng 1 tên, dòng 2 ngày + chữ phụ; cột phải độ rộng cố định Video · Nộp · trạng thái; cả hàng bấm được (mở ngăn sửa).
+                                    <KinListRow size="lg" current={current} className={`relative ${onePart ? "sm:pl-6" : "sm:pl-12"} pr-1 sm:pr-2 hover:bg-[var(--kin-nen-re-chuot)]`}
+                                      title={<button type="button" data-bai-ten onClick={() => void leaveThen(() => openEditLesson(section.id, chapter.id, lesson.id))} aria-label={`Chi tiết bài ${lesson.title}`}
+                                        className="inline-flex min-h-11 -my-2.5 items-center text-left [overflow-wrap:anywhere] after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-[var(--kin-nhan-link)]">{lesson.title}</button>}
+                                      sub={<span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        {when && <span data-bai-ngay className="tabular-nums">{when}</span>}
                                         {stChip && <span data-bai-trang-thai={lesson.status} className={`${CHIP} border border-[var(--kin-tt-vien-cho)] bg-[var(--kin-tt-nen-cho)] text-[var(--kin-tt-chu-cho)]`}>{stChip}</span>}
-                                        {when && (
-                                          <button type="button" data-bai-ngay onClick={() => openQuickEdit(section.id, chapter.id, lesson)} aria-label={`Ngày học ${when} — sửa nhanh`}
-                                            className={`${CHIP} min-h-11 border border-[var(--kin-nhan-vien)] bg-[var(--kin-nhan-nen-nhat)] text-[var(--kin-nhan-chu-tren-nhat)] tabular-nums`}>{when}</button>
-                                        )}
-                                        {lesson.isFree && <span className={CHIP} style={{ background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" }}>Học thử</span>}
-                                        {lesson.duration && <span className="text-xs text-[var(--kin-chu-mo)]">{lesson.duration}</span>}
-                                        {!!lesson._count?.assignments && (
-                                          <span className={CHIP} style={{ background: ASSIGNMENT_BADGE.bg, color: ASSIGNMENT_BADGE.color, border: "1px solid var(--kin-vien-nhat)" }}>
-                                            {lesson._count.assignments} Bài tập
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex flex-wrap items-center gap-1">
-                                        <button type="button" onClick={() => openQuickEdit(section.id, chapter.id, lesson)} className={BTN_TEXT}>Sửa nhanh</button>
-                                        <button type="button" onClick={() => openEditLesson(section.id, chapter.id, lesson.id)} className={BTN_TEXT} aria-label={`Chi tiết bài ${lesson.title}`}>Chi tiết…</button>
-                                        <LessonMenu title={lesson.title} disabled={saving}
-                                          onCopy={() => void duplicateLesson(section.id, chapter.id, lesson.id)}
-                                          onDelete={() => setDel({ kind: "lesson", sectionId: section.id, chapterId: chapter.id, lessonId: lesson.id, label: lesson.title })} />
-                                      </div>
-                                    </div>
+                                        {lesson.isFree && <span className={`${CHIP} bg-[var(--kin-tt-nen-xong)] text-[var(--kin-tt-chu-xong)]`}>Học thử</span>}
+                                        {docs > 0 && <span>{docs} tài liệu</span>}
+                                        {nAssign > 0 && <span>{nAssign} bài tập</span>}
+                                      </span>}
+                                      aside={<span data-bai-cot className="grid grid-cols-1 justify-items-end gap-y-1 lg:grid-cols-[7rem_8rem] lg:justify-items-start lg:gap-x-3">
+                                        <span data-cot-video className="lg:col-start-1 lg:row-start-1">{videoText(lesson.videoUrl, lesson.duration)}</span>
+                                        <span data-cot-nop={nop ? "" : undefined} className="lg:col-start-1 lg:row-start-2">{nop ?? ""}</span>
+                                        <span className="lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center">{st && st.pending > 0 ? <KinGradeStatus state="cho-cham">Chờ chấm {st.pending}</KinGradeStatus>
+                                          : st && st.total > 0 && st.submitted >= st.total ? <KinStatus tone="xong">Đã chấm hết</KinStatus>
+                                          : st && st.total > st.submitted ? <KinGradeStatus state="chua-nop">{st.total - st.submitted} chưa nộp</KinGradeStatus> : null}</span>
+                                      </span>}
+                                      trailing={<RowMenu label={`Thêm thao tác cho bài "${lesson.title}"`} className="relative z-10 -my-1" items={[
+                                        { label: "Sửa nhanh tên và ngày", onClick: () => openQuickEdit(section.id, chapter.id, lesson) },
+                                        { label: "Sao chép bài", disabled: saving, onClick: () => void duplicateLesson(section.id, chapter.id, lesson.id) },
+                                        { label: "Xoá bài", danger: true, onClick: () => setDel({ kind: "lesson", sectionId: section.id, chapterId: chapter.id, lessonId: lesson.id, label: lesson.title }) },
+                                      ]} />} />
                                   )}
                                 </div>
                               );
                             })}
-                            <div className="pl-3 sm:pl-12 pr-2 sm:pr-4 py-2" style={{ borderTop: "1px dashed var(--kin-vien-thuong)", background: "var(--kin-nen-bang)" }}>
+                            <div className={`pl-1 ${onePart ? "sm:pl-4" : "sm:pl-10"} pr-2 sm:pr-4 py-1`}>
                               {quick?.mode === "add" && quick.chapterId === chapter.id ? renderQuickForm(chapter.id) : (
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button type="button" onClick={() => openQuickAdd(section.id, chapter.id)} className={BTN_FILL} data-them-bai>+ Thêm bài</button>
-                                  <button type="button" onClick={() => openAddChapter(section.id)} className={BTN_LINE}>+ Thêm chương</button>
-                                  <button type="button" onClick={() => void duplicateChapter(section.id, chapter.id)} disabled={saving} className={`${BTN_LINE} disabled:opacity-45`}>Sao chép chương</button>
-                                </div>
+                                <button type="button" onClick={() => openQuickAdd(section.id, chapter.id)} className={BTN_TEXT} data-them-bai>+ Thêm bài</button>
                               )}
                             </div>
                           </div>
@@ -945,15 +1135,9 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false }:
               </div>
             ))}
           </div>
-
-          <div className="mt-4">
-            <button type="button" onClick={openAddSection}
-              className="w-full min-h-11 rounded-xl text-sm font-semibold border-2 border-dashed border-[var(--kin-vien-o-nhap)] text-[var(--kin-chu-mo)] hover:border-[var(--kin-nhan-link)] hover:text-[var(--kin-nhan-link)] transition-colors">
-              + Thêm phần mới
-            </button>
-          </div>
         </>
       )}
+      </div>
     </div>
   );
 }

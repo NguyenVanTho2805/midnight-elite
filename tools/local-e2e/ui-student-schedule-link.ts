@@ -3,6 +3,7 @@
 //     buổi học trực tiếp không có nút link; "Vào lớp học" vẫn đi trang lớp.
 //   • /student/hoc-tap?course=…: trang lớp có khối "Buổi học sắp tới" của CHÍNH lớp đó (cùng nguồn với Lịch), người chưa vào lớp không thấy và không lộ link.
 //   • /student/viec-cua-toi: thẻ "Buổi học tiếp theo" có hình thức + nút link online.
+//   SCL-G-HS (21/11/2026): trang lớp chỉ còn dòng lịch tuần ở đầu trang; buổi sắp tới (kể cả dạy bù / buổi lẻ, nút link) ở "Buổi học sắp tới" của màn Cần làm.
 //   • /so-cua-con/<mã>: phụ huynh thấy buổi thêm (chỉ đọc, không có nút Báo nghỉ, không có link học online); buổi theo lịch tuần vẫn có Báo nghỉ.
 //   • 390px không tràn ngang; không lỗi JS.
 import { BASE, api, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
@@ -72,18 +73,15 @@ import { launch, ctxFor, closeAll, type Page } from "./ui";
   await wk.waitFor({ timeout: 30000 });
   check("buổi theo lịch tuần: link CỦA KHUNG GIỜ, 'Online'", (await wk.locator("[data-week-join]").getAttribute("href")) === RULE_URL && (await wk.innerText()).includes("Online"));
 
-  section("Trang lớp của học sinh");
+  // SCL-G-HS (21/11/2026): trang lớp theo bản chốt không còn khối "Buổi học sắp tới" — đầu trang ghi lịch TUẦN của lớp; buổi sắp tới (kể cả dạy bù / buổi lẻ,
+  // nút link học online) nằm ở màn "Cần làm" (cùng nguồn lịch).
+  section("Trang lớp của học sinh: đầu trang có lịch tuần");
   await p.goto(`${BASE}/student/hoc-tap?course=${C1.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
-  const box = p.locator("[data-course-sessions]");
-  await box.waitFor({ timeout: 90000 });
-  await p.locator("[data-course-session]").first().waitFor({ timeout: 30000 });
-  const rows = p.locator("[data-course-session]");
-  const rowTexts = await rows.allInnerTexts();
-  check("khối 'Buổi học sắp tới' của lớp có đủ 3 buổi: theo lịch tuần, dạy bù, buổi lẻ", (await rows.count()) >= 3 && rowTexts.some(t => t.includes("Dạy bù")) && rowTexts.some(t => t.includes("Buổi lẻ")), rowTexts);
-  const buRow = rows.filter({ hasText: "Dạy bù" });
-  check("buổi dạy bù ở trang lớp: có giờ, 'Online', nút link học online đúng link", (await buRow.innerText()).includes("16:00–17:00") && (await buRow.innerText()).includes("Online") && (await buRow.locator("[data-course-session-join]").getAttribute("href")) === MK_URL);
-  check("buổi lẻ trực tiếp ở trang lớp: có địa chỉ, không nút link online", (await rows.filter({ hasText: "Buổi lẻ" }).innerText()).includes("Offline · 12 Nguyễn Trãi") && (await rows.filter({ hasText: "Buổi lẻ" }).locator("[data-course-session-join]").count()) === 0);
-  check("A6: không còn nút 'Xem cả lịch học' ở trang lớp (Lịch học đã là module)", (await box.getByRole("link", { name: "Xem cả lịch học" }).count()) === 0);
+  await p.getByRole("heading", { level: 1, name: "Toán 9" }).waitFor({ timeout: 90000 });
+  const dau = p.locator("[data-dau-lop]");
+  await (async () => { for (let i = 0; i < 60 && !/19:00/.test(await dau.innerText()); i++) await p.waitForTimeout(500); })();
+  const dauT = await dau.innerText();
+  check("đầu trang: lịch tuần '<thứ>, 19:00' (KHÔNG lẫn giờ buổi dạy bù 16:00 / buổi lẻ 09:00)", /(Thứ \S+|Chủ nhật), 19:00/.test(dauT) && !/16:00|09:00/.test(dauT), dauT);
 
   const octx = await ctxFor(OUT, { width: 1280, height: 900 });
   const po = await octx.newPage(); watch(po);
@@ -91,15 +89,19 @@ import { launch, ctxFor, closeAll, type Page } from "./ui";
   await po.getByRole("heading", { level: 1 }).waitFor({ timeout: 90000 });
   await po.getByText("Bạn chưa vào lớp này").waitFor({ timeout: 60000 });
   const html = await po.content();
-  check("người CHƯA vào lớp: không có khối buổi học và HTML không chứa link học online nào", (await po.locator("[data-course-sessions]").count()) === 0 && !html.includes("meet.example.com"));
+  check("người CHƯA vào lớp: HTML không chứa link học online nào", !html.includes("meet.example.com"));
 
-  section("Việc của tôi: thẻ 'Buổi học tiếp theo'");
+  section("Cần làm: 'Buổi học sắp tới' (lịch tuần, dạy bù, buổi lẻ)");
   await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
-  const card = p.locator("[data-next-session]").first();
-  await card.waitFor({ timeout: 90000 });
-  const cardText = await card.innerText();
-  check("thẻ có giờ buổi gần nhất, 'Online' và nút 'Mở link học online' (link khung giờ)", cardText.includes("19:00–20:30") && cardText.includes("Online") && (await card.getByRole("link", { name: "Mở link học online" }).getAttribute("href")) === RULE_URL, cardText);
-  check("'Vào lớp học' vẫn có và là nút chính", (await card.getByRole("link", { name: "Vào lớp học" }).count()) === 1);
+  const rows = p.locator("[data-buoi-sap-toi]");
+  await rows.first().waitFor({ timeout: 90000 });
+  const rowTexts = await rows.allInnerTexts();
+  check("đủ 3 buổi: theo lịch tuần (19:00–20:30), dạy bù, buổi lẻ", (await rows.count()) === 3 && rowTexts.some(t => t.includes("19:00–20:30")) && rowTexts.some(t => t.includes("16:00–17:00")) && rowTexts.some(t => t.includes("09:00–10:30")), rowTexts);
+  const ruleRow = rows.filter({ hasText: "19:00–20:30" });
+  check("buổi theo lịch tuần: nút 'Mở link học online' = link khung giờ, tab ngoài, noopener", (await ruleRow.getByRole("link", { name: "Mở link học online" }).getAttribute("href")) === RULE_URL && (await ruleRow.getByRole("link", { name: "Mở link học online" }).getAttribute("target")) === "_blank" && /noopener/.test((await ruleRow.getByRole("link", { name: "Mở link học online" }).getAttribute("rel")) ?? ""));
+  check("buổi dạy bù: link RIÊNG của buổi", (await rows.filter({ hasText: "16:00–17:00" }).getByRole("link", { name: "Mở link học online" }).getAttribute("href")) === MK_URL);
+  const leRow = rows.filter({ hasText: "09:00–10:30" });
+  check("buổi lẻ trực tiếp: có địa chỉ, KHÔNG nút link online (có 'Vào lớp' về trang lớp)", (await leRow.innerText()).includes("12 Nguyễn Trãi") && (await leRow.getByRole("link", { name: "Mở link học online" }).count()) === 0 && (await leRow.getByRole("link", { name: "Vào lớp" }).getAttribute("href")) === `/student/hoc-tap?course=${C1.id}`, await leRow.innerText());
 
   section("Cổng phụ huynh 'Sổ của con'");
   const pctx = await ctxFor(null, { width: 1280, height: 900 });
@@ -117,7 +119,7 @@ import { launch, ctxFor, closeAll, type Page } from "./ui";
   section("Điện thoại 390px: không tràn ngang");
   const mctx = await ctxFor(S, { width: 390, height: 844 });
   const pm = await mctx.newPage(); watch(pm);
-  for (const [name, url, ready] of [["Lịch học", `${BASE}/student/lich-hoc`, "[data-week-item]"], ["Trang lớp", `${BASE}/student/hoc-tap?course=${C1.id}`, "[data-course-session]"], ["Việc của tôi", `${BASE}/student/viec-cua-toi`, "[data-next-session]"]] as const) {
+  for (const [name, url, ready] of [["Lịch học", `${BASE}/student/lich-hoc`, "[data-week-item]"], ["Trang lớp", `${BASE}/student/hoc-tap?course=${C1.id}`, "[data-dau-lop]"], ["Cần làm", `${BASE}/student/viec-cua-toi`, "[data-buoi-sap-toi]"]] as const) {
     await pm.goto(url, { waitUntil: "domcontentloaded", timeout: 240000 });
     await pm.locator(ready).first().waitFor({ timeout: 90000 });
     check(`${name}: 390px không tràn ngang`, await noOverflow(pm));

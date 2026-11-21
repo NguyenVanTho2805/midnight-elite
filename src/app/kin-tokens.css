@@ -30,6 +30,9 @@
   --kin-tt-chu-xong: #047857;
   --kin-tt-chu-cho: #b45309;
   --kin-tt-chu-loi: #dc2626;
+  /* SCL-G-0 (21/11/2026, ngoài bản xuất Figma — QUYET-DINH-GIAO-DIEN §3.7; sinh lại từ Figma phải giữ): chữ "Quá hạn".
+     #dc2626 chỉ 4,19:1 trên --kin-tt-nen-loi (trượt 4,5). #b91c1c: 6,47:1 trên trắng, 5,61:1 trên --kin-tt-nen-loi (tính WCAG). */
+  --kin-tt-chu-loi-dam: #b91c1c;
   --kin-tt-cham-xong: #059669;
   --kin-tt-cham-cho: #d97706;
   --kin-tt-cham-trung-tinh: #767f8e;
@@ -63,6 +66,8 @@
   --kin-cham-toi-thieu: 44px;
   --kin-cham-dong: 50px;
   --kin-cham-dap-an: 52px;
+  /* SCL-G-0 (§3.7): chiều cao thanh dưới điện thoại; dùng chung cho thanh dưới, dock nộp bài và padding-bottom thân trang (dock không che hàng cuối). */
+  --kin-cao-thanh-duoi: 64px;
 
   /* --- Chủ đề mặc định: Navy, chế độ sáng --- */
   --kin-nhan-nen: #1e3a8a;
@@ -94,6 +99,7 @@
   --kin-tt-chu-xong: #34d399;
   --kin-tt-chu-cho: #fbbf24;
   --kin-tt-chu-loi: #f87171;
+  --kin-tt-chu-loi-dam: #fca5a5; /* tối: "đậm" = tương phản cao hơn → sáng hơn; 10,18:1 trên #0b0e14, 9,21:1 trên --kin-tt-nen-loi tối */
   --kin-tt-cham-xong: #34d399;
   --kin-tt-cham-cho: #fbbf24;
   --kin-tt-cham-trung-tinh: #8a93a3;
@@ -130,6 +136,7 @@
     --kin-tt-chu-xong: #34d399;
     --kin-tt-chu-cho: #fbbf24;
     --kin-tt-chu-loi: #f87171;
+    --kin-tt-chu-loi-dam: #fca5a5;
     --kin-tt-cham-xong: #34d399;
     --kin-tt-cham-cho: #fbbf24;
     --kin-tt-cham-trung-tinh: #8a93a3;

@@ -50,9 +50,10 @@ const MIN = 60_000;
   const pg = await c1.newPage(); watch(pg);
   await openTab(pg);
   check("thanh bên có nhãn vai học sinh (.kin-rail-role)", /học sinh/i.test(((await pg.locator("#kin-rail .kin-rail-role").first().textContent().catch(() => "")) ?? "").trim()));
-  const rows = pg.locator("[data-de-thi-hang]");
+  // SCL-G-HS (bản chốt §3.2/§3.3): hàng KinListRow — tên ở [data-kin-list-title], hạn là đoạn cuối dòng phụ ("Toán 9 · … · Còn 1 ngày"), cả hàng là link.
+  const rows = pg.locator("[data-de-thi-hang]:visible");
   check("danh sách có đúng 3 đề của lớp (đề chỉ có đường dẫn KHÔNG có mặt)", await rows.count() === 3 && await pg.getByText("Đề chỉ có đường dẫn").count() === 0, await rows.count());
-  const hans = await rows.evaluateAll(els => els.map(e => ({ t: (e.querySelector("p span")?.textContent ?? "").trim(), han: (e.querySelector("[data-han]")?.textContent ?? "").trim(), st: e.getAttribute("data-trang-thai") })));
+  const hans = await rows.evaluateAll(els => els.map(e => { const t = e.querySelector("[data-kin-list-title]"); return { t: (t?.textContent ?? "").trim(), han: ((t?.nextElementSibling?.textContent ?? "").split(" · ").pop() ?? "").trim(), st: e.getAttribute("data-trang-thai") }; }));
   check("thứ tự: hết hạn hôm nay → còn 1 ngày → đã quá hạn", hans.map(h => h.t).join("|") === "Đề hết hạn hôm nay|Đề còn một ngày|Đề đã quá hạn", hans);
   check("nhãn hạn: 'Hết hạn hôm nay hh:mm' / 'Còn 1 ngày' / 'Đã quá hạn'", /^Hết hạn hôm nay \d\d:\d\d$/.test(hans[0].han) && hans[1].han === "Còn 1 ngày" && hans[2].han === "Đã quá hạn", hans);
   check("đề còn hạn 'Đang mở', đề quá hạn 'Đã đóng' và không có nút vào làm", hans[0].st === "dang-mo" && hans[1].st === "dang-mo" && hans[2].st === "da-dong" && await rows.nth(2).getByRole("link").count() === 0);
@@ -70,8 +71,10 @@ const MIN = 60_000;
   const cx = await ctxFor(X, { width: 1280, height: 900 });
   const px = await cx.newPage(); watch(px);
   await px.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
-  await px.getByText("Chưa có đề nào được giao").waitFor({ timeout: 60000 });
-  const xt = await px.locator("body").innerText();
+  // SCL-G-HS: không còn khung trống riêng "Chưa có đề nào được giao" — không có đề thì cả mục ẩn; trang trống cả trang ("Chưa có việc nào cho bạn").
+  await px.getByText("Chưa có việc nào cho bạn").first().waitFor({ timeout: 60000 });
+  const xt = await px.locator("main").innerText();
+  check("không có mục 'Đề thi được giao'", (await px.getByRole("list", { name: "Đề thi được giao" }).count()) === 0);
   check("không thấy tên đề nào của lớp Toán 9", !xt.includes("Đề còn một ngày") && !xt.includes("Đề hết hạn hôm nay") && !xt.includes("Đề đã quá hạn"));
   await cx.close();
 
@@ -89,12 +92,13 @@ const MIN = 60_000;
   check("390: không tràn ngang", await pm.evaluate(`document.documentElement.scrollWidth <= window.innerWidth`) as boolean);
   const mH = await pm.getByRole("link", { name: "Vào làm" }).evaluateAll(els => els.map(e => ({ h: Math.round(e.getBoundingClientRect().height), w: Math.round(e.getBoundingClientRect().width) })));
   check("390: 'Vào làm' cao ≥ 44px và rộng cả hàng", mH.length === 2 && mH.every(b => b.h >= 44 && b.w >= 300), mH);
-  const mHan = await pm.locator("[data-han]").allInnerTexts();
+  const mHan = await pm.locator("[data-de-thi-hang]:visible [data-kin-list-title] + p").evaluateAll(els => els.map(e => (e.textContent ?? "").split(" · ").pop()).filter(t => /^(Hết hạn hôm nay \d\d:\d\d|Còn \d+ ngày|Đã quá hạn)$/.test(t ?? "")));
   check("390: vẫn đủ ba nhãn hạn", mHan.length === 3, mHan);
   await shot(pm, "bai-tap-hs-390");
   await cm.close();
 
-  section("Nhiều hơn 3 đề: 'Xem thêm' còn lối xem phần còn lại");
+  // SCL-G-HS: bỏ "Xem thêm / Thu gọn" — danh sách hàng mảnh liệt kê đủ (không còn đề nào bị giấu). Vẫn kiểm: không mất đề nào khi có > 3 đề.
+  section("Nhiều hơn 3 đề: không đề nào bị giấu");
   for (const [id, title, due] of [["bt-x1", "Đề thêm một", 3], ["bt-x2", "Đề thêm hai", 4]] as const) {
     await mkExam({ id, ownerId: T.id, courseId: C.id, mode: "practice", title });
     await mkFiveQuestions(id, id);
@@ -104,9 +108,8 @@ const MIN = 60_000;
   const ps = await cs.newPage(); watch(ps);
   await ps.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await ps.getByRole("list", { name: "Đề thi được giao" }).waitFor({ timeout: 60000 });
-  check("5 đề được giao: mặc định hiện 3", await ps.locator("[data-de-thi-hang]").count() === 3, await ps.locator("[data-de-thi-hang]").count());
-  await ps.locator("[data-assign-more]").click();
-  check("'Xem thêm 2 đề' → đủ 5 đề; 'Thu gọn' → về 3", await ps.locator("[data-de-thi-hang]").count() === 5 && (await ps.locator("[data-assign-more]").innerText()).trim() === "Thu gọn");
+  const all5 = await ps.locator("[data-de-thi-hang]:visible [data-kin-list-title]").allInnerTexts();
+  check("5 đề được giao: hiện đủ 5, đúng tên, theo hạn (đề thêm ở cuối)", all5.length === 5 && ["Đề thêm một", "Đề thêm hai"].every(t => all5.includes(t)) && all5.indexOf("Đề thêm một") < all5.indexOf("Đề thêm hai"), all5);
   await cs.close();
   // B1: trang cũ chuyển hướng (thông báo cũ trong cơ sở dữ liệu còn trỏ vào).
   const cr = await ctxFor(S, { width: 1280, height: 900 });

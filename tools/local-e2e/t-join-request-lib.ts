@@ -89,6 +89,8 @@ check("CA PHÁ: có tag nhưng gia sư đã nhập đơn giá ⇒ KHÔNG miễn 
 check("CA PHÁ: price > 0 ⇒ KHÔNG miễn phí dù có tag", !isFreeClass({ price: 1, tag: FREE_CLASS_TAG, hasFeeRate: false }));
 check("CA PHÁ: tag viết thường ⇒ không khớp", !isFreeClass({ price: 0, tag: "miễn phí", hasFeeRate: false }));
 check("open bị chặn ở lớp không miễn phí", !canUseOpenPolicy({ price: 0, tag: null, hasFeeRate: false }));
+check("lớp GVCN: open được khi price 0 + chưa có đơn giá, không cần dấu Miễn phí", canUseOpenPolicy({ price: 0, tag: null, hasFeeRate: false, centerClass: true }));
+check("lớp GVCN: open vẫn bị chặn khi có giá hoặc có đơn giá", !canUseOpenPolicy({ price: 100000, tag: null, hasFeeRate: false, centerClass: true }) && !canUseOpenPolicy({ price: 0, tag: null, hasFeeRate: true, centerClass: true }));
 
 section("normalizeJoinNote");
 check("200 ký tự ok", (() => { const r = normalizeJoinNote("a".repeat(JOIN_NOTE_MAX)); return r.ok && r.value?.length === 200; })());

@@ -9,6 +9,7 @@ import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem, type NavGroup } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { KinSkipLink, KinSkipTarget } from "@/components/kin/shell/SkipLink";
 import { KIN_TAB_BOX, KinTabInner } from "@/components/kin/Tabs";
 import { QUEUE_CHANGED } from "@/components/admin/HangCho";
 import { matchSub, visibleModules, type AdminSub } from "@/lib/adminNav";
@@ -77,6 +78,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="md:flex h-screen overflow-hidden bg-[var(--kin-nen-trang)]" style={{ ["--kin-top" as string]: `${top}px` }}>
+      <KinSkipLink />
       <ModuleRail roleLabel="QUẢN TRỊ" ariaLabel="Module quản trị" modules={items} groups={wide}
         home={{ href: "/admin", label: "KiN — Hôm nay, tổng quan quản trị" }} footnote="Miễn phí ra mắt" />
       <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-60px)] md:h-screen">
@@ -99,7 +101,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         {tabs && <AdminTabStrip label={current!.label} tabs={tabs} activeHref={hit?.sub.href} />}
-        <main className={`flex-1 min-h-0 overflow-auto ${flush ? "" : "p-4 sm:p-6"}`}>{children}</main>
+        <main className={`flex-1 min-h-0 overflow-auto ${flush ? "" : "p-4 sm:p-6"}`}><KinSkipTarget />{children}</main>
       </div>
     </div>
   );
