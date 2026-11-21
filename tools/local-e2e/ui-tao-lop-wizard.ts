@@ -128,10 +128,13 @@ const FEE_ON = featureOn("HOC_PHI");
   await sa.getByRole("button", { name: "Tiếp tục" }).click();
   await sa.getByRole("button", { name: "Tiếp tục" }).click();
   check("Chủ nhiệm bước 3: không mục 'Thêm sẵn em đã học lớp khác', không ErrorStrip tải học sinh", (await sa.locator("[data-wizard-students]").count()) === 0 && (await sa.getByText(/Không tải được danh sách học sinh/).count()) === 0);
+  const saOpen = sa.locator('[data-policy="open"]:visible input[type="radio"]');
+  check("Chủ nhiệm bước 3: có 'Vào ngay', chọn được (lớp GVCN không thu học phí)", (await saOpen.count()) === 1 && await saOpen.isEnabled());
+  await saOpen.check();
   await sa.getByRole("button", { name: "Tạo lớp", exact: true }).click();
   await sa.waitForURL(/\/lop-cua-toi\/quan-lop\/lop-trung-tam-wizard/, { timeout: 90000 });
   const cm = await prisma.course.findFirstOrThrow({ where: { name: "Lớp trung tâm wizard" } });
-  check("DB: lớp của Chủ nhiệm, feeMode mặc định, KHÔNG CourseFeeRate, instructor 'KiN'", cm.ownerId === SA.id && cm.feeMode === "monthly_sessions" && (await prisma.courseFeeRate.count({ where: { courseId: cm.id } })) === 0 && cm.instructor === "KiN", { f: cm.feeMode, i: cm.instructor });
+  check("DB: lớp của Chủ nhiệm, feeMode mặc định, KHÔNG CourseFeeRate, tên người dạy = tên thật, Vào ngay + công khai", cm.ownerId === SA.id && cm.feeMode === "monthly_sessions" && (await prisma.courseFeeRate.count({ where: { courseId: cm.id } })) === 0 && cm.instructor === SA.name && cm.joinPolicy === "open" && cm.status === true, { f: cm.feeMode, i: cm.instructor, n: SA.name, jp: cm.joinPolicy, st: cm.status });
   check("Chủ nhiệm: không gọi /api/tutor/hoc-sinh lỗi (403)", saBad.length === 0, saBad);
 
   section("LO-09: nút 'Thêm học sinh' trong chi tiết lớp");

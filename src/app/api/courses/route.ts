@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
     if ("joinPolicy" in data) {
       const jp = parseJoinPolicy(data.joinPolicy);
       if (!jp.ok) return NextResponse.json({ error: jp.error }, { status: 400 });
-      if (jp.value === "open" && !canUseOpenPolicy({ price: Number(data.price ?? 0), tag: typeof data.tag === "string" ? data.tag : null, hasFeeRate: !!feeSetup })) {
+      if (jp.value === "open" && !canUseOpenPolicy({ price: Number(data.price ?? 0), tag: typeof data.tag === "string" ? data.tag : null, hasFeeRate: !!feeSetup, centerClass: auth.adminRole !== "teacher" })) {
         return NextResponse.json({ error: "Vào ngay chỉ dành cho lớp miễn phí" }, { status: 400 });
       }
       data.joinPolicy = jp.value ?? null;
@@ -173,16 +173,16 @@ export async function POST(req: NextRequest) {
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
     data.ownerId = auth.userId;
     // SCL-A (P1-4): tên gia sư = tên thật của người tạo lớp (cùng nguồn với màn vào lớp: owner.name), không để trống / tên giữ chỗ "KiN".
-    //   Chỉ vai gia sư: khoá học trung tâm (admin_super / admin_content) cố ý mang tên "KiN" — không thay bằng tên cá nhân người tạo.
+    //   Chủ chốt 21/11: lớp GVCN tạo (không gửi tên) cũng mang tên thật người tạo; ai tự gõ "KiN" ở ngăn tạo khoá cũ thì giữ nguyên.
     const instr = typeof data.instructor === "string" ? data.instructor.trim() : "";
-    if (auth.adminRole === "teacher" && (!instr || instr.toLowerCase() === "kin")) {
+    if (!instr || (auth.adminRole === "teacher" && instr.toLowerCase() === "kin")) {
       const me = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
       const nm = me?.name?.trim() ?? "";
       data.instructor = nm;
       data.teacherAvatar = nm.charAt(0).toUpperCase();
     }
-    // SCL-F2: quản trị tạo lớp qua TaoLop (không gửi instructor) → mặc định "KiN" như ngăn kéo tạo khoá cũ (Course.instructor bắt buộc).
-    if (auth.adminRole !== "teacher" && !instr) { data.instructor = "KiN"; data.teacherAvatar = "K"; }
+    // Course.instructor bắt buộc: tài khoản chưa có tên thì vẫn để "KiN".
+    if (!data.instructor) { data.instructor = "KiN"; data.teacherAvatar = "K"; }
     // SCL-A (P1-3, Q10): lớp của gia sư là riêng — chỉ lớp "Vào ngay" (open) hiện ở trang công khai, bất kể client gửi gì.
     if (auth.adminRole === "teacher") data.status = data.joinPolicy === "open";
 

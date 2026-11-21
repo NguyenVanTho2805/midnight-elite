@@ -27,7 +27,7 @@ const body = (name: string, extra: Record<string, unknown> = {}) => ({ id: "lop-
   const a1 = await api("POST", "/api/courses", { as: SA, body: body("Lớp trùng A") });
   const a2 = await api("POST", "/api/courses", { as: SA, body: body("Lớp trùng B") });
   check("quản trị tạo 2 lớp cùng mã → 201 cả hai, lần hai thành '-2'", a1.status === 201 && a2.status === 201 && a1.json?.id === "lop-trung-f2" && a2.json?.id === "lop-trung-f2-2", [a1.status, a2.status, a2.json?.id]);
-  check("quản trị không gửi tên gia sư (TaoLop) → instructor 'KiN', không lỗi thiếu trường", a1.json?.instructor === "KiN", a1.json?.instructor);
+  check("quản trị không gửi tên gia sư (TaoLop) → instructor = tên thật người tạo (chủ chốt 21/11), không lỗi thiếu trường", a1.json?.instructor === SA.name, [a1.json?.instructor, SA.name]);
   const t1 = await api("POST", "/api/courses", { as: T, body: body("Lớp trùng C") });
   check("gia sư trùng tiếp → '-3' (như cũ)", t1.status === 201 && t1.json?.id === "lop-trung-f2-3", [t1.status, t1.json?.id]);
 

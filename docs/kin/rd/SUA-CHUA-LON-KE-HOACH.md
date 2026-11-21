@@ -22,6 +22,10 @@ Nguồn: hội đồng 8 agent chê + research (bản tổng hợp chép ở `do
 | Q9 | Giao diện: giữ màu KiN, khoá token, sửa bố cục; dựng 2–3 phương án màn chính cho chủ chọn trước khi sửa. *(mặc định)* |
 | Q10 | Trang công khai liệt kê lớp + ô đánh giá: tắt mặc định, lớp là riêng. *(mặc định)* |
 | Q11 | Xưng "bạn" trong giao diện. *(mặc định)* |
+| Q12 | (22/11) Lớp GVCN tạo hiện **tên thật** người tạo, không "KiN". |
+| Q13 | (22/11) Lớp GVCN có thêm "Vào ngay" (lớp GVCN không thu học phí: chỉ cần giá 0 + chưa có đơn giá). Lớp gia sư giữ luật cũ. |
+| Q14 | (22/11) Điểm tự khai Azota cũ **không** bị đưa về chờ duyệt; luật chờ duyệt chỉ áp cho điểm mới. |
+| Q15 | (22/11) Chưa làm đăng ký bằng số điện thoại; giữ email. |
 
 ## Đợt và nhóm việc
 

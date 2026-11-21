@@ -8,6 +8,7 @@ import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
+import { isTeacher } from "@/lib/tutorGate";
 import { pruneTreeForViewer } from "@/lib/lessonStatus";
 import { loadCourseAccess } from "@/lib/courseAccessServer";
 import { redactCourseForRole, canSeeMoney, type CourseRole } from "@/lib/courseAccess";
@@ -113,7 +114,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnType<typeof requirePermission>>) {
   if (!("userId" in auth)) return auth;
-  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, price: true, originalPrice: true, lessons: true, hours: true, status: true, tag: true, joinPolicy: true } });
+  const existing = await prisma.course.findUnique({ where: { id }, select: { ownerId: true, owner: { select: { role: true, adminRole: true } }, price: true, originalPrice: true, lessons: true, hours: true, status: true, tag: true, joinPolicy: true } });
   if (!existing) return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 });
   if (!ownsResource(auth, existing.ownerId)) {
     return NextResponse.json({ error: "Bạn không có quyền với khóa học này" }, { status: 403 });
@@ -174,7 +175,7 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
       const rated = await loadFeeRateCourseIds([id]);
       const price = "price" in data ? Number(data.price) : existing.price;
       const tag = "tag" in data ? (typeof data.tag === "string" ? data.tag : null) : existing.tag;
-      if (!canUseOpenPolicy({ price, tag, hasFeeRate: rated.has(id) })) {
+      if (!canUseOpenPolicy({ price, tag, hasFeeRate: rated.has(id), centerClass: !isTeacher(existing.owner) })) {
         return NextResponse.json({ error: "Vào ngay chỉ dành cho lớp miễn phí" }, { status: 400 });
       }
     }
