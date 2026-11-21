@@ -97,7 +97,10 @@ const D = 86_400_000;
   check("webhook Pro không có khoá viết cứng và không dùng bảng/khoá webhook học phí", !/Apikey\s+[A-Za-z0-9_-]{8,}/.test(route) && !/tutorPayoutAccount|webhookKeyHash|tuitionInvoice\./.test(route + settle));
   check("settleProPayment chặn bản xem trước, tạo dòng chống trùng TRƯỚC khi kích hoạt, bắt P2002", /isPreviewEnv\(\)/.test(settle) && settle.indexOf("proPayment.create") < settle.indexOf("applyProActivation(db") && /P2002/.test(settle));
   check("webhook không có đường hoàn tiền / chuyển tiền (không gọi API ngân hàng, không refund)", !/refund|hoan_tien|transfer\(|payout\(|fetch\(/i.test(route + settle));
-  check("cron nhắc: đòi CRON_SECRET, production thiếu khoá → 503, ghi dấu lần chạy", /CRON_SECRET/.test(cron) && /cronSecretMissingIsFatal/.test(cron) && /Bearer \$\{secret\}/.test(cron) && /recordCronRun\("pro-renewal-reminders"\)/.test(cron));
+  { // khoá cron giờ qua helper chung src/lib/cronAuth.ts (thiếu/ngắn ⇒ 503, so Bearer bằng timingSafeEqual)
+    const ca = read("src/lib/cronAuth.ts");
+    check("cron nhắc: đòi CRON_SECRET qua checkCronAuth (thiếu khoá → 503, so Bearer an toàn), ghi dấu lần chạy", /checkCronAuth\(process\.env\.CRON_SECRET/.test(cron) && /status: 503/.test(ca) && /Bearer \$\{secret\}/.test(ca) && /timingSafeEqual/.test(ca) && /recordCronRun\("pro-renewal-reminders"\)/.test(cron));
+  }
   check("nhắc chạy: bỏ qua bản xem trước và khi chưa mở bán; thông báo và dòng chống trùng cùng MỘT giao dịch", /isPreviewEnv\(\)/.test(ren) && /proPayConfig\(\)\.open/.test(ren) && /\$transaction/.test(ren) && ren.indexOf("proRenewalReminder.create") < ren.indexOf("notification.create"));
   check("nhắc chỉ gửi cho chủ gói: where theo userId của đơn active, không gọi notifyMany/broadcast", !/notifyMany/.test(ren) && /status: "active"/.test(ren));
   // SCL F1 (P2-28): phần Kinh doanh đang ẩn ⇒ cron nhắc gia hạn rút khỏi vercel.json (route giữ) và tự bỏ qua khi cờ KINH_DOANH tắt.

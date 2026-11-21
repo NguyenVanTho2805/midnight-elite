@@ -184,6 +184,8 @@ async function updateCourse(req: NextRequest, id: string, auth: Awaited<ReturnTy
 
   // SCL-A (P1-3, P1-4, Q10): lớp của gia sư chỉ công khai khi "Vào ngay" (open) — status luôn suy từ cách vào lớp SAU khi sửa, bỏ status client gửi.
   //   Đổi open → duyệt/mã mời thì ẩn khỏi trang công khai; ngược lại thì hiện (để /join chạy). Tên gia sư trống / giữ chỗ "KiN" thì bỏ qua (giữ tên thật).
+  // Q13: lớp GVCN đổi cách vào lớp ⇒ công khai đúng khi "Vào ngay" (để /join chạy), như lớp gia sư.
+  if (auth.adminRole !== "teacher" && !isTeacher(existing.owner) && "joinPolicy" in data) data.status = data.joinPolicy === "open";
   if (auth.adminRole === "teacher") {
     if ("joinPolicy" in data || "status" in data) data.status = ("joinPolicy" in data ? data.joinPolicy : existing.joinPolicy) === "open";
     if ("instructor" in data) {

@@ -15,6 +15,7 @@ import {
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { KinPage, KinPageHeader, KIN_FIELD, KIN_LABEL } from "@/components/kin/PageLayout";
 import { KinCallout } from "@/components/kin/Callout";
+import { KinSelect } from "@/components/kin/KinSelect";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { GRADE_STATUS, KinGradeStatus, KinStatusIcon, STATUS_DOT } from "@/components/kin/Status";
 import { kinButtonClass } from "@/components/kin/buttonClass";
@@ -147,9 +148,7 @@ export default async function SoDiemPage({ searchParams }: { searchParams: Promi
             <form method="get" className="flex flex-col sm:flex-row sm:items-end gap-3 mb-6 max-w-xl">
               <div className="min-w-0 sm:flex-1">
                 <label htmlFor="sd-lop" className={KIN_LABEL}>Lớp</label>
-                <select id="sd-lop" name="lop" defaultValue={lop ?? ""} className={`${KIN_FIELD} mt-1`}>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <KinSelect id="sd-lop" name="lop" defaultValue={lop ?? ""} className="mt-1" options={courses.map(c => ({ value: c.id, label: c.name }))} />
               </div>
               <button type="submit" className={kinButtonClass("secondary")}>Xem lớp</button>
             </form>

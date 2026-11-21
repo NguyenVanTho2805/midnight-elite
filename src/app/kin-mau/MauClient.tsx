@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { KinButton, KinConfirm, KinDialog, KinGradeStatus, KinListRow, KinSkeleton, KinStateCard, KinStatus, KinTabs, KinToast, GRADE_STATUS, type GradeState, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
 import { useToast } from "@/components/kin/ToastProvider";
+import { KinSelect } from "@/components/kin/KinSelect";
 
 const VARIANTS: { v: KinButtonVariant; label: string }[] = [
   { v: "primary", label: "Chính" }, { v: "secondary", label: "Thường" }, { v: "ghost", label: "Ghost" },
@@ -56,6 +57,15 @@ export default function MauClient() {
           {/* SCL-G-0: nhãn trạng thái bài/điểm dùng chung (QUYET-DINH-GIAO-DIEN §3.6). */}
           <div className="flex flex-wrap gap-6" data-mau="tt-diem">
             {(Object.keys(GRADE_STATUS) as GradeState[]).map(k => <KinGradeStatus key={k} state={k} />)}
+          </div>
+        </section>
+
+        <section aria-labelledby="m-chon" className="flex flex-col gap-3">
+          <h2 id="m-chon" className="font-semibold">Ô chọn (nhãn riêng)</h2>
+          <div className="max-w-xs" data-mau="chon">
+            <label htmlFor="mau-tinh" className="block text-[length:var(--kin-co-goc)] font-medium">Tỉnh / Thành phố</label>
+            <KinSelect id="mau-tinh" name="tinh" defaultValue="" placeholder="Chọn tỉnh / thành phố" className="mt-1"
+              options={["Thành phố Hà Nội", "Thành phố Hồ Chí Minh", "Thành phố Đà Nẵng"].map(v => ({ value: v, label: v }))} />
           </div>
         </section>
 

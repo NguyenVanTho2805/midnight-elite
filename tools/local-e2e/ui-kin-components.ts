@@ -1,6 +1,7 @@
 // Bộ component KiN (Figma Nút 6:50 · Thẻ trạng thái 8:139 · Tab 106:30 · Toast 106:23 · Hộp xác nhận 106:51) trên trang mẫu /kin-mau.
 // Đo bằng style tính ra: kích thước, màu theo token, trạng thái rê chuột / focus / tắt, bàn phím, tương phản, điện thoại 390px.
 import { BASE, check, section, done, eventually } from "./h";
+import { featureOn } from "@/lib/features";
 import { launch, ctxFor, closeAll, kinSelect, kinSelectValue, kinSelectOptions, ADMIN } from "./ui";
 
 type Rgb = [number, number, number];
@@ -309,20 +310,23 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
     })()`) as Promise<{ inView: boolean; hitFirst: boolean; hitLast: boolean; n: number; r: number[] }>;
     const noHScroll = (pg: import("playwright").Page) => pg.evaluate("document.documentElement.scrollWidth <= innerWidth + 1") as Promise<boolean>;
     for (const [W, H] of [[1600, 900], [390, 844]] as const) {
-      // 1. Khách (/dang-ky) — <label htmlFor="dk-city"> riêng: tên đọc = nhãn + giá trị; getByLabel vẫn tìm được; chọn có ô tìm (34 tỉnh).
+      // 1. Nhãn riêng <label htmlFor> (trang mẫu /kin-mau; ô tỉnh của /dang-ky đã bỏ ở SCL-E): tên đọc = nhãn + giá trị; getByLabel vẫn tìm được.
       const cg = await ctxFor(null, { width: W, height: H }), pgG = await cg.newPage();
       pgG.on("pageerror", e => errors.push(String(e)));
-      await pgG.goto(`${BASE}/dang-ky`, { waitUntil: "domcontentloaded", timeout: 170000 });
-      const dk = pgG.locator("#dk-city");
+      await pgG.goto(`${BASE}/kin-mau`, { waitUntil: "domcontentloaded", timeout: 170000 });
+      const dk = pgG.locator("#mau-tinh");
       await dk.waitFor({ timeout: 120000 });
-      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Tỉnh / Thành phố * Chọn tỉnh / thành phố')`, async () => (await pgG.getByRole("combobox", { name: "Tỉnh / Thành phố * Chọn tỉnh / thành phố", exact: true }).count()) === 1);
-      check(`${W}: getByLabel('Tỉnh / Thành phố *', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Tỉnh / Thành phố *", { exact: true }).getAttribute("role")) === "combobox");
+      await eventually(`${W}: <label htmlFor> riêng ⇒ nút nối nhãn + giá trị ('Tỉnh / Thành phố Chọn tỉnh / thành phố')`, async () => (await pgG.getByRole("combobox", { name: "Tỉnh / Thành phố Chọn tỉnh / thành phố", exact: true }).count()) === 1);
+      check(`${W}: getByLabel('Tỉnh / Thành phố', exact) vẫn tìm đúng nút (nhãn liên kết)`, (await pgG.getByLabel("Tỉnh / Thành phố", { exact: true }).getAttribute("role")) === "combobox");
       await kinSelect(dk, "Thành phố Hà Nội");
       check(`${W}: chọn tỉnh → nút mang giá trị, danh sách đóng`, (await kinSelectValue(dk)) === "Thành phố Hà Nội" && (await dk.getAttribute("aria-expanded")) === "false");
-      check(`${W}: /dang-ky không cuộn ngang`, await noHScroll(pgG));
+      check(`${W}: /kin-mau không cuộn ngang`, await noHScroll(pgG));
       await cg.close();
 
       // 2. Quản trị — nhãn BỌC ô ("Khoảng thời gian"): tên đọc gọn, bấm mục không bị nhãn mở lại, giá trị đổi, máy chủ nhận ?days=7.
+      //    /admin/so-do sau cờ VAN_HANH_PHU (mặc định tắt, LOI-01) ⇒ chỉ chạy khi bật cờ cho cả máy chủ lẫn bài.
+      if (!featureOn("VAN_HANH_PHU")) console.log(`  - ${W}: BỎ QUA mục 2 (cần NEXT_PUBLIC_KIN_MO_VAN_HANH_PHU=1)`);
+      else {
       const ca = await ctxFor(SU, { width: W, height: H }), pa = await ca.newPage();
       pa.on("pageerror", e => errors.push(String(e)));
       const asked: string[] = [];
@@ -339,6 +343,7 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
 
       // 3. (SCL-F2) Ngăn kéo "Tạo khoá học" của /admin/khoa-hoc đã bỏ — tạo lớp chỉ còn TaoLop; ca danh sách trong khối có transform không còn chỗ kiểm.
       await ca.close();
+      }
 
       // 4. Panel bên (Modal "Thêm khung giờ") — ô "Kết thúc" nhiều lựa chọn: không bị panel cắt; ở 390 (ngăn dưới) lật lên khi thiếu chỗ.
       const ct = await ctxFor(T, { width: W, height: H }), pt = await ct.newPage();
@@ -360,7 +365,9 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
 
     // 5. Học phí (cờ TIỀN = không): chỉ đổi giao diện — giá trị GỬI ĐI y hệt <select> cũ.
     section("KinSelect (LOI-06) · màn học phí gửi đúng giá trị cũ");
-    {
+    // /student/hoc-phi sau cờ HOC_PHI (mặc định tắt, HP-BO) ⇒ chỉ chạy khi bật cờ cho cả máy chủ lẫn bài.
+    if (!featureOn("HOC_PHI")) console.log("  - BỎ QUA mục học phí (cần NEXT_PUBLIC_KIN_MO_HOC_PHI=1)");
+    else {
       const cs = await ctxFor(S, { width: 390, height: 844 }), ps = await cs.newPage();
       const got: string[] = [];
       ps.on("request", r => { const m = r.url().match(/\/api\/users\/me\/invoices\?yearMonth=([^&]*)/); if (m) got.push(m[1]); });

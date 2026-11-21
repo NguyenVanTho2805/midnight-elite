@@ -2,7 +2,7 @@
 // CA PHÁ CỐ Ý (mục 18, 06/11): bỏ dòng `if (enr.status === "suspended") return { outcome: "da-nghi" }` trong decideJoinRequest → 'VẪN pending' / 'KHÔNG thông báo' / 'VẪN suspended' đỏ;
 //   bỏ nhánh `r.suspended > 0 ? "da-nghi"` ở hang-loat/route.ts → ca hàng loạt đỏ; bỏ case "da-nghi" ở LopChiTiet.tsx → ca 'HIỆN thông điệp' đỏ.
 // Cần máy chủ Next ở cổng 3100 + Postgres demo (COO chạy tuần tự). Mẫu: h.ts, t-invites.ts.
-import { api, mkTutor, mkUser, mkCourse, wipe, check, section, done, type TUser } from "./h";
+import { api, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done, type TUser } from "./h";
 import { prisma } from "@/lib/prisma";
 import { enrollInTx } from "@/lib/enrollServer";
 import { loadTutorInboxRaw } from "@/lib/tutorInboxServer";
@@ -264,7 +264,8 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
 
   // ── (17) P2/P3 rà soát ───────────────────────────────────────────────────────
   section("(17) /join chỉ-mã → 303 ?join=chi-ma; duyệt lớp đóng → dong; chờ đồng ý; mã revoked; pending → approved khi redeem vào ngay");
-  await prisma.course.update({ where: { id: OLD.id }, data: { joinPolicy: null } });
+  // SCL-A: PATCH cách vào lớp ở trên đã làm lớp thành riêng (status=false) ⇒ /join trả khong-co. Ca này thử lớp cũ CÔNG KHAI.
+  await prisma.course.update({ where: { id: OLD.id }, data: { joinPolicy: null, status: true } });
   const jOld2 = await form(`/api/courses/${OLD.id}/join`, D);
   check("/join lớp chỉ-mã → 303 ?join=chi-ma (không JSON 409)", jOld2.status === 303 && loc(jOld2) === `/khoa-hoc/${OLD.id}?join=chi-ma`, [jOld2.status, loc(jOld2)]);
   // duyệt khi lớp đã đóng ⇒ dong, yêu cầu vẫn pending
@@ -359,6 +360,22 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   check("lúc này em mới nhận đúng 1 thông báo join_request_approved", (await prisma.notification.count({ where: { userId: X.id, type: "join_request_approved" } })) === 1);
   const rjZ = await form(`${apBase}/${rq.Z}/tu-choi`, T, [["note", "Hẹn kỳ sau"]]);
   check("từ chối yêu cầu của em suspended vẫn được (không bị chặn nhầm)", loc(rjZ).endsWith("duyet=tuchoi") && (await prisma.classJoinRequest.findUnique({ where: { id: rq.Z } }))?.status === "rejected");
+
+  section("(15b) Q13: lớp GVCN Vào ngay — không cần dấu Miễn phí; lớp gia sư vẫn cần");
+  const GVN = await mkSuper("GVCN thử Vào ngay");
+  const GVC = await mkCourse(GVN.id, { name: "Lớp GVCN mở", joinPolicy: "approve" });
+  const pgv = await api("PATCH", `/api/courses/${GVC.id}`, { as: GVN, body: { joinPolicy: "open" } });
+  const gvcAfter = await prisma.course.findUnique({ where: { id: GVC.id } });
+  check("GVCN đổi lớp mình sang Vào ngay (giá 0, chưa đơn giá, không dấu Miễn phí) → 200, lớp công khai", pgv.status === 200 && gvcAfter?.joinPolicy === "open" && gvcAfter?.status === true, [pgv.status, gvcAfter?.joinPolicy, gvcAfter?.status]);
+  const GVE = await mkUser({ name: "Em Vào Ngay" });
+  const jgv = await form(`/api/courses/${GVC.id}/join`, GVE);
+  check("học sinh /join lớp GVCN Vào ngay → vào thẳng, có Enrollment", jgv.status === 303 && loc(jgv).startsWith("/student/hoc-tap") && (await prisma.enrollment.count({ where: { userId: GVE.id, courseId: GVC.id } })) === 1, [jgv.status, loc(jgv)]);
+  await prisma.course.update({ where: { id: GVC.id }, data: { price: 100000 } });
+  const pgv2 = await api("PATCH", `/api/courses/${GVC.id}`, { as: GVN, body: { joinPolicy: "open" } });
+  check("lớp GVCN có giá → Vào ngay bị chặn 400", pgv2.status === 400, pgv2.status);
+  const TGV = await mkCourse(T.id, { name: "Lớp gia sư không dấu", joinPolicy: "approve" });
+  const ptv = await api("PATCH", `/api/courses/${TGV.id}`, { as: T, body: { joinPolicy: "open" } });
+  check("lớp gia sư không dấu Miễn phí → Vào ngay vẫn bị chặn 400", ptv.status === 400, ptv.status);
 
   section("(16) Audit");
   for (const act of ["class_join_request.create", "class_join_request.approve", "class_join_request.reject", "class_join_request.cancel", "class_invite.personal_issue", "enrollment.create"]) {

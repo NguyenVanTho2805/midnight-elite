@@ -200,16 +200,16 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   // Ngăn của /admin/khoa-hoc/<id> do phòng Quản trị giữ (bản gốc, KHÔNG có khung thả: còn dòng "sắp có"); khung 'khong-chu' của DocumentsEditor chỉ
   // dựng được khi canUpload=false mà trang gia sư không mở được cho quản trị (redirectIfNotTutor). Nên ca này kiểm hai điều còn đúng: quản trị
   // KHÔNG có đường tải tệp lên KiN (không vùng thả, không gọi init / config) và vẫn dán link được.
-  section("6. Quản trị (không phải chủ lớp): /admin/khoa-hoc/<id> không có vùng thả tệp, không gọi kho tệp, vẫn dán link");
+  section("6. Quản trị (không phải chủ lớp): /admin/khoa-hoc/<id> không còn soạn bài, không vùng thả, không gọi kho tệp; có lối sang vỏ gia sư");
   const ca = await ctxFor(SA, { width: 1280, height: 900 });
   const pa = await ca.newPage(); watch(pa);
   const neta = track(pa);
   await pa.goto(`${ADMIN}/admin/khoa-hoc/${course.id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  await pa.getByRole("button", { name: /Chương bài/ }).first().click({ timeout: 120000 }).catch(() => {});
-  await pa.getByRole("button", { name: /\+ Thêm bài học/ }).first().click({ timeout: 120000 });
-  await pa.getByText("Tài liệu đính kèm").first().waitFor({ timeout: 60000 });
-  check("quản trị: KHÔNG có vùng thả / ô chọn tệp tài liệu, KHÔNG gọi /api/media/config hay init", (await pa.locator("[data-tai-lieu-tha], [data-o-tha]").count()) === 0 && (await pa.locator('input[type=file]').count()) === 0 && neta.init === 0);
-  check("quản trị: vẫn có ô dán link", (await pa.getByPlaceholder(/paste link Google Drive/i).count()) === 1);
+  // SCL-F2: trang quản trị của lớp không còn soạn bài (tab Chương bài đã bỏ); soạn bài/tài liệu chỉ ở vỏ gia sư qua nút "Mở lớp trong vỏ gia sư".
+  await pa.locator("[data-mo-vo-gia-su]:visible").first().waitFor({ timeout: 120000 });
+  check("quản trị: KHÔNG có trình soạn bài / vùng thả / ô chọn tệp, KHÔNG gọi /api/media/config hay init", (await pa.getByRole("button", { name: /\+ Thêm bài học/ }).count()) === 0 && (await pa.locator("[data-tai-lieu-tha], [data-o-tha]").count()) === 0 && (await pa.locator('input[type=file]:not([accept="image/*"])').count()) === 0 && neta.init === 0,
+    { them: await pa.getByRole("button", { name: /\+ Thêm bài học/ }).count(), tha: await pa.locator("[data-tai-lieu-tha], [data-o-tha]").count(), file: await pa.locator('input[type=file]:not([accept="image/*"])').count(), init: neta.init });
+  check("quản trị: có nút 'Mở lớp trong vỏ gia sư' trỏ về tên miền chính đúng lớp", ((await pa.locator("[data-mo-vo-gia-su]:visible").first().getAttribute("href")) ?? "").includes(course.id));
   await ca.close();
 
   // ── 7. 390 / 320: không tràn ngang khi hàng đợi đang hiện ────────────────────────────────────────────
