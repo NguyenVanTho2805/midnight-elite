@@ -93,7 +93,7 @@ const H = 3_600_000;
   const catText = await pg.locator("[data-class-catalog]").innerText();
   check("mỗi lớp có tên, 'Gia sư: Cô Hạnh', tiến độ ('Đã hoàn thành 1/2 bài' cho Địa 12)", /Địa 12/.test(catText) && /Sử 12 nâng cao/.test(catText) && (catText.match(/Gia sư: Cô Hạnh/g) ?? []).length === 3 && /Đã hoàn thành 1\/2 bài/.test(catText), catText);
   check("lời dẫn nói rõ đang học 3 lớp và cách chọn", await pg.getByText(/Bạn đang học 3 lớp/).isVisible());
-  check("có đúng MỘT lối 'Nhập mã lớp' (mục 'Tham gia lớp khác') → /student/nhap-ma-lop", (await pg.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1 && (await pg.getByRole("link", { name: "Nhập mã lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
+  check("có đúng MỘT lối 'Nhập mã lớp' (đầu trang, SCL P2-13) → /student/nhap-ma-lop", (await pg.getByRole("link", { name: "Nhập mã lớp" }).count()) === 1 && (await pg.getByRole("link", { name: "Nhập mã lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
   await shot(pg, "lop-nhieu-lop-danh-muc");
 
   await cards.nth(0).getByRole("link", { name: "Địa 12", exact: true }).click();

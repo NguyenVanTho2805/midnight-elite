@@ -38,7 +38,8 @@ const overflow = (p: Page) => p.evaluate(() => document.documentElement.scrollWi
   check("mục Mã mời mở sẵn và thấy MÃ LỚP 8 ký tự có sẵn (không phải bấm tạo)", /^[2-9A-Z]{8}$/.test(code1), code1);
   const invs = await prisma.classInvite.findMany({ where: { courseId: c1.id } });
   check("DB: đúng 1 mã lớp (kind class, không giới hạn lượt, không hết hạn) và trùng mã đang hiện", invs.length === 1 && invs[0].code === code1 && invs[0].kind === "class" && invs[0].maxUses === null && invs[0].expiresAt === null, invs);
-  check("khối nói rõ cách vào: 'Xin vào lớp' + 'Cô duyệt' + link trang lớp + nút Sao chép mã", await p.locator("[data-join-howto]").getByText(/Xin vào lớp/).isVisible() && await p.getByRole("button", { name: "Sao chép link trang lớp" }).first().isVisible() && await p.getByRole("button", { name: /^Sao chép mã/ }).first().isVisible());
+  // SCL Q7: khối chỉ còn MỘT nút sao chép (link mời) + nút Đổi mã.
+  check("khối nói rõ cách vào: 'Xin vào lớp' + một nút 'Sao chép link mời' + 'Đổi mã'", await p.locator("[data-join-howto]").getByText(/Xin vào lớp/).isVisible() && await p.locator("[data-join-howto]").getByRole("button", { name: "Sao chép link mời" }).count() === 1 && await p.locator("[data-join-howto] button").filter({ hasText: /Sao chép/ }).count() === 1 && await p.locator("[data-join-howto] [data-rotate-code]").isVisible());
   check("khối 'Cách học sinh vào lớp' chỉ hiện MỘT lần trên trang (không trùng với đầu trang)", await p.locator("[data-join-howto]").count() === 1);
   await p.reload({ waitUntil: "networkidle" });
   check("tải lại: vẫn đúng mã đó, vẫn 1 mã trong DB", (await p.locator("[data-class-code]").innerText()).trim() === code1 && (await prisma.classInvite.count({ where: { courseId: c1.id } })) === 1);

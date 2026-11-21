@@ -24,7 +24,8 @@ export async function GET(req: Request) {
     const userWhere = isMember ? { deletedAt: null } : { deletedAt: null, banned: false, ...NOT_SYSTEM_ACCOUNT };
     // Chỉ tính điểm của lượt đã công bố / đề không giữ điểm (examHold): điểm tự luận dở dang không vào bảng xếp hạng.
     const results = await dropHeldResults(await prisma.examResult.findMany({
-      where: category ? { exam: { category }, user: userWhere } : { user: userWhere },
+      // SCL-A (Q5): điểm tự khai chưa được gia sư duyệt (pendingReview) không vào bảng chung.
+      where: category ? { pendingReview: false, exam: { category }, user: userWhere } : { pendingReview: false, user: userWhere },
       select: {
         userId: true, examId: true, score: true,
         user: { select: { id: true, name: true, school: true } },

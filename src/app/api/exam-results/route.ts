@@ -7,6 +7,9 @@ import { dropHeldResults, heldAttemptIdsAmong } from "@/lib/examHold";
 import { rootIdOfExam } from "@/lib/examVariantServer";
 import { maskName } from "@/lib/lookupPrivacy";
 import { canSeeFullStudentNames } from "@/lib/examBoardPrivacy";
+import { boardRowFor, selfScoreError } from "@/lib/examResultRules";
+import { classExamViewBlock } from "@/lib/examResultAccessServer";
+import { canWriteAttempt } from "@/lib/attemptAccess";
 
 /** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
 async function rankOf(examId: string, score: number): Promise<number> {
@@ -69,6 +72,11 @@ export async function GET(req: Request) {
     // BU-04: ExamResult ghi theo ĐỀ GỐC (một dòng cho cả nhóm mã đề) — id mã con quy về gốc. Phần còn lại (top 50, hiển thị tên) KHÔNG đổi (quyết định COO 02/11).
     const examId = (await rootIdOfExam(examIdParam)) ?? examIdParam;
 
+    // SCL-A (P2-7): đề gắn lớp — chỉ người trong lớp xem bảng điểm (lớp khác 403). Đề không tồn tại vẫn trả [] như cũ.
+    const meta = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true, ownerId: true, courseId: true, price: true, course: { select: { ownerId: true } } } });
+    const viewBlock = meta ? await classExamViewBlock(session, meta) : null;
+    if (viewBlock) return NextResponse.json(viewBlock, { status: 403 });
+
     // QZ-11: chưa được công bố thì không xem bảng điểm của đề có tự luận (điểm còn dở dang).
     if (!resultVisibility(await loadPublishState(examId, session.userId), true).showScore) return NextResponse.json([]);
 
@@ -79,9 +87,9 @@ export async function GET(req: Request) {
       take: 50,
     }));
     // NO-0511 (cùng họ quyết định 1B): tên thật chỉ cho quản trị / gia sư chủ đề / gia sư chủ lớp của đề; người khác thấy tên che (maskName), không trường, không email.
-    const meta = await prisma.exam.findUnique({ where: { id: examId }, select: { ownerId: true, course: { select: { ownerId: true } } } });
+    // SCL-A: người thấy tên che cũng không nhận userId; dòng của chính mình có isMe.
     const full = canSeeFullStudentNames(session, { examOwnerId: meta?.ownerId ?? null, courseOwnerId: meta?.course?.ownerId ?? null });
-    return NextResponse.json(results.map(r => ({ ...r, user: { name: full ? r.user.name : maskName(r.user.name) } })));
+    return NextResponse.json(results.map(r => boardRowFor(r, session.userId, full, maskName)));
   }
 
   return NextResponse.json([]);
@@ -92,17 +100,10 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Chưa đăng nhập" }, { status: 401 });
 
-  const { examId, score } = await req.json();
-  const points = 150; // Thang điểm chuẩn HSA — không nhận từ client để tránh injection
+  const { examId, score } = await req.json().catch(() => ({}));
+  if (typeof examId !== "string" || !examId) return NextResponse.json({ error: "Thiếu đề thi" }, { status: 400 });
 
-  if (
-    !examId ||
-    typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > points
-  ) {
-    return NextResponse.json({ error: "Thông tin điểm không hợp lệ (0–150)" }, { status: 400 });
-  }
-
-  const exam = await prisma.exam.findUnique({ where: { id: examId } });
+  const exam = await prisma.exam.findUnique({ where: { id: examId }, select: { id: true, active: true, isDraft: true, totalPoints: true, courseId: true, price: true } });
   if (!exam) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
 
   // QZ-11: đề có câu hỏi trong KiN thì điểm chỉ đến từ lượt làm đã nộp (máy chủ chấm). Không cho tự nhập điểm — nếu không, học sinh
@@ -110,6 +111,20 @@ export async function POST(req: Request) {
   if ((await prisma.examQuestion.count({ where: { examId } })) > 0) {
     return NextResponse.json({ error: "Đề này làm và chấm ngay trong KiN, không nhập điểm tay. Hãy vào làm bài." }, { status: 409 });
   }
+
+  // SCL-A (P1-2): đề đang mở, không nháp; điểm 0..tổng điểm CỦA ĐỀ; đề gắn lớp thì phải đang học lớp đó (cùng luật ghi lượt làm bài).
+  const bad = selfScoreError(exam, score);
+  if (bad) return NextResponse.json({ error: bad }, { status: 400 });
+  if (exam.courseId) {
+    const [enrollment, guest] = await Promise.all([
+      prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } }, select: { status: true } }),
+      prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId: session.userId, examId } }, select: { userId: true } }),
+    ]);
+    if (!canWriteAttempt({ courseId: exam.courseId, price: exam.price, enrollment, hasGuestAccess: !!guest })) {
+      return NextResponse.json({ error: "Bạn không có quyền với lớp này" }, { status: 403 });
+    }
+  }
+  const points = Math.round(exam.totalPoints); // cột ExamResult.totalPoints là Int
 
   // Upsert + tăng participants (chỉ lần nộp đầu) trong cùng 1 transaction để tránh race condition
   const result = await prisma.$transaction(async (tx) => {
@@ -119,8 +134,9 @@ export async function POST(req: Request) {
 
     const r = await tx.examResult.upsert({
       where:  { userId_examId: { userId: session.userId, examId } },
-      create: { userId: session.userId, examId, score, totalPoints: points },
-      update: { score, completedAt: new Date() },
+      // Q5: điểm tự khai luôn ở trạng thái chờ gia sư duyệt (khai lại cũng phải duyệt lại); chưa duyệt thì không vào báo cáo tháng.
+      create: { userId: session.userId, examId, score, totalPoints: points, pendingReview: true },
+      update: { score, totalPoints: points, completedAt: new Date(), pendingReview: true },
     });
 
     if (!existing) {

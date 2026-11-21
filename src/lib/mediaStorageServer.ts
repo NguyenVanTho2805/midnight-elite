@@ -108,7 +108,7 @@ export function signCloudinaryParams(params: Record<string, string>, apiSecret: 
 export const cloudinaryPublicId = (courseId: string, assetId: string): string => `kin-lessons/${courseId.replace(/[^A-Za-z0-9_-]/g, "_")}/${assetId}`;
 
 export function cloudinaryUploadInit(env: CloudinaryEnv, publicId: string, nowSeconds = Math.floor(Date.now() / 1000)) {
-  const params = { public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" };
+  const params = { overwrite: "false", public_id: publicId, timestamp: String(nowSeconds), type: "authenticated" }; // SCL-J: như tài liệu — chữ ký dùng lại không ghi đè video đã kiểm
   return {
     method: "POST" as const,
     url: `https://api.cloudinary.com/v1_1/${env.cloud}/video/upload`,

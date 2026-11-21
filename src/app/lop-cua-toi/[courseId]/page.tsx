@@ -11,19 +11,20 @@
 //
 // Server component wrapper lấy course + role, client component render UI.
 import { redirect, notFound } from "next/navigation";
+import { isCenterAdmin } from "@/lib/tutorGate";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { normalizeFeeMode } from "@/lib/tuitionFee";
-import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
+import { effectivePolicy, redeemPolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { courseRoleForPage } from "@/lib/courseAccessServer";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
-import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
+import { TUTOR_PENDING_PATH, isTeacher as isTeacherAccount } from "@/lib/tutorGate";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function LopPage({ params, searchParams }: Props) {
 
   const course = await prisma.course.findUnique({
     where:  { id: courseId },
-    select: { id: true, name: true, category: true, ownerId: true, feeMode: true, joinPolicy: true, tag: true, price: true },
+    select: { id: true, name: true, category: true, ownerId: true, feeMode: true, joinPolicy: true, tag: true, price: true, owner: { select: { role: true, adminRole: true } } },
   });
   if (!course) notFound();
 
@@ -55,7 +56,8 @@ export default async function LopPage({ params, searchParams }: Props) {
   // GS-LOP-GON (09/11/2026): CHỦ LỚP là gia sư thật chỉ có MỘT dải tab của lớp (…/quan-lop/<id>/*, mỗi tab một đường). Trang hộp việc 6 tab này không còn là
   // menu cạnh tranh với dải đó: chuyển hướng sang đúng tab, giữ các tham số phụ (moi, lich, them, duyet, n, ma) vì các POST 303 của tạo lớp / duyệt vào lớp /
   // thêm học sinh / mã mời trả về đây. Trang này không có loading.tsx nên redirect() ở đây là 307 thật (kiểm ở t-lop-gon). Đồng giảng, quản trị xem, học sinh: KHÔNG đổi.
-  if (isOwner && isTeacher) redirect(legacyClassTarget(courseId, sp));
+  // SCL-B (Q1): Chủ nhiệm (quản trị trung tâm) đứng lớp như chủ lớp ⇒ cùng dải tab quan-lop, không còn xem LopChiTiet ở vỏ học sinh.
+  if ((isOwner && isTeacher) || isCenterAdmin(session)) redirect(legacyClassTarget(courseId, sp));
 
   // TUT-dong-giang: gia sư không phải chủ lớp có thể là đồng giảng / giáo viên bộ môn (CourseTeacher active, đọc lại User từ DB). Người lạ vẫn 404 như cũ.
   let coRole: "co_teacher" | "subject_teacher" | null = null;
@@ -118,7 +120,7 @@ export default async function LopPage({ params, searchParams }: Props) {
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
       initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", codeFailed: sp.ma === "loi",
       // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
-      joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
+      joinPolicy: co ? effectivePolicy(null) : redeemPolicy(course.joinPolicy, isTeacherAccount(course.owner)), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
       pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),
     }} />;
   }

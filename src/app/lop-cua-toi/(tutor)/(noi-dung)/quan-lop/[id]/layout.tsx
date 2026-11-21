@@ -31,7 +31,7 @@ function ClassNotice({ title, hint, code }: { title: string; hint: string; code:
 
 export default async function QuanLopLayout({ children, params }: { children: ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await redirectIfNotTutor(await getSession(), { path: classBase(id), adminTo: "/admin" });
+  const session = await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: classBase(id), adminTo: "/admin" });
   const gate = await loadClassHead(session, id);
   if (!gate.ok) {
     return gate.reason === "not_found"

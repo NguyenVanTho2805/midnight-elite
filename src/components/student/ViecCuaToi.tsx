@@ -112,7 +112,11 @@ export default function ViecCuaToi() {
           </p>
         </div>
         {/* DG (14/11/2026): "Xem lịch tuần" đi cùng cờ LICH (Lịch học đã rời thanh bên từ LOI-01). */}
-        {!isLinkHidden("/student/lich-hoc") && <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} self-start flex-shrink-0 max-md:hidden`}>Xem lịch tuần</Link>}
+        <div className="flex flex-wrap gap-3 self-start flex-shrink-0">
+          {/* SCL P2-13: trang chủ học sinh có lối nhập mã lớp ngay đầu trang. */}
+          {!(items !== null && nothing) && <Link href="/student/nhap-ma-lop" data-nhap-ma-dau className={kinButtonClass("secondary")}>Nhập mã lớp</Link>}
+          {!isLinkHidden("/student/lich-hoc") && <Link href="/student/lich-hoc" className={`${kinButtonClass("secondary")} max-md:hidden`}>Xem lịch tuần</Link>}
+        </div>
       </header>
 
       {/* LOI-03 mục 4.4: phiếu "Hôm nay có lớp" (bài có ngày học hôm nay + 7 ngày tới). Không có bài hẹn thì không vẽ gì. */}

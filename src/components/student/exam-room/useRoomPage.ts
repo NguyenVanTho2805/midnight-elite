@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ExamAttemptHistoryItem, type ExamFull } from "@/lib/api";
 import { PUBLIC_EXAM_CLOSED_CODE } from "@/lib/features";
+import { ENROLLMENT_SUSPENDED_CODE, ENROLLMENT_REMOVED_CODE } from "@/lib/enrollmentMessages";
 import { examRoomApi, type GateResponse, type ReviewResponse } from "@/lib/examRoomApi";
 
 export type Phase = "loading" | "error" | "gate" | "azota" | "taking" | "done" | "review";
@@ -15,6 +16,8 @@ export function useRoomPage(examId: string) {
   const [gateErr, setGateErr] = useState(false);
   /** DG: máy chủ báo thi thử công khai đang đóng (cờ THI_THU_CONG_KHAI) — trang báo đúng lý do thay cho "Không tìm thấy đề". */
   const [publicClosed, setPublicClosed] = useState(false);
+  /** SCL-A: đề của lớp mà em đã nghỉ / không còn trong lớp — máy chủ trả {error, code}; trang hiện đúng lời đó thay cho "Không tìm thấy đề". */
+  const [classBlock, setClassBlock] = useState<string | null>(null);
   const [myResult, setMyResult] = useState<MyResult | null>(null);
   const [history, setHistory] = useState<ExamAttemptHistoryItem[]>([]);
   const [board, setBoard] = useState<{ score: number }[]>([]);
@@ -48,8 +51,9 @@ export function useRoomPage(examId: string) {
         const [ex, mine] = await Promise.all([
           fetch(`/api/exams/${examId}`, { credentials: "same-origin" }).then(async r => {
             if (r.ok) return r.json() as Promise<ExamFull>;
-            const body = await r.json().catch(() => null) as { code?: string } | null;
+            const body = await r.json().catch(() => null) as { code?: string; error?: string } | null;
             if (body?.code === PUBLIC_EXAM_CLOSED_CODE) setPublicClosed(true);
+            if ((body?.code === ENROLLMENT_SUSPENDED_CODE || body?.code === ENROLLMENT_REMOVED_CODE) && body.error) setClassBlock(body.error);
             return null;
           }),
           fetch("/api/exam-results?mine=true", { credentials: "same-origin" }).then(r => (r.ok ? r.json() : [])) as Promise<(MyResult & { examId: string })[]>,
@@ -90,5 +94,5 @@ export function useRoomPage(examId: string) {
 
   /** Lượt có thể xem lại khi vào thẳng trang đã có kết quả: lượt đã nộp gần nhất trong lịch sử. */
   const latestSubmitted = history.find(h => h.status !== "in_progress")?.id ?? null;
-  return { exam, phase, setPhase, publicClosed, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
+  return { exam, phase, setPhase, publicClosed, classBlock, gate, gateErr, setGateErr, loadGate, refreshGate, myResult, setMyResult, history, board, loadHistory, review, reviewLoading, reviewErr, loadReview, latestSubmitted };
 }

@@ -6,6 +6,6 @@ import LopHoc from "@/components/tutor/LopHoc";
 export const dynamic = "force-dynamic";
 
 export default async function LopPage() {
-  await redirectIfNotTutor(await getSession(), { path: "/lop-cua-toi/lop" });
+  await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: "/lop-cua-toi/lop" });
   return <LopHoc />;
 }

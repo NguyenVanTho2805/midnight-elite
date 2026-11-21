@@ -1,7 +1,7 @@
 // FE-157 — thẻ gia sư dùng chung (lưới /giang-vien và các nơi liệt kê gia sư). Tách nguyên văn từ trang danh sách, không đổi giao diện.
 import { KinPanel } from "@/components/kin/Panel";
 import Link from "next/link";
-import { kinButtonClass } from "@/components/kin/Button";
+import { kinButtonClass } from "@/components/kin/buttonClass";
 import { MODE_LABEL, areaLine, hasPublicArea, priceText, type PublicArea } from "@/lib/tutorArea";
 
 export interface TutorListItem {

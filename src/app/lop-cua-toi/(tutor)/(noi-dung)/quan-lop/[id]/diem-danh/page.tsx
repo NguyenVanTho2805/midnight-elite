@@ -19,7 +19,7 @@ const dm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 
 export default async function DiemDanhPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await redirectIfNotTutor(await getSession(), { path: `${classBase(id)}/diem-danh`, adminTo: "/admin" });
+  const session = await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: `${classBase(id)}/diem-danh`, adminTo: "/admin" });
   const gate = await gateClassPage(session, id, { ownerOnly: true });
   if (!gate.ok) return null;
   const h = await loadAttendanceHistory(id);

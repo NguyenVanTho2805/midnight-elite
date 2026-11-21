@@ -9,6 +9,10 @@ export const PERSONAL_CODE_TTL_DAYS = 30;
 export const REAPPLY_COOLDOWN_HOURS = 24;
 export const JOIN_NOTE_MAX = 200;
 export const JOIN_BULK_MAX = 50;
+/** SCL P2-9: tra mã (by-code) + dùng mã (redeem) chung một bộ đếm theo tài khoản. Ô nhập tra sau 400 ms nên gõ bình thường không chạm. */
+export const INVITE_LOOKUP_LIMIT = { max: 30, windowMs: 10 * 60_000 } as const;
+/** SCL Q7: "Đổi mã" lớp, theo tài khoản gia sư. */
+export const INVITE_ROTATE_LIMIT = { max: 5, windowMs: 10 * 60_000 } as const;
 /** Loại thông báo (type tự do của notify). */
 export const JOIN_NOTIFY_TYPES = {
   new: "join_request_new",
@@ -27,6 +31,13 @@ export function parseJoinPolicy(raw: unknown): { ok: true; value: JoinPolicy | n
 /** Giá trị lưu → chính sách hiệu lực: null/lạ ⇒ "invite_only". */
 export function effectivePolicy(stored: string | null | undefined): JoinPolicy {
   return (JOIN_POLICIES as readonly string[]).includes(stored ?? "") ? (stored as JoinPolicy) : "invite_only";
+}
+
+/** SCL Q7 (21/11/2026): chính sách khi học sinh DÙNG MÃ và khi gia sư xem ô "Cách vào lớp". Lớp cũ chưa từng chọn (null) ⇒ "approve": mã lộ ra ngoài không
+ *  còn cho người lạ vào thẳng lớp, mà thành yêu cầu chờ gia sư duyệt. Chuỗi lạ vẫn như effectivePolicy. Trang công khai và nút "Vào lớp" KHÔNG dùng hàm này.
+ *  Chỉ khi CHỦ lớp là gia sư đã duyệt: lớp quản trị tạo (chủ là admin) không có ai duyệt được (requireCourseTutor chỉ nhận gia sư chủ lớp), nên giữ "invite_only". */
+export function redeemPolicy(stored: string | null | undefined, ownerIsTeacher: boolean): JoinPolicy {
+  return stored == null && ownerIsTeacher ? "approve" : effectivePolicy(stored);
 }
 
 export type JoinStatus = "pending" | "approved" | "rejected" | "cancelled";

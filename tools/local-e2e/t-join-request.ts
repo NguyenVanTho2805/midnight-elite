@@ -310,7 +310,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
   await prisma.course.update({ where: { id: PN.id }, data: { joinPolicy: "approve" } });
   const pnCode = codeOf(await form(`/api/courses/${PN.id}/join`, C));
   await api("POST", `/api/invites/${pnCode}/redeem`, { as: C });
-  await prisma.course.update({ where: { id: PN.id }, data: { joinPolicy: null } });
+  await prisma.course.update({ where: { id: PN.id }, data: { joinPolicy: "invite_only" } }); // SCL Q7: null nay là "chờ duyệt"; "vào ngay bằng mã" là invite_only
   const pnClass = await api("POST", `/api/courses/${PN.id}/invites`, { as: T, body: { maxUses: 5 } });
   const pnRd = await api("POST", `/api/invites/${pnClass.json.code}/redeem`, { as: C });
   const pnReq = await prisma.classJoinRequest.findUnique({ where: { userId_courseId: { userId: C.id, courseId: PN.id } } });

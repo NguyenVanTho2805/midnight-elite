@@ -22,7 +22,9 @@ section("tutorShellKind — vỏ dưới /lop-cua-toi");
 check("gia sư → tutor (trạng thái đơn truyền gì cũng bỏ qua)", tutorShellKind(T, "none") === "tutor" && tutorShellKind(T, "pending") === "tutor");
 check("học sinh có đơn đang chờ → tutor-pending", tutorShellKind(S, "pending") === "tutor-pending");
 check("học sinh thường (none) → student; bị từ chối → student (họ là học sinh thường, vẫn tự mở được trang chờ duyệt để đọc lý do)", tutorShellKind(S, "none") === "student" && tutorShellKind(S, "rejected") === "student" && tutorShellKind(S, undefined) === "student");
-check("quản trị cấp 1 / nội dung / admin thiếu adminRole → admin-preview (vỏ học sinh có băng xem thử)", tutorShellKind(SA) === "admin-preview" && tutorShellKind(CA) === "admin-preview" && tutorShellKind(A0) === "admin-preview");
+// SCL-B (Q1): Chủ nhiệm (quản trị cấp 1 / nội dung) đứng lớp trong vỏ gia sư. Phá cố ý: bỏ `|| isCenterAdmin(s)` trong tutorShellKind → ca này đỏ.
+check("quản trị cấp 1 / nội dung → tutor (Chủ nhiệm đứng lớp, SCL-B)", tutorShellKind(SA) === "tutor" && tutorShellKind(CA) === "tutor");
+check("admin thiếu adminRole → admin-preview (không đoán)", tutorShellKind(A0) === "admin-preview");
 check("khách → null", tutorShellKind(null) === null);
 check("isApplicant: chỉ 'pending' (approved đã là teacher; rejected = học sinh thường)", isApplicant("pending") && !isApplicant("rejected") && !isApplicant("approved") && !isApplicant("none") && !isApplicant(null));
 
@@ -34,7 +36,10 @@ check("gia sư chờ duyệt → trang chờ duyệt (không rơi vào danh sác
 check("gia sư chờ duyệt vào được trang có allowPending (Liên hệ hỗ trợ)", tutorGateTarget(S, "pending", { ...P, allowPending: true }) === null);
 check("học sinh thường → /lop-cua-toi (mặc định) hoặc studentTo của trang (/student/hoc-phi)", tutorGateTarget(S, "none", P) === TUTOR_HOME && tutorGateTarget(S, "none", { ...P, studentTo: "/student/hoc-phi" }) === "/student/hoc-phi");
 check("học sinh bị từ chối → như học sinh thường (allowPending không mở cho họ)", tutorGateTarget(S, "rejected", P) === TUTOR_HOME && tutorGateTarget(S, "rejected", { ...P, allowPending: true }) === TUTOR_HOME);
-check("quản trị → /lop-cua-toi (mặc định) hoặc adminTo (/admin ở nhóm nội dung)", tutorGateTarget(SA, "none", P) === TUTOR_HOME && tutorGateTarget(CA, "none", { ...P, adminTo: "/admin" }) === "/admin" && tutorGateTarget(A0, "none", P) === TUTOR_HOME);
+check("quản trị ở trang riêng của gia sư → /lop-cua-toi (mặc định) hoặc adminTo (/admin ở nhóm nội dung)", tutorGateTarget(SA, "none", P) === TUTOR_HOME && tutorGateTarget(CA, "none", { ...P, adminTo: "/admin" }) === "/admin" && tutorGateTarget(A0, "none", P) === TUTOR_HOME);
+// SCL-B. Phá cố ý: bỏ dòng `if (o.allowAdmin && isCenterAdmin(s)) return null;` → ca đầu đỏ; đổi thành `if (o.allowAdmin) return null;` → ca hai đỏ.
+check("trang dạy học (allowAdmin): Chủ nhiệm vào được", tutorGateTarget(SA, "none", { ...P, allowAdmin: true, adminTo: "/admin" }) === null && tutorGateTarget(CA, "none", { ...P, allowAdmin: true }) === null);
+check("allowAdmin KHÔNG mở cho học sinh / admin thiếu adminRole / khách", tutorGateTarget(S, "none", { ...P, allowAdmin: true }) === TUTOR_HOME && tutorGateTarget(A0, "none", { ...P, allowAdmin: true }) === TUTOR_HOME && (tutorGateTarget(null, "none", { ...P, allowAdmin: true }) ?? "").startsWith("/dang-nhap"));
 
 section("studentAreaRedirect — AuthGuard (null = cho qua)");
 const V = "/student/viec-cua-toi", CD = "/cai-dat/chu-de";

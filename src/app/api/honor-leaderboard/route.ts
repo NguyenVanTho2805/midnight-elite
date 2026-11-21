@@ -30,6 +30,7 @@ export async function GET() {
         },
         lessonProgress: { where: { completed: true }, select: { lessonId: true } },
         examResults: {
+          where: { pendingReview: false }, // SCL-A (Q5): điểm tự khai chưa duyệt không vào vinh danh / GPA
           select: { score: true, totalPoints: true, examId: true, userId: true },
         },
         assignmentSubmissions: {

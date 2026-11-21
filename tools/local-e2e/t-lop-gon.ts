@@ -10,7 +10,7 @@
 //
 // CA PHÁ CỐ Ý (09/11/2026, đã chạy thật: phá → đỏ đúng ca → trả lại):
 //   - [courseId]/page.tsx bỏ dòng `if (isOwner && isTeacher) redirect(...)` → 15 ca 'chủ lớp → 307' đỏ; đổi thành `if (isTeacher)` → 5 ca đỏ (đồng giảng / bộ môn / gia sư B bị chuyển nhầm);
-//     đổi thành `if (isOwner)` → ca 'quản trị đứng tên một lớp KHÔNG bị chuyển' đỏ (ca này thêm sau vì quản trị xem ở lớp của gia sư khác không bắt được lỗi này);
+//     (SCL-B: dòng nay là `if ((isOwner && isTeacher) || isCenterAdmin(session))`; bỏ vế isCenterAdmin → hai ca 'SCL-B: Chủ nhiệm …' đỏ) (ca này thêm sau vì quản trị xem ở lớp của gia sư khác không bắt được lỗi này);
 //   - quan-lop/[id]/hoc-vien/page.tsx `ownerOnly: true` → false, hoặc bỏ nhánh redirect đồng giảng ở quan-lop/[id]/page.tsx → ca 'đồng giảng → /lop-cua-toi/<id>' đỏ (2 ca mỗi lần);
 //   - tutorClassPageServer.loadClassHead gộp 404 vào 403 → mọi ca 'id lạ → màn không tìm thấy' đỏ;
 //   - tutorClassTableServer trả `cover: c.bg` (bg thô) → 4 ca gallery đỏ (https đã lọc, không rò bg thô, bg độc, bg http);
@@ -110,10 +110,11 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
     check(`${who}: ?tab=hoc-phi cũng không chuyển hướng`, r2.status === 200 && go(r2).to === null, [r2.status, go(r2).to]);
   }
   const rAdm = await api("GET", `/lop-cua-toi/${idA}`, { as: ADM });
-  check("quản trị xem thử: KHÔNG bị chuyển sang quan-lop (LopChiTiet như cũ)", go(rAdm).to === null || !go(rAdm).to!.startsWith(QL), [rAdm.status, go(rAdm).to]);
+  // SCL-B (21/11/2026, Q1): ĐỔI CÓ CHỦ ĐÍCH — Chủ nhiệm (quản trị trung tâm) đứng lớp như chủ lớp ⇒ cùng dải tab quan-lop (trước: LopChiTiet xem thử).
+  check("SCL-B: Chủ nhiệm mở lớp của gia sư → 307 sang quan-lop", rAdm.status === 307 && (go(rAdm).to ?? "").startsWith(QL), [rAdm.status, go(rAdm).to]);
   const CAD = await mkCourse(ADM.id, { name: "Lớp Do Quản Trị Đứng Tên" }); // quản trị là ownerId nhưng KHÔNG phải gia sư thật → giữ trang cũ (xem thử)
   const rAdmOwn = await api("GET", `/lop-cua-toi/${CAD.id}?tab=hoc-phi`, { as: ADM });
-  check("quản trị đứng tên một lớp (isOwner nhưng không phải gia sư) → KHÔNG bị chuyển sang quan-lop", !(go(rAdmOwn).to ?? "").startsWith(QL), [rAdmOwn.status, go(rAdmOwn).to]);
+  check("SCL-B: Chủ nhiệm đứng tên một lớp → cũng sang quan-lop, giữ tab/muc", (go(rAdmOwn).to ?? "").startsWith(`${QL}/${CAD.id}`), [rAdmOwn.status, go(rAdmOwn).to]);
   const rEnr = await api("GET", `/lop-cua-toi/${idA}`, { as: ENR });
   // LOI-03 mục 4.5 (Q4, commit d0159fbf): học sinh đã ghi danh mở /lop-cua-toi/<lớp> → 307 sang trang lớp của học sinh (kỳ vọng cũ "200 tại chỗ" đã lỗi thời).
   check("học sinh trong lớp: 307 sang /student/hoc-tap?course=<lớp>", rEnr.status === 307 && (go(rEnr).to ?? "").startsWith("/student/hoc-tap?course="), [rEnr.status, go(rEnr).to]);
@@ -273,7 +274,10 @@ const noStore = (r: Res) => { const cc = r.headers.get("cache-control") ?? ""; r
     const rs = await api("GET", `${QL}/${idA}${p}`, { as: STU });
     check(`học sinh → …/<A>${p || "/"}: chuyển /lop-cua-toi, không lộ lớp`, go(rs).to === "/lop-cua-toi" && !rs.text.includes("Lớp Toán Bí Mật"), [rs.status, go(rs).to]);
     const ra = await api("GET", `${QL}/${idA}${p}`, { as: ADM });
-    check(`quản trị cấp 1 → …/<A>${p || "/"}: về /admin (vỏ gia sư không phải của họ), không lộ lớp`, go(ra).to === "/admin" && !ra.text.includes("Lớp Toán Bí Mật"), [ra.status, go(ra).to]);
+    // SCL-B (Q1): ĐỔI CÓ CHỦ ĐÍCH — Chủ nhiệm đứng lớp như chủ lớp: vào được trang lớp của gia sư (200, hoặc 307 trong chính lớp như đường cũ /giao-trinh, hay
+    // về thư viện Lớp khi tab bị cờ chặn — ca /diem-danh với DIEM_DANH tắt). Không bao giờ bị đẩy sang /admin nữa.
+    const aTo = go(ra).to ?? "";
+    check(`SCL-B: Chủ nhiệm → …/<A>${p || "/"}: vào được lớp (không về /admin)`, aTo !== "/admin" && (ra.status === 200 || aTo.startsWith(`${QL}/${idA}`) || aTo.startsWith("/lop-cua-toi/lop?tam-dong=")), [ra.status, aTo]);
     const rr = await api("GET", `${QL}/${idA}${p}`, { as: REJ });
     check(`gia sư bị từ chối → …/<A>${p || "/"}: về /lop-cua-toi (như học sinh, không phải trang chờ duyệt), không lộ lớp`, go(rr).to === "/lop-cua-toi" && !rr.text.includes("Lớp Toán Bí Mật"), [rr.status, go(rr).to]);
     if (p === "/giao-trinh") {

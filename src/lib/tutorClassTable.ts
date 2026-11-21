@@ -9,6 +9,23 @@ export interface TutorClassRow {
   students: number; capacity: number | null; schedule: string | null; sessionsTaught: number;
   /** GS-LOP-GON: ảnh bìa thẻ lớp — CHỈ địa chỉ https đã lọc từ Course.bg (coverImageOf), không bao giờ là chuỗi bg thô. Không có ảnh → null (thẻ vẽ chữ cái đầu). Chỉ THÊM. */
   cover: string | null;
+  /** SCL-B (Q1): chỉ có khi Chủ nhiệm (quản trị trung tâm) xem MỌI lớp — gia sư phụ trách của lớp (null = lớp chưa có chủ). Chỉ THÊM. */
+  owner?: { id: string | null; name: string };
+}
+
+export const NO_OWNER_LABEL = "Chưa có gia sư phụ trách";
+
+/** SCL-B: nhóm lớp theo gia sư phụ trách (danh sách của Chủ nhiệm). Giữ thứ tự lớp trong nhóm; nhóm xếp theo tên (vi), lớp chưa có chủ đứng cuối. */
+export function groupClassesByOwner(rows: TutorClassRow[]): { ownerId: string | null; ownerName: string; rows: TutorClassRow[] }[] {
+  const by = new Map<string, { ownerId: string | null; ownerName: string; rows: TutorClassRow[] }>();
+  for (const r of rows) {
+    const id = r.owner?.id ?? null;
+    const key = id ?? "";
+    const g = by.get(key) ?? { ownerId: id, ownerName: id ? (r.owner?.name || "Gia sư") : NO_OWNER_LABEL, rows: [] };
+    g.rows.push(r);
+    by.set(key, g);
+  }
+  return [...by.values()].sort((a, b) => (a.ownerId === null ? 1 : 0) - (b.ownerId === null ? 1 : 0) || a.ownerName.localeCompare(b.ownerName, "vi"));
 }
 
 const DAY_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];

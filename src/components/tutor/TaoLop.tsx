@@ -173,10 +173,11 @@ export default function TaoLop() {
       const payload = {
         ...fee,
         id: slug, name: clean, adminName: clean, shortTitle: clean.toUpperCase().split(" ").slice(0, 2).join("\n"),
-        category: cat, instructor: "KiN", teacherAvatar: "K", openDate: openKey.split("-").reverse().join("/"),
+        category: cat, openDate: openKey.split("-").reverse().join("/"),
         types: ["Video"], tag: feeOn && free ? FREE_CLASS_TAG : null, tagColor: null,
         bg: CATEGORY_GRADIENT[cat] ?? "var(--kin-chu-phu)", strip: "var(--kin-tt-chu-cho)",
-        joinPolicy: policy, price: 0, originalPrice: null, lessons: 0, hours: 0, status: true,
+        // SCL-A (Q10): chỉ lớp "Vào ngay" mới hiện ở trang công khai; tên gia sư máy chủ lấy từ tài khoản tạo lớp.
+        joinPolicy: policy, price: 0, originalPrice: null, lessons: 0, hours: 0, status: policy === "open",
         // Tạo lớp + khung giờ trong MỘT giao dịch (không còn cảnh "lớp có rồi, khung giờ lỗi").
         schedules: activeBlocks.map(toApiSlot), requireSchedule: true, noFixedSchedule: activeBlocks.length === 0 && noFixed,
       };

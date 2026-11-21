@@ -199,7 +199,7 @@ const goodUser: CoTeacherUserRow = { role: "admin", adminRole: "teacher", tutorV
   check("subjects mục > 40 ký tự ⇒ null", normalizeSubjects(["x".repeat(41)]) === null && normalizeSubjects(["x".repeat(40)]) !== null);
   check("subjects sai kiểu ⇒ null", normalizeSubjects("Toán") === null && normalizeSubjects([1]) === null);
   check("hằng: tối đa 5 giáo viên / lớp", MAX_TEACHERS_PER_COURSE === 5);
-  check("nhãn vai tiếng Việt", ROLE_LABEL.owner === "Chủ nhiệm" && ROLE_LABEL.co_teacher === "Đồng giảng" && ROLE_LABEL.subject_teacher === "Giáo viên bộ môn" && ROLE_LABEL.admin === "Quản trị trung tâm");
+  check("nhãn vai tiếng Việt", ROLE_LABEL.owner === "Gia sư phụ trách" && ROLE_LABEL.co_teacher === "Đồng giảng" && ROLE_LABEL.subject_teacher === "Giáo viên bộ môn" && ROLE_LABEL.admin === "Chủ nhiệm");
 
   await done();
 })().catch(e => { console.error("TEST CRASH", e); process.exit(1); });

@@ -1,6 +1,6 @@
 // NO-0511 (API + DB thật + hàm thuần) — GET /api/exam-results?examId= che tên học sinh theo cùng chính sách với bảng xếp hạng (quyết định 1B, maskName).
 //   Tên ĐẦY ĐỦ chỉ cho: quản trị (admin_super / admin_content), gia sư là chủ ĐỀ, gia sư là chủ LỚP gắn với đề.
-//   Mọi người khác (học sinh cùng lớp, học sinh lớp khác, gia sư lớp khác) → tên che 'Nguyễn V. A.'; khách → 401; không lộ email / trường / ngày sinh.
+//   Học sinh cùng lớp → tên che 'Nguyễn V. A.'; người ngoài lớp → 403 (SCL-A); khách → 401; không lộ email / trường / ngày sinh.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-exam-results-names.ts
 //
 // CA PHÁ CỐ ý (mỗi lần một thứ rồi hoàn lại):
@@ -46,11 +46,12 @@ async function main() {
   check("khách → 401, không lộ gì", g.status === 401 && !leaks(g.text), g.status);
   const a = await api("GET", URL, { as: S[0] });
   check("học sinh cùng lớp (cả dòng của chính em): 200, 3 dòng, tên che, không trường / email / ngày sinh", a.status === 200 && a.json?.length === 3 && maskOk(a), a.text.slice(0, 300));
+  // SCL-A (P2-7): người ngoài lớp không còn xem bảng điểm đề của lớp (trước: 200 + tên che).
   const b = await api("GET", URL, { as: other });
-  check("học sinh lớp khác: tên che", b.status === 200 && maskOk(b), b.text.slice(0, 300));
+  check("học sinh lớp khác: 403, không lộ gì", b.status === 403 && !leaks(b.text), b.text.slice(0, 300));
   const t3 = await api("GET", URL, { as: T3 });
-  check("gia sư lớp khác: tên che", t3.status === 200 && maskOk(t3), t3.text.slice(0, 300));
-  check("điểm vẫn đúng thứ tự 100, 99, 98 (giao diện phòng thi chỉ cần điểm)", [a, b, t3].every(r => r.json?.map((x: any) => x.score).join() === "100,99,98"));
+  check("gia sư lớp khác: 403, không lộ gì", t3.status === 403 && !leaks(t3.text), t3.text.slice(0, 300));
+  check("điểm vẫn đúng thứ tự 100, 99, 98 (giao diện phòng thi chỉ cần điểm)", a.json?.map((x: any) => x.score).join() === "100,99,98");
 
   section("Tên đầy đủ cho người có quyền");
   const t1 = await api("GET", URL, { as: T1 });

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { staleVerification } from "@/lib/phone";
 import { ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { logAction } from "@/lib/auditLog";
+import { commitMark } from "@/lib/sessionVerify";
 
 // PUT /api/admin/students/[id] — cập nhật thông tin học sinh
 export async function PUT(
@@ -69,7 +70,8 @@ export async function PATCH(
 
     const updated = await prisma.user.update({
       where: { id },
-      data: { banned: !user.banned },
+      // SCL-A (P2-8): khoá → phiên đang sống hết hiệu lực ngay cả ở yêu cầu ĐỌC (video/tài liệu), không chờ 30 ngày. Mở khoá không đụng mốc.
+      data: user.banned ? { banned: false } : { banned: true, sessionsValidAfter: commitMark() },
       select: { id: true, banned: true },
     });
     return NextResponse.json(updated);
@@ -114,7 +116,7 @@ export async function DELETE(
     }
 
     const now = new Date();
-    await prisma.user.update({ where: { id }, data: { deletedAt: now, banned: true } });
+    await prisma.user.update({ where: { id }, data: { deletedAt: now, banned: true, sessionsValidAfter: commitMark() } });   // SCL-A: ẩn cũng khoá ⇒ thu hồi phiên như khoá
     // Nhật ký SAU khi ghi DB thành công; metadata chỉ có số đếm / cờ — không tên, không email, không SĐT (adminOps.ts dòng 4-5).
     await logAction(auth.userId, "student.hide", "User", id, { activeEnrollments: 0, otherEnrollments: totalCount - activeCount, wasBanned: user.banned });
     return NextResponse.json({ ok: true, deletedAt: now });

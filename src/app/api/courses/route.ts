@@ -8,7 +8,7 @@ import { getSession } from "@/lib/session";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { FEE_MODE_LEGACY, FEE_MODE_SHEET, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
-import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
+import { courseFor, isCourseManager, type MediaViewer } from "@/lib/mediaAccess";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
 import { SCHEDULES_MAX_PER_COURSE, parseScheduleInput, type ScheduleInput } from "@/lib/scheduleInput";
@@ -63,10 +63,15 @@ export async function GET(req: NextRequest) {
     const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
     // BU-01: `isFree` tính sẵn bằng isFreeClass (một truy vấn cho cả trang) để mọi nơi hiện nhãn "Miễn phí" dùng cùng một điều kiện.
     const rated = await loadFeeRateCourseIds(courses.map(c => c.id));
-    return NextResponse.json(courses.map(c => ({
-      ...courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c),
-      isFree: isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: rated.has(c.id) }),
-    })));
+    return NextResponse.json(courses.map(c => {
+      const out: Record<string, unknown> = {
+        ...courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c),
+        isFree: isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: rated.has(c.id) }),
+      };
+      // SCL-J: cùng điều kiện với GET /api/courses/[id] — mã chủ lớp và tên nội bộ chỉ cho quản lý lớp.
+      if (!isCourseManager(viewer, c.ownerId)) { delete out.ownerId; delete out.adminName; }
+      return out;
+    }));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });
@@ -165,6 +170,17 @@ export async function POST(req: NextRequest) {
 
     data.createdAt = new Date().toLocaleDateString("vi-VN") + " 08:00:00";
     data.ownerId = auth.userId;
+    // SCL-A (P1-4): tên gia sư = tên thật của người tạo lớp (cùng nguồn với màn vào lớp: owner.name), không để trống / tên giữ chỗ "KiN".
+    //   Chỉ vai gia sư: khoá học trung tâm (admin_super / admin_content) cố ý mang tên "KiN" — không thay bằng tên cá nhân người tạo.
+    const instr = typeof data.instructor === "string" ? data.instructor.trim() : "";
+    if (auth.adminRole === "teacher" && (!instr || instr.toLowerCase() === "kin")) {
+      const me = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      const nm = me?.name?.trim() ?? "";
+      data.instructor = nm;
+      data.teacherAvatar = nm.charAt(0).toUpperCase();
+    }
+    // SCL-A (P1-3, Q10): lớp của gia sư là riêng — chỉ lớp "Vào ngay" (open) hiện ở trang công khai, bất kể client gửi gì.
+    if (auth.adminRole === "teacher") data.status = data.joinPolicy === "open";
 
     // adminId trong transaction để tránh race condition giữa hai POST đồng thời
     const course = await prisma.$transaction(async (tx) => {

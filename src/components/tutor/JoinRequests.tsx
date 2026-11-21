@@ -15,8 +15,12 @@ const NOTE_MAX = 200;
 // Dáng hàng giống KIN_TABLE_ROW nhưng không có items-center (hàng này xếp dọc ở 390px).
 const ROW = "px-[var(--kin-kc-6)] py-[var(--kin-kc-4)] border-b border-[var(--kin-vien-nhat)] text-[length:var(--kin-co-goc)] leading-5";
 
-export default function JoinRequests({ courseId, items, failed, retryHref, show }: {
+export default function JoinRequests({ courseId, items, failed, retryHref, show, title, back }: {
   courseId: string;
+  /** SCL P2-20: tiêu đề khối (hàng chờ gộp ghi tên lớp). Vắng = "Chờ duyệt · n". */
+  title?: string;
+  /** "hang-cho" = duyệt xong về hàng chờ gộp (/lop-cua-toi/xin-vao-lop), không về tab Học sinh của lớp. */
+  back?: "hang-cho";
   items: PendingJoinRequest[];
   failed: boolean;
   /** Đường tải lại trang (giữ tab Học sinh). */
@@ -26,9 +30,11 @@ export default function JoinRequests({ courseId, items, failed, retryHref, show 
 }) {
   if (!show) return null;
   const base = `/api/tutor/lop/${courseId}/yeu-cau`;
+  const bulkId = `jr-bulk-${courseId}`, titleId = `jr-title-${courseId}`; // nhiều lớp trên cùng một trang (hàng chờ gộp): id không trùng
+  const veField = back ? <input type="hidden" name="ve" value={back} /> : null;
   return (
-    <section aria-labelledby="jr-title" data-join-requests className="mb-8">
-      <KinSectionHead id="jr-title" title={`Chờ duyệt · ${items.length}`} />
+    <section aria-labelledby={titleId} data-join-requests className="mb-8">
+      <KinSectionHead id={titleId} title={title ? `${title} · ${items.length}` : `Chờ duyệt · ${items.length}`} />
       {failed ? (
         <KinCallout title="Chưa tải được danh sách chờ duyệt" className="mt-4">
           <Link href={retryHref} className={`${kinButtonClass("secondary")} mt-3`}>Tải lại</Link>
@@ -37,7 +43,8 @@ export default function JoinRequests({ courseId, items, failed, retryHref, show 
         <p className="pt-4 text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-chu-mo)]">Chưa có yêu cầu nào. Khi học sinh xin vào lớp, yêu cầu hiện ở đây.</p>
       ) : (
         <>
-          <form id="jr-bulk" method="post" action={`${base}/hang-loat`} className="pt-4">
+          <form id={bulkId} method="post" action={`${base}/hang-loat`} className="pt-4">
+            {veField}
             <p className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Tick các em rồi duyệt hoặc từ chối cùng lúc.</p>
             <label className="mt-3 flex items-center gap-2 min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)]">
               <span className="sr-only">Lời nhắn chung khi từ chối (không bắt buộc)</span>
@@ -54,7 +61,7 @@ export default function JoinRequests({ courseId, items, failed, retryHref, show 
               {items.map(r => (
                 <li key={r.id} data-join-request className={`${ROW} flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between`}>
                   <div className="flex items-start gap-3 min-w-0">
-                    <input type="checkbox" form="jr-bulk" name="id" value={r.id} aria-label={`Chọn ${r.studentName}`} className="mt-1 size-5 flex-shrink-0" />
+                    <input type="checkbox" form={bulkId} name="id" value={r.id} aria-label={`Chọn ${r.studentName}`} className="mt-1 size-5 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="break-words text-[var(--kin-chu-chinh)]">{r.studentName}</p>
                       <p className="mt-0.5 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]"><KinStatus tone="cho">Chờ duyệt</KinStatus> · Gửi ngày {r.sentOn}</p>
@@ -62,6 +69,7 @@ export default function JoinRequests({ courseId, items, failed, retryHref, show 
                   </div>
                   <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-shrink-0">
                     <form method="post" action={`${base}/${r.id}/duyet`} className="contents">
+                      {veField}
                       <button type="submit" aria-label={`Duyệt ${r.studentName}`} className={kinButtonClass("primary")}>Duyệt</button>
                     </form>
                     <details className="group col-span-2 sm:col-span-1 sm:relative">
@@ -71,6 +79,7 @@ export default function JoinRequests({ courseId, items, failed, retryHref, show 
                           <textarea name="note" rows={2} maxLength={NOTE_MAX}
                             className="mt-1 block w-full px-3 py-2 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[var(--kin-chu-chinh)]" />
                         </label>
+                        {veField}
                         <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Đừng ghi thông tin cá nhân của học sinh.</p>
                         <button type="submit" className={kinButtonClass("danger")}>Xác nhận từ chối</button>
                       </form>

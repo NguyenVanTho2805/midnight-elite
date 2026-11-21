@@ -62,21 +62,6 @@ export function PendingJoinBlock({ className = "" }: { className?: string }) {
   );
 }
 
-/** Lối duy nhất vào "Nhập mã lớp" khi đã có lớp (mục này không còn ở bảng Khác). Màn trống của học sinh mới có nút riêng. */
-export function JoinAnotherClass({ className = "" }: { className?: string }) {
-  return (
-    <section aria-labelledby="lop-join" className={className}>
-      <KinSectionHead id="lop-join" title="Tham gia lớp khác" />
-      {/* DG (14/11/2026): "Tìm lớp miễn phí" (khám phá sàn) đi cùng cờ TIM_GIA_SU như mục "Lớp miễn phí" ở bảng Khác (StudentShell). */}
-      <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>{FREE_ON ? "Nhập mã mời do gia sư cung cấp, hoặc xem các lớp miễn phí đang mở." : "Nhập mã mời do gia sư cung cấp."}</p>
-      <div className="flex flex-wrap gap-3 mt-4">
-        <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp</Link>
-        {FREE_ON && <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>}
-      </div>
-    </section>
-  );
-}
-
 export function SelfStudy({ className = "" }: { className?: string }) {
   // LOI-01: khối Tự học chỉ hiện khi phần Tiếng Anh tự học đang mở (src/lib/features.ts).
   if (!featureOn("TIENG_ANH")) return null;
@@ -188,9 +173,18 @@ export default function ThuVienLop() {
 
   const rows = st.s === "ok" ? st.rows : [];
   const head = (
-    <header className="pb-6">
-      <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Lớp của tôi</h1>
-      {st.s === "ok" && rows.length > 0 && <p className={`mt-1 ${GOC} text-[var(--kin-chu-mo)]`}>Bạn đang học {rows.length} lớp.</p>}
+    <header className="pb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="min-w-0">
+        <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Lớp của tôi</h1>
+        {st.s === "ok" && rows.length > 0 && <p className={`mt-1 ${GOC} text-[var(--kin-chu-mo)]`}>Bạn đang học {rows.length} lớp.</p>}
+      </div>
+      {/* SCL P2-13: lối "Nhập mã lớp" ở ĐẦU trang (trước đây ở mục "Tham gia lớp khác" dưới đáy, y≈2819px). Màn trống có nút riêng ngay dưới tiêu đề. */}
+      {st.s === "ok" && rows.length > 0 && (
+        <div className="flex flex-wrap gap-3 flex-shrink-0" data-nhap-ma-dau>
+          <Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>
+          {FREE_ON && <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>}
+        </div>
+      )}
     </header>
   );
 
@@ -236,7 +230,6 @@ export default function ThuVienLop() {
         )}
         <div className="mt-10 max-w-[560px] space-y-8">
           <PendingJoinBlock />
-          <JoinAnotherClass />
           <SelfStudy />
         </div>
       </>

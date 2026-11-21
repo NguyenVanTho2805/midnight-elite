@@ -60,6 +60,7 @@ const codeOf = (r: { headers: Headers }) => new URL(loc(r), "http://x").searchPa
     feeMode: "per_session", feeRate: 100_000, joinPolicy: "approve",
   } });
   check("tạo lớp approve + đơn giá 100.000/buổi → 201", mkPaid.status === 201, mkPaid.json);
+  await prisma.course.update({ where: { id: paidId }, data: { status: true } }); // SCL-A (Q10): lớp "duyệt" tạo ra là riêng; bài này cần đi qua /join của trang lớp công khai như trước
   const paidFlag = await api("GET", `/api/courses/${paidId}`);
   check("isFree = false khi đã có đơn giá (dù còn tag Miễn phí)", paidFlag.json?.isFree === false, paidFlag.json?.isFree);
   // A xin vào lớp này bằng mã cá nhân, gia sư duyệt

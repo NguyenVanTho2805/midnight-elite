@@ -5,7 +5,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { filterClassRows, type TutorClassRow } from "@/lib/tutorClassTable";
+import { filterClassRows, groupClassesByOwner, type TutorClassRow } from "@/lib/tutorClassTable";
 import { CLASS_STATUS_LABEL } from "@/lib/tutorTodo";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
@@ -34,6 +34,8 @@ function Skeleton() {
 export default function LopHoc() {
   const [rows, setRows] = useState<TutorClassRow[] | null>(null);
   const [totalStudents, setTotalStudents] = useState(0);
+  // SCL-B (Q1): Chủ nhiệm (quản trị trung tâm) nhận MỌI lớp (`scope: "all"`) ⇒ nhóm theo gia sư phụ trách, không nút "Tạo lớp" (trang tạo lớp của gia sư không mở cho vai này).
+  const [allScope, setAllScope] = useState(false);
   const [error, setError] = useState(false);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
@@ -42,7 +44,7 @@ export default function LopHoc() {
   const load = useCallback(() => {
     fetch("/api/tutor/lop", { credentials: "same-origin", cache: "no-store" })
       .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
-      .then(d => { setRows(Array.isArray(d.rows) ? d.rows : []); setTotalStudents(Number(d.totalStudents) || 0); setError(false); })
+      .then(d => { setRows(Array.isArray(d.rows) ? d.rows : []); setTotalStudents(Number(d.totalStudents) || 0); setAllScope(d.scope === "all"); setError(false); })
       .catch(() => setError(true));
   }, []);
   useEffect(() => {
@@ -57,16 +59,20 @@ export default function LopHoc() {
   const statuses = useMemo(() => [...new Set(all.map(r => r.classStatus))], [all]);
   const shown = filterClassRows(all, { q, category, status });
   const filtering = q.trim() !== "" || category !== "" || status !== "";
-  const noStudents = all.find(r => r.students === 0);
+  const noStudents = allScope ? undefined : all.find(r => r.students === 0);
+  // Chưa tải xong thì chưa biết vai ⇒ chưa hiện nút (Chủ nhiệm không được thấy thoáng qua nút tạo lớp).
+  const createBtn = rows === null || allScope ? undefined : <Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>;
 
   return (
     <KinPage>
       <KinPageHeader title="Lớp học"
-        sub={<>{rows ? `${all.length} lớp · ${totalStudents} học sinh đang học. ` : <span aria-hidden className="invisible">00 lớp · 00 học sinh đang học. </span>}Một nơi để theo dõi lịch, buổi dạy và học sinh của từng lớp.</>}
-        actions={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp</Link>} />
+        sub={<>{rows ? `${all.length} lớp · ${totalStudents} học sinh đang học. ` : <span aria-hidden className="invisible">00 lớp · 00 học sinh đang học. </span>}{allScope ? "Mọi lớp của trung tâm, nhóm theo gia sư phụ trách. Bạn mở và sửa được từng lớp." : "Một nơi để theo dõi lịch, buổi dạy và học sinh của từng lớp."}</>}
+        actions={createBtn} />
 
       {error && <ErrorStrip message="Không tải được danh sách lớp." onRetry={load} />}
-      {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 ? (
+      {rows === null ? (!error ? <Skeleton /> : null) : all.length === 0 && allScope ? (
+        <KinEmptyState title="Trung tâm chưa có lớp nào">Lớp do gia sư mở sẽ hiện ở đây, nhóm theo gia sư phụ trách.</KinEmptyState>
+      ) : all.length === 0 ? (
         <KinEmptyState title="Cô chưa mở lớp nào" action={<Link href="/lop-cua-toi/lop/tao" className={kinButtonClass("primary")}>Tạo lớp đầu tiên</Link>}>
           Tạo lớp đầu tiên, rồi gửi mã mời cho học sinh vào lớp. Lớp có lịch và học sinh sẽ hiện thành thẻ ở đây.
         </KinEmptyState>
@@ -105,6 +111,15 @@ export default function LopHoc() {
               <KinEmptyState title="Không có lớp nào khớp" action={<button type="button" className={kinButtonClass("secondary")} onClick={() => { setQ(""); setCategory(""); setStatus(""); }}>Xoá bộ lọc</button>}>
                 Thử đổi từ khoá, môn học hoặc trạng thái để thấy các lớp còn lại.
               </KinEmptyState>
+            ) : allScope ? (
+              <div className="space-y-8">
+                {groupClassesByOwner(shown).map(g => (
+                  <section key={g.ownerId ?? "_"} aria-labelledby={`gv-${g.ownerId ?? "none"}`} data-owner-group={g.ownerId ?? ""}>
+                    <h2 id={`gv-${g.ownerId ?? "none"}`} className="mb-3 text-[length:var(--kin-co-tieu-de)] font-medium break-words">{g.ownerName} · {g.rows.length} lớp</h2>
+                    <ThuVienLop rows={g.rows} />
+                  </section>
+                ))}
+              </div>
             ) : <ThuVienLop rows={shown} />}
           </div>
 
@@ -112,7 +127,7 @@ export default function LopHoc() {
         </>
       )}
       {/* TUT-dong-giang 7.3: lớp cô được mời cùng dạy, nhóm riêng dưới lớp của cô. */}
-      <DongGiangNhom part="courses" />
+      {!allScope && <DongGiangNhom part="courses" />}
     </KinPage>
   );
 }

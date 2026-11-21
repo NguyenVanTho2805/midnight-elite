@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export default async function ThongBaoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
   const sp = await searchParams;
-  const session = await redirectIfNotTutor(await getSession(), { path: `${classBase(id)}/thong-bao`, adminTo: "/admin" });
+  const session = await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: `${classBase(id)}/thong-bao`, adminTo: "/admin" });
   const gate = await gateClassPage(session, id, { ownerOnly: true });
   if (!gate.ok) return null;
   const now = new Date();

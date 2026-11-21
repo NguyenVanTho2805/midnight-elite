@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { commitMark } from "@/lib/sessionVerify";
 
 export const ANON_NAME = "Tài khoản đã xóa";
 export const anonEmail = (id: string) => `deleted+${id}@invalid`;
@@ -17,6 +18,8 @@ export function buildAnonymizedUserData(id: string, kind: AccountKind, now: Date
   return {
     deletedAt: now,
     banned: true,
+    // SCL-A: thu hồi mọi phiên cũ cả ở yêu cầu ĐỌC (session.ts chỉ kiểm mốc này, không kiểm banned) — như khoá tài khoản (P2-8).
+    sessionsValidAfter: commitMark(now.getTime()),
     email: anonEmail(id),
     name: ANON_NAME,
     password: randomBytes(32).toString("hex"), // không phải băm bcrypt → không khớp mật khẩu nào

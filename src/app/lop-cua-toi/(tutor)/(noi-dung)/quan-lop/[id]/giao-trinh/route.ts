@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await getSession();
   if (!session || !isTeacher(session)) {
     const status = session ? await loadTutorStatus(session) : "none";
-    const to = tutorGateTarget(session, status, { path: classBase(id), adminTo: "/admin" });
+    const to = tutorGateTarget(session, status, { allowAdmin: true, path: classBase(id), adminTo: "/admin" });
     if (to) return go(to, req);
   }
   return go(classBase(id), req);
