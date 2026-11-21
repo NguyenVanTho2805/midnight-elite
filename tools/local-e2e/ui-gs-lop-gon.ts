@@ -121,7 +121,7 @@ const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH 
 
     section(`Cài đặt: mục con · ${tag}px`);
     await pg.goto(`${BASE}${base}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
-    await pg.getByText("Thông tin cơ bản").first().waitFor({ timeout: 120000 });
+    await pg.locator("[data-cai-dat-thong-tin]").first().waitFor({ timeout: 120000 }); // SCL-F2: form Thông tin lớp gọn
     const cn = pg.locator('nav[aria-label^="Mục của"]:visible');
     const MUC = ["Thông tin", ...(HOC_PHI ? ["Học phí"] : []), "Đồng giảng", "Cộng đồng", "Học online"]; // SCL-D: Bản ghi chuyển sang tab Video
     check(`${tag}: ${MUC.length} mục con ${MUC.join(" · ")} (DG-HOC-ONLINE thêm mục cuối; Học phí theo cờ HOC_PHI)`, JSON.stringify((await cn.getByRole("link").allInnerTexts()).map(s => s.trim())) === JSON.stringify(MUC), await cn.getByRole("link").allInnerTexts());

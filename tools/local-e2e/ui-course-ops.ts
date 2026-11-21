@@ -19,40 +19,33 @@ import { prisma } from "@/lib/prisma";
   const dialogs: string[] = [];
   page.on("dialog", d => { dialogs.push(d.message()); d.dismiss().catch(() => {}); });
 
-  section("Tab Cài đặt: Vận hành lớp");
+  // SCL-F2 (P2-25): Cài đặt lớp của gia sư chỉ còn tên lớp, môn · khối (KinSelect danh sách cố định), cách vào lớp, hiện/ẩn. Sức chứa / trạng thái nhận / giá / slug / nhãn
+  // đã rời giao diện gia sư (dữ liệu giữ, quản trị sửa ở /admin/khoa-hoc/<id>) — kiểm form gọn thay cho phần "Vận hành lớp" cũ.
+  section("Tab Cài đặt: Thông tin lớp (gọn)");
+  await prisma.course.update({ where: { id: course.id }, data: { category: "toan · lop 9", price: 123000, tag: "HOT", capacity: 7 } });
   await page.goto(`${BASE}/admin/khoa-hoc/${course.id}?tab=cai-dat`, { waitUntil: "networkidle" });
-  const cap = page.getByLabel("Sức chứa (số học viên tối đa)");
-  await cap.waitFor({ timeout: 60000 });
-  check("sức chứa trống khi không giới hạn", (await cap.inputValue()) === "");
-  // LOI-02: "Trạng thái nhận học viên" nay là KinSelect (nút combobox, không có <select>/inputValue) ⇒ đọc nhãn đang hiện, chọn bằng mở-rồi-bấm.
-  const status = page.getByRole("combobox", { name: "Trạng thái nhận học viên" });
-  check("trạng thái mặc định 'open' (nút hiện 'Đang nhận học viên')", (await kinValue(status)) === "Đang nhận học viên", await kinValue(status));
-
-  await cap.fill("abc");
+  const form = page.locator("[data-cai-dat-thong-tin]");
+  await form.waitFor({ timeout: 60000 });
+  const ft = await form.innerText();
+  check("không còn giá, slug, nhãn HOT, sức chứa, cảnh báo Cloudinary", !/Giá bán|Slug|HOT|Sức chứa|Cloudinary|Trạng thái nhận/.test(ft), ft.slice(0, 300));
+  const mon = page.getByRole("combobox", { name: "Môn" }), khoi = page.getByRole("combobox", { name: "Khối" });
+  check("dữ liệu cũ 'toan · lop 9' hiện chuẩn hoá: Toán / Lớp 9 (không sửa DB khi chưa lưu)", (await kinValue(mon)) === "Toán" && (await kinValue(khoi)) === "Lớp 9" && (await prisma.course.findUnique({ where: { id: course.id } }))?.category === "toan · lop 9", [await kinValue(mon), await kinValue(khoi)]);
+  check("cách vào lớp + hiện/ẩn có chữ; gia sư không bật tắt hiện/ẩn trực tiếp", await form.locator("[data-cai-dat-policy]").isVisible() && await form.locator("[data-cai-dat-hien]").isVisible() && await form.getByRole("switch").count() === 0);
+  await kinPick(mon, "Vật lý"); await kinPick(khoi, "Lớp 11");
+  await page.getByLabel("Tên lớp").fill("Lý 11 thử");
   await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
-  await page.waitForTimeout(500);
-  check("nhập chữ → báo lỗi, không gọi lưu", dialogs.some(d => /số nguyên không âm/.test(d)), dialogs);
-
-  await cap.fill("1");
-  await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
-  await eventually("đặt 1 khi chỉ có 1 học viên active (pending không tính) → lưu được", async () => (await prisma.course.findUnique({ where: { id: course.id } }))?.capacity === 1);
-
-  await cap.fill("5");
-  await kinPick(status, "Tạm dừng nhận (có thể mở lại)");
-  await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
-  await eventually("DB: capacity=5, classStatus=paused", async () => {
+  await eventually("DB: tên + 'Vật lý · Lớp 11'; giá, nhãn, sức chứa GIỮ NGUYÊN", async () => {
     const db = await prisma.course.findUnique({ where: { id: course.id } });
-    return db?.capacity === 5 && db?.classStatus === "paused";
+    return db?.name === "Lý 11 thử" && db?.category === "Vật lý · Lớp 11" && db?.price === 123000 && db?.tag === "HOT" && db?.capacity === 7;
   });
+  check("báo 'Đã lưu thông tin lớp.'", await page.getByText("Đã lưu thông tin lớp.").isVisible());
+  check("không hộp thoại gốc (alert)", dialogs.length === 0, dialogs);
   await shot(page, "course-ops-settings");
-
-  await page.reload({ waitUntil: "networkidle" });
-  await cap.waitFor();
-  check("tải lại: giữ giá trị 5 / paused", (await cap.inputValue()) === "5" && (await kinValue(status)) === "Tạm dừng nhận (có thể mở lại)");
-
-  await cap.fill("");
-  await page.getByRole("button", { name: /Lưu thay đổi/ }).click();
-  await eventually("xoá trống → null (không giới hạn)", async () => (await prisma.course.findUnique({ where: { id: course.id } }))?.capacity === null);
+  const m = await (await ctxFor(tutor, { width: 390, height: 844 })).newPage();
+  await m.goto(`${BASE}/lop-cua-toi/quan-lop/${course.id}?tab=cai-dat`, { waitUntil: "networkidle" });
+  await m.locator("[data-cai-dat-thong-tin]").waitFor({ timeout: 60000 });
+  const small = await m.evaluate(`[...document.querySelectorAll('[data-cai-dat-thong-tin] a, [data-cai-dat-thong-tin] button, [data-cai-dat-thong-tin] input')].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5 && !e.closest('label') && !(e.tagName === 'INPUT' && e.parentElement.getBoundingClientRect().height >= 43.5)).map(e => e.tagName + ':' + (e.getAttribute('type') || '') + ':' + e.className.slice(0,60) + ':' + Math.round(e.getBoundingClientRect().height))`) as string[];
+  check("390px: không tràn ngang, nút/ô ≥ 44px", (await m.evaluate("document.documentElement.scrollWidth")) as number <= 390 && small.length === 0, small);
 
   // LOI-07: bảng học viên nay là DanhBaLop (GS-LOP-GON) — KHÔNG còn cột "Trạng thái"; cột cuối "Hồ sơ" nói trạng thái bằng CHỮ: em đang học có liên kết "Hồ sơ",
   // em chờ phụ huynh đồng ý hiện "Chờ đồng ý" (DanhBaLop.tsx:126, :154-159). Kiểm theo bảng đang có thật, không thêm lại cột cũ.

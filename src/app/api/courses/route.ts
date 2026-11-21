@@ -180,6 +180,8 @@ export async function POST(req: NextRequest) {
       data.instructor = nm;
       data.teacherAvatar = nm.charAt(0).toUpperCase();
     }
+    // SCL-F2: quản trị tạo lớp qua TaoLop (không gửi instructor) → mặc định "KiN" như ngăn kéo tạo khoá cũ (Course.instructor bắt buộc).
+    if (auth.adminRole !== "teacher" && !instr) { data.instructor = "KiN"; data.teacherAvatar = "K"; }
     // SCL-A (P1-3, Q10): lớp của gia sư là riêng — chỉ lớp "Vào ngay" (open) hiện ở trang công khai, bất kể client gửi gì.
     if (auth.adminRole === "teacher") data.status = data.joinPolicy === "open";
 
