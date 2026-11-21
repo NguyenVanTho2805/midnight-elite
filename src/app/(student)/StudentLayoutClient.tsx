@@ -15,7 +15,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 function Content({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Ba màn dựng theo Figma (Việc của tôi, Lịch học, Lớp của tôi) tự đặt lề trang. (/student/bai-tap chỉ còn là chuyển hướng.)
-  const flush = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap"].some(p => pathname.startsWith(p)) || isExamRoom(pathname);
+  // SCL-G-HS: Điểm cũng tự đặt lề 16px (cùng khung Cần làm / trang lớp) — thiếu ở đây thì lề bị cộng đôi thành 32px.
+  const flush = ["/student/viec-cua-toi", "/student/lich-hoc", "/student/hoc-tap", "/student/diem"].some(p => pathname.startsWith(p)) || isExamRoom(pathname);
   return (
     <main className={flush ? "" : "px-4 md:px-8 py-6 max-w-screen-2xl mx-auto"}>
       <Suspense fallback={
