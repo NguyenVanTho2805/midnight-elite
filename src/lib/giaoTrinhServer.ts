@@ -112,6 +112,21 @@ async function ensureUngroupedChapter(tx: Tx, courseId: string): Promise<string>
   return ch.id;
 }
 
+/** SCL-C (P2-2): "+ Giao bài" không bắt chọn bài học — mỗi bài tập giao thẳng có MỘT mục riêng (đã đăng) ở chương không nhóm của lớp, mang tệp đề trong `documents`
+ *  (để học sinh của lớp mở được tệp: /api/media/<mã>/file chỉ cho xem khi bài đã đăng tham chiếu tệp). Người gọi đã kiểm quyền soạn của lớp. */
+export async function createLessonForAssignment(courseId: string, title: string, documents: string): Promise<string> {
+  return prisma.$transaction(async (tx) => {
+    await lockTree(tx, courseId);
+    const chapterId = await ensureUngroupedChapter(tx, courseId);
+    const max = await tx.lesson.aggregate({ where: { chapterId }, _max: { order: true } });
+    const l = await tx.lesson.create({
+      data: { id: `l-${randomUUID()}`, code: `L${Date.now()}`, title: title.slice(0, MAX_ITEM_NAME), type: "document", documents, isLocked: true, isFree: false, order: (max._max.order ?? 0) + 1, chapterId, status: "published" },
+      select: { id: true },
+    });
+    return l.id;
+  }, { timeout: 15000 });
+}
+
 const GROUP_TITLE_MAX = 120;
 export const cleanGroupTitle = (v: unknown): string | null => {
   if (typeof v !== "string") return null;

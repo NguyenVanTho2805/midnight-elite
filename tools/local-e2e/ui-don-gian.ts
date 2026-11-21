@@ -61,7 +61,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     ["/lop-cua-toi/doanh-thu", T, "/lop-cua-toi/lop", "KINH_DOANH"],
     ["/lop-cua-toi/goi", T, "/lop-cua-toi/lop", "KINH_DOANH"],
     [`/lop-cua-toi/quan-lop/${A.id}/diem-danh`, T, "/lop-cua-toi/lop", "DIEM_DANH"],
-    ["/lop-cua-toi/so-diem", T, "/lop-cua-toi/lop", "SO_DIEM"],
+    // SCL-C (21/11/2026): /lop-cua-toi/so-diem thường trực — không còn chặn theo SO_DIEM.
     ["/lop-cua-toi/bao-cao-thang", T, "/lop-cua-toi/lop", "SO_DIEM"],
     ["/lop-cua-toi/tong-quan", T, "/lop-cua-toi/lop", "HOP_VIEC"],
     ["/lop-cua-toi/bai-dang", T, "/lop-cua-toi/lop", "TIM_GIA_SU"],
@@ -110,12 +110,12 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     check("thấy thẻ lớp đang quản lý", await visible(p.getByText("Toán 9 gọn")));
     const nav = p.getByRole("navigation", { name: "Module của gia sư" });
     const navText = (await nav.allInnerTexts()).join("\n");
-    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Sổ điểm", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
+    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
       check(`thanh gia sư KHÔNG có '${gone}'`, !navText.split("\n").some(t => t.trim() === gone), navText);
     }
-    for (const keep of ["Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
+    for (const keep of ["Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Sổ điểm", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
     const hrefs = await nav.locator("a").evaluateAll(as => as.map(a => a.getAttribute("href") ?? ""));
-    check("không liên kết nào trên thanh dẫn vào trang đã chặn", !hrefs.some(h => /\/lop-cua-toi\/(hoc-phi|doanh-thu|goi|so-diem|bao-cao-thang|bai-dang|yeu-cau|tong-quan)/.test(h)), hrefs);
+    check("không liên kết nào trên thanh dẫn vào trang đã chặn", !hrefs.some(h => /\/lop-cua-toi\/(hoc-phi|doanh-thu|goi|bao-cao-thang|bai-dang|yeu-cau|tong-quan)/.test(h)), hrefs);
     check("logo / lối về đầu trỏ /lop-cua-toi/lop", hrefs.includes("/lop-cua-toi/lop"));
     await shot(p, "dg-gia-su-lop-1280");
 

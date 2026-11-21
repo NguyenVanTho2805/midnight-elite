@@ -17,7 +17,7 @@ const MORE_HIDDEN = ["Lớp miễn phí", "Gia sư", "Cộng đồng", "Tin tứ
 // LOI-04 (11/11/2026): module "Nhắc học" luôn hiện (không theo cờ) ⇒ điện thoại: Việc của tôi · Nhắc học · Lớp của tôi · Khác = 4 ô khi LICH tắt, 5 ô khi bật.
 // DG (14/11/2026): bảng Khác hết mục (mọi cờ trong nhóm tắt) ⇒ không còn nút "Khác" (chỉ còn Trang chủ + Đăng xuất, đã có ở logo / menu tên).
 const HAS_MORE = MORE_EXPECT.length > 0;
-const MOBILE_CELLS = 2 + (HAS_MORE ? 1 : 0) + (LICH ? 1 : 0) + (NHAC ? 1 : 0);
+const MOBILE_CELLS = 3 /* Việc · Lớp · Điểm (SCL-C) */ + (HAS_MORE ? 1 : 0) + (LICH ? 1 : 0) + (NHAC ? 1 : 0);
 
 const H = 3_600_000, D = 24 * H;
 

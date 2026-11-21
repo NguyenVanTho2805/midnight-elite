@@ -11,9 +11,9 @@ import { boardRowFor, selfScoreError } from "@/lib/examResultRules";
 import { classExamViewBlock } from "@/lib/examResultAccessServer";
 import { canWriteAttempt } from "@/lib/attemptAccess";
 
-/** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold). */
+/** Hạng = 1 + số người có điểm cao hơn, chỉ đếm điểm đã công bố / đề không giữ điểm (examHold) và đã được gia sư duyệt (SCL-C, Q5: bỏ điểm tự khai chờ duyệt). */
 async function rankOf(examId: string, score: number): Promise<number> {
-  const all = await dropHeldResults(await prisma.examResult.findMany({ where: { examId, score: { gt: score } }, select: { userId: true, examId: true } }));
+  const all = await dropHeldResults(await prisma.examResult.findMany({ where: { examId, score: { gt: score }, pendingReview: false }, select: { userId: true, examId: true } }));
   return all.length + 1;
 }
 
@@ -41,6 +41,7 @@ export async function GET(req: Request) {
       results.map(async r => {
         const vis = resultVisibility(states.get(r.examId) ?? { hasEssay: false, published: true }, true);
         if (!vis.showScore) return { ...r, score: null, rank: null, pendingManual: true };
+        if (r.pendingReview) return { ...r, rank: null, pendingManual: false }; // SCL-C (Q5): điểm tự khai chờ gia sư duyệt — chưa có hạng
         return { ...r, rank: await rankOf(r.examId, r.score), pendingManual: false };
       })
     );
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
     if (!resultVisibility(await loadPublishState(examId, session.userId), true).showScore) return NextResponse.json([]);
 
     const results = await dropHeldResults(await prisma.examResult.findMany({
-      where:   { examId },
+      where:   { examId, pendingReview: false }, // SCL-C (Q5): điểm tự khai chờ duyệt không lên bảng xếp hạng của đề
       include: { user: { select: { name: true } } },
       orderBy: { score: "desc" },
       take: 50,
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
     }
   }
   const points = Math.round(exam.totalPoints); // cột ExamResult.totalPoints là Int
+  const pendingReview = !!exam.courseId;
 
   // Upsert + tăng participants (chỉ lần nộp đầu) trong cùng 1 transaction để tránh race condition
   const result = await prisma.$transaction(async (tx) => {
@@ -134,9 +136,10 @@ export async function POST(req: Request) {
 
     const r = await tx.examResult.upsert({
       where:  { userId_examId: { userId: session.userId, examId } },
-      // Q5: điểm tự khai luôn ở trạng thái chờ gia sư duyệt (khai lại cũng phải duyệt lại); chưa duyệt thì không vào báo cáo tháng.
-      create: { userId: session.userId, examId, score, totalPoints: points, pendingReview: true },
-      update: { score, totalPoints: points, completedAt: new Date(), pendingReview: true },
+      // Q5: điểm tự khai ở đề GẮN LỚP chờ chủ lớp / Chủ nhiệm duyệt (khai lại cũng phải duyệt lại); chưa duyệt thì không vào báo cáo tháng.
+      // Đề không gắn lớp không có ai duyệt (route duyệt cần lớp) ⇒ không chờ, như trước Q5 (không có báo cáo phụ huynh nào đọc đề này).
+      create: { userId: session.userId, examId, score, totalPoints: points, pendingReview },
+      update: { score, totalPoints: points, completedAt: new Date(), pendingReview },
     });
 
     if (!existing) {
@@ -149,10 +152,6 @@ export async function POST(req: Request) {
     return r;
   });
 
-  // Tính rank
-  const above = await prisma.examResult.count({
-    where: { examId, score: { gt: score } },
-  });
-
-  return NextResponse.json({ ...result, rank: above + 1 });
+  // SCL-C (Q5): điểm vừa khai đang chờ gia sư duyệt ⇒ chưa có hạng (bảng xếp hạng chỉ tính điểm đã duyệt). Đề không lớp ⇒ hạng ngay.
+  return NextResponse.json({ ...result, rank: pendingReview ? null : await rankOf(examId, score) });
 }
