@@ -42,6 +42,11 @@ const CU = "https://res.cloudinary.com/kin-scl-d-khong-co/raw/upload/v1/khong-co
   check("khách chưa đăng nhập → 401", guest.status === 401, guest.status);
   check("chủ tệp → 200", owner.status === 200, owner.status);
   check("không cho bộ nhớ đệm công khai (private, no-store)", /private/.test(inClass.headers.get("cache-control") ?? "") && /no-store/.test(inClass.headers.get("cache-control") ?? ""));
+  // Bài CŨ còn isFree=true (gia sư không còn ô tắt): tài liệu vẫn chỉ cho thành viên lớp.
+  await prisma.lesson.update({ where: { id: "l-rt" }, data: { isFree: true } });
+  check("bài học thử (isFree) ⇒ học sinh NGOÀI lớp vẫn 403", (await get(SX)).status === 403);
+  check("bài học thử (isFree) ⇒ học sinh của lớp vẫn 200", (await get(S)).status === 200);
+  await prisma.lesson.update({ where: { id: "l-rt" }, data: { isFree: false } });
   await api("PUT", "/api/lessons/l-rt", { as: T, body: { documents: "[]" } });
   check("gỡ tệp khỏi bài ⇒ học sinh của lớp cũng 403", (await get(S)).status === 403);
 
