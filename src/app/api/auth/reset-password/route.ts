@@ -11,7 +11,7 @@ import { sendPasswordChangedEmail } from "@/lib/email";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 import { landingPath } from "@/lib/landing";
 import { tutorPendingOf } from "@/lib/loginSession";
-import { loginThrottle } from "@/lib/loginThrottle";
+import { loginThrottleOk } from "@/lib/loginThrottleServer";
 import {
   EXPIRED_MESSAGE, INVALID_MESSAGE, checkToken, hashResetToken, parseResetToken, validateNewPassword,
 } from "@/lib/passwordReset";
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     ]);
 
     // Người vừa quên mật khẩu có thể đã gõ sai nhiều lần: xoá bộ đếm để lần đăng nhập đầu tiên bằng mật khẩu mới không bị chờ thêm.
-    loginThrottle.ok(record.user.email.toLowerCase());
+    await loginThrottleOk(record.user.email.toLowerCase());
 
     // Thư báo: không chặn việc đặt lại nếu gửi lỗi.
     sendPasswordChangedEmail(record.user.email, record.user.name).catch(e => console.error("[reset-password] thư báo lỗi:", (e as Error).message));
