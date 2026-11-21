@@ -16,18 +16,29 @@ export interface ClassHeadProps {
   studentCount: number;
   /** Q4 chủ chốt (14/11): chỉ chủ lớp — nút "Đề của lớp" mở ngân hàng đề lọc theo lớp này (?lop=), giao đề ngay từ đó. Đồng giảng không có nút. */
   examsHref?: string | null;
+  /** SCL-G-GS (QUYET-DINH §2.2): nút chính "+ Giao bài" góc phải đầu lớp (chủ lớp / Chủ nhiệm). Vắng = không vẽ (đồng giảng). */
+  giaoHref?: string | null;
+  /** Màu lớp: vạch 4px trên đầu lớp (trang trí, không mang chữ). */
+  color?: string;
 }
 
 const TONE: Record<string, "xong" | "cho" | "mo"> = { open: "xong", paused: "cho", closed: "mo" };
 
-export default function ClassHead({ name, category, status, hidden, studentCount, examsHref }: ClassHeadProps) {
+export default function ClassHead({ name, category, status, hidden, studentCount, examsHref, giaoHref, color }: ClassHeadProps) {
   return (
     <header data-class-head className="pb-4 md:pb-5">
+      {color && <span aria-hidden data-vach-lop className="block h-1 w-16 rounded-full mb-2" style={{ background: color }} />}
       <Link href="/lop-cua-toi/lop" className="inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)] hover:underline">← Lớp học</Link>
       <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
         <h1 className="min-w-0 break-words text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">{name}</h1>
-        {examsHref && <Link href={examsHref} data-de-cua-lop className={kinButtonClass("secondary")}>Đề của lớp</Link>}
+        {(examsHref || giaoHref) && (
+          <div className="flex flex-wrap items-center gap-3">
+            {examsHref && <Link href={examsHref} data-de-cua-lop className={kinButtonClass("secondary")}>Đề của lớp</Link>}
+            {giaoHref && <Link href={giaoHref} data-giao-bai className={kinButtonClass("primary")}>+ Giao bài</Link>}
+          </div>
+        )}
       </div>
+      {giaoHref && <p data-cau-dan className="mt-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Giao bài tập, gắn video hoặc tài liệu cho lớp</p>}
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[length:var(--kin-co-goc)] leading-[var(--kin-dong-goc)] text-[var(--kin-chu-mo)]">
         {category && <span>{category}</span>}
         <span className="tabular-nums">{studentCount} học sinh</span>

@@ -82,7 +82,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
     await pg.waitForTimeout(450); // panel trượt vào 0,28s
     await openMore(pg);
   };
-  const closePanel = async (pg: any) => { await pg.getByRole("button", { name: "Huỷ", exact: true }).first().click(); await pg.waitForTimeout(400); };
+  // SCL-G-GS: ngăn "Sửa bài học" tự lưu nên nút đóng ghi "Đóng" (ngăn Thêm vẫn "Huỷ").
+  const closePanel = async (pg: any) => { await pg.getByRole("button", { name: /^(Huỷ|Đóng)$/ }).first().click(); await pg.waitForTimeout(400); };
 
   // ── 1. Thư viện → thẻ → Bài học (1600 / 1280 / 390) ─────────────────────────────────────────────────
   for (const [W, H, tag] of [[1600, 1000, "1600"], [1280, 900, "1280"], [390, 844, "390"]] as const) {
@@ -174,7 +175,8 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   })()`));
   check("'Xem như học sinh ↗' trỏ …/giao-trinh/xem/<id>", (await pg.locator("[data-xem-nhu-hoc-sinh]").getAttribute("href")) === `${base(A.id)}/giao-trinh/xem/loi-l1`);
   check("tài liệu cũ dạng link Drive vẫn hiện (tên + đường)", (await pg.locator("[data-tai-lieu-hang]").count()) === 1 && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("Đề cương Drive") && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("drive.google.com"));
-  await pg.getByRole("button", { name: 'Bỏ "Đề cương Drive"' }).click();
+  await pg.getByRole("button", { name: 'Gỡ "Đề cương Drive"' }).click(); // SCL-G-GS: "Gỡ" có hỏi lại
+  await pg.getByRole("dialog", { name: "Gỡ tài liệu này?" }).getByRole("button", { name: "Gỡ", exact: true }).click();
   check("bấm ✕ → hàng Drive cũ biến mất", (await pg.locator("[data-tai-lieu-hang]").count()) === 0);
   check("ô thả: sẵn sàng, cao ≥ 160px, có 'Chọn tệp từ máy' ≥ 44px", (await pg.locator('[data-o-tha="san-sang"]').count()) === 1
     && (await pg.locator("[data-o-tha]").evaluate(e => e.getBoundingClientRect().height >= 159.5))

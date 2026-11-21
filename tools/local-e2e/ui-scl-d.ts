@@ -32,8 +32,9 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   const noOverflow = (pg: any) => pg.evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`);
 
   // ── A ────────────────────────────────────────────────────────────────────
-  section("A. Gia sư 1280: ngăn bài học 3 phần, dán YouTube, kéo-thả một PDF");
-  const ct = await ctxFor(T, { width: 1280, height: 900, rail: "mac-dinh" });
+  // SCL-G-GS: từ 1024px ngăn là cột "Sửa bài" LUÔN MỞ (không phải hộp thoại — kiểm ở ui-scl-g-gs.ts); hộp thoại thật chỉ còn dưới 1024px ⇒ ca này chạy ở 900px.
+  section("A. Gia sư 900: ngăn bài học 3 phần, dán YouTube, kéo-thả một PDF");
+  const ct = await ctxFor(T, { width: 900, height: 900, rail: "mac-dinh" });
   const pt = await ct.newPage(); watch(pt);
   await pt.goto(`${BASE}/lop-cua-toi/quan-lop/${C.id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await pt.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
@@ -48,7 +49,7 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   const dtext = await dlg.innerText();
   check("KHÔNG có Khoá bài / Học thử / ô Azota / ô Drive / Deadline Azota", !/Khoá bài|Học thử|Link bài Azota|Deadline Azota|Google Drive\)/.test(dtext) && (await pt.locator('[role="switch"]').count()) === 0, dtext.slice(0, 600));
   check("Ngày học / Trạng thái / Bài tập / Ghi chú nằm trong mục gập (đang gập)", (await pt.locator("[data-tuy-chon] [aria-expanded]").first().getAttribute("aria-expanded")) === "false" && (await pt.locator("#ls-tuy-chon").getAttribute("inert")) !== null && (await pt.locator("#ls-tuy-chon #ls-ghi-chu").count()) === 1);
-  await pt.getByLabel("Link video YouTube").fill(YT);
+  await pt.getByLabel("Link YouTube").fill(YT);
   await pt.getByText("Nhận diện: YouTube").waitFor({ timeout: 10000 });
   check("dán link YouTube ⇒ 'Nhận diện: YouTube'; có câu lưu ý link không công khai chia ra ngoài được", /chia link ra ngoài/.test(await pt.locator("[data-youtube-luu-y]").first().innerText()));
   check("chữ dưới ô tải tệp nói đúng: tệp LƯU trên kho KiN, riêng tư (không còn 'chỉ lưu link, không lưu tệp')", /lưu trên kho của KiN/.test(dtext) && !/không lưu tệp/.test(dtext));

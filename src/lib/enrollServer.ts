@@ -319,10 +319,12 @@ export async function loadOwnerJoinQueue(ownerId: string): Promise<{ courseId: s
   return [...by.values()];
 }
 
-/** Đường hàng chờ gộp. Form duyệt / từ chối gửi kèm `ve=hang-cho` thì 303 về đây thay vì tab Học sinh của lớp. */
+/** Đường hàng chờ gộp. Form duyệt / từ chối gửi kèm `ve=hang-cho` thì 303 về đây thay vì tab Học sinh của lớp; SCL-G-GS: `ve=hop-viec` về Hộp việc dạy học. */
 export const JOIN_QUEUE_PATH = "/lop-cua-toi/xin-vao-lop";
 export function joinDecideBack(courseId: string, fd: FormData | null, qs: string): string {
-  return fd?.get("ve") === "hang-cho" ? `${JOIN_QUEUE_PATH}?${qs}` : `/lop-cua-toi/${encodeURIComponent(courseId)}?tab=hoc-sinh&${qs}`;
+  const ve = fd?.get("ve");
+  if (ve === "hop-viec") return `/lop-cua-toi/hop-viec?${qs}`;
+  return ve === "hang-cho" ? `${JOIN_QUEUE_PATH}?${qs}` : `/lop-cua-toi/${encodeURIComponent(courseId)}?tab=hoc-sinh&${qs}`;
 }
 
 export async function countPendingJoinRequests(courseId: string): Promise<number> {

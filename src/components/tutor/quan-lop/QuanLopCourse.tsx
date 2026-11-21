@@ -4,7 +4,7 @@
 // Bốn trạng thái có chữ: đang tải · lỗi tải ("Thử lại") · không có lớp · lớp của người khác ("Bạn không có quyền với lớp này", không mang dữ liệu lớp).
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { isCenterAdmin } from "@/lib/tutorGate";
 import { KinButton, kinButtonClass } from "@/components/kin/Button";
@@ -12,10 +12,15 @@ import { KinEmptyState } from "@/components/kin/EmptyState";
 import type { CourseDB } from "./lessonForm";
 import { TabCaiDat } from "./TabCaiDat";
 import { TabChuongBai } from "./TabChuongBai";
+import type { LessonStat } from "@/lib/lopViecServer";
 
 type Phase = { kind: "loading" } | { kind: "error" } | { kind: "notfound" } | { kind: "ready"; course: CourseDB };
 
-export default function QuanLopCourse({ courseId, view }: { courseId: string; view: "cai-dat" | "bai-hoc" }) {
+export default function QuanLopCourse({ courseId, view, stats, todo }: {
+  courseId: string; view: "cai-dat" | "bai-hoc";
+  /** SCL-G-GS: cột "Nộp x/y" theo bài (máy chủ tính). */ stats?: Record<string, LessonStat>;
+  /** SCL-G-GS: khối "Cần bạn xử lý" của lớp (vẽ ở máy chủ), đặt đầu cột trái. */ todo?: ReactNode;
+}) {
   const { user, isLoading } = useAuth();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
 
@@ -57,5 +62,5 @@ export default function QuanLopCourse({ courseId, view }: { courseId: string; vi
 
   if (view === "cai-dat") return <TabCaiDat courseSlug={course.id} course={course} />;
   // Ô tải tệp lên KiN: /api/media/document/init vẫn chỉ nhận CHỦ lớp ⇒ Chủ nhiệm ở lớp của gia sư khác dán link (như đồng giảng).
-  return <TabChuongBai courseSlug={course.id} initialSections={course.sections} canUpload={isOwner} />;
+  return <TabChuongBai courseSlug={course.id} initialSections={course.sections} canUpload={isOwner} stats={stats} todo={todo} />;
 }

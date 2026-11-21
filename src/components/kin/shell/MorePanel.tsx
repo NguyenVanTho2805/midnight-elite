@@ -23,9 +23,11 @@ export const isUnder = (pathname: string, href: string) => {
   return pathname === path || pathname.startsWith(path + "/");
 };
 
-export function MorePanel({ id, groups, onClose, user, onLogout, homeLink }: {
+export function MorePanel({ id, groups, mobileGroups = [], onClose, user, onLogout, homeLink }: {
   id: string;
   groups: MoreGroup[];
+  /** SCL-G-GS: nhóm CHỈ hiện trên điện thoại (gia sư: các module không còn trên thanh dưới 3 mục). Máy tính đã có chúng ở thanh bên. */
+  mobileGroups?: MoreGroup[];
   /** Lối về Trang chủ: một hàng ĐẦU bảng, chỉ điện thoại (máy tính đã có mục "Trang chủ" ở thanh bên). Không nằm trong `groups` để thanh rộng không nhân đôi mục. */
   homeLink?: { label: string; href: string };
   onClose: () => void;
@@ -69,10 +71,10 @@ export function MorePanel({ id, groups, onClose, user, onLogout, homeLink }: {
           </Link>
         </div>
       )}
-      {groups.map(g => {
+      {[...mobileGroups.map(g => ({ g, mobile: true })), ...groups.map(g => ({ g, mobile: false }))].map(({ g, mobile }) => {
         const lit = activeIndex(pathname, g.links.map(l => l.href.includes("#") ? { ...l, active: false } : l));
         return (
-          <div key={g.title} className="py-1">
+          <div key={`${mobile ? "m-" : ""}${g.title}`} className={mobile ? "py-1 md:hidden" : "py-1"}>
             <p className="px-3 pt-1 pb-1 text-[length:var(--kin-co-caption)] font-semibold uppercase tracking-[0.09em] text-[var(--kin-chu-mo)]">{g.title}</p>
             {g.links.map((l, i) => (
               <Link key={l.href} href={l.href} onClick={onClose}

@@ -41,7 +41,8 @@ export default async function QuanLopLayout({ children, params }: { children: Re
   const h = gate.head;
   return (
     <div className="min-w-0">
-      <div className="print:hidden"><ClassHead name={h.name} category={h.category} status={h.classStatus} hidden={h.hidden} studentCount={h.studentCount} examsHref={gate.role === "owner" ? `/lop-cua-toi/de-thi?lop=${encodeURIComponent(id)}` : null} /></div>
+      <div className="print:hidden"><ClassHead name={h.name} category={h.category} status={h.classStatus} hidden={h.hidden} studentCount={h.studentCount} examsHref={gate.role === "owner" ? `/lop-cua-toi/de-thi?lop=${encodeURIComponent(id)}` : null}
+        giaoHref={gate.role === "owner" ? `/lop-cua-toi/bai-tap/giao?lop=${encodeURIComponent(id)}` : null} color={h.color} /></div>
       <TutorContentTabs scope="quan-lop" role={gate.role} />
       <div className="pt-4 sm:pt-5">{children}</div>
     </div>

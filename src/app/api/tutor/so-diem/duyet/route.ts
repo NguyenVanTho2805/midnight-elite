@@ -8,8 +8,9 @@ import { logAction } from "@/lib/auditLog";
 import { isReviewAction, parseScoreInput } from "@/lib/soDiem";
 
 const NO_STORE = { "Cache-Control": "no-store" };
-const back = (req: NextRequest, courseId: string, ghi: string) =>
-  NextResponse.redirect(new URL(`/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`, req.url), { status: 303, headers: NO_STORE });
+// SCL-G-GS: duyệt từ Hộp việc (điện thoại) gửi kèm ve=hop-viec ⇒ về lại Hộp việc. Chỉ đúng một giá trị, không nhận đường tuỳ ý.
+const back = (req: NextRequest, courseId: string, ghi: string, fd: FormData | null) =>
+  NextResponse.redirect(new URL(fd?.get("ve") === "hop-viec" ? `/lop-cua-toi/hop-viec?ghi=${ghi}` : `/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`, req.url), { status: 303, headers: NO_STORE });
 
 export async function POST(req: NextRequest) {
   const fd = await req.formData().catch(() => null);
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   const acc = await requireCourseAccess(r.exam.courseId, "score.write");
   if (!acc.ok) return acc.res;
   const courseId = r.exam.courseId;
-  if (!r.pendingReview) return back(req, courseId, "khong-co");
+  if (!r.pendingReview) return back(req, courseId, "khong-co", fd);
 
   if (action === "tu-choi") {
     const gone = await prisma.$transaction(async tx => {
@@ -28,19 +29,19 @@ export async function POST(req: NextRequest) {
       if (d.count) await tx.exam.updateMany({ where: { id: r.examId, participants: { gt: 0 } }, data: { participants: { decrement: 1 } } });
       return d.count;
     });
-    if (!gone) return back(req, courseId, "khong-co");
+    if (!gone) return back(req, courseId, "khong-co", fd);
     await logAction(acc.session.userId, "exam_result.reject", "ExamResult", r.id, { examId: r.examId, userId: r.userId });
-    return back(req, courseId, "da-tu-choi");
+    return back(req, courseId, "da-tu-choi", fd);
   }
   let score = r.score;
   if (action === "sua") {
     const s = parseScoreInput(fd?.get("score"), r.exam.totalPoints);
-    if (s === null) return back(req, courseId, "diem-sai");
+    if (s === null) return back(req, courseId, "diem-sai", fd);
     score = s;
   }
   // Chỉ dòng còn chờ duyệt (học sinh khai lại giữa chừng thì dòng vẫn chờ, nhưng điểm mới — không ghi đè bằng số cũ của form).
   const u = await prisma.examResult.updateMany({ where: { id: r.id, pendingReview: true, ...(action === "duyet" ? { score: r.score } : {}) }, data: { score, pendingReview: false } });
-  if (!u.count) return back(req, courseId, "khong-co");
+  if (!u.count) return back(req, courseId, "khong-co", fd);
   await logAction(acc.session.userId, "exam_result.approve", "ExamResult", r.id, { examId: r.examId, userId: r.userId, edited: action === "sua" });
-  return back(req, courseId, action === "sua" ? "da-sua" : "da-duyet");
+  return back(req, courseId, action === "sua" ? "da-sua" : "da-duyet", fd);
 }

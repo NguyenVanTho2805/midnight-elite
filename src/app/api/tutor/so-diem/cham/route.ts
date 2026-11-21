@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
   const acc = await requireAssignmentAccess(s.assignmentId, "grade");
   if (!acc.ok) return acc.res;
   const courseId = s.assignment.lesson.chapter.section.courseId;
-  const go = (ghi: string) => NextResponse.redirect(new URL(`/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&ghi=${ghi}`, req.url), { status: 303, headers: NO_STORE });
+  // SCL-G-GS: chấm từ Hộp việc (điện thoại) gửi kèm ve=hop-viec ⇒ về lại Hộp việc. Chỉ đúng một giá trị, không nhận đường tuỳ ý.
+  const to = fd?.get("ve") === "hop-viec" ? "/lop-cua-toi/hop-viec?" : `/lop-cua-toi/so-diem?lop=${encodeURIComponent(courseId)}&`;
+  const go = (ghi: string) => NextResponse.redirect(new URL(`${to}ghi=${ghi}`, req.url), { status: 303, headers: NO_STORE });
   const score = parseScoreInput(fd?.get("score"), s.assignment.maxPoints);
   if (score === null) return go("diem-sai");
   await prisma.assignmentSubmission.update({ where: { id: s.id }, data: { score, gradedAt: new Date(), gradedBy: acc.session.userId } });

@@ -38,8 +38,10 @@ function LinkVerdict({ value, slot, onMove }: { value: string; slot: MediaSlot; 
   );
 }
 
-export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMove, extra }: {
+export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMove, extra, icon }: {
   label: string; slot: MediaSlot; placeholder: string; urls: string[]; onChange: (urls: string[]) => void;
+  /** SCL-G-GS: hình nhỏ trước nhãn (vd. logo YouTube); có hình thì nhãn 14px màu chữ chính. */
+  icon?: React.ReactNode;
   /** Gọi khi gia sư bấm "Chuyển sang ô đúng": cha lấy link khỏi ô này và thêm vào ô `to`. */
   onMove?: (from: MediaSlot, index: number, to: MediaSlot) => void;
   extra?: React.ReactNode;
@@ -48,7 +50,9 @@ export function SlotLinkEditor({ label, slot, placeholder, urls, onChange, onMov
   const remove = (i: number) => { const n = urls.filter((_, k) => k !== i); onChange(n.length ? n : [""]); };
   return (
     <div>
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-mo)" }}>{label}</label>
+      {icon
+        ? <label className="flex items-center gap-1.5 text-sm font-semibold mb-1.5 text-[var(--kin-chu-chinh)]">{icon}{label}</label>
+        : <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--kin-chu-mo)" }}>{label}</label>}
       <div className="space-y-2">
         {urls.map((u, i) => (
           <div key={i}>

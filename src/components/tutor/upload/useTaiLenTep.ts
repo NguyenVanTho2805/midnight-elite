@@ -14,7 +14,7 @@ export interface TaiLenEntry { id: number; file: File; pct: number; state: TaiLe
 
 /** Kết quả nơi dùng báo về sau khi tệp lên xong: ok=false thì hàng báo lỗi bằng `error`. */
 export interface UploadedResult { ok: boolean; error?: string }
-export type OnUploaded = (link: string, name: string, meta: { assetId: string }) => Promise<UploadedResult> | UploadedResult;
+export type OnUploaded = (link: string, name: string, meta: { assetId: string; size: number }) => Promise<UploadedResult> | UploadedResult;
 
 export interface UseTaiLenTepOptions {
   courseId: string;
@@ -76,7 +76,7 @@ export function useTaiLenTep({ courseId, config, pledge, onUploaded }: UseTaiLen
       const link = (cr.json.link as string) ?? (init.json.link as string);
       const name = (cr.json.name as string) ?? file.name;
       const assetId = (cr.json.assetId as string) ?? (init.json.assetId as string);
-      const r = await onDone(link, name, { assetId });
+      const r = await onDone(link, name, { assetId, size: file.size });
       if (r.ok) patch(e.id, { state: "done", pct: 100, message: null });
       else patch(e.id, { state: "err", message: r.error ?? "Chưa thêm được." });
     } catch { fail("Mất kết nối. Hãy thử lại."); }

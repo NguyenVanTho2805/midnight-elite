@@ -135,8 +135,10 @@ export function contentTabsFor(pathname: string, tab: string | null = null, role
     label: "Quản lớp",
     tabs: [
       baiHoc,
-      { label: "Video", href: `${base}/video`, active: onSub("video") }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
+      // SCL-G-GS (QUYET-DINH §3.4): ba tab đầu là "Bài học / Học sinh / Điểm"; "Điểm" là liên kết sang sổ điểm của lớp (trang riêng, không sáng ở đây).
       { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
+      { label: "Điểm", href: `/lop-cua-toi/so-diem?lop=${m[1]}`, active: false },
+      { label: "Video", href: `${base}/video`, active: onSub("video") }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
       { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao") }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
       // SCL F1 (P3): tab Điểm danh chỉ khi phần Điểm danh mở — cờ tắt thì route …/diem-danh bị chặn 307, tab là đường chết.
       ...(featureOn("DIEM_DANH") ? [{ label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") }] : []),

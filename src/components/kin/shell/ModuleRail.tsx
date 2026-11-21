@@ -14,11 +14,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ShellIcon } from "./ShellIcon";
 import { chooseRail, lastOpenRail, readRail, useRail } from "./railStore";
 import { isRailShortcut, toggleRail, widenRail } from "@/lib/railState";
 import { activeIndex } from "@/lib/navActive";
+import { filterClasses, showClassFilter } from "@/lib/lopViec";
 
 /** Mục của thanh rộng (nằm trong một nhóm). `active` để nơi gọi tự quyết; không có thì so đường dẫn như ModuleItem. */
 export interface NavItem {
@@ -30,8 +31,15 @@ export interface NavItem {
   active?: boolean;
   badge?: number;
   external?: boolean;
+  /** SCL-G-GS: mục là MỘT LỚP ("Lớp của bạn") — chấm màu lớp (token, chỉ trang trí) thay biểu tượng, sĩ số ở cột phải, tên lớp xuống dòng. */
+  dot?: string;
+  /** Sĩ số hiện cạnh tên lớp (đọc là "n học sinh"). */
+  count?: number;
+  /** Tên gia sư (Chủ nhiệm lọc được theo tên gia sư). */
+  ownerName?: string | null;
 }
-export interface NavGroup { title: string; items: NavItem[] }
+/** `classes`: nhóm là danh sách lớp — mọi nhóm `classes` dùng chung MỘT ô lọc, chỉ hiện khi tổng số lớp > 8 (QUYET-DINH §2.2). */
+export interface NavGroup { title: string; items: NavItem[]; classes?: boolean }
 
 export interface ModuleItem {
   key: string;
@@ -55,6 +63,7 @@ export interface ModuleItem {
   mobileOnly?: boolean;
 }
 
+const railText = (m: NavItem) => `${m.label} ${m.ownerName ?? ""}`;
 const matches = (pathname: string, href: string) => pathname === href || pathname.startsWith(href + "/");
 export const isModuleActive = (pathname: string, m: ModuleItem) =>
   m.active ?? (!!m.href && (matches(pathname, m.href) || (m.also ?? []).some(p => matches(pathname, p))));
@@ -87,6 +96,10 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
 }) {
   const pathname = usePathname();
   const [rail] = useRail();
+  const [classQ, setClassQ] = useState("");
+  const classItems = (groups ?? []).filter(g => g.classes).flatMap(g => g.items.filter(m => m.dot));
+  const classCount = classItems.length;
+  const classMatches = classQ ? filterClasses(classItems, classQ, railText).length : classCount;
   const itemsRef = useRef<HTMLDivElement>(null);
   const hlRef = useRef<HTMLSpanElement>(null);
 
@@ -178,8 +191,11 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
     };
     const inner = (
       <>
-        <ShellIcon name={m.icon} />
-        <span className="min-w-0 flex-1 truncate">{m.label}</span>
+        {m.dot
+          ? <span aria-hidden data-cham-lop className="w-[21px] flex-shrink-0 flex justify-center"><span className="block size-2.5 rounded-full" style={{ background: m.dot }} /></span>
+          : <ShellIcon name={m.icon} />}
+        <span className={`min-w-0 flex-1 ${m.dot ? "[overflow-wrap:anywhere]" : "truncate"}`}>{m.label}</span>
+        {m.count !== undefined && <span data-si-so className="flex-shrink-0 tabular-nums text-[var(--kin-chu-phu)] font-normal"><span aria-hidden>{m.count}</span><span className="sr-only">, {m.count} học sinh</span></span>}
         {m.badge && m.badge > 0 ? <span className="kin-badge-dem flex-shrink-0" aria-label={`${m.badge} việc cần xử lý`}>{m.badge > 99 ? "99+" : m.badge}</span> : null}
       </>
     );
@@ -209,12 +225,20 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
           </div>
           {groups && (
             <div className="kin-rail-groups kin-chu-than w-full flex-col gap-[6px]">
-              {groups.map(g => {
+              {groups.map((g, gi) => {
                 const lit = activeIndex(pathname, g.items);
+                const firstClasses = g.classes && groups.findIndex(x => x.classes) === gi;
+                const shown = g.classes && classQ ? [...filterClasses(g.items.filter(m => m.dot), classQ, railText), ...g.items.filter(m => !m.dot)] : g.items;
+                if (g.classes && classQ && !firstClasses && !shown.some(m => m.dot)) return null; // Chủ nhiệm: nhóm gia sư không còn lớp nào khớp thì ẩn cả nhóm
                 return (
-                  <div key={g.title} role="group" aria-label={g.title} className="flex flex-col gap-[2px] pt-[10px]">
+                  <div key={g.title} role="group" aria-label={g.title} data-rail-classes={g.classes ? "" : undefined} className="flex flex-col gap-[2px] pt-[10px]">
                     <p aria-hidden className="kin-rail-gh h-4 text-[length:var(--kin-co-caption)] leading-4 font-semibold uppercase text-[var(--kin-chu-mo)]">{g.title}</p>
-                    {g.items.map((m, i) => renderWide(m, i === lit))}
+                    {firstClasses && showClassFilter(classCount) && (
+                      <input type="search" value={classQ} onChange={e => setClassQ(e.target.value)} aria-label="Lọc lớp theo tên" placeholder="Lọc lớp" data-loc-lop
+                        className="my-1 min-h-11 w-full px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] placeholder:text-[var(--kin-chu-mo)] focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)]" />
+                    )}
+                    {shown.map(m => renderWide(m, g.items.indexOf(m) === lit))}
+                    {firstClasses && classQ && classMatches === 0 && <p role="status" className="px-3 py-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Không có lớp nào khớp &quot;{classQ}&quot;.</p>}
                   </div>
                 );
               })}
