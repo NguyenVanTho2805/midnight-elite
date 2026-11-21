@@ -49,7 +49,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   };
   const openDrawer = async (pg: any, url = URL_TAB) => {
     await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
-    await pg.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
+    await pg.getByRole("button", { name: "+ Thêm bài", exact: true }).first().click({ timeout: 120000 });
     await pg.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
     await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 60000 });
     await pg.locator("[data-o-tha]").first().waitFor({ timeout: 60000 });
@@ -171,7 +171,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   const pg4b = await ctx.newPage(); watch(pg4b);
   await pg4b.route("**/api/media/config", r => r.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
   await pg4b.goto(URL_TAB, { waitUntil: "domcontentloaded", timeout: 180000 });
-  await pg4b.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
+  await pg4b.getByRole("button", { name: "+ Thêm bài", exact: true }).first().click({ timeout: 120000 });
   await pg4b.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
   await pg4b.locator('[data-o-tha="loi-kiem"]').waitFor({ timeout: 30000 });
   check("kiểm kho lỗi (500) → ô 'loi-kiem' có chữ 'Chưa kiểm được kho tệp.' + nút 'Thử lại'", (await pg4b.locator('[data-o-tha="loi-kiem"]').getByRole("button", { name: "Thử lại" }).count()) === 1 && (await pg4b.locator('[data-o-tha="loi-kiem"]').innerText()).includes("Chưa kiểm được kho tệp."));

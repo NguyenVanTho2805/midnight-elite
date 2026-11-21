@@ -18,7 +18,7 @@ import { formatVnLessonWhen } from "@/lib/tutorLessonDate";
 const RAIL = "Module của gia sư";
 const STRIP = 'nav[aria-label^="Trang của"]';
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH (mặc định ẨN) — chạy bài cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
-const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+const TABS = ["Bài học", "Học sinh", "Điểm", "Video", "Thông báo", ...(featureOn("DIEM_DANH") ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: ba tab đầu Bài học / Học sinh / Điểm (Điểm = liên kết sổ điểm)
 const SHOTS = process.env.SHOTS ?? "scratchpad/shots";
 const PDF = [..."%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"].map(c => c.charCodeAt(0));
 type F = { name: string; type: string; bytes?: number[]; size?: number };
@@ -165,13 +165,13 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await lessonRow(pg, "Bài có Drive cũ").waitFor({ timeout: 120000 });
   await openDetail(pg, "Bài có Drive cũ");
   await pg.waitForFunction(() => document.querySelector("[data-o-tha]")?.getAttribute("data-o-tha") !== "dang-kiem", undefined, { timeout: 60000 });
-  const panelText = await pg.locator("[data-tai-lieu]").first().locator("xpath=ancestor::div[contains(@class,'fixed')][1]").innerText();
+  const panelText = await pg.locator("[data-tai-lieu]").first().locator("xpath=ancestor::*[@data-ngan-bai-hoc][1]").innerText();
   check("panel không có ô 'Link phòng Zoom'", !panelText.includes("Link phòng Zoom") && (await pg.getByPlaceholder("https://zoom.us/j/...").count()) === 0);
   check("panel không có ô 'Dán link Google Drive' / 'Hoặc dán link tài liệu'", (await pg.getByPlaceholder(/Dán link Google Drive/).count()) === 0 && !panelText.includes("Hoặc dán link tài liệu"));
   check("bài có Zoom cũ: dòng chỉ đọc 'Bài này có link phòng Zoom cũ — học sinh vẫn thấy.'", (await pg.locator("[data-zoom-cu]").innerText()).includes("Bài này có link phòng Zoom cũ — học sinh vẫn thấy."));
   check("thứ tự khối (SCL-D): Tên → Video → Tài liệu → [Tuỳ chọn khác: Ngày học → Trạng thái → Ghi chú → Xem như học sinh]", await pg.evaluate(`(() => {
-    const order = ["#ls-ten", "[data-video-bai]", "[data-tai-lieu]", "[data-tuy-chon]", "[data-ngay-hoc]", "#ls-trang-thai", "#ls-ghi-chu", "[data-xem-nhu-hoc-sinh]"].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().top : -1; });
-    return order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1]));
+    const order = ["#ls-ten", "[data-video-bai]", "[data-tai-lieu]", "[data-tuy-chon]", "[data-ngay-hoc]", "#ls-trang-thai", "#ls-ghi-chu", "[data-xem-nhu-hoc-sinh]"].map(s => { const e = document.querySelector(s); return e ? e.getBoundingClientRect().top : null; });
+    return order.every((v, i) => v !== null && (i === 0 || v > order[i - 1])); // SCL-G-GS: ngăn luôn mở có thể đã cuộn ⇒ "top" âm vẫn hợp lệ
   })()`));
   check("'Xem như học sinh ↗' trỏ …/giao-trinh/xem/<id>", (await pg.locator("[data-xem-nhu-hoc-sinh]").getAttribute("href")) === `${base(A.id)}/giao-trinh/xem/loi-l1`);
   check("tài liệu cũ dạng link Drive vẫn hiện (tên + đường)", (await pg.locator("[data-tai-lieu-hang]").count()) === 1 && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("Đề cương Drive") && (await pg.locator("[data-tai-lieu-hang]").first().innerText()).includes("drive.google.com"));
@@ -426,7 +426,7 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
   await pm.locator('[data-sua-nhanh="sua"]').getByRole("button", { name: "Huỷ" }).click();
   await openDetail(pm, "Buổi 2 — đổi tên");
   await pm.waitForFunction(() => document.querySelector("[data-o-tha]")?.getAttribute("data-o-tha") !== "dang-kiem", undefined, { timeout: 60000 });
-  check("390: panel phủ toàn màn, không tràn ngang", await noOverflow(pm) && (await pm.locator("[data-tai-lieu]").first().locator("xpath=ancestor::div[contains(@class,'fixed')][1]").evaluate(e => Math.round(e.getBoundingClientRect().width))) === 390);
+  check("390: panel phủ toàn màn, không tràn ngang", await noOverflow(pm) && (await pm.locator("[data-tai-lieu]").first().locator("xpath=ancestor::*[@data-ngan-bai-hoc][1]").evaluate(e => Math.round(e.getBoundingClientRect().width))) === 390);
   const tiny = await pm.evaluate(`[...document.querySelectorAll("[data-tai-lieu] button, [data-ngay-hoc] button, #ls-trang-thai")].filter(e => e.offsetParent && e.getBoundingClientRect().height < 43.5).map(e => (e.textContent||"").trim().slice(0,16) + ":" + Math.round(e.getBoundingClientRect().height))`) as string[];
   check("390: nút trong panel ≥ 44px", tiny.length === 0, tiny);
   check("390: nút Lưu / Huỷ dính đầu panel", await pm.getByRole("button", { name: /^Lưu$/ }).first().isVisible());

@@ -11,7 +11,7 @@ import { featureOn } from "@/lib/features";
 const RAIL = "Module của gia sư";
 // DG (14/11/2026): tab Điểm danh theo cờ DIEM_DANH, mục Học phí của Cài đặt theo cờ HOC_PHI (mặc định ẨN). Bài đọc cờ ở tiến trình này: chạy cùng biến NEXT_PUBLIC_KIN_MO_* với máy chủ dev.
 const DIEM_DANH = featureOn("DIEM_DANH"), HOC_PHI = featureOn("HOC_PHI");
-const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo
+const TABS = ["Bài học", "Học sinh", "Điểm", "Video", "Thông báo", ...(DIEM_DANH ? ["Điểm danh"] : []), "Cài đặt"]; // TB-LOP (17/11/2026) thêm Thông báo SCL-G-GS: Bài học / Học sinh / Điểm đứng đầu
 
 (async () => {
   await wipe();
@@ -85,7 +85,7 @@ const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH 
     const tabUrl: Record<string, RegExp> = {
       "Học sinh": /\/hoc-vien/, "Thông báo": /\/thong-bao/, "Điểm danh": /\/diem-danh/, "Cài đặt": /tab=cai-dat/, "Bài học": /quan-lop\/[^/?]+$/,
     };
-    for (const name of [...TABS.slice(1), "Bài học"]) {
+    for (const name of [...TABS.slice(1).filter(n => n !== "Điểm"), "Bài học"]) { // SCL-G-GS: "Điểm" là liên kết sang sổ điểm (trang khác), không phải trang con của lớp
       await pg.locator('nav[aria-label^="Trang của"]:visible').getByRole("link", { name, exact: true }).click();
       await pg.waitForURL(tabUrl[name], { timeout: 120000 });
       await pg.waitForFunction(n => [...document.querySelectorAll('nav[aria-label^="Trang của"] [aria-current=page]')].some(e => (e as HTMLElement).innerText.trim() === n), name, { timeout: 120000 });
@@ -138,7 +138,7 @@ const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH 
     await pg.goto(`${BASE}${base}?tab=chuong-bai`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await pg.getByText("Bài giảng 1").first().waitFor({ timeout: 120000 });
     check(`${tag}: ?tab=chuong-bai (liên kết cũ) → thân Bài học, tab Bài học sáng; không còn dòng dẫn sang Giáo trình`, (await pg.locator("[data-bai-tap-dan]").count()) === 0 && (await pg.locator('nav[aria-label^="Trang của"] [aria-current=page]').innerText()).trim() === "Bài học");
-    await pg.getByRole("button", { name: "+ Thêm bài" }).first().click();
+    await pg.getByRole("button", { name: "+ Thêm bài", exact: true }).first().click();
     await pg.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
     await pg.getByRole("heading", { name: "Thêm bài học", level: 2 }).waitFor({ timeout: 30000 });
     await pg.locator("[data-o-tha]").first().waitFor({ timeout: 60000 });
@@ -161,7 +161,7 @@ const TABS = ["Bài học", "Video", "Học sinh", "Thông báo", ...(DIEM_DANH 
     await pg.waitForTimeout(700); // ngăn kéo trượt vào 0,28s
     await pg.locator("[data-tai-lieu]").first().scrollIntoViewIfNeeded();
     await pg.screenshot({ path: `${process.env.SHOTS ?? "scratchpad/shots"}/gs-lop-gon-ngan-keo-${tag}.png` }); // ngăn kéo là khung cố định tự cuộn: chụp khung nhìn, không chụp cả trang
-    await pg.getByRole("button", { name: "Đóng", exact: true }).first().click();
+    await pg.getByRole("button", { name: /^(Đóng|Huỷ)$/ }).first().click(); // SCL-G-GS: ≥1024px ngăn nằm cạnh, không có nút × "Đóng"
 
     section(`Khác không còn "Kế hoạch buổi" · ${tag}px`);
     await pg.goto(`${BASE}/lop-cua-toi/lop`, { waitUntil: "domcontentloaded", timeout: 180000 });

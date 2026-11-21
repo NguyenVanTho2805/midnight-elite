@@ -110,7 +110,9 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     check("thấy thẻ lớp đang quản lý", await visible(p.getByText("Toán 9 gọn")));
     const nav = p.getByRole("navigation", { name: "Module của gia sư" });
     const navText = (await nav.allInnerTexts()).join("\n");
-    for (const gone of ["Hộp việc", "Học phí", "Doanh thu", "Báo cáo tháng", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
+    // SCL-G-GS (QUYET-DINH §3.4): "Hộp việc" DẠY HỌC (chờ chấm / chờ duyệt / xin vào lớp, /lop-cua-toi/hop-viec) nay luôn ở đầu thanh — không phải Hộp việc cũ có học phí (cờ HOP_VIEC).
+    check("thanh gia sư: 'Hộp việc' là Hộp việc dạy học (/lop-cua-toi/hop-viec), không phải Hộp việc cũ có học phí", (await nav.getByRole("link", { name: /^Hộp việc/ }).evaluateAll(as => as.map(a => a.getAttribute("href")))).every(h => h === "/lop-cua-toi/hop-viec"));
+    for (const gone of ["Học phí", "Doanh thu", "Báo cáo tháng", "Bài đăng tìm học sinh", "Yêu cầu tìm gia sư", "Gói của tôi", "Tổng quan"]) { // HP-BO (17/11/2026): "Lịch" rời danh sách này — Lịch gia sư luôn hiện
       check(`thanh gia sư KHÔNG có '${gone}'`, !navText.split("\n").some(t => t.trim() === gone), navText);
     }
     for (const keep of ["Lịch", "Lớp", "Học sinh", "Bài tập", "Thư viện", "Sổ điểm", "Hồ sơ gia sư", "Cài đặt"]) check(`thanh gia sư CÓ '${keep}'`, navText.split("\n").some(t => t.trim() === keep), navText);
@@ -123,7 +125,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const strip = p.getByRole("navigation", { name: /Trang của Quản lớp/ });
     await strip.waitFor({ timeout: 120000 });
     const tabs = (await strip.getByRole("link").allInnerTexts()).map(t => t.trim());
-    check("trang lớp: dải tab Bài học · Video · Học sinh · Thông báo · Cài đặt (không Điểm danh)", tabs.join("|") === "Bài học|Video|Học sinh|Thông báo|Cài đặt", tabs);
+    check("trang lớp: dải tab Bài học · Học sinh · Điểm · Video · Thông báo · Cài đặt (không Điểm danh; SCL-G-GS: ba tab đầu Bài học / Học sinh / Điểm)", tabs.join("|") === "Bài học|Học sinh|Điểm|Video|Thông báo|Cài đặt", tabs);
     await p.goto(`${BASE}/lop-cua-toi/quan-lop/${A.id}?tab=cai-dat&muc=hoc-phi`, { waitUntil: "domcontentloaded", timeout: 120000 });
     const muc = p.getByRole("navigation", { name: "Mục của Cài đặt" });
     await muc.waitFor({ timeout: 120000 });
@@ -141,9 +143,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const ctx = await ctxFor(T, { width: 390, height: 844 });
     const p = await ctx.newPage(); watch(p);
     await p.goto(`${BASE}/lop-cua-toi/lop`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    await p.getByText("Toán 9 gọn").first().waitFor({ timeout: 120000 });
+    await p.getByText("Toán 9 gọn").filter({ visible: true }).first().waitFor({ timeout: 120000 }); // thanh bên rộng (ẩn ở 390) cũng có tên lớp
     const cells = await p.evaluate(`[...document.querySelectorAll('nav[aria-label="Module của gia sư"] a, nav[aria-label="Module của gia sư"] button')].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.top > innerHeight - 80; }).map(e => (e.textContent || '').trim())`) as string[];
-    check("điện thoại: thanh dưới có Lớp, Bài tập, Thư viện, Khác; không Hộp việc / Học phí", ["Lớp", "Bài tập", "Thư viện", "Khác"].every(c => cells.some(t => t.startsWith(c))) && !cells.some(t => /Hộp việc|Học phí/.test(t)), cells);
+    // SCL-G-GS (QUYET-DINH §3.4): thanh dưới gia sư đúng 3 mục Hộp việc (dạy học) / Lớp / Tôi; Bài tập, Thư viện vào qua "Tôi".
+    check("điện thoại: thanh dưới đúng Hộp việc / Lớp / Tôi; không Học phí", cells.length === 3 && ["Hộp việc", "Lớp", "Tôi"].every((c, i) => cells[i].startsWith(c)) && !cells.some(t => /Học phí/.test(t)), cells);
     check("390: không tràn ngang", await p.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"));
     await shot(p, "dg-gia-su-lop-390");
     await ctx.close();

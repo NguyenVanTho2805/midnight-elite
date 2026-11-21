@@ -60,7 +60,7 @@ const statusOk = (pg: Page, scope: string) => pg.locator(`${scope} [data-kin-sta
   const classUrl = (id: string) => `${BASE}/lop-cua-toi/quan-lop/${encodeURIComponent(id)}`;
 
   section("1280 · trang lớp gia sư");
-  const pg = await (await ctxFor(T, { width: 1280, height: 900 })).newPage(); watch(pg);
+  const pg = await (await ctxFor(T, { width: 1280, height: 900, rail: "mac-dinh" })).newPage(); watch(pg);
   await pg.goto(classUrl(A.id), { waitUntil: "networkidle", timeout: 170000 });
   const region = pg.getByRole("region", { name: "Sửa bài học" });
   await region.waitFor({ timeout: 90000 });
@@ -69,8 +69,8 @@ const statusOk = (pg: Page, scope: string) => pg.locator(`${scope} [data-kin-sta
   check("thanh bên: 'Hộp việc' có số việc (1 chờ chấm + 1 chờ duyệt + 1 xin vào = 3)", (await inbox.count()) === 1 && /3 việc cần xử lý/.test(await inbox.innerHTML()), await inbox.innerText().catch(() => ""));
   const classes = rail.locator("[data-rail-classes] a:has([data-cham-lop])");
   check("thanh bên: 'Lớp của bạn' liệt kê 2 lớp, có chấm màu và sĩ số", (await classes.count()) === 2 && (await rail.getByRole("group", { name: "Lớp của bạn" }).count()) === 1
-    && /Toán 9 · Lớp thử A\s*3/.test(await classes.first().innerText()));
-  check("thanh bên: lớp đang mở là mục duy nhất aria-current", (await rail.locator("[aria-current=page]").count()) === 1 && /Toán 9/.test(await rail.locator("[aria-current=page]").innerText()));
+    && /Toán 9 · Lớp thử A\s*3\s*, 3 học sinh/.test(await classes.filter({ hasText: "Toán 9" }).innerText()));
+  check("thanh bên (rộng, mặc định): lớp đang mở là mục duy nhất đang sáng", (await rail.locator("[aria-current=page]:visible").count()) === 1 && /Toán 9/.test(await rail.locator("[aria-current=page]:visible").innerText()));
   check("không có ô lọc lớp khi ≤ 8 lớp", (await rail.locator("[data-loc-lop]").count()) === 0);
   const prim = await primaries(pg);
   check("MỘT nút chính trên màn: '+ Giao bài'", prim.length === 1 && prim[0] === "+ Giao bài", prim);

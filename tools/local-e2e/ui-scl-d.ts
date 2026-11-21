@@ -37,7 +37,7 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   const ct = await ctxFor(T, { width: 900, height: 900, rail: "mac-dinh" });
   const pt = await ct.newPage(); watch(pt);
   await pt.goto(`${BASE}/lop-cua-toi/quan-lop/${C.id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  await pt.getByRole("button", { name: "+ Thêm bài" }).first().click({ timeout: 120000 });
+  await pt.getByRole("button", { name: "+ Thêm bài", exact: true }).first().click({ timeout: 120000 });
   await pt.locator('[data-sua-nhanh="them"] input').first().fill("Buổi 1: Hàm số");
   await pt.locator('[data-sua-nhanh="them"]').getByRole("button", { name: "Chi tiết…" }).click();
   const dlg = pt.getByRole("dialog", { name: "Thêm bài học" });

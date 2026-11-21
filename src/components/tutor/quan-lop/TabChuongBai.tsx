@@ -593,6 +593,8 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
       else if (del.kind === "chapter") setSections(p => p.map(s => s.id === del.sectionId ? { ...s, chapters: s.chapters.filter(c => c.id !== del.chapterId) } : s));
       else setSections(p => p.map(s => s.id === del.sectionId
         ? { ...s, chapters: s.chapters.map(c => c.id === del.chapterId ? { ...c, lessons: c.lessons.filter(l => l.id !== del.lessonId) } : c) } : s));
+      // Ngăn luôn mở đang sửa đúng thứ vừa xoá ⇒ đóng (không để tự lưu PUT vào bài đã mất).
+      if (panel.type === "edit-lesson" && (del.kind === "section" ? panel.sectionId === del.sectionId : del.kind === "chapter" ? panel.chapterId === del.chapterId : panel.lessonId === del.lessonId)) setPanel({ type: "none" });
       flash("Đã xoá");
     } catch (e) {
       flash(`Chưa xoá được: ${e instanceof Error ? e.message : "lỗi không rõ"}`, "loi");
@@ -1018,8 +1020,8 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
                                   onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
                                 >
                                   {editingHere ? renderQuickForm(chapter.id) : (
-                                    <div className="flex flex-col gap-1 lg:flex-row lg:items-center lg:gap-4">
-                                      <div className="flex min-w-0 items-start gap-2 lg:flex-1">
+                                    <div className="flex flex-col gap-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4">
+                                      <div className="flex min-w-0 items-start gap-2 lg:flex-[1_1_14rem]">
                                         <span className="hidden sm:inline-flex self-center"><DragHandle /></span>
                                         <div className="min-w-0">
                                           {/* Bấm tên bài = mở ngăn sửa (máy tính: cột phải; điện thoại: hộp thoại). */}
@@ -1037,7 +1039,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
                                           </div>
                                         </div>
                                       </div>
-                                      <div data-bai-cot className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] tabular-nums lg:justify-end">
+                                      <div data-bai-cot className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] tabular-nums lg:justify-end lg:flex-shrink-0 lg:ml-auto">
                                         <span data-cot-video>{videoText(lesson.videoUrl, lesson.duration)}</span>
                                         {nop && <span data-cot-nop>{nop}</span>}
                                         {st && st.pending > 0 ? <KinGradeStatus state="cho-cham">Chờ chấm {st.pending}</KinGradeStatus>
