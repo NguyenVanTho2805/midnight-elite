@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { PROTECTED_LESSON_FIELDS } from "@/lib/mediaAccess";
 import { buildEntries, groupsForViewer, entryKind, isGenericTree, moveEntry, pickUngroupedChapter, VIDEO_FILE_REFUSED, VIDEO_YOUTUBE_ONLY, DRIVE_UNKNOWN_WARNING, type TreeSection, type GtEntry, deriveItems, itemKey, routeInput, placeItem, removeItem, lessonTypeFor, mergeLibrary, docTypeOf, storedDocType, kinFileIdOf, kinFileLink, MAX_LINKS_PER_SLOT, MAX_ITEM_NAME, type GtConfig, type LessonRow } from "@/lib/giaoTrinh";
 import { resolveDocumentUploadConfig, resolveVideoUploadConfig, validateDocumentFile, DOCUMENT_MAX_BYTES, DOCUMENT_QUOTA_BYTES, DOCUMENT_MIME_BY_EXT, MAX_DOCUMENTS_PER_LESSON } from "@/lib/mediaStorage";
-import { cloudinaryDocPublicId, cloudinaryDocUploadInit, cloudinarySignedRawUrl, signCloudinaryParams } from "@/lib/mediaStorageServer";
+import { cloudinaryDocPublicId, cloudinaryDocUploadInit, cloudinarySignedRawUrl, cloudinaryUploadInit, signCloudinaryParams } from "@/lib/mediaStorageServer";
 import { validateDocumentsJson, documentFileIds } from "@/lib/lessonMediaServer";
 import { parseLessonDocuments } from "@/lib/library";
 import { check, section, done } from "./h";
@@ -267,6 +267,11 @@ const init = cloudinaryDocUploadInit(env, "kin-docs/lop1/ck1abc.pdf", 1700000000
 const expectSig = createHash("sha1").update("overwrite=false&public_id=kin-docs/lop1/ck1abc.pdf&timestamp=1700000000&type=authenticated" + env.apiSecret).digest("hex");
 check("POST tới /raw/upload (không phải /video), type=authenticated, KHÔNG có upload_preset (không ký)", init.method === "POST" && init.url === "https://api.cloudinary.com/v1_1/kin-demo/raw/upload" && init.fields.type === "authenticated" && !("upload_preset" in init.fields));
 check("chữ ký = sha1('overwrite=false&public_id=…&timestamp=…&type=authenticated' + secret); có api_key, không lộ secret", init.fields.signature === expectSig && init.fields.api_key === "123" && !JSON.stringify(init).includes("s3cret"), init);
+{
+  const v = cloudinaryUploadInit(env, "kin-lessons/lop1/ck1vid", 1700000000);
+  const vSig = createHash("sha1").update("overwrite=false&public_id=kin-lessons/lop1/ck1vid&timestamp=1700000000&type=authenticated" + env.apiSecret).digest("hex");
+  check("SCL-J video: POST /video/upload, overwrite=false nằm TRONG phần ký (chữ ký dùng lại không ghi đè video đã kiểm)", v.url === "https://api.cloudinary.com/v1_1/kin-demo/video/upload" && v.fields.overwrite === "false" && v.fields.signature === vSig, v);
+}
 check("signCloudinaryParams bỏ file/api_key/resource_type và tham số rỗng", signCloudinaryParams({ a: "1", file: "x", api_key: "k", resource_type: "raw", empty: "" }, "S") === createHash("sha1").update("a=1" + "S").digest("hex"));
 const signed = cloudinarySignedRawUrl(env, "kin-docs/lop1/ck1abc.pdf");
 const sig8 = createHash("sha1").update("kin-docs/lop1/ck1abc.pdf" + env.apiSecret).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").slice(0, 8);

@@ -101,7 +101,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       const view = redactCourseForRole(coRole, tree as unknown as Record<string, unknown>);
       return NextResponse.json({ ...view, role: coRole, canSeeMoney: canSeeMoney(coRole) }, { headers: { "Cache-Control": "private, no-store" } });
     }
-    return NextResponse.json({ ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) });
+    const out: Record<string, unknown> = { ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) };
+    // SCL-J: mã tài khoản chủ lớp và tên nội bộ trong trang quản trị chỉ cho quản lý lớp; khách / học sinh không cần (không màn nào của họ đọc hai trường này).
+    if (!isManager) { delete out.ownerId; delete out.adminName; }
+    return NextResponse.json(out);
   } catch (e) {
     console.error("[GET /api/courses/[id]]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

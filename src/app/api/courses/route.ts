@@ -8,7 +8,7 @@ import { getSession } from "@/lib/session";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
 import { FEE_MODE_LEGACY, FEE_MODE_SHEET, validateFeeSetup, type FeeSetup } from "@/lib/tuitionFee";
 import { PREVIEW_BLOCKED_MESSAGE, createInitialFeeRate, moneyPathsBlocked } from "@/lib/feeChargeServer";
-import { courseFor, type MediaViewer } from "@/lib/mediaAccess";
+import { courseFor, isCourseManager, type MediaViewer } from "@/lib/mediaAccess";
 import { canUseOpenPolicy, isFreeClass, parseJoinPolicy } from "@/lib/joinRequest";
 import { loadFeeRateCourseIds } from "@/lib/enrollServer";
 import { SCHEDULES_MAX_PER_COURSE, parseScheduleInput, type ScheduleInput } from "@/lib/scheduleInput";
@@ -63,10 +63,15 @@ export async function GET(req: NextRequest) {
     const viewer: MediaViewer | null = session ? { userId: session.userId, role: session.role, adminRole: session.adminRole } : null;
     // BU-01: `isFree` tính sẵn bằng isFreeClass (một truy vấn cho cả trang) để mọi nơi hiện nhãn "Miễn phí" dùng cùng một điều kiện.
     const rated = await loadFeeRateCourseIds(courses.map(c => c.id));
-    return NextResponse.json(courses.map(c => ({
-      ...courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c),
-      isFree: isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: rated.has(c.id) }),
-    })));
+    return NextResponse.json(courses.map(c => {
+      const out: Record<string, unknown> = {
+        ...courseFor({ viewer, courseOwnerId: c.ownerId, enrollment: enrollmentOf.get(c.id) ?? null }, c),
+        isFree: isFreeClass({ price: c.price, tag: c.tag, hasFeeRate: rated.has(c.id) }),
+      };
+      // SCL-J: cùng điều kiện với GET /api/courses/[id] — mã chủ lớp và tên nội bộ chỉ cho quản lý lớp.
+      if (!isCourseManager(viewer, c.ownerId)) { delete out.ownerId; delete out.adminName; }
+      return out;
+    }));
   } catch (e) {
     console.error("[GET /api/courses]", e);
     return NextResponse.json({ error: "Lỗi hệ thống" }, { status: 500 });

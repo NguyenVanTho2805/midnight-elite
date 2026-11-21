@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { nextAdminRedirects } from "./src/lib/adminRedirects";
 
 const nextConfig: NextConfig = {
+  // SCL-J: không khai "x-powered-by: Next.js" (đỡ một manh mối cho kẻ dò phiên bản). Tài liệu: node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/poweredByHeader.md
+  poweredByHeader: false,
+
   // @napi-rs/canvas ships a native binary loader (js-binding.js) that
   // Turbopack's production build can't place in an ESM chunk — only used
   // server-side (route handler PDF rasterization), so opt it out of bundling
@@ -25,6 +28,10 @@ const nextConfig: NextConfig = {
   // CSP chặt: tệp này chỉ được chạy mã cùng nguồn. Cấu hình theo hướng dẫn PWA của Next 16 (node_modules/next/dist/docs/01-app/02-guides/progressive-web-apps.md).
   async headers() {
     return [
+      // SCL-J: chống nhúng KiN vào iframe trang khác (clickjacking). SAMEORIGIN, không DENY: KiN tự nhúng trang của chính mình — xem trước trang chủ
+      // (PreviewFrame → /admin/trang-chu/xem-truoc), PDF ở /xem-tai-lieu và QuizImport (→ /api/media/...). Dùng X-Frame-Options thay vì CSP
+      // frame-ancestors để không đè CSP riêng của /api/media/* (default-src 'none'; sandbox). Phải đứng ĐẦU: luật sau cùng khoá thì thắng.
+      { source: "/:path*", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }] },
       {
         source: "/sw.js",
         headers: [

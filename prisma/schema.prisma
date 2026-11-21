@@ -2540,6 +2540,22 @@ model LoginCode {
   @@map("login_codes")
 }
 
+// SCL-J (21/11/2026): mỗi lần đăng nhập MẬT KHẨU sai là một dòng (bộ đếm chống dò bền, thay bản trong bộ nhớ). Quy tắc: src/lib/loginThrottle.ts.
+//   accountKey — email chuẩn hoá hoặc "tel:+84…"; cleared — đã bị lần đăng nhập đúng xoá (chỉ còn tính cho tầng theo máy).
+// Dòng cũ hơn 24 giờ bị xoá khi ghi dòng mới (src/lib/loginThrottleServer.ts).
+model LoginFailure {
+  id         String   @id @default(cuid())
+  ip         String
+  accountKey String
+  cleared    Boolean  @default(false)
+  at         DateTime @default(now())
+
+  @@index([ip, at])
+  @@index([accountKey, at])
+  @@index([at])
+  @@map("login_failures")
+}
+
 // ─── KiN PRO — NỀN GÓI (23/10/2026; docs/kin/rd/pro/tinh-nang-pro-tra-phi.md mục 8.4) ─────────────────────────
 // "Đo trước, thu sau": chỉ THÊM bảng mới, không @unique trên bảng cũ. Không dùng Coin, không tự động trừ tiền.
 // Cổng hạn mức TẮT mặc định (biến môi trường KIN_PLAN_ENFORCE); bảng cấu hình sửa từ admin, không viết cứng trong mã.
