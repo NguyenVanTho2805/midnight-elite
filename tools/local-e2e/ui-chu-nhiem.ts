@@ -77,12 +77,14 @@ const RAIL = "Module của gia sư";
   // Rà soát SCL-B: các nút ghi chỉ-gia-sư (thêm em, mã mời, duyệt, học online, học phí) không vẽ cho Chủ nhiệm — thay bằng một dòng sang trang quản trị.
   await ps.goto(`${BASE}/lop-cua-toi/quan-lop/${cB.id}/hoc-vien?muc=them`, GOTO);
   await ps.locator("[data-admin-manage-note]").waitFor({ timeout: 90000 }).catch(() => {});
-  check("tab Học sinh: dòng 'Thêm học sinh ở trang quản trị' → /admin/khoa-hoc/<lớp>, không nút thêm em / mã mời", await ps.locator(`[data-admin-manage-note] a[href="/admin/khoa-hoc/${cB.id}"]`).count() === 1
+  check("tab Học sinh: dòng 'Thêm học sinh ở trang quản trị' → /admin/khoa-hoc/<lớp>, không nút thêm em / mã mời", await ps.locator(`[data-admin-manage-note] a[href="/admin/khoa-hoc/${cB.id}"]:visible`).count() === 1
     && await ps.locator("[data-lop-them]").count() === 0 && await ps.getByRole("button", { name: /vào lớp$/ }).count() === 0);
   await ps.goto(`${BASE}/lop-cua-toi/quan-lop/${cB.id}?tab=cai-dat&muc=hoc-online`, GOTO);
   await ps.locator("[data-cai-dat-tab]").waitFor({ timeout: 90000 }).catch(() => {});
-  check("Cài đặt: không form Học online, không mục Học phí / Học online, có dòng sang trang quản trị", await ps.locator(`form[action$="/hoc-online"]`).count() === 0
-    && await ps.locator("[data-cai-dat-tab] [data-admin-manage-note]").count() === 1 && await ps.getByRole("link", { name: "Học online" }).count() === 0 && await ps.getByRole("link", { name: "Học phí", exact: true }).count() === 0);
+  // Next 16 giữ trang vừa xem ẩn trong DOM (Activity) ⇒ chỉ đếm phần tử đang hiện.
+  const cdv = { form: await ps.locator(`form[action$="/hoc-online"]`).count(), note: await ps.locator("[data-cai-dat-tab] [data-admin-manage-note]:visible").count(),
+    online: await ps.getByRole("link", { name: "Học online" }).count(), fee: await ps.getByRole("link", { name: "Học phí", exact: true }).count() };
+  check("Cài đặt: không form Học online, không mục Học phí / Học online, có dòng sang trang quản trị", cdv.form === 0 && cdv.note === 1 && cdv.online === 0 && cdv.fee === 0, cdv);
   // Nhóm (tutor) có loading.tsx ⇒ redirect() đi kiểu stream (200 + <meta refresh>); /admin lại bị proxy đưa sang tên miền admin ⇒ kiểm bằng API, không mở trình duyệt.
   const toAdmin = (r: { status: number; text: string; headers: Headers }) => (r.status >= 300 && r.status < 400 && /\/admin/.test(r.headers.get("location") ?? "")) || /__next-page-redirect[^>]*url=[^"]*\/admin/.test(r.text);
   for (const path of ["/lop-cua-toi/de-thi/ngan-hang-cau-hoi", "/lop-cua-toi/de-thi/ngan-hang-cau-hoi/cau-hoi"]) {

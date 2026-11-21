@@ -1,6 +1,6 @@
 // SCL-B (rà soát): Chủ nhiệm đứng lớp trong vỏ gia sư, nhưng các API ghi của lớp (thêm học sinh, mã mời, duyệt xin vào lớp, học online, học phí) chỉ nhận gia sư chủ lớp
 // ⇒ thay nút bấm-là-403 bằng một dòng chỉ sang trang quản trị của lớp. <a> chứ không Link: /admin/* được proxy chuyển sang tên miền quản trị.
-import { kinButtonClass } from "@/components/kin/Button";
+import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinCallout } from "@/components/kin/Callout";
 
 export default function AdminManageNote({ courseId, what }: { courseId: string; what: string }) {
