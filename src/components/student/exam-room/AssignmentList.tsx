@@ -25,7 +25,7 @@ export function useAssignments() {
   return { data, error, load };
 }
 
-function Row({ it, serverNow, quiet }: { it: AssignmentItem; serverNow: string; quiet?: boolean }) {
+function Row({ it, serverNow }: { it: AssignmentItem; serverNow: string }) {
   const due = daysLeftLabel(it.dueAt, serverNow);
   const opens = it.state === "chua-mo" ? opensLabel(it.opensAt) : "";
   const action = ASSIGNMENT_ACTION[it.state];
@@ -48,13 +48,12 @@ function Row({ it, serverNow, quiet }: { it: AssignmentItem; serverNow: string; 
           {opens && <span className="text-[var(--kin-chu-mo)] tabular-nums">{opens}</span>}
         </p>
       </div>
-      {action && <Link href={`/student/thi-thu/${it.id}`} className={`${kinButtonClass(!quiet && (it.state === "dang-mo" || it.state === "dang-lam") ? "primary" : "secondary")} min-h-12 max-md:w-full md:min-w-[120px]`}>{action}</Link>}
+      {action && <Link href={`/student/thi-thu/${it.id}`} className={`${kinButtonClass(it.state === "dang-mo" || it.state === "dang-lam" ? "primary" : "secondary")} min-h-12 max-md:w-full md:min-w-[120px]`}>{action}</Link>}
     </li>
   );
 }
 
-/** `quiet` (SCL-G-HS): mọi nút là nút phụ — màn Cần làm đã có nút chính duy nhất ở thẻ bài hạn gần nhất (QUYET-DINH §3.2). */
-export default function AssignmentList({ items, serverNow, limit, emptyLink = true, quiet }: { items: AssignmentItem[]; serverNow: string; limit?: number; emptyLink?: boolean; quiet?: boolean }) {
+export default function AssignmentList({ items, serverNow, limit, emptyLink = true }: { items: AssignmentItem[]; serverNow: string; limit?: number; emptyLink?: boolean }) {
   const list = limit ? items.slice(0, limit) : items;
   if (list.length === 0) {
     return (
@@ -63,5 +62,5 @@ export default function AssignmentList({ items, serverNow, limit, emptyLink = tr
       </KinEmptyState>
     );
   }
-  return <KinPanel flush className="mt-4"><ul aria-label="Đề thi được giao">{list.map(it => <Row key={it.id} it={it} serverNow={serverNow} quiet={quiet} />)}</ul></KinPanel>;
+  return <KinPanel flush className="mt-4"><ul aria-label="Đề thi được giao">{list.map(it => <Row key={it.id} it={it} serverNow={serverNow} />)}</ul></KinPanel>;
 }

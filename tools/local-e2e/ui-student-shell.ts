@@ -93,9 +93,11 @@ const H = 3_600_000, D = 24 * H;
   check("nhãn module hiện đủ chữ, không bị cắt thành '…' ('Việc của tôi' nằm vừa nút 66px)", clipped.length === 0, clipped);
   const railBox = await rail().boundingBox();
   check("thanh rộng 79px, dọc bên trái", !!railBox && Math.round(railBox.width) === 79 && railBox.x === 0, railBox);
-  const api = await pg.evaluate(`fetch("/api/student/viec-cua-toi").then(r => r.json())`) as any;
+  // SCL-G-HS (§3.4, §3.9): số trên "Cần làm" = đúng số thẻ của màn Cần làm (4 bài chưa nộp + 1 kiểm tra), không chỉ việc hạn trong 3 ngày.
   const badgeEl = rail().locator(".kin-badge-dem");
-  check("badge đếm đúng việc cần ra tay và có nhãn chữ", api.badge === 3 && (await badgeEl.first().getAttribute("aria-label")) === `${api.badge} việc cần xử lý` && (await badgeEl.first().innerText()) === String(api.badge), api.badge);
+  await pg.locator("[data-can-lam-the]:visible").first().waitFor({ timeout: 60000 });
+  const nCards = await pg.locator("[data-can-lam-the]:visible").count();
+  check("badge đếm đúng số thẻ Cần làm (5) và có nhãn chữ", nCards === 5 && (await badgeEl.first().getAttribute("aria-label")) === `${nCards} việc cần xử lý` && (await badgeEl.first().innerText()) === String(nCards), { nCards, badge: await badgeEl.first().innerText() });
   check("thanh trên cũ (Navbar) và thanh dưới cũ không còn", await pg.getByRole("link", { name: /^Cộng đồng$/ }).count() === 0 && await pg.getByRole("navigation", { name: /Chính|main/i }).count() === 0);
   check("có chuông 'Thông báo' ở dải trên", await pg.getByRole("button", { name: "Thông báo" }).isVisible());
 

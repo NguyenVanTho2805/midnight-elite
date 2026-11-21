@@ -134,7 +134,7 @@ import { featureOn } from "@/lib/features";
     check("tải lại sau khi đóng → không hiện lại", (await pm.locator("[data-paused-notice]").count()) === 0);
     for (const q of ["?tam-dong=rac", "?tam-dong=cong_dong", "?tam-dong=%3Cb%3Ex%3C%2Fb%3E"]) {
       await settle(pm, `/student/viec-cua-toi${q}`);
-      await pm.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 60000 });
+      await pm.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 60000 });
       await pm.waitForTimeout(800);
       check(`dấu rác ${q} → KHÔNG nhắc (chỉ nhận đúng tên cờ)`, (await pm.locator("[data-paused-notice]").count()) === 0);
     }

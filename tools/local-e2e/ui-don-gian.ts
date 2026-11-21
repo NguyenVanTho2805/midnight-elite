@@ -167,9 +167,10 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     const menuText = await menu.innerText().catch(() => "");
     check("menu tên: có Hồ sơ, KHÔNG có Học phí", /Hồ sơ/.test(menuText) && !/Học phí/.test(menuText), menuText);
     await p.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    // SCL-G-HS: trang lớp không còn tab; "Thông tin lớp" nằm cuối trang.
-    await p.locator("[data-lop-thong-tin]").waitFor({ timeout: 120000 });
-    check("trang lớp › Thông tin lớp: không 'Phiếu học phí của bạn'", await p.locator("[data-lop-hoc-phi]").count() === 0);
+    // SCL-G-HS: trang lớp không còn tab; lối phụ của lớp (hỏi gia sư, phiếu học phí theo cờ) nằm ở đầu trang.
+    await p.locator("[data-dau-lop]").waitFor({ timeout: 120000 });
+    await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+    check("trang lớp: không 'Phiếu học phí của bạn'", await p.locator("[data-lop-hoc-phi]").count() === 0);
     await ctx.close();
   }
 

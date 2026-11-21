@@ -24,6 +24,7 @@ import { useRail } from "@/components/kin/shell/railStore";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 import { fetchStudentWork } from "@/lib/studentWorkClient";
+import { buildTodoCards } from "@/lib/studentClassPage";
 
 // `icon` theo Figma "Nền móng" (khung "Điều hướng" của học sinh, 25/10/2026): dùng cho thanh rộng; bảng "Khác" không vẽ biểu tượng.
 // `also`: href của Cộng đồng / Tin tức là BÍ DANH chỉ chuyển tới trang công khai (mở trong khung học sinh); `also` là trang đích để mục vẫn sáng sau khi chuyển.
@@ -67,9 +68,10 @@ export default function StudentShell({ children, preview }: { children: ReactNod
   const [rail] = useRail();
 
   // SCL-H: dùng chung phản hồi với trang (fetchStudentWork) — mở "Việc của tôi" chỉ một lần tính lịch, không phải ba.
+  // SCL-G-HS (§3.4, §3.9): số trên "Cần làm" đếm ĐÚNG các thẻ của màn Cần làm (cùng hàm buildTodoCards), không chỉ việc hạn trong 3 ngày (`badge` của máy chủ).
   const loadBadge = useCallback(() => {
     fetchStudentWork()
-      .then(d => { if (typeof d.badge === "number") setBadge(d.badge); })
+      .then(d => { if (Array.isArray(d.items)) setBadge(buildTodoCards(d.items, d.events ?? [], new Date(), () => "").length); })
       .catch(() => {});
   }, []);
   useEffect(() => {

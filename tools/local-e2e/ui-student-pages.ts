@@ -3,10 +3,13 @@
 // LOI-03 (11/11/2026) sửa kỳ vọng phần "Lớp của tôi" theo đặc tả LOI-03 mục 4.2: h1 = tên lớp; thẻ tiến độ "Bạn đã hoàn thành x/y bài" + "Bắt đầu học →";
 // hai tab Tổng quan · Nội dung (mặc định Nội dung, cây CourseOutline [data-outline-lesson]); bài tập quiz ở "Bài tập của lớp" trong Tổng quan; "Nhập mã lớp" nay ở thư viện lớp
 // (không còn trong trang lớp) — trang lớp có chữ "Phiếu học phí của bạn →" (không số tiền).
+// SCL-G-HS (21/11/2026) sửa theo bản chốt: "Việc của tôi" thành "Cần làm" (thẻ việc, Đã nộp chờ chấm, Buổi học sắp tới, đề không lặp); trang lớp không tab / thẻ tiến độ
+// (Cần làm trên cùng, Buổi gần đây, Tất cả bài học, đầu trang có tên cô + lịch); kết quả đã chấm sang mục Điểm (đủ bài, có ngày chấm). Lịch học chỉ kiểm khi cờ LICH bật.
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
+import { featureOn, isLinkHidden } from "@/lib/features";
 
 const H = 3_600_000, D = 24 * H;
 
@@ -46,17 +49,21 @@ const H = 3_600_000, D = 24 * H;
   const pg = await ctx.newPage(); watch(pg);
   const h1 = (name: string) => pg.getByRole("heading", { level: 1, name });
 
-  section("Việc của tôi: buổi học tiếp theo + kết quả gần đây");
+  section("Cần làm (SCL-G-HS, khung 2): thẻ việc, chờ chấm, buổi học sắp tới, đề không lặp");
   await pg.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
-  await h1("Việc của tôi").waitFor({ timeout: 90000 });
-  await pg.locator("[data-next-session]").waitFor({ timeout: 60000 });
-  const ns = pg.locator("[data-next-session]");
-  check("khung 'Buổi học tiếp theo': giờ 19:00–20:30, lớp Toán 9, nút 'Vào lớp học' → trang lớp", (await ns.innerText()).includes("19:00–20:30") && (await ns.innerText()).includes("Toán 9") && (await ns.getByRole("link", { name: "Vào lớp học" }).getAttribute("href")) === `/student/hoc-tap?course=${A.id}`);
-  check("'Kết quả gần đây': điểm 8,5/10 + nhận xét + liên kết 'Xem nhận xét'", await pg.getByText("8,5/10").isVisible() && await pg.getByText(/Em trình bày rõ hơn rồi/).isVisible() && await pg.getByRole("link", { name: "Xem nhận xét" }).isVisible());
-  check("bài đã chấm KHÔNG nằm trong 'Cần làm'", await pg.getByRole("list", { name: "Cần làm" }).getByText("Ôn tập căn bậc hai").count() === 0);
-  check("'Kiểm tra sắp mở' có tên đề, 10 câu · 15 phút", await pg.getByText(/Kiểm tra 15 phút · 10 câu · 15 phút/).isVisible());
-  check("bài làm trên web có nút 'Làm bài'", await pg.getByRole("list", { name: "Cần làm" }).getByRole("link", { name: "Làm bài" }).count() === 1);
+  await h1("Cần làm").waitFor({ timeout: 90000 });
+  await pg.locator("[data-can-lam-the]").first().waitFor({ timeout: 60000 });
+  const card = (t: string) => pg.locator("[data-can-lam-the]").filter({ hasText: t });
+  check("bài làm trên web có thẻ + nút 'Làm bài'", await card("Phương trình bậc hai").getByRole("link", { name: "Làm bài" }).count() === 1);
+  check("bài nộp tệp có thẻ + nút 'Nộp bài'", await card("Hệ hai phương trình").getByRole("button", { name: /^Nộp bài/ }).count() === 1);
+  check("thẻ kiểm tra 'Kiểm tra 15 phút': 'Xem thông tin đề' → màn chuẩn bị thi", (await card("Kiểm tra 15 phút").getByRole("link", { name: "Xem thông tin đề" }).getAttribute("href")) === `/student/thi-thu/${exam.id}`);
+  check("bài đã chấm / đã nộp KHÔNG có thẻ", await card("Ôn tập căn bậc hai").count() === 0 && await card("Hàm số").count() === 0);
+  check("bài đã nộp (Hàm số) ở 'Đã nộp, chờ chấm', hàng là link tới bài", await pg.getByRole("list", { name: "Đã nộp, đang chờ chấm" }).getByRole("link", { name: /Hàm số/ }).isVisible());
+  const ns = pg.locator("[data-buoi-sap-toi]").first();
+  check("'Buổi học sắp tới': giờ 19:00–20:30, lớp Toán 9", (await ns.innerText()).includes("19:00–20:30") && (await ns.innerText()).includes("Toán 9"), await ns.innerText());
+  check("'Đề thi được giao' không lặp đề đã có thẻ kiểm tra", await pg.locator("[data-de-thi-hang]").filter({ hasText: "Kiểm tra 15 phút" }).count() === 0);
 
+  if (featureOn("LICH")) {
   section("Lịch học (máy tính)");
   await pg.goto(`${BASE}/student/lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
   await h1("Lịch học").waitFor({ timeout: 90000 });
@@ -77,35 +84,22 @@ const H = 3_600_000, D = 24 * H;
   await pg.getByRole("button", { name: "Hôm nay", exact: true }).click();
   check("nút 'Hôm nay' về tuần hiện tại", (await nav.getByRole("button", { name: "Về tuần này" }).innerText()) === label0);
   await shot(pg, "student-pages-lich");
+  }
 
-  section("Lớp của tôi");
+  section("Lớp của tôi (SCL-G-HS, khung 1)");
   await pg.goto(`${BASE}/student/hoc-tap?course=${A.id}`, { waitUntil: "networkidle", timeout: 120000 });
   await h1("Toán 9").waitFor({ timeout: 90000 });
-  await pg.locator("[data-course-hero]").waitFor({ timeout: 60000 });
-  const hero = pg.locator("[data-course-hero]");
-  check("thẻ tiến độ: tên lớp, 'Bạn đã hoàn thành 0/3 bài', thanh tiến độ, 'Tiếp theo: …', nút 'Bắt đầu học →'", (await hero.innerText()).includes("Bạn đã hoàn thành 0/3 bài") && (await hero.innerText()).includes("Tiếp theo: ") && await hero.getByRole("progressbar").count() === 1 && /^\/student\/bai-giang\/l-sp-\d$/.test((await hero.getByRole("link", { name: "Bắt đầu học →" }).getAttribute("href")) ?? ""));
-  check("giữ lối 'Tài liệu & bản ghi của lớp này' → /thu-vien#c-<lớp>", (await pg.locator("[data-thu-vien-link]").getAttribute("href")) === `/thu-vien#c-${A.id}`);
-  check("tab: Tổng quan · Nội dung, mặc định Nội dung", await pg.getByRole("tab", { name: "Tổng quan" }).isVisible() && (await pg.getByRole("tab", { name: "Nội dung" }).getAttribute("aria-selected")) === "true" && (await pg.getByRole("tab").count()) === 2);
-  check("Nội dung liệt kê 3 bài kèm trạng thái chữ ('Học tiếp', 'Chưa học')", await pg.locator("[data-outline-lesson]").count() === 3 && await pg.locator("[data-outline]").getByText("Học tiếp").first().isVisible() && await pg.locator("[data-outline]").getByText("Chưa học").first().isVisible());
-  await pg.getByRole("tab", { name: "Tổng quan" }).click();
-  check("Tổng quan: 'Bài tập của lớp' chỉ có bài trắc nghiệm", await pg.locator("[data-lop-bai-tap] [data-lesson-row]").count() === 1 && await pg.locator("[data-lop-bai-tap] [data-lesson-row]").getByText("Trắc nghiệm bậc hai").isVisible());
-  const info = await pg.getByRole("region", { name: "Thông tin lớp" }).innerText();
-  check("Tổng quan: 'Phiếu học phí của bạn →' → /student/hoc-phi, KHÔNG số tiền; có 'Gia sư: '; A6: không còn 'Xem bài tập'", (await pg.getByRole("link", { name: "Phiếu học phí của bạn →" }).getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)/i.test(info) && /Gia sư: /.test(info) && (await pg.getByRole("link", { name: "Xem bài tập" }).count()) === 0, info);
+  await pg.locator("[data-lop-can-lam] [data-can-lam-the]").first().waitFor({ timeout: 60000 });
+  const head = await pg.locator("[data-dau-lop]").innerText();
+  check("đầu trang: tên cô + lịch học trên một dòng ('GV · <thứ>, 19:00')", /GV · (Thứ \S+|Chủ nhật), 19:00/.test(head), head);
+  check("không còn tab, không thẻ tiến độ cũ", await pg.getByRole("tab").count() === 0 && await pg.locator("[data-course-hero]").count() === 0);
+  check("'Buổi gần đây' liệt kê 3 bài, hàng là link tới bài", await pg.locator("[data-lop-gan-day] [data-lesson-row]").count() === 3 && /^\/student\/bai-giang\/l-sp-\d$/.test((await pg.locator("[data-lop-gan-day] [data-lesson-row] a").first().getAttribute("href")) ?? ""));
+  check("liên kết 'Tất cả bài học (3)'", (await pg.locator("[data-tat-ca-bai]").innerText()).includes("Tất cả bài học (3)"));
+  check("không có khối link lẻ cuối trang ('Xem điểm của lớp này')", await pg.locator("[data-lop-diem]").count() === 0);
+  check("Phiếu học phí theo cờ HOC_PHI, chỉ chữ KHÔNG số tiền", isLinkHidden("/student/hoc-phi") ? await pg.locator("[data-lop-hoc-phi]").count() === 0 : (await pg.locator("[data-lop-hoc-phi]").getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)/i.test(head));
   await shot(pg, "student-pages-lop");
 
-  section("Việc của tôi gom cả phần chỉ 'Bài tập' từng có (B1, 08/11/2026)");
-  await pg.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
-  await h1("Việc của tôi").waitFor({ timeout: 90000 });
-  await pg.getByRole("heading", { name: "Đề thi được giao" }).waitFor({ timeout: 60000 });
-  check("không còn tab: một trang, mỗi trạng thái một khu 'Cần làm', 'Đã nộp · đang chờ chấm', 'Kết quả gần đây'", await pg.getByRole("tab").count() === 0 && await pg.getByRole("heading", { name: "Cần làm" }).isVisible() && await pg.getByRole("heading", { name: "Đã nộp · đang chờ chấm" }).isVisible() && await pg.getByRole("heading", { name: "Kết quả gần đây" }).isVisible());
-  check("bài đã nộp (Hàm số) chỉ ở 'Đã nộp · đang chờ chấm', có 'Xem bài nộp'", await pg.getByRole("list", { name: "Cần làm" }).getByText("Hàm số").count() === 0 && await pg.getByRole("list", { name: "Đã nộp, đang chờ chấm" }).getByText("Hàm số").isVisible() && await pg.getByRole("link", { name: "Xem bài nộp" }).isVisible());
-  check("cột phải: đề thi mở trong 3 ngày, 'Xem thông tin đề' → màn chuẩn bị thi", (await pg.locator("[data-exam-card]").first().innerText()).includes("Kiểm tra 15 phút") && (await pg.getByRole("link", { name: "Xem thông tin đề" }).first().getAttribute("href")) === `/student/thi-thu/${exam.id}`);
-  check("khối 'Đề thi được giao' có lối 'Đề thi thử' → /thi-thu", (await pg.getByRole("link", { name: "Đề thi thử" }).getAttribute("href")) === "/thi-thu");
-  check("B1: /student/bai-tap vẫn sống nhưng chuyển về 'Việc của tôi'", await (async () => { await pg.goto(`${BASE}/student/bai-tap`, { waitUntil: "domcontentloaded", timeout: 120000 }); await pg.waitForURL(/\/student\/viec-cua-toi$/, { timeout: 60000 }); return true; })());
-  await pg.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 90000 });
-  await shot(pg, "student-pages-viec-de-thi");
-
-  // Nợ P3 số 1 của #135: nhiều hơn 5 bài đã chấm thì phải còn lối xem phần còn lại ("Xem thêm"), và không ai bị cắt cụt lặng lẽ.
+  // Nợ P3 số 1 của #135 (không ai bị cắt cụt lặng lẽ): kết quả đã chấm nay ở mục Điểm — đủ 7 bài, mỗi bài có ngày chấm và link tới bài.
   const G = await mkUser({ name: "Em Nhiều Điểm" });
   await prisma.enrollment.create({ data: { userId: G.id, courseId: A.id, status: "active" } });
   for (let i = 1; i <= 7; i++) {
@@ -114,16 +108,11 @@ const H = 3_600_000, D = 24 * H;
   }
   const cG = await ctxFor(G, { width: 1280, height: 900 });
   const pG = await cG.newPage(); watch(pG);
-  await pG.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
-  const results = pG.getByRole("list", { name: "Kết quả gần đây" }).locator("[data-student-task]");
+  await pG.goto(`${BASE}/student/diem`, { waitUntil: "networkidle", timeout: 120000 });
+  const results = pG.locator("[data-ket-qua-hang='da-cham']");
   await results.first().waitFor({ timeout: 60000 });
-  check("7 bài đã chấm: mặc định chỉ hiện 5 bài mới nhất", await results.count() === 5, await results.count());
-  const more = pG.getByRole("button", { name: "Xem thêm 2 bài" });
-  check("có nút 'Xem thêm 2 bài' cao ≥ 44px, aria-expanded=false", await more.isVisible() && await more.getAttribute("aria-expanded") === "false" && (await more.boundingBox())!.height >= 44);
-  await more.click();
-  check("bấm 'Xem thêm' → đủ 7 bài, nút đổi thành 'Thu gọn'", await results.count() === 7 && await pG.locator("[data-results-more]").getAttribute("aria-expanded") === "true" && (await pG.locator("[data-results-more]").innerText()).trim() === "Thu gọn");
-  await pG.locator("[data-results-more]").click();
-  check("'Thu gọn' → về 5 bài", await results.count() === 5);
+  check("Điểm: đủ 7 bài đã chấm", await results.count() === 7, await results.count());
+  check("mỗi bài ghi 'Chấm <thứ dd/mm>' và là link tới bài", (await results.allInnerTexts()).every(t => /Chấm (thứ \S+|Chủ nhật) \d\d\/\d\d/.test(t)) && (await pG.locator("[data-ket-qua-hang='da-cham'] a").count()) === 7);
   await cG.close();
 
   section("Trạng thái lỗi và rỗng");
@@ -144,20 +133,22 @@ const H = 3_600_000, D = 24 * H;
   const p3 = await c3.newPage(); watch(p3);
   await p3.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "networkidle", timeout: 120000 });
   await p3.getByText("Chưa có việc nào cho bạn").waitFor({ timeout: 60000 });
-  check("rỗng: có lời giải thích và khối 'Đề thi được giao' rỗng có chữ, không trắng", await p3.getByText(/thầy cô giao bài/).isVisible() && await p3.getByText("Chưa có đề nào được giao").isVisible());
+  check("rỗng: có lời giải thích, không trắng, không khối 'Đề thi được giao' rỗng", await p3.getByText(/thầy cô giao bài/).isVisible() && await p3.getByRole("heading", { name: "Đề thi được giao" }).count() === 0);
   await p3.goto(`${BASE}/student/hoc-tap`, { waitUntil: "networkidle", timeout: 120000 });
   await p3.getByText("Bạn chưa vào lớp nào").waitFor({ timeout: 60000 });
   check("Lớp của tôi khi chưa có lớp: giải thích + 'Nhập mã lớp'", (await p3.getByRole("link", { name: "Nhập mã lớp" }).getAttribute("href")) === "/student/nhap-ma-lop");
-  await p3.goto(`${BASE}/student/lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
-  await p3.getByText("Tuần này chưa có lịch").first().waitFor({ timeout: 60000 }).catch(() => {});
-  check("Lịch học của học sinh chưa có lớp vẫn dùng được: có tiêu đề, không rơi vào trang lỗi", await p3.getByRole("heading", { level: 1, name: "Lịch học" }).isVisible() && await p3.getByText("Có lỗi xảy ra").count() === 0);
+  if (featureOn("LICH")) {
+    await p3.goto(`${BASE}/student/lich-hoc`, { waitUntil: "networkidle", timeout: 120000 });
+    await p3.getByText("Tuần này chưa có lịch").first().waitFor({ timeout: 60000 }).catch(() => {});
+    check("Lịch học của học sinh chưa có lớp vẫn dùng được: có tiêu đề, không rơi vào trang lỗi", await p3.getByRole("heading", { level: 1, name: "Lịch học" }).isVisible() && await p3.getByText("Có lỗi xảy ra").count() === 0);
+  }
   await c3.close();
 
   section("Điện thoại 390px");
   const cm = await ctxFor(S, { width: 390, height: 844 });
   const pm = await cm.newPage(); watch(pm);
   await pm.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }).catch(() => {});
-  for (const [name, path, ready] of [["Việc của tôi", "/student/viec-cua-toi", "[data-student-task]"], ["Lịch học", "/student/lich-hoc", "[data-week-item]"], ["Lớp của tôi", `/student/hoc-tap?course=${A.id}`, "[data-course-hero]"]] as const) {
+  for (const [name, path, ready] of [["Cần làm", "/student/viec-cua-toi", "[data-can-lam-the]"], ...(featureOn("LICH") ? [["Lịch học", "/student/lich-hoc", "[data-week-item]"] as const] : []), ["Lớp của tôi", `/student/hoc-tap?course=${A.id}`, "[data-lop-can-lam]"], ["Điểm", "/student/diem", "[data-diem-lop]"]] as const) {
     await pm.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await pm.locator(ready).first().waitFor({ timeout: 90000 });
     check(`${name}: không tràn ngang ở 390px`, await noScroll(pm));

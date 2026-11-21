@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { KinGradeStatus } from "@/components/kin/Status";
-import { uploadNopTepFile } from "@/components/student/nop-tep/nopTepClient";
+import { loadNopTepList, removeNopTepFile, uploadNopTepFile } from "@/components/student/nop-tep/nopTepClient";
 import { imagesToPdfFile } from "@/lib/imagePdfClient";
 import { MAX_IMAGE_PAGES } from "@/lib/imagePdf";
 import { NOP_TEP_MAX_BYTES, NOP_TEP_MAX_FILES } from "@/lib/nopTep";
@@ -95,13 +95,23 @@ export function NopNhanh({ assignmentId, title, primary, ve = "lop" }: { assignm
   const [err, setErr] = useState<string | null>(null);
   const done = useRef<Set<number>>(new Set()); // tệp (theo vị trí) đã tải lên xong — "Gửi lại" không tải trùng
 
-  async function run(picked: File[]) {
+  async function run(picked: File[], fresh: boolean) {
     setErr(null);
     const imgs = picked.filter(isImage), pdfs = picked.filter(f => !isImage(f) && isPdf(f));
     if (imgs.length + pdfs.length !== picked.length) { setErr("Chỉ nhận ảnh chụp bài làm hoặc tệp PDF."); return; }
     if (imgs.length > MAX_IMAGE_PAGES) { setErr(`Tối đa ${MAX_IMAGE_PAGES} ảnh mỗi lần nộp.`); return; }
     if (pdfs.length + (imgs.length ? 1 : 0) > NOP_TEP_MAX_FILES) { setErr(`Tối đa ${NOP_TEP_MAX_FILES} tệp mỗi lần nộp.`); return; }
     try {
+      if (fresh) {
+        // Chọn lại = bỏ lần trước: route /nop gắn MỌI tệp chưa gắn của bài, nên tệp tải dở của lần trước (kể cả trước khi tải lại trang) phải gỡ trước.
+        setBusy("Đang chuẩn bị…");
+        const list = await loadNopTepList({ mode: "student", assignmentId });
+        if (!list.ok) { setErr("Chưa gửi được bài. Kiểm tra mạng rồi bấm Gửi lại."); return; }
+        for (const f of list.data.files) {
+          if (f.submitted || (f.status !== "ready" && f.status !== "pending")) continue;
+          if (!(await removeNopTepFile(f.id)).ok) { setErr("Chưa gửi được bài. Kiểm tra mạng rồi bấm Gửi lại."); return; }
+        }
+      }
       const queue: File[] = [...pdfs];
       if (imgs.length) {
         setBusy("Đang gộp ảnh thành PDF…");
@@ -125,7 +135,7 @@ export function NopNhanh({ assignmentId, title, primary, ve = "lop" }: { assignm
   const pick = (e: ChangeEvent<HTMLInputElement>) => {
     const fs = Array.from(e.target.files ?? []); e.target.value = "";
     if (!fs.length) return;
-    done.current = new Set(); setFiles(fs); void run(fs);
+    done.current = new Set(); setFiles(fs); void run(fs, true);
   };
   const id = nopInputId(assignmentId);
   return (
@@ -133,7 +143,7 @@ export function NopNhanh({ assignmentId, title, primary, ve = "lop" }: { assignm
       <p className="mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Chụp ảnh vở hoặc chọn tệp PDF</p>
       <input id={id} type="file" accept="image/*,application/pdf" multiple className="sr-only" tabIndex={-1} aria-hidden onChange={pick} data-nop-nhanh-input="" />
       <button type="button" disabled={!!busy} aria-label={`Nộp bài: ${title}`} onClick={() => document.getElementById(id)?.click()}
-        className={`${kinButtonClass(primary ? "primary" : "secondary", "lg")} w-full min-h-12`}>
+        className={`${kinButtonClass(primary ? "primary" : "secondary", "lg")} w-full min-h-12 font-semibold`}>
         <IconTaiLen />{busy ? "Đang nộp…" : "Nộp bài"}
       </button>
       <form ref={formRef} method="post" action={`/api/student/nop-bai/${encodeURIComponent(assignmentId)}/nop`} hidden><input type="hidden" name="ve" value={ve} /></form>
@@ -141,7 +151,7 @@ export function NopNhanh({ assignmentId, title, primary, ve = "lop" }: { assignm
       {err && (
         <div role="alert" data-nop-nhanh-loi="" className="mt-2 flex flex-wrap items-center gap-2 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi-dam)]">
           <span className="min-w-0 flex-1">{err}{files.length > 0 ? ` (${files.length} tệp đã chọn vẫn giữ)` : ""}</span>
-          {files.length > 0 && <button type="button" onClick={() => void run(files)} className={kinButtonClass("secondary")}>Gửi lại</button>}
+          {files.length > 0 && <button type="button" onClick={() => void run(files, done.current.size === 0)} className={kinButtonClass("secondary")}>Gửi lại</button>}
         </div>
       )}
     </div>
@@ -166,7 +176,7 @@ export function TodoCardView({ card, now, classColor, ve = "lop" }: { card: Todo
 
 /** Nút của một việc không nộp tệp được ở đây (làm trên web, đề Azota, kiểm tra): liên kết thật, cùng cỡ nút. */
 export function CardLink({ href, label, primary, external }: { href: string; label: string; primary: boolean; external?: boolean }) {
-  const cls = `${kinButtonClass(primary ? "primary" : "secondary", "lg")} w-full min-h-12`;
+  const cls = `${kinButtonClass(primary ? "primary" : "secondary", "lg")} w-full min-h-12 font-semibold`;
   return external
     ? <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>{label}<IconNgoai /></a>
     : <Link href={href} className={cls}>{label}</Link>;
@@ -188,7 +198,7 @@ export function NopDock({ card, now }: { card: TodoCard; now: Date }) {
   }, [targetId]);
   const a = card.action;
   const due = deadlineLine(card.dueIso, now).split(" · ")[0];
-  const btn = `${kinButtonClass("primary", "lg")} min-h-12 flex-shrink-0`;
+  const btn = `${kinButtonClass("primary", "lg")} min-h-12 flex-shrink-0 font-semibold`;
   return (
     <div role="region" aria-label="Nộp bài nhanh" data-nop-dock={show ? "hien" : "an"} aria-hidden={!show} inert={!show}
       className="fixed z-20 inset-x-0 bottom-[calc(var(--kin-cao-thanh-duoi)+12px)] md:bottom-6 md:left-auto md:right-8 md:w-[420px] px-4 md:px-0 transition-[opacity,transform] duration-[180ms] motion-reduce:transition-none"

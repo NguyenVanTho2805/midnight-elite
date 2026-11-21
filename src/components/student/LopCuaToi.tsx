@@ -7,7 +7,8 @@
 //       Sau khi nộp (POST + 303 về đây với ?nop=ok&bt=<mã bài>): thông báo role=status, thẻ đổi thành "Đã nộp lúc …" + Chờ chấm.
 //   - ?course=<id>&xem=bai-hoc ⇒ "TẤT CẢ BÀI HỌC" (khung 4): nhóm theo chương (chương mới nhất trên), ô tìm theo tên (gõ không dấu vẫn khớp), cuối là bản ghi các buổi.
 //   Bỏ 3 viên tab cũ (Nội dung / Video / Kết quả) vì trùng thanh dưới: video bài + bản ghi nằm trong hàng bài và màn Tất cả bài học; kết quả ở mục Điểm.
-//   Thông báo của lớp (TB-LOP) và "Thông tin lớp" (hỏi gia sư, phiếu học phí theo cờ) giữ ở cuối trang lớp; ?tab=thong-bao (link từ chuông) cuộn thẳng tới đó.
+//   Thông báo của lớp (TB-LOP) ở cuối trang lớp (chưa có tin ⇒ một dòng chữ mờ); ?tab=thong-bao (link từ chuông) cuộn thẳng tới đó. Lối phụ (hỏi gia sư, phiếu học phí
+//   theo cờ) nằm ở đầu trang; điểm của lớp ở mục Điểm trên thanh dưới.
 // Giữ từ trước: rà soát 28/10 (Content dựng lại theo ID lớp; lỗi tải danh sách lớp là LỖI, không phải "chưa vào lớp"), MD-07/NC2-042 (bản ghi theo tháng),
 // Q4 (YouTube xem tại chỗ qua youtube-nocookie), lớp đã nghỉ → SuspendedNotice.
 "use client";
@@ -199,9 +200,14 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
   useEffect(() => {
     if (focusThongBao && thongBaoReady) document.getElementById("lop-thong-bao")?.scrollIntoView({ block: "start" });
   }, [focusThongBao, thongBaoReady]);
+  // #ban-ghi (link "bản ghi" của gia sư, hàng bản ghi ở Buổi gần đây): mục chỉ có sau khi tải xong nên trình duyệt không tự cuộn tới được.
+  const recsReady = recs !== null;
+  useEffect(() => {
+    if (view === "bai-hoc" && thongBaoReady && recsReady && window.location.hash === "#ban-ghi") document.getElementById("ban-ghi")?.scrollIntoView({ block: "start" });
+  }, [view, thongBaoReady, recsReady]);
 
   const wrap = (children: ReactNode) => <div className="px-4 md:px-10 pt-5 md:pt-8 pb-32 max-w-[800px] bg-[var(--kin-nen-trang)]">{children}</div>;
-  const title = (t: string) => <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{t}</h1>;
+  const title = (t: string) => <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{t}</h1>;
 
   if (!enrollmentsLoading && classesError) return wrap(<>{title("Lớp của tôi")}<div className="pt-4"><ErrorStrip message="Không tải được danh sách lớp của bạn." onRetry={reloadClasses} /></div></>);
   if (loading || enrollmentsLoading) return wrap(<>{title("Lớp của tôi")}<WorkSkeleton label="Đang tải trang lớp" /></>);
@@ -251,7 +257,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
             : recs === "loi" ? <ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} />
             : recs.recordings.length === 0 ? <KinEmptyState title="Chưa có bản ghi nào">Khi gia sư dán link bản ghi sau buổi học, nó sẽ hiện ở đây.</KinEmptyState>
             : <RecordingMonths months={groupRecordingsByMonth(groupRecordingsBySession(recs.recordings.map(r => ({ ...r, createdAt: new Date(r.createdAt) })), recs.sessions))} />}
-          <KinCallout title="Bản ghi là link gia sư chia sẻ" className="mt-4">Bản ghi YouTube xem được ngay ở đây; nguồn khác mở ở tab mới.</KinCallout>
+          <KinCallout title="Bản ghi là link gia sư chia sẻ" className="mt-4">Bản ghi YouTube xem được ngay ở đây; nguồn khác mở ở tab mới. KiN không biết bạn đã xem hay chưa.</KinCallout>
         </section>
       )}
     </>);
@@ -260,7 +266,8 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
   // ── Trang lớp ──
   const teacher = course.instructor?.trim() && course.instructor.trim().toLowerCase() !== "kin" ? course.instructor.trim() : "";
   const events = work.events ?? [];
-  const sched = scheduleLine(events.filter(e => e.type === "class" && e.courseId === courseId && !e.topic.startsWith("[ĐÃ HUỶ]")));
+  // Lịch học ở đầu trang = lịch TUẦN của lớp (buổi dạy bù / buổi lẻ không đổi "Tối thứ Ba, thứ Năm").
+  const sched = scheduleLine(events.filter(e => e.type === "class" && e.courseId === courseId && (e.sessionKind ?? "regular") === "regular" && !e.topic.startsWith("[ĐÃ HUỶ]")));
   const now = new Date();
   const cards = work.items ? buildTodoCards(work.items, events, now, id => classes.find(c => c.id === id)?.name ?? "", { id: courseId, name: course.name }) : null;
   const primary = cards?.find(c => c.primary && c.action.type !== "thi") ?? null;
@@ -281,6 +288,13 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
       <div aria-hidden data-vach-lop className="h-1 w-16 rounded-[var(--kin-bo-tron)] mb-3" style={{ background: color }} />
       {title(course.name)}
       {(teacher || sched) && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>{[teacher, sched].filter(Boolean).join(" · ")}</p>}
+      {/* Lối phụ của lớp gom lên đầu trang (không còn khối link lẻ cuối trang). LOI-01: hỏi gia sư TRONG lớp khi bảng tin chung ẩn; DG: Phiếu học phí theo cờ HOC_PHI (chỉ chữ, KHÔNG số tiền). */}
+      {enrolledHere && (!featureOn("CONG_DONG") || !isLinkHidden("/student/hoc-phi")) && (
+        <p data-lop-thong-tin className={`flex flex-wrap gap-x-4 ${GOC}`}>
+          {!featureOn("CONG_DONG") && <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Hỏi gia sư trong lớp</Link>}
+          {!isLinkHidden("/student/hoc-phi") && <Link href="/student/hoc-phi" data-lop-hoc-phi className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Phiếu học phí của bạn</Link>}
+        </p>
+      )}
     </header>
 
     {!enrolledHere ? (
@@ -317,18 +331,8 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
     </section>
 
     {enrolledHere && (
-      <section id="lop-thong-bao" aria-labelledby="lop-thong-bao-h" className="mt-10 scroll-mt-4">
-        <h2 id="lop-thong-bao-h" className={`${H2} pb-2`}>Thông báo của lớp</h2>
-        <ThongBaoHocSinh courseId={courseId} enrolled />
-      </section>
-    )}
-    {enrolledHere && (
-      <section aria-label="Thông tin lớp" data-lop-thong-tin className={`mt-8 flex flex-col items-start ${GOC}`}>
-        <Link href={`/student/diem#lop-${courseId}`} data-lop-diem className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Xem điểm của lớp này</Link>
-        {/* LOI-01: lối hỏi gia sư TRONG lớp khi bảng tin chung đang ẩn. */}
-        {!featureOn("CONG_DONG") && <Link href={`/cong-dong?scope=${encodeURIComponent(courseId)}`} data-hoi-trong-lop className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Hỏi gia sư trong lớp</Link>}
-        {/* DG: lối "Phiếu học phí" chỉ khi phần Học phí đang mở (cờ HOC_PHI). Chỉ là chữ dẫn, KHÔNG số tiền. */}
-        {!isLinkHidden("/student/hoc-phi") && <Link href="/student/hoc-phi" data-lop-hoc-phi className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Phiếu học phí của bạn</Link>}
+      <section id="lop-thong-bao" className="mt-10 scroll-mt-4">
+        <ThongBaoHocSinh courseId={courseId} enrolled heading={<h2 id="lop-thong-bao-h" className={`${H2} pb-2`}>Thông báo của lớp</h2>} />
       </section>
     )}
     {primary && !sent && <NopDock card={primary} now={now} />}

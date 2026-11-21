@@ -2,7 +2,8 @@
 // Một câu hỏi: "hôm nay em phải làm gì". Gom MỌI việc của MỌI lớp (bài tập + kiểm tra + hạn nộp ngoài KiN) thành thẻ, nhóm Quá hạn / Tuần này / Tuần sau / Sau đó,
 // xếp theo hạn; chỉ thẻ bài tập hạn gần nhất mang nút chính, các thẻ sau nút phụ (bài quá hạn xếp đầu nên không bao giờ nhạt hơn bài ít khẩn hơn, §3.2).
 // "Nộp bài" ngay trong thẻ (ảnh → PDF, components/student/CanLam) → POST + 303 về đây (?nop=ok&bt=<mã bài>): role=status + thẻ "Đã nộp lúc …".
-// Dưới thẻ: "Đã nộp, chờ chấm" (hàng mảnh), "Buổi học sắp tới" (hàng, có link học online), "Đề thi được giao". Kết quả đã chấm nằm ở mục Điểm.
+// Dưới thẻ: "Đã nộp, chờ chấm" (hàng mảnh), "Buổi học sắp tới" (hàng, có link học online), "Đề thi được giao" (hàng mảnh, cả hàng là link, bỏ đề đã có thẻ).
+// Kết quả đã chấm nằm ở mục Điểm.
 // Giữ từ trước: thẻ "chờ duyệt" của gia sư mới đăng ký (NC2-029), lối "Nhập mã lớp" ở đầu trang (SCL P2-13), tải lại khi cửa sổ lấy lại focus.
 "use client";
 import Link from "next/link";
@@ -18,7 +19,10 @@ import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { DaNopCard, TodoCardView } from "@/components/student/CanLam";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClasses } from "@/hooks/useMyClasses";
-import AssignmentList, { useAssignments } from "@/components/student/exam-room/AssignmentList";
+import { useAssignments } from "@/components/student/exam-room/AssignmentList";
+import { ASSIGNMENT_ACTION, ASSIGNMENT_STATE_LABEL } from "@/components/student/exam-room/roomLogic";
+import { daysLeftLabel } from "@/lib/examRoomLib";
+import type { AssignmentState } from "@/lib/examRoomApi";
 import { classAccent } from "@/lib/classColor";
 import { nopTepResultMessage } from "@/lib/nopTep";
 import { BUCKET_TITLE, buildTodoCards, todoBucket, type TodoBucket } from "@/lib/studentClassPage";
@@ -26,6 +30,7 @@ import { BUCKET_TITLE, buildTodoCards, todoBucket, type TodoBucket } from "@/lib
 const H2 = "text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)]";
 const GOC = "text-[length:var(--kin-co-goc)]";
 const BUCKETS: TodoBucket[] = ["qua-han", "tuan-nay", "tuan-sau", "sau"];
+const EXAM_TONE: Record<AssignmentState, "xong" | "cho" | "mo"> = { "dang-lam": "cho", "dang-mo": "xong", "chua-mo": "mo", "da-dong": "mo", "cho-cong-bo": "cho", "da-lam": "xong" };
 
 function CanLamPage() {
   const { user } = useAuth();
@@ -46,12 +51,29 @@ function CanLamPage() {
   const nothing = items !== null && items.length === 0 && (as.data?.items.length ?? 0) === 0;
   const lopCount = new Set((cards ?? []).map(c => c.courseId ?? c.courseName)).size;
 
-  const assignCount = as.data?.items.length ?? 0;
-  const assignBlock = (as.error || assignCount > 0) && (
+  // "Đề thi được giao" (§3.2, §3.3): hàng mảnh, cả hàng là link, KHÔNG nút — và bỏ đề đã có thẻ kiểm tra ở trên (không lặp một đề hai lần).
+  const carded = new Set((cards ?? []).flatMap(c => (c.action.type === "thi" ? [c.action.event.id.replace(/^exam-/, "")] : [])));
+  const exams = (as.data?.items ?? []).filter(it => !carded.has(it.id));
+  const assignBlock = ((as.error && !as.data) || exams.length > 0) && (
     <section aria-labelledby="vc-giao" className="mt-10">
       <h2 id="vc-giao" className={`${H2} pb-2`}>Đề thi được giao</h2>
       {as.error && !as.data ? <ErrorStrip message="Không tải được danh sách đề được giao." onRetry={as.load} />
-        : as.data && <AssignmentList items={as.data.items} serverNow={as.data.serverNow} emptyLink={false} quiet={!!cards?.some(c => c.primary)} />}
+        : <ul aria-label="Đề thi được giao" className="border-t border-[var(--kin-vien-nhat)]">
+          {exams.map(it => {
+            const due = as.data ? daysLeftLabel(it.dueAt, as.data.serverNow) : "";
+            const act = ASSIGNMENT_ACTION[it.state];
+            return (
+              <li key={it.id} data-de-thi-hang data-trang-thai={it.state}>
+                <KinListRow size="lg" href={act ? `/student/thi-thu/${it.id}` : undefined} title={it.title}
+                  sub={[it.courseName ?? (it.source === "link" ? "Giao qua đường dẫn" : "Thư viện thi thử"), it.durationMinutes ? `${it.durationMinutes} phút` : "", due].filter(Boolean).join(" · ")}
+                  aside={<>
+                    <KinStatus tone={EXAM_TONE[it.state]}>{ASSIGNMENT_STATE_LABEL[it.state]}</KinStatus>
+                    {act && <span className="font-medium text-[var(--kin-nhan-link)] underline">{act}</span>}
+                  </>} />
+              </li>
+            );
+          })}
+        </ul>}
     </section>
   );
 
@@ -59,7 +81,7 @@ function CanLamPage() {
     <div className="px-4 md:px-10 pt-5 md:pt-8 pb-10 max-w-[800px] bg-[var(--kin-nen-trang)]">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Cần làm</h1>
+          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Cần làm</h1>
           {cards && (
             <p data-can-lam-tom-tat className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>
               {cards.length > 0 ? `${cards.length} việc${lopCount > 1 ? ` ở ${lopCount} lớp` : ""}, xếp theo hạn` : "Không còn việc nào cần làm"}
@@ -95,7 +117,7 @@ function CanLamPage() {
             if (!group.length) return null;
             return (
               <section key={b} aria-labelledby={`vc-${b}`} data-can-lam-nhom={b} className="mt-6">
-                <h2 id={`vc-${b}`} className={`${H2} flex flex-wrap items-baseline gap-x-2`}>
+                <h2 id={`vc-${b}`} className={`${H2} flex flex-wrap items-baseline justify-between gap-x-2`}>
                   {BUCKET_TITLE[b]}{b === "qua-han" && <span className={`${GOC} font-normal text-[var(--kin-chu-phu)]`}>vẫn còn nhận bài</span>}
                 </h2>
                 <div className="mt-3 space-y-3">

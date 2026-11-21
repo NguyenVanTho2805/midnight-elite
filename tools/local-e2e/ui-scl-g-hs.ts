@@ -4,10 +4,13 @@
 // Tất cả bài học (nhóm theo chương, chương mới nhất trên, ô tìm không dấu, bản ghi buổi học), Cần làm gom mọi lớp (nhóm Quá hạn / Tuần này…),
 // Điểm (x/10, Trung bình, "Chờ gia sư duyệt" KHÔNG có số — kể cả trong JSON), thanh dưới 64px (Cần làm có badge · Lớp · [Lịch] · Điểm, aria-current),
 // link Zalo ?course=…&bai=… mở thẳng bài, POST nộp bài có `ve` quay về đúng màn. 360/390/1280 không tràn ngang. Chụp ảnh vào SHOTS_DIR nếu có.
+// Sửa theo rà soát: badge = đúng số thẻ của Cần làm (cả bài hạn > 3 ngày), đầu trang có lịch, Điểm có ngày + link và không liệt kê bài chưa nộp, đề không lặp,
+// thông báo trống chỉ một dòng, thanh dưới chỉ mục chọn có nền + badge navy, nộp THẬT ảnh → PDF → tải lên → /nop, chọn lại bỏ tệp tải dở.
 import { BASE, api, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 import { featureOn } from "@/lib/features";
+import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
 import type { Page } from "playwright";
 
 const SHOTS = process.env.SHOTS_DIR;
@@ -49,6 +52,10 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   await as("bt-b", "l-b", "Bài tập chương 1", 4 * D);
   await as("bt-cham", "l-3", "Bài tập phép thế", -5 * D);
   await prisma.assignmentSubmission.create({ data: { assignmentId: "bt-cham", userId: S.id, fileUrl: "/u/x.pdf", score: 8.5, gradedAt: new Date(now - D) } });
+  await as("bt-cho", "l-1", "Bài tập căn bậc hai", 6 * D);
+  await prisma.assignmentSubmission.create({ data: { assignmentId: "bt-cho", userId: S.id, fileUrl: "/u/z.pdf", submittedAt: new Date(now - H) } }); // "Đã nộp, chờ chấm"
+  // Lịch tuần của lớp A ⇒ đầu trang lớp ghi "Cô Lan (thử) · <thứ>, 19:00" (§2.1, §4.1 #19).
+  await prisma.classSchedule.create({ data: { courseId: A.id, dayOfWeek: dayOfWeekOfKey(addDaysKey(vnDateKeyOf(new Date()), 1)), startTime: "19:00", endTime: "20:30" } });
   const ed = new Date(now + 5 * D + 7 * H);
   const examDate = `${String(ed.getUTCDate()).padStart(2, "0")}/${String(ed.getUTCMonth() + 1).padStart(2, "0")}/${ed.getUTCFullYear()}`;
   await prisma.exam.create({ data: { id: "ex-15", code: "ex-15", title: "Kiểm tra 15 phút · Chương 2", category: "Toán", date: examDate, time: "19:00", duration: "15 phút", questions: 0, status: "available", createdAt: "2020", courseId: A.id } });
@@ -83,7 +90,9 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   section("Trang lớp 390px (khung 1)");
   const pg = await open(`/student/hoc-tap?course=${A.id}`, 390);
   await pg.locator("[data-can-lam-the]:visible").first().waitFor({ timeout: 120000 });
-  check("h1 = tên lớp; dòng đầu trang có tên cô", await pg.getByRole("heading", { level: 1, name: "Toán 9 · Lớp thử A" }).isVisible() && /Cô Lan \(thử\)/.test(await pg.locator("[data-dau-lop]:visible").innerText()));
+  const dau = await pg.locator("[data-dau-lop]:visible").innerText();
+  check("h1 = tên lớp; dòng đầu trang có tên cô + lịch học trên MỘT dòng ('Cô Lan (thử) · <thứ>, 19:00')", await pg.getByRole("heading", { level: 1, name: "Toán 9 · Lớp thử A" }).isVisible() && /Cô Lan \(thử\) · (Thứ \S+|Chủ nhật), 19:00/.test(dau), dau);
+  check("h1 đậm 700 (thứ bậc theo bản chốt)", (await pg.locator("main h1:visible").first().evaluate(e => getComputedStyle(e).fontWeight)) === "700");
   check("vạch màu lớp cao 4px", Math.round((await pg.locator("[data-vach-lop]:visible").boundingBox())?.height ?? 0) === 4);
   check("không còn dải tab Nội dung / Video / Kết quả", await pg.getByRole("tab").count() === 0 && await pg.getByRole("tablist").count() === 0);
   const order = await pg.evaluate(`({ canLam: document.querySelector("[data-lop-can-lam]")?.getBoundingClientRect().top ?? -1, ganDay: document.querySelector("[data-lop-gan-day]")?.getBoundingClientRect().top ?? -1 })`) as { canLam: number; ganDay: number };
@@ -111,6 +120,8 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   check("bài nháp không hiện; hàng là liên kết thật tới trang bài", await pg.getByText("Bài nháp không được thấy").count() === 0 && (await pg.locator("[data-lesson-row='l-4'] a").getAttribute("href")) === "/student/bai-giang/l-4");
   check("liên kết 'Tất cả bài học (4)'", (await pg.locator("[data-tat-ca-bai]:visible").innerText()).includes("Tất cả bài học (4)"));
   check("mọi trạng thái có chữ + hình", (await statusesOk(pg)).every(s => s.t && s.svg), await statusesOk(pg));
+  await pg.locator("[data-tb-trong]:visible").waitFor({ timeout: 30000 }).catch(() => {});
+  check("lớp chưa có thông báo: chỉ MỘT dòng chữ mờ, không tiêu đề + khối trống; không link lẻ 'Xem điểm của lớp này'", await pg.locator("[data-tb-trong]:visible").count() === 1 && await pg.getByRole("heading", { name: "Thông báo của lớp" }).count() === 0 && await pg.locator("[data-lop-diem]").count() === 0);
   check("390: không tràn ngang", await overflowX(pg) <= 0, await overflowX(pg));
   const ins = await pg.evaluate(() => [...document.querySelectorAll("main a, main button")].filter(e => e.getBoundingClientRect().width > 0 && !e.closest("[data-nop-dock]") && !e.closest("[data-kin-skip]")).map(e => ({ t: (e as HTMLElement).innerText.trim().slice(0, 30), h: Math.round(e.getBoundingClientRect().height) })).filter(x => x.h < 44));
   check("mọi nút / liên kết trong trang cao ≥ 44px", ins.length === 0, ins);
@@ -140,9 +151,12 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   const want = ["Cần làm", "Lớp", ...(featureOn("LICH") ? ["Lịch"] : []), "Điểm"];
   check(`thanh dưới: ${want.join(" · ")}, mỗi ô ≥ 44px`, JSON.stringify(cells.map(c => c.t)) === JSON.stringify(want) && cells.every(c => c.h >= 44), cells);
   check("trang lớp: 'Lớp' mang aria-current=page", cells.find(c => c.t === "Lớp")?.cur === "page" && cells.filter(c => c.cur === "page").length === 1, cells);
+  const look = await bar.evaluate(n => [...n.querySelectorAll("a, button")].filter(e => (e as HTMLElement).offsetParent).map(e => ({ cur: e.getAttribute("aria-current"), bg: getComputedStyle(e).backgroundColor, fs: parseFloat(getComputedStyle(e.querySelector(".kin-rail-lab")!).fontSize) })));
+  check("chỉ mục đang chọn có viên nền (mục khác trong suốt), nhãn ≥ 13px", look.filter(x => x.cur !== "page").every(x => x.bg === "rgba(0, 0, 0, 0)") && look.every(x => x.fs >= 13), look);
   const badge = bar.locator(".kin-badge-dem");
   const before = Number((await badge.innerText()).trim());
   check("badge 'Cần làm' có số + nhãn chữ", before >= 1 && /việc cần xử lý/.test((await badge.getAttribute("aria-label")) ?? ""), before);
+  check("badge màu navy (đếm việc, không phải lỗi)", await badge.evaluate(e => getComputedStyle(e).backgroundColor === getComputedStyle(document.documentElement).getPropertyValue("--kin-nhan-nen").trim() || getComputedStyle(e).backgroundColor === "rgb(30, 58, 138)"), await badge.evaluate(e => getComputedStyle(e).backgroundColor));
   const acc = pg.getByRole("button", { name: /^Tài khoản của Minh Anh/ });
   check("nút tài khoản ở đầu trang: tên truy cập chứa đúng chữ hiển thị (WCAG 2.5.3)", (await acc.innerText()).trim().length > 0 && ((await acc.getAttribute("aria-label")) ?? "").includes((await acc.innerText()).trim()));
 
@@ -185,7 +199,13 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   check("nhóm theo hạn, Quá hạn đầu tiên", groups[0] === "qua-han" && groups.length >= 2, groups);
   check("'Quá hạn' kèm 'vẫn còn nhận bài'", /vẫn còn nhận bài/.test(await pg.locator("[data-can-lam-nhom='qua-han'] h2").innerText()));
   check("thẻ của cả hai lớp (Toán + Vật lý), mỗi thẻ ghi tên lớp", /Toán 9 · Lớp thử A/.test(await pg.locator("main").innerText()) && /Vật lý 9 · Lớp thử B/.test(await pg.locator("main").innerText()));
-  check("dòng tóm tắt 'N việc ở 2 lớp, xếp theo hạn'", /^\d+ việc ở 2 lớp, xếp theo hạn$/.test((await pg.locator("[data-can-lam-tom-tat]:visible").innerText()).trim()));
+  const tomTat = (await pg.locator("[data-can-lam-tom-tat]:visible").innerText()).trim();
+  check("dòng tóm tắt 'N việc ở 2 lớp, xếp theo hạn'", /^\d+ việc ở 2 lớp, xếp theo hạn$/.test(tomTat));
+  await pg.locator(".kin-badge-dem").first().waitFor({ timeout: 5000 }).catch(() => {});
+  const badgeNow = Number((await bar.locator(".kin-badge-dem").innerText().catch(() => "0")).trim());
+  check("badge 'Cần làm' = đúng số 'N việc' của màn (kể cả bài hạn > 3 ngày và kiểm tra)", badgeNow === parseInt(tomTat, 10) && badgeNow === 4, { badgeNow, tomTat });
+  check("'Đã nộp, chờ chấm': hàng 'Bài tập căn bậc hai' có Chờ chấm", /Chờ chấm/.test(await pg.locator("[data-cho-cham='bai-tap:bt-cho']:visible").innerText()));
+  check("'Đề thi được giao' không lặp đề đã có thẻ ('Kiểm tra 15 phút · Chương 2'), hàng không có nút", await pg.locator("[data-de-thi-hang]").filter({ hasText: "Kiểm tra 15 phút" }).count() === 0 && await pg.locator("[data-de-thi-hang] button, [data-de-thi-hang] [data-kin-nut]").count() === 0);
   check("đúng MỘT nút chính (bài quá hạn)", (await primaries(pg)).length === 1, await primaries(pg));
   check("thanh dưới: 'Cần làm' mang aria-current", (await bar.getByRole("link", { name: /^Cần làm/ }).getAttribute("aria-current")) === "page");
   check("mọi trạng thái có chữ + hình; 390 không tràn", (await statusesOk(pg)).every(s => s.t && s.svg) && await overflowX(pg) <= 0);
@@ -196,7 +216,11 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   await pg.locator("[data-diem-lop]:visible").first().waitFor({ timeout: 60000 });
   const lopA = pg.locator(`[data-diem-lop='${A.id}']:visible`);
   check("nhóm lớp Toán: 'Trung bình 8,5/10' (chỉ tính bài đã chấm)", /Trung bình\s*8,5\s*\/10/.test(await lopA.locator("[data-trung-binh]").innerText()), await lopA.locator("[data-trung-binh]").innerText());
-  check("bài đã chấm ghi '8,5/10' trong nhóm 'Đã xong'", await lopA.getByRole("heading", { name: "Đã xong" }).isVisible() && /8,5\s*\/10/.test(await lopA.getByRole("list", { name: /Bài đã xong/ }).innerText()));
+  const graded = lopA.locator("[data-ket-qua-hang='da-cham']");
+  check("bài đã chấm: '8,5/10', dòng 2 'Chấm <thứ dd/mm>', cả hàng là link tới bài (chevron)", /8,5\s*\/10/.test(await graded.innerText()) && /Chấm (thứ \S+|Chủ nhật) \d\d\/\d\d/.test(await graded.innerText()) && (await graded.locator("a").getAttribute("href")) === "/student/bai-giang/l-3" && await graded.locator("svg").count() >= 1);
+  check("bài chờ chấm: 'Nộp <thứ dd/mm>' + Chờ chấm", /Nộp (thứ \S+|Chủ nhật) \d\d\/\d\d/.test(await lopA.locator("[data-ket-qua-hang='cho-cham']").innerText()));
+  check("bài CHƯA NỘP không liệt kê (có ở Cần làm, đúng trạng thái Quá hạn) — chỉ một dòng 'Còn 3 bài chưa nộp · Xem ở Cần làm'", await lopA.locator("[data-ket-qua-hang='chua-nop']").count() === 0 && !/Bài tập buổi 4/.test(await lopA.innerText()) && /Còn 3 bài chưa nộp/.test(await lopA.locator("[data-chua-nop]").innerText()) && (await lopA.locator("[data-chua-nop] a").getAttribute("href")) === "/student/viec-cua-toi");
+  check("cùng lề với các màn khác: h1 cách mép trái 16px ở 390", Math.round((await pg.locator("main h1:visible").first().boundingBox())?.x ?? -1) === 16 + Math.round((await pg.locator("main").boundingBox())?.x ?? 0));
   const pending = await lopA.locator("[data-ket-qua-hang='cho-duyet']").innerText();
   check("'Chờ gia sư duyệt' có chữ + hình, KHÔNG hiện số 7", /Chờ gia sư duyệt/.test(pending) && !/\b7\b/.test(pending), pending);
   check("mọi trạng thái có chữ + hình; 390 không tràn", (await statusesOk(pg)).every(s => s.t && s.svg) && await overflowX(pg) <= 0);
@@ -212,6 +236,26 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
     await g.goto(`${BASE}/student/hoc-tap?course=${A.id}&bai=l-4`, { waitUntil: "domcontentloaded", timeout: 120000 });
     await g.waitForURL(/\/dang-nhap/, { timeout: 60000 });
     check("chưa đăng nhập: đi đăng nhập rồi quay lại ĐÚNG bài (không trang quảng cáo / Đăng ký)", /redirect=%2Fstudent%2F(bai-giang%2Fl-4|hoc-tap%3Fcourse%3D[^&]+%26bai%3Dl-4)/.test(g.url()), g.url());
+  }
+
+  section("Nộp thật trên trình duyệt: ảnh → PDF → tải lên → /nop (303), chọn lại bỏ tệp tải dở của lần trước");
+  {
+    // Tệp "ready" chưa gắn của lần tải trước bị lỗi giữa chừng (học sinh định bỏ): /nop KHÔNG được gắn nó vào bài.
+    const stale = await prisma.submissionFile.create({ data: { kind: "student", assignmentId: "bt-5", studentUserId: S.id, ownerUserId: S.id, courseId: A.id, driver: "local", storageKey: `test/stale-${now}`, originalName: "cu-dinh-bo.pdf", ext: "pdf", mimeType: "application/pdf", sizeBytes: 10, status: "ready", readyAt: new Date(), expiresAt: new Date(now + 60 * D) } });
+    const up = await open(`/student/hoc-tap?course=${A.id}`, 390);
+    await up.locator("[data-nop-nhanh='bt-5']").waitFor({ timeout: 120000 });
+    const img = await up.evaluate(() => { const c = document.createElement("canvas"); c.width = 600; c.height = 800; const x = c.getContext("2d")!; x.fillStyle = "white"; x.fillRect(0, 0, 600, 800); x.fillStyle = "black"; x.font = "40px sans-serif"; x.fillText("Bai lam", 60, 120); return c.toDataURL("image/png").split(",")[1]; });
+    await Promise.all([
+      up.waitForURL(/[?&]nop=ok&bt=bt-5/, { timeout: 120000 }),
+      up.locator("[data-nop-nhanh='bt-5'] input[type=file]").setInputFiles({ name: "vo.png", mimeType: "image/png", buffer: Buffer.from(img, "base64") }),
+    ]);
+    await up.locator("[data-nop-xong]:visible").waitFor({ timeout: 60000 });
+    check("chọn một ảnh ⇒ về trang lớp ?nop=ok&bt=bt-5, 'Đã nộp Bài tập buổi 5'", /Đã nộp Bài tập buổi 5/.test(await up.locator("[data-nop-xong]:visible").innerText()));
+    const sub = await prisma.assignmentSubmission.findUnique({ where: { assignmentId_userId: { assignmentId: "bt-5", userId: S.id } }, select: { id: true, kind: true } });
+    const att = sub ? await prisma.submissionFile.findMany({ where: { submissionId: sub.id, status: "ready" }, select: { id: true, ext: true } }) : [];
+    check("bài nộp có đúng MỘT tệp PDF gắn (ảnh gộp thành PDF)", !!sub && att.length === 1 && att[0].ext === "pdf", { sub, att });
+    const old = await prisma.submissionFile.findUnique({ where: { id: stale.id }, select: { status: true, submissionId: true } });
+    check("tệp tải dở của lần trước KHÔNG bị gắn vào bài (đã gỡ: removed)", old?.status === "removed" && old.submissionId === null, old);
   }
 
   section("360px và 1280px");

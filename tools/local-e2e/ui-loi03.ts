@@ -14,6 +14,9 @@
 //   /api/student/hom-nay 500 / 403 ⇒ cột buổi học vẫn hiện (không bị ẩn theo phiếu); (4) 1600: thẻ tiến độ và cột phải không hở quá khoảng cách lưới (≤ 40px).
 //   Ca phá cố ý (đã chạy, rồi hoàn lại): ViecCuaToi `useState<boolean | null>(null)` → `useState(false)` ⇒ ca (1) đỏ; LopCuaToi dùng lại `vnDateKeyOf(at) >= todayKey` (không cận trên)
 //   ⇒ ca (2) đỏ; bỏ `lg:grid-rows-[auto_1fr]` ⇒ ca (4) đỏ (đo được khoảng hở > 40px).
+// SCL-G-HS (21/11/2026): trang lớp theo bản chốt (không tab / thẻ tiến độ / cây chương; Cần làm, Buổi gần đây, Tất cả bài học; "Hỏi gia sư trong lớp" lên đầu trang)
+//   và "Cần làm" bỏ phiếu "Hôm nay có lớp" + cột "Buổi học tiếp theo" ⇒ các ca của những khối đó đổi thành ca tương ứng trên màn mới (cùng ý: không lộ bài nháp,
+//   không giấu lỗi, bài hẹn xa không mất, 390 không tràn / ≥ 44px). Phần thư viện lớp, trang bài, /lop-cua-toi giữ nguyên.
 // Dữ liệu tự tạo (wipe() trên DB riêng của worktree). Ngày giờ "hôm nay" theo giờ VN lúc chạy (instantOf) — chạy sát 00:00 VN có thể đỏ giả, chạy lại.
 // Ảnh bìa: địa chỉ https giả, trình duyệt được chặn route trả về một ảnh PNG 1×1 (không ra mạng ngoài). Kho tệp: chặn danh-sach trả enabled:true / false để kiểm trình bày
 // độc lập với cấu hình kho của máy.
@@ -136,81 +139,49 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     }
     await shot(p, `loi03-thu-vien-${w}`);
 
-    // ═════════ Trang lớp ═════════
+    // ═════════ Trang lớp (SCL-G-HS: bản chốt khung 1 — không tab, không thẻ tiến độ, không cây chương; Cần làm trên cùng, Buổi gần đây, Tất cả bài học) ═════════
     section(`${w}px · bấm tên lớp → trang lớp`);
     await cx.getByRole("link", { name: "Toán 9 (LOI-03)", exact: true }).click();
     await p.waitForURL(u => u.pathname === "/student/hoc-tap" && u.searchParams.get("course") === X.id, { timeout: 90000 });
-    await p.locator("[data-outline-chapter]").first().waitFor({ timeout: 120000 });
-    check("h1 = tên lớp; dòng phụ 'Toán · Gia sư: Cô Lan'; có '← Lớp của tôi'", await p.getByRole("heading", { level: 1, name: "Toán 9 (LOI-03)" }).isVisible() && await p.getByText("Toán · Gia sư: Cô Lan").isVisible() && await p.locator("[data-all-classes]").isVisible());
-    check("2 tab Tổng quan · Nội dung, mặc định Nội dung", (await p.getByRole("tab").allInnerTexts()).map(s => s.trim()).join("|") === "Tổng quan|Nội dung" && (await p.getByRole("tab", { name: "Nội dung" }).getAttribute("aria-selected")) === "true");
-    check("'Nội dung lớp: 2 chương · 6 bài' (bài nháp không đếm, tên bài nháp không lộ)", (await p.locator("[data-noi-dung-tom-tat]").innerText()).trim() === "Nội dung lớp: 2 chương · 6 bài" && !(await p.content()).includes("NHAP-BI-MAT"));
-    check("số thứ tự chương '01', '02'", (await p.locator("[data-chapter-no]").allInnerTexts()).join() === "01,02");
-    const hero = p.locator("[data-course-hero]");
-    check("thẻ tiến độ: 'Bạn đã hoàn thành 1/6 bài', nút 'Học tiếp →' → bài 2 (đang xem dở), có 'Tài liệu & bản ghi của lớp này →'", /Bạn đã hoàn thành 1\/6 bài/.test(await hero.innerText()) && (await hero.locator("[data-hoc-tiep]").getAttribute("href")) === `/student/bai-giang/${L(2)}` && (await hero.locator("[data-hoc-tiep]").innerText()).trim() === "Học tiếp →" && await p.locator("[data-thu-vien-link]").isVisible());
-    const hoi = hero.locator("[data-hoi-trong-lop]");
-    check("thẻ tiến độ (đang học): 'Hỏi gia sư trong lớp →' [data-hoi-trong-lop] → /cong-dong?scope=<mã lớp>, thấy được", (await hoi.count()) === 1 && await hoi.isVisible() && (await hoi.innerText()).trim() === "Hỏi gia sư trong lớp →" && (await hoi.getAttribute("href")) === `/cong-dong?scope=${encodeURIComponent(X.id)}`, await hoi.getAttribute("href"));
-    if (w === 390) { const hb = await hoi.boundingBox(); check("390: 'Hỏi gia sư trong lớp →' cao ≥ 44px", !!hb && hb.height >= 44, hb); }
-    const chap = (i: number) => p.locator(`[data-outline-chapter="${chs[i]}"]`);
-    check("chương chứa bài kế (chương 01) mở sẵn, chương 02 thu", (await chap(0).getAttribute("aria-expanded")) === "true" && (await chap(1).getAttribute("aria-expanded")) === "false");
-    await p.locator("[data-outline-open-all]").click();
-    check("'Mở rộng tất cả' → cả 2 chương mở", (await p.locator("[data-outline-open-all]").innerText()).trim() === "Mở rộng tất cả" && (await chap(0).getAttribute("aria-expanded")) === "true" && (await chap(1).getAttribute("aria-expanded")) === "true");
-    const meta3 = (await p.locator(`[data-outline-lesson="${L(3)}"] [data-lesson-meta]`).innerText()).trim();
-    check("dòng bài 3: '1 tài liệu · Có bài tập · Học Hôm nay · 19:30'", meta3 === "1 tài liệu · Có bài tập · Học Hôm nay · 19:30", meta3);
-    check("dòng bài 5: '… Học Ngày mai · 00:30'; bài không có dữ liệu thì không dòng phụ (bài 1)", /Học Ngày mai · 00:30/.test(await p.locator(`[data-outline-lesson="${L(5)}"]`).innerText()) && (await p.locator(`[data-outline-lesson="${L(1)}"] [data-lesson-meta]`).count()) === 0);
-    check("nhãn chữ: bài 1 'Đã học', bài 2 'Học tiếp', bài 4 'Chưa học'", await p.locator(`[data-outline-lesson="${L(1)}"]`).getByText("Đã học").isVisible() && await p.locator(`[data-outline-lesson="${L(2)}"]`).getByText("Học tiếp").isVisible() && await p.locator(`[data-outline-lesson="${L(4)}"]`).getByText("Chưa học").isVisible());
-    // Vòng test 2 (mâu thuẫn): lớp có bài hẹn hôm nay nhưng chưa có khung giờ / buổi học ⇒ KHÔNG có khối "Buổi học sắp tới" nói "chưa có buổi học nào trong 90 ngày tới".
-    await eventually(`${w}: trang lớp có bài hẹn hôm nay ⇒ không có [data-course-sessions] / 'chưa có buổi học nào trong 90 ngày tới'`, async () =>
-      (await p.locator("[data-course-sessions]").count()) === 0 && (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0, 30000);
+    await p.locator("[data-lop-can-lam] [data-can-lam-the]").first().waitFor({ timeout: 120000 });
+    check("h1 = tên lớp; đầu trang có tên cô; không tab, không thẻ tiến độ cũ", await p.getByRole("heading", { level: 1, name: "Toán 9 (LOI-03)" }).isVisible() && /Cô Lan/.test(await p.locator("[data-dau-lop]").innerText()) && (await p.getByRole("tab").count()) === 0 && (await p.locator("[data-course-hero]").count()) === 0);
+    check("Cần làm: thẻ 'Bài tập Vi-ét' có nút 'Nộp bài'", await p.locator("[data-lop-can-lam] [data-can-lam-the]").filter({ hasText: "Bài tập Vi-ét" }).getByRole("button", { name: /^Nộp bài/ }).count() === 1);
+    const recentIds = await p.locator("[data-lop-gan-day] [data-lesson-row]").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
+    check("Buổi gần đây: mới nhất trước (bài 6 hẹn +3 ngày đứng đầu), tối đa 5 hàng; tên bài nháp không lộ", recentIds[0] === L(6) && recentIds.length === 5 && !(await p.content()).includes("NHAP-BI-MAT"), recentIds);
+    check("'Tất cả bài học (6)' (bài nháp không đếm)", (await p.locator("[data-tat-ca-bai]").innerText()).includes("Tất cả bài học (6)"));
+    const hoi = p.locator("[data-hoi-trong-lop]");
+    if (!featureOn("CONG_DONG")) {
+      check("đầu trang (đang học): 'Hỏi gia sư trong lớp' [data-hoi-trong-lop] → /cong-dong?scope=<mã lớp>, thấy được", (await hoi.count()) === 1 && await hoi.isVisible() && (await hoi.innerText()).trim() === "Hỏi gia sư trong lớp" && (await hoi.getAttribute("href")) === `/cong-dong?scope=${encodeURIComponent(X.id)}`, await hoi.getAttribute("href"));
+      if (w === 390) { const hb = await hoi.boundingBox(); check("390: 'Hỏi gia sư trong lớp' cao ≥ 44px", !!hb && hb.height >= 44, hb); }
+    }
+    // DG (14/11/2026): lối "Phiếu học phí của bạn" chỉ khi cờ HOC_PHI mở; trang lớp không có chữ số tiền.
+    const head = await p.locator("[data-dau-lop]").innerText();
+    if (featureOn("HOC_PHI")) check("đầu trang: 'Phiếu học phí của bạn' → /student/hoc-phi, không số tiền", (await p.locator("[data-lop-hoc-phi]").getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)|\bđ\b/.test(head), head);
+    else check("DG: HOC_PHI tắt → không 'Phiếu học phí của bạn', không chữ số tiền", (await p.locator("[data-lop-hoc-phi]").count()) === 0 && !/\d\s*(đ|₫|VND)|\bđ\b/.test(head), head);
+    // Vòng test 2 (mâu thuẫn) giữ ý: lớp có bài hẹn hôm nay mà chưa có buổi học ⇒ không câu "chưa có buổi học nào trong 90 ngày tới".
     await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-    check(`${w}: sau khi lịch tải xong vẫn không có 'chưa có buổi học nào trong 90 ngày tới'; dòng bài vẫn ghi 'Học Hôm nay · 19:30'`,
-      (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0 && (await p.locator("[data-course-sessions]").count()) === 0 && /Học Hôm nay · 19:30/.test(await p.locator(`[data-outline-lesson="${L(3)}"]`).innerText()));
-    await p.locator("[data-outline-close-all]").click();
-    check("'Thu gọn tất cả' → cả 2 chương thu", (await chap(0).getAttribute("aria-expanded")) === "false" && (await chap(1).getAttribute("aria-expanded")) === "false");
-    await chap(1).click();
-    check("bấm chương 02 → mở (aria-expanded=true)", (await chap(1).getAttribute("aria-expanded")) === "true");
-    await chap(0).click();
+    check(`${w}: không có 'chưa có buổi học nào trong 90 ngày tới'`, (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0);
     if (w === 390) {
-      const hb = await hero.boundingBox(), tb = await p.getByRole("tablist").boundingBox();
-      check("390: thẻ tiến độ nằm TRÊN dải tab", !!hb && !!tb && hb.y + hb.height <= tb.y + 1, { hb, tb });
-      check("390: không cuộn ngang (trang lớp, cây mở)", await p.evaluate(NOT_OVERFLOW) as boolean);
-      const s = await small(p, "main a, main button, main [role=tab]");
-      check("390: mọi nút / hàng / tab cao ≥ 44px", s.length === 0, s.slice(0, 5));
-    } else {
-      const hb = await hero.boundingBox(), tb = await p.getByRole("tablist").boundingBox();
-      check("1600: thẻ tiến độ ở cột phải (bên phải dải tab)", !!hb && !!tb && hb.x > tb.x + tb.width - 2, { hb, tb });
+      check("390: không cuộn ngang (trang lớp)", await p.evaluate(NOT_OVERFLOW) as boolean);
+      const s = await small(p, "main a, main button");
+      check("390: mọi nút / hàng cao ≥ 44px", s.length === 0, s.slice(0, 5));
     }
-    await p.waitForTimeout(600); // đợi chương gập xong (KinFold có chuyển động) rồi mới chụp
-    await shot(p, `loi03-lop-noi-dung-${w}`);
-    await p.getByRole("tab", { name: "Tổng quan" }).click();
-    const info = p.getByRole("region", { name: "Thông tin lớp" });
-    await info.waitFor({ timeout: 30000 });
-    const infoText = await info.innerText();
-    // DG (14/11/2026): lối "Phiếu học phí của bạn →" chỉ khi cờ HOC_PHI mở; tắt (mặc định) thì không có liên kết đó. Khối vẫn không có số tiền.
-    if (featureOn("HOC_PHI")) check("Tổng quan: 'Phiếu học phí của bạn →' → /student/hoc-phi, khối không có chữ số tiền / 'đ'", (await info.getByRole("link", { name: "Phiếu học phí của bạn →" }).getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)|\bđ\b/.test(infoText), infoText);
-    else check("DG: HOC_PHI tắt → Tổng quan KHÔNG có 'Phiếu học phí của bạn →', không chữ số tiền / 'đ'", (await info.getByRole("link", { name: "Phiếu học phí của bạn →" }).count()) === 0 && !/\d\s*(đ|₫|VND)|\bđ\b/.test(infoText), infoText);
-    check("Tổng quan: có 'Tài liệu & bản ghi' (data-materials-tab) và 'Bài tập của lớp'; KHÔNG có 'Đánh giá'", await p.locator("[data-materials-tab]").isVisible() && await p.getByRole("heading", { name: "Bài tập của lớp" }).isVisible() && (await p.getByText("Đánh giá").count()) === 0);
-    {
-      // LOI-07 (4): cột trái (Tổng quan, cao) span 2 hàng; trước đây phần thừa chia cả vào hàng 1 ⇒ hở ~100px giữa thẻ tiến độ và cột phải.
-      const asideL = p.locator("[data-lop-aside]");
-      await asideL.waitFor({ timeout: 30000 });
-      const hb = await hero.boundingBox(), ab = await asideL.boundingBox(), lb = await p.locator("#lop-panel").boundingBox();
-      if (w === 1600) {
-        const gap = !!hb && !!ab ? Math.round(ab.y - (hb.y + hb.height)) : -1;
-        check(`1600: cột phải ngay dưới thẻ tiến độ — khoảng hở ${gap}px ≤ 40px (lưới gap 32px); cột trái cao hơn (điều kiện để ca có nghĩa)`, gap >= 0 && gap <= 40 && !!lb && lb.y + lb.height > ab!.y + ab!.height, { gap, hb, ab, lb });
-      } else {
-        check("390: cột phải (Các lớp của bạn) nằm DƯỚI nội dung tab, cùng mép trái; không cuộn ngang", !!ab && !!lb && ab.y >= lb.y + lb.height - 1 && Math.abs(ab.x - lb.x) < 4 && await p.evaluate(NOT_OVERFLOW) as boolean, { ab, lb });
-      }
-    }
-    if (w === 390) check("390: Tổng quan không cuộn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);
-    await shot(p, `loi03-lop-tong-quan-${w}`);
+    await shot(p, `loi03-lop-${w}`);
+
+    section(`${w}px · Tất cả bài học: nhóm theo chương, bài nháp không lộ`);
+    await p.locator("[data-tat-ca-bai]").click();
+    await p.getByRole("heading", { level: 1, name: "Tất cả bài học" }).waitFor({ timeout: 90000 });
+    const chapT = await p.locator("[data-chuong] h2").allInnerTexts();
+    check("2 chương, chương mới nhất trên: 'Phương trình bậc hai', 'Căn thức'; đủ 6 bài; không bài nháp", JSON.stringify(chapT) === JSON.stringify(["Phương trình bậc hai", "Căn thức"]) && (await p.locator("[data-chuong] [data-lesson-row]").count()) === 6 && !(await p.content()).includes("NHAP-BI-MAT"), chapT);
+    const meta3 = (await p.locator(`[data-lesson-row="${L(3)}"]`).innerText()).replace(/\s+/g, " ");
+    check("dòng bài 3 có ngày, '1 tài liệu' và 'Bài tập'", /(Thứ \S+|Chủ nhật) \d\d\/\d\d/.test(meta3) && /1 tài liệu/.test(meta3) && /Bài tập/.test(meta3), meta3);
+    if (w === 390) check("390: không cuộn ngang (Tất cả bài học)", await p.evaluate(NOT_OVERFLOW) as boolean);
 
     // ═════════ Bài → ô nộp tệp ═════════
     section(`${w}px · bấm bài → tab Bài tập: ô nộp tệp to, là khối đầu tiên của thẻ`);
     let storeOn = true;
     await p.route("**/api/media/nop-bai/danh-sach**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(storeOn ? { enabled: true, limits: LIMITS, retentionDays: 60, files: [], submission: null } : { enabled: false, reason: "Tính năng nộp tệp chưa bật.", limits: LIMITS, retentionDays: 60, files: [], submission: null }) }));
-    await p.getByRole("tab", { name: "Nội dung" }).click();
-    await p.locator("[data-outline-open-all]").click();
-    await p.locator(`[data-outline-lesson="${L(3)}"]`).click();
+    await p.locator(`[data-lesson-row="${L(3)}"] a`).click();
     await p.waitForURL(u => u.pathname === `/student/bai-giang/${L(3)}`, { timeout: 90000 });
     await p.getByRole("heading", { level: 1, name: "Bài 3: Hệ thức Vi-ét" }).waitFor({ timeout: 120000 });
     await p.locator('[data-lesson-section="bai-tap"]').scrollIntoViewIfNeeded(); // DG: trang bài một cột, không còn nút tab Bài tập
@@ -247,126 +218,46 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await shot(p, `loi03-kho-tat-${w}`);
     await p.unroute("**/api/media/nop-bai/danh-sach**");
 
-    // ═════════ Việc của tôi: phiếu Hôm nay có lớp ═════════
-    section(`${w}px · /student/viec-cua-toi: phiếu 'Hôm nay có lớp'`);
+    // ═════════ Cần làm (SCL-G-HS khung 2; phiếu "Hôm nay có lớp" đã bỏ theo bản chốt) ═════════
+    section(`${w}px · /student/viec-cua-toi (Cần làm): thẻ bài tập của lớp, không bài nháp`);
     await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    const hn = p.locator("[data-hom-nay]");
-    await hn.waitFor({ timeout: 120000 });
-    const row3 = hn.locator(`[data-hom-nay-bai="${L(3)}"]`);
-    check("phiếu có tiêu đề 'Hôm nay có lớp'; hàng bài 3: giờ 19:30, tên lớp, tên bài là liên kết tới bài", await hn.getByRole("heading", { name: "Hôm nay có lớp" }).isVisible() && /19:30/.test(await row3.innerText()) && /Toán 9 \(LOI-03\)/.test(await row3.innerText()) && (await row3.getByRole("link", { name: "Bài 3: Hệ thức Vi-ét", exact: true }).getAttribute("href")) === `/student/bai-giang/${L(3)}`);
-    check("hôm nay có bài 23:30 (bài 4); KHÔNG có bài NHÁP; KHÔNG có bài 5 (ngày mai) trong phần hôm nay", (await hn.locator(`[data-hom-nay-bai="${L(4)}"]`).count()) === 1 && !/NHAP-BI-MAT/.test(await p.content()) && (await hn.locator(`[data-hom-nay-bai="${L(5)}"]`).count()) === 0);
-    const docA = row3.locator("[data-hom-nay-tai-lieu]");
-    check("tài liệu 'Mở ↗' mở tab mới, rel noopener noreferrer", (await docA.count()) === 1 && (await docA.getAttribute("target")) === "_blank" && (await docA.getAttribute("rel")) === "noopener noreferrer");
-    check("'Bài Azota ↗' (tab mới) và 'Làm bài tập' → ?tab=bai-tap", (await row3.locator("[data-hom-nay-azota]").getAttribute("target")) === "_blank" && (await row3.getByRole("link", { name: "Làm bài tập" }).getAttribute("href")) === `/student/bai-giang/${L(3)}?tab=bai-tap`);
-    const up = (await hn.locator("[data-hom-nay-sap-toi]").innerText()).replace(/\s+/g, " ");
-    check("'Sắp tới' có 'Ngày mai · 00:30 · Toán 9 (LOI-03) · Bài 5: Nghiệm thu gọn' và bài +3 ngày", /Ngày mai · 00:30 · Toán 9 \(LOI-03\) · Bài 5: Nghiệm thu gọn/.test(up) && /Bài 6: Ôn tập chương/.test(up), up);
-    check("không có 'lượt xem', đáp án, điểm, đếm ngược trong phiếu", !/lượt xem|đáp án|lời giải|Điểm:|còn \d+ phút/i.test(await hn.innerText()));
-    // Vòng test 2 (mâu thuẫn): phiếu có bài hôm nay ⇒ cột phải KHÔNG vẽ "3 ngày tới chưa có buổi học" (em chưa có khung giờ / buổi học nào); khối đề thi lên đầu cột phải.
-    await eventually(`${w}: phiếu có bài ⇒ không có '3 ngày tới chưa có buổi học' (không aside 'Buổi học tiếp theo')`, async () =>
-      (await p.getByText("3 ngày tới chưa có buổi học").count()) === 0 && (await p.getByRole("complementary", { name: "Buổi học tiếp theo" }).count()) === 0, 30000);
-    {
-      const todoH = await p.locator("#vc-todo").boundingBox(), giaoH = await p.locator("#vc-giao").boundingBox();
-      if (w === 1600) check("1600: lưới không vỡ — 'Đề thi được giao' ở cột phải, ngang hàng 'Cần làm'", !!todoH && !!giaoH && giaoH.x > todoH.x + todoH.width && Math.abs(giaoH.y - todoH.y) < 40, { todoH, giaoH });
-      else check("390: một cột — 'Đề thi được giao' dưới 'Cần làm', cùng mép trái", !!todoH && !!giaoH && giaoH.y > todoH.y && Math.abs(giaoH.x - todoH.x) < 4, { todoH, giaoH });
-    }
-    const hnBox = await hn.boundingBox(), h1Box = await p.getByRole("heading", { level: 1, name: "Việc của tôi" }).boundingBox();
-    check("phiếu nằm ngay dưới tiêu đề trang, rộng hết khung nội dung", !!hnBox && !!h1Box && hnBox.y > h1Box.y && hnBox.y - (h1Box.y + h1Box.height) < 140, { hnBox, h1Box });
+    await p.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 120000 });
+    const vi = p.locator("[data-can-lam-the]").filter({ hasText: "Bài tập Vi-ét" });
+    await vi.waitFor({ timeout: 120000 });
+    check("thẻ 'Bài tập Vi-ét' ghi tên lớp 'Toán 9 (LOI-03)', có 'Nộp bài'", /Toán 9 \(LOI-03\)/.test(await vi.innerText()) && await vi.getByRole("button", { name: /^Nộp bài/ }).count() === 1);
+    check("không lộ bài NHÁP", !(await p.content()).includes("NHAP-BI-MAT"));
     if (w === 390) {
-      check("390: Việc của tôi không cuộn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);
-      const s = await small(p, "[data-hom-nay] a, [data-hom-nay] button");
-      check("390: mọi liên kết / nút trong phiếu cao ≥ 44px", s.length === 0, s.slice(0, 5));
+      check("390: Cần làm không cuộn ngang", await p.evaluate(NOT_OVERFLOW) as boolean);
+      const s = await small(p, "main a, main button");
+      check("390: mọi liên kết / nút cao ≥ 44px", s.length === 0, s.slice(0, 5));
     }
-    await shot(p, `loi03-hom-nay-${w}`);
-    // Bấm "Làm bài tập" → bài mở thẳng tab Bài tập.
-    await p.route("**/api/media/nop-bai/danh-sach**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ enabled: true, limits: LIMITS, retentionDays: 60, files: [], submission: null }) }));
-    await row3.getByRole("link", { name: "Làm bài tập" }).click();
-    await p.waitForURL(u => u.pathname === `/student/bai-giang/${L(3)}` && u.searchParams.get("tab") === "bai-tap", { timeout: 90000 });
-    await eventually("'Làm bài tập' (?tab=bai-tap) mở thẳng tab Bài tập: thấy thẻ bài tập + vùng thả", async () => (await p.locator(`[data-bai-tap-the="${HW.id}"] [data-nop-tep-vung-tha]`).count()) === 1, 60000);
+    await shot(p, `loi03-can-lam-${w}`);
     await c.close();
   }
 
-  // ═════════ Phiếu: không có bài hẹn / lỗi ═════════
-  section("1600 · em không có bài hẹn ⇒ không có phiếu; API lỗi ⇒ ErrorStrip + Thử lại");
-  {
-    const { c, p } = await open(S1, 1600, "/student/viec-cua-toi");
-    await p.getByRole("heading", { level: 1, name: "Việc của tôi" }).waitFor({ timeout: 120000 });
-    await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-    await p.waitForTimeout(1500);
-    check("không bài hẹn: KHÔNG có [data-hom-nay] (không khung trống), không dải lỗi phiếu", (await p.locator("[data-hom-nay]").count()) === 0 && (await p.locator("[data-hom-nay-loi]").count()) === 0);
-    await c.close();
-    const { c: c2, p: p2 } = await open(S, 1600, "/student/viec-cua-toi");
-    let fail = true;
-    await p2.route("**/api/student/hom-nay", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Lỗi server" }) }) : r.continue()));
-    await p2.reload({ waitUntil: "domcontentloaded" });
-    const strip = p2.locator("[data-hom-nay-loi]");
-    await strip.waitFor({ timeout: 120000 });
-    check("lỗi: 'Không tải được bài hôm nay.' + nút 'Thử lại' ≥ 44px", /Không tải được bài hôm nay\./.test(await strip.innerText()) && ((await strip.getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44);
-    fail = false;
-    await strip.getByRole("button", { name: "Thử lại" }).click();
-    await p2.locator("[data-hom-nay]").waitFor({ timeout: 60000 });
-    check("Thử lại → phiếu hiện, dải lỗi mất", (await p2.locator("[data-hom-nay-loi]").count()) === 0 && (await p2.locator(`[data-hom-nay-bai="${L(3)}"]`).count()) === 1);
-    await c2.close();
-  }
-
-  // ═════════ LOI-07: đang tải ≠ rỗng, bài hẹn ngoài khung, không giấu lỗi ═════════
-  section("LOI-07 · 1600 · Việc của tôi: phiếu còn đang tải ⇒ không chớp '3 ngày tới chưa có buổi học'");
+  // ═════════ LOI-07 giữ ý trên trang lớp mới: không giấu lỗi, bài hẹn ngoài khung không mất ═════════
+  section("LOI-07 · 1600 · không giấu lỗi: /api/student/viec-cua-toi 500 ⇒ trang lớp báo lỗi + Thử lại; không gọi /api/schedule");
   {
     const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
-    let release!: () => void; const gate = new Promise<void>(r => { release = r; });
-    await p.route("**/api/student/hom-nay", async r => { await gate; await r.continue(); });
-    await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
-    await p.locator("#vc-todo").waitFor({ timeout: 120000 });
-    await p.waitForTimeout(1500);
-    check("phiếu chưa trả lời: KHÔNG có '3 ngày tới chưa có buổi học'; cột buổi học là khung xương aria-busy 'Đang tải buổi học tiếp theo'",
-      (await p.getByText("3 ngày tới chưa có buổi học").count()) === 0 && (await p.locator("[data-aside-dang-tai]").getAttribute("aria-busy")) === "true" && (await p.locator("[data-aside-dang-tai]").getAttribute("aria-label")) === "Đang tải buổi học tiếp theo");
-    release();
-    await p.locator("[data-hom-nay]").waitFor({ timeout: 60000 });
-    await eventually("phiếu có bài ⇒ khung xương biến mất, vẫn không có '3 ngày tới chưa có buổi học'", async () => (await p.locator("[data-aside-dang-tai]").count()) === 0 && (await p.getByText("3 ngày tới chưa có buổi học").count()) === 0, 20000);
-    await c.close();
-    // Học sinh S có việc (bài tập) nhưng phiếu trả RỖNG thật (chặn route trả today/upcoming rỗng) ⇒ cột vẫn nói "3 ngày tới chưa có buổi học".
-    // (S1 không có việc nào ⇒ trang hiện "Chưa có việc nào cho bạn", không có cột buổi học — không dùng cho ca này.)
-    const c1 = await ctxFor(S, { width: 1600, height: 1000 }); const p1 = await c1.newPage(); watch(p1);
-    await p1.route("**/api/student/hom-nay", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ today: [], upcoming: [], todayKey: addDaysKey(today, 0) }) }));
-    await p1.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
-    await eventually("em không có bài hẹn (phiếu rỗng thật) ⇒ VẪN nói '3 ngày tới chưa có buổi học' (rỗng ≠ đang tải)", async () => (await p1.getByText("3 ngày tới chưa có buổi học").count()) === 1 && (await p1.locator("[data-aside-dang-tai]").count()) === 0, 60000);
-    await c1.close();
-  }
-  section("LOI-07 · 1600 · không giấu lỗi: hom-nay 500 / 403 không ẩn cột buổi học; viec-cua-toi 500 ⇒ khối lịch báo lỗi + Thử lại");
-  {
-    for (const [what, status] of [["500", 500], ["403 (gia sư / quản trị xem thử)", 403]] as const) {
-      const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
-      await p.route("**/api/student/hom-nay", r => r.fulfill({ status, contentType: "application/json", body: JSON.stringify({ error: "x" }) }));
-      await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
-      await p.locator("#vc-todo").waitFor({ timeout: 120000 });
-      await eventually(`hom-nay ${what}: cột 'Buổi học tiếp theo' VẪN hiện ('3 ngày tới chưa có buổi học'), không kẹt ở khung xương`, async () =>
-        (await p.getByRole("complementary", { name: "Buổi học tiếp theo" }).count()) === 1 && (await p.getByText("3 ngày tới chưa có buổi học").count()) === 1 && (await p.locator("[data-aside-dang-tai]").count()) === 0, 60000);
-      check(`hom-nay ${what}: ${status === 500 ? "CÓ dải lỗi 'Không tải được bài hôm nay.'" : "không dải lỗi, không phiếu (403 = không phải học sinh)"}`, status === 500 ? (await p.locator("[data-hom-nay-loi]").count()) === 1 : (await p.locator("[data-hom-nay-loi], [data-hom-nay]").count()) === 0);
-      await c.close();
-    }
-    const c = await ctxFor(S, { width: 1600, height: 1000 }); const p = await c.newPage(); watch(p);
-    let fail = true;
-    // SCL-H: lịch của lớp về cùng /api/student/viec-cua-toi (một yêu cầu ⇒ một lỗi: việc và lịch cùng báo lỗi); /api/schedule không còn được gọi.
-    let scheduleCalls = 0;
+    let fail = true, scheduleCalls = 0;
     await p.route("**/api/schedule**", r => { scheduleCalls++; return r.continue(); });
     await p.route("**/api/student/viec-cua-toi**", r => (fail ? r.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "x" }) }) : r.continue()));
     await p.goto(`${BASE}/student/hoc-tap?course=${X.id}`, { waitUntil: "domcontentloaded", timeout: 240000 });
-    const loi = p.locator("[data-course-sessions] [data-course-sessions-loi]");
+    const loi = p.locator("[data-lop-can-lam] [role=alert]").filter({ hasText: "Không tải được việc cần làm." });
     await loi.waitFor({ timeout: 120000 }).catch(() => {});
     check("trang lớp không gọi /api/schedule (lịch đi cùng viec-cua-toi)", scheduleCalls === 0, scheduleCalls);
-    check("lớp có bài hẹn hôm nay + /api/student/viec-cua-toi 500 ⇒ khối 'Buổi học sắp tới' VẪN hiện, nói 'Không tải được lịch của lớp.' + 'Thử lại' ≥ 44px (không im lặng ẩn)",
-      await loi.isVisible() && /Không tải được lịch của lớp\./.test(await loi.innerText()) && ((await loi.getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44);
+    check("viec-cua-toi 500 ⇒ mục Cần làm nói 'Không tải được việc cần làm.' + 'Thử lại' ≥ 44px (không im lặng rỗng)", await loi.isVisible() && ((await loi.getByRole("button", { name: "Thử lại" }).boundingBox())?.height ?? 0) >= 44);
     fail = false;
     await loi.getByRole("button", { name: "Thử lại" }).click();
-    await eventually("Thử lại khi lịch đã ổn ⇒ lịch rỗng + có bài hẹn ⇒ khối ẩn đúng như thiết kế", async () => (await p.locator("[data-course-sessions]").count()) === 0, 60000);
+    await eventually("Thử lại ⇒ thẻ 'Bài tập Vi-ét' hiện, dải lỗi mất", async () => (await p.locator("[data-lop-can-lam] [data-can-lam-the]").filter({ hasText: "Bài tập Vi-ét" }).count()) === 1 && (await loi.count()) === 0, 60000);
     await c.close();
   }
-  section("LOI-07 · 1600 · bài hẹn 120 ngày nữa (ngoài khung 90 ngày) KHÔNG làm ẩn 'Buổi học sắp tới'");
+  section("LOI-07 · 1600 · bài hẹn 120 ngày nữa (ngoài khung 90 ngày) vẫn có trên trang lớp");
   {
     const { c, p } = await open(S2, 1600, `/student/hoc-tap?course=${W.id}`);
-    await p.locator("[data-course-hero]").waitFor({ timeout: 120000 });
-    const blk = p.locator("[data-course-sessions]");
-    await eventually("khối 'Buổi học sắp tới' hiện và nói 'chưa có buổi học nào trong 90 ngày tới'", async () => (await blk.count()) === 1 && /chưa có buổi học nào trong 90 ngày tới/.test(await blk.innerText()), 60000);
-    check("dòng bài vẫn ghi ngày hẹn (bài hẹn xa không mất)", /Học /.test(await p.locator(`[data-outline-lesson="lw-${W.id}"]`).innerText().catch(() => "")) || (await p.getByText("Bài hẹn xa").count()) >= 1);
+    await p.getByRole("heading", { level: 1, name: "Lý 9 hẹn xa (LOI-07)" }).waitFor({ timeout: 120000 });
+    await eventually("'Bài hẹn xa' nằm trong Buổi gần đây (có ngày), không câu 'chưa có buổi học nào trong 90 ngày tới'", async () =>
+      /Bài hẹn xa/.test(await p.locator(`[data-lesson-row="lw-${W.id}"]`).innerText().catch(() => "")) && (await p.getByText("chưa có buổi học nào trong 90 ngày tới").count()) === 0, 60000);
     await c.close();
   }
 
@@ -384,10 +275,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
   section("390 · trang lớp Toán với học sinh KHÔNG ghi danh / khách: không có [data-hoi-trong-lop]");
   {
     const { c, p } = await open(S1, 390, `/student/hoc-tap?course=${X.id}`);
-    const hero = p.locator("[data-course-hero]");
-    await hero.waitFor({ timeout: 120000 });
+    await p.getByText("Bạn chưa vào lớp này").waitFor({ timeout: 120000 });
     await p.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
-    check("không ghi danh: thẻ tiến độ 'Bạn chưa vào lớp này', KHÔNG có 'Hỏi gia sư trong lớp →'", /Bạn chưa vào lớp này/.test(await hero.innerText()) && (await p.locator("[data-hoi-trong-lop]").count()) === 0 && (await p.getByText("Hỏi gia sư trong lớp").count()) === 0);
+    check("không ghi danh: 'Bạn chưa vào lớp này', KHÔNG có 'Hỏi gia sư trong lớp'", (await p.locator("[data-hoi-trong-lop]").count()) === 0 && (await p.getByText("Hỏi gia sư trong lớp").count()) === 0);
     await c.close();
     const { c: c2, p: p2 } = await open(null, 390, `/student/hoc-tap?course=${X.id}`);
     await p2.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});

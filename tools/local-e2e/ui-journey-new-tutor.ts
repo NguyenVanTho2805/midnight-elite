@@ -158,7 +158,7 @@ async function req(p: Page, screen: string, note?: string, rootSel?: string, ext
     const pc = await ctxFor(plain, { width: 1280, height: 900 });
     const pp = await pc.newPage();
     await pp.goto(`${BASE}/student/viec-cua-toi`, GOTO);
-    await pp.getByRole("heading", { name: "Việc của tôi" }).first().waitFor({ timeout: 90000 });
+    await pp.getByRole("heading", { name: "Cần làm", level: 1 }).first().waitFor({ timeout: 90000 });
     await pp.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
     const me2 = await pp.evaluate(async () => (await (await fetch("/api/auth/me")).json()) as Record<string, unknown>);
     check("học viên thường: ở lại Việc của tôi, không băng chờ duyệt, tutorPending=false", new URL(pp.url()).pathname === "/student/viec-cua-toi" && (await pp.locator("[data-tutor-pending-band]").count()) === 0 && me2.tutorPending === false, me2.tutorPending);

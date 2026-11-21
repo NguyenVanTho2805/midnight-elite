@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import LopCuaToi from "@/components/student/LopCuaToi";
 
 export default async function HocTapPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const bai = (await searchParams).bai;
+  const { bai, course, tab } = await searchParams;
   if (typeof bai === "string" && /^[\w-]{1,100}$/.test(bai)) redirect(`/student/bai-giang/${bai}`);
+  // Link cũ tới tab Video (đã bỏ): bản ghi nay ở cuối màn Tất cả bài học.
+  if (tab === "video" && typeof course === "string" && course) redirect(`/student/hoc-tap?course=${encodeURIComponent(course)}&xem=bai-hoc#ban-ghi`);
   return <LopCuaToi />;
 }

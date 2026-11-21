@@ -2,7 +2,7 @@
 // gom thẻ Cần làm (một nút chính, lọc theo lớp). Không cần máy chủ.
 // Ca phá cố ý (đã chạy 21/11/2026): đổi `first.primary = true` thành gắn cho MỌI thẻ ⇒ 2 đỏ ("đúng MỘT thẻ…", "kiểm tra không bao giờ…"); trả lại ⇒ xanh.
 import { check, section, done } from "./h";
-import { average10, buildTodoCards, daysUntil, deadlineLine, matchesQuery, newestFirst, on10, scheduleLine, submittedLine, todoBucket, vnDayLabel } from "@/lib/studentClassPage";
+import { average10, buildTodoCards, daysUntil, deadlineLine, matchesQuery, newestFirst, on10, resultDateLine, scheduleLine, submittedLine, todoBucket, vnDayLabel } from "@/lib/studentClassPage";
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 
@@ -19,6 +19,9 @@ check("01:00 sáng VN của ngày 22 (= 18:00Z ngày 21) vẫn là 'ngày mai'",
 check("Đã nộp lúc 20:41 thứ Sáu 20/11", submittedLine(vn("2026-11-20", "20:41").toISOString()) === "Đã nộp lúc 20:41 thứ Sáu 20/11");
 check("ngày của bài: 'Thứ Ba 17/11'", vnDayLabel(vn("2026-11-17", "19:00")) === "Thứ Ba 17/11");
 check("chuỗi ngày hỏng ⇒ chữ rỗng, không 'NaN'", deadlineLine("x", NOW) === "");
+check("Điểm: đã chấm ⇒ 'Chấm thứ Bảy 14/11'", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-12", "20:00").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Chấm thứ Bảy 14/11");
+check("Điểm: chờ chấm ⇒ 'Nộp thứ Sáu 20/11' (ngày chấm cũ không dùng)", resultDateLine({ state: "cho-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Nộp thứ Sáu 20/11");
+check("Điểm: đã chấm nhưng thiếu ngày chấm ⇒ ngày nộp; thiếu cả hai ⇒ ''", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: null }) === "Nộp thứ Sáu 20/11" && resultDateLine({ state: "cho-duyet" }) === "");
 
 section("Nhóm Quá hạn / Tuần này / Tuần sau / Sau đó (tuần thứ Hai → Chủ nhật)");
 check("quá hạn theo GIỜ (hôm nay 19:00 khi đã 20:00)", todoBucket(vn("2026-11-21", "19:00").toISOString(), NOW) === "qua-han");

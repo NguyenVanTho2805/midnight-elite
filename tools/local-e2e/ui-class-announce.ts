@@ -2,6 +2,7 @@
 //  Gia sư: dải tab lớp có "Thông báo" → soạn (đếm ký tự, nút khoá khi rỗng) → Đăng (form thật, 303 ?tb=ok, dải báo) → tin hiện, link thành <a target=_blank rel=noopener>,
 //          Ghim / Bỏ ghim, Gỡ hỏi lại bằng hộp xác nhận (Huỷ thì còn, Gỡ thì mất).
 //  Học sinh: mở link của thông báo (…&tab=thong-bao) → tab Thông báo sáng, thấy tin; từ tab Nội dung bấm sang Thông báo; học sinh lớp khác không thấy.
+//  (SCL-G-HS 21/11/2026: trang lớp không còn tab — thông báo là mục cuối trang lớp, ?tab=thong-bao cuộn tới mục đó; lớp chưa có tin thì chỉ một dòng chữ mờ.)
 //  390px không tràn ngang ở cả hai trang.
 import { BASE, mkUser, mkTutor, mkCourse, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
@@ -63,22 +64,20 @@ async function fillBody(pg: import("playwright").Page, text: string) {
   const s = await (await ctxFor(S)).newPage();
   await s.goto(`${BASE}${note!.link}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await s.locator("[data-tb-hoc-sinh]").waitFor({ timeout: 120000 });
-  check("tab 'Thông báo' đang chọn", (await s.getByRole("tab", { name: "Thông báo" }).getAttribute("aria-selected")) === "true");
+  // SCL-G-HS: trang lớp không còn tab — "Thông báo của lớp" là mục cuối trang lớp; link ?tab=thong-bao cuộn thẳng tới mục đó.
+  const inView = () => s.evaluate(() => { const r = document.getElementById("lop-thong-bao")?.getBoundingClientRect(); return !!r && r.top < innerHeight && r.bottom > 0; });
+  await eventually("mở từ thông báo → mục 'Thông báo của lớp' được cuộn vào khung nhìn", inView, 30000);
   check("thấy tin + 'Đã ghim' + link bấm được", (await s.locator("[data-tb-hoc-sinh]").innerText()).includes("Tối thứ Sáu học online") && (await s.locator("[data-tb-hoc-sinh]").innerText()).includes("Đã ghim")
     && (await s.getByRole("link", { name: "https://meet.google.com/abc-defg-hij" }).count()) === 1);
   check("học sinh không có nút Ghim / Gỡ / ô soạn", (await s.getByRole("button", { name: /Ghim|Gỡ|Đăng thông báo/ }).count()) === 0 && (await s.getByLabel("Nội dung").count()) === 0);
   await shot(s, "tb-hoc-sinh-1280");
   await s.goto(`${BASE}/student/hoc-tap?course=${encodeURIComponent(C.id)}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await s.getByRole("tab", { name: "Thông báo" }).waitFor({ timeout: 120000 });
-  check("mở lớp thường → tab mặc định vẫn 'Nội dung'", (await s.getByRole("tab", { name: "Nội dung" }).getAttribute("aria-selected")) === "true");
-  await s.getByRole("tab", { name: "Thông báo" }).click();
-  await eventually("bấm tab Thông báo → thấy tin", async () => (await s.locator("[data-tb-hoc-sinh]").count()) === 1);
-  check("bấm tab → địa chỉ ghi ?tab=thong-bao (tải lại vẫn đúng tab)", new URL(s.url()).searchParams.get("tab") === "thong-bao", s.url());
-  // Rà soát P2: đang ở sẵn trang lớp (tab Nội dung), bấm thông báo trên chuông → phải sang tab Thông báo (router.push cùng trang, Content không mount lại).
-  await s.getByRole("tab", { name: "Nội dung" }).click();
+  await s.locator("[data-tb-hoc-sinh]").waitFor({ timeout: 120000 });
+  check("mở lớp thường → tin vẫn có ở mục 'Thông báo của lớp' (cuối trang lớp), trang không tự cuộn xuống", await s.getByRole("heading", { name: "Thông báo của lớp" }).count() === 1 && await s.evaluate(() => scrollY) === 0);
+  // Rà soát P2: đang ở sẵn trang lớp, bấm thông báo trên chuông → phải tới mục Thông báo (router.push cùng trang, Content không mount lại).
   await s.getByRole("button", { name: /^Thông báo/ }).first().click();
   await s.getByText("Lớp Lý 10 có thông báo mới từ gia sư. Bấm để xem.").first().click();
-  await eventually("bấm thông báo khi đang ở lớp → tab Thông báo được chọn", async () => (await s.getByRole("tab", { name: "Thông báo" }).getAttribute("aria-selected")) === "true" && (await s.locator("[data-tb-hoc-sinh]").count()) === 1);
+  await eventually("bấm thông báo khi đang ở lớp → ?tab=thong-bao và mục Thông báo trong khung nhìn", async () => new URL(s.url()).searchParams.get("tab") === "thong-bao" && await inView(), 30000);
   const so = await (await ctxFor(SO)).newPage();
   await so.goto(`${BASE}/student/hoc-tap?course=${encodeURIComponent(C2.id)}&tab=thong-bao`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await so.getByText("Lớp chưa có thông báo nào").waitFor({ timeout: 120000 });

@@ -37,6 +37,15 @@ export function deadlineLine(dueIso: string, now: Date, open = false): string {
   return `Hạn ${vnDayTime(due)} · ${left}`;
 }
 
+/** Dòng ngày của một hàng ở màn Điểm (§4.1 #5): đã chấm ⇒ "Chấm thứ Bảy 14/11"; đã nộp ⇒ "Nộp thứ Sáu 20/11"; thiếu ngày ⇒ "". */
+export function resultDateLine(r: { state: string; submittedAt?: string | null; gradedAt?: string | null }): string {
+  for (const [verb, iso] of [["Chấm", r.state === "da-cham" ? r.gradedAt : null], ["Nộp", r.submittedAt]] as const) {
+    const t = iso ? new Date(iso) : null;
+    if (t && valid(t)) { const k = vnDateKeyOf(t); return `${verb} ${WEEKDAY[dayOfWeekOfKey(k)]} ${dm(k)}`; }
+  }
+  return "";
+}
+
 /** "Đã nộp lúc 20:41 thứ Sáu 20/11". */
 export function submittedLine(iso: string): string {
   const t = new Date(iso);

@@ -8,6 +8,8 @@
 //  · thư viện đọc /api/student/lop (ca P2-3 chặn route đó thay cho /api/enrollments?detail=1 ở màn thư viện; trong lớp vẫn chặn /api/enrollments);
 //  · chữ tiến độ: thẻ "Đã hoàn thành x/y bài", thẻ tiến độ trong lớp "Bạn đã hoàn thành x/y bài"; lối về "← Lớp của tôi" (luôn có);
 //  · trang lớp còn 2 tab Tổng quan · Nội dung (mặc định Nội dung): bản ghi + "Thông tin lớp" nằm ở tab Tổng quan; thẻ có 2 liên kết nên bấm theo tên lớp.
+// SCL-G-HS (21/11/2026) — trang lớp theo bản chốt: không tab, không "Các lớp của bạn" / "← Lớp của tôi" (đổi lớp = mục "Lớp của tôi" của thanh module → danh mục);
+//  số việc của lớp = số đếm cạnh "Cần làm"; bản ghi theo tháng ở cuối màn "Tất cả bài học". Ý các ca cũ giữ nguyên (đúng lớp, đếm theo ID, phản hồi muộn không ghi đè).
 import { BASE, mkTutor, mkUser, mkCourse, mkAttendanceSession, api, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, closeAll, shot, type Page } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -69,6 +71,7 @@ const H = 3_600_000;
   const smallTargets = (p: Page) => p.evaluate(`[...document.querySelectorAll('main a, main button, main [role=tab]')].filter(e => e.offsetParent && !e.closest('[data-kin-tab-ink]') && e.getBoundingClientRect().width > 0).map(e => [Math.round(e.getBoundingClientRect().height), (e.textContent || '').trim().slice(0, 30)]).filter(([h]) => h < 44)`) as Promise<[number, string][]>;
   const go = (p: Page, path: string) => p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 150000 });
   const courseParam = (p: Page) => new URL(p.url()).searchParams.get("course");
+  const h1 = (p: Page, name: string) => p.getByRole("heading", { level: 1, name, exact: true });
 
   // Tập khoá của GET /api/enrollments: bắt buộc courseIds + pendingConsentCourseIds; NO-0511 (#123) thêm suspendedCourseIds (lớp đã nghỉ). Bài chấp nhận CẢ HAI dạng để chạy được trước/sau khi gộp #123,
   // nhưng không cho khoá lạ nào khác lọt vào (vẫn bắt được rò rỉ trường).
@@ -98,33 +101,34 @@ const H = 3_600_000;
 
   await cards.nth(0).getByRole("link", { name: "Địa 12", exact: true }).click();
   await pg.waitForURL(u => u.searchParams.get("course") === B.id, { timeout: 90000 });
-  await pg.locator("[data-course-hero]").waitFor({ timeout: 90000 });
-  check("bấm 'Địa 12' → vào đúng lớp Địa 12 (không phải lớp đầu tiên khác)", (await pg.locator("[data-course-hero]").innerText()).includes("Địa 12") && (await pg.locator("[data-course-hero]").innerText()).includes("Bạn đã hoàn thành 1/2 bài"));
-  check("trong lớp có 'Các lớp của bạn' đủ 3 lớp, lớp đang xem có aria-current=page", (await pg.locator("[data-my-classes] a").count()) === 3 && (await pg.locator(`[data-my-classes] a[aria-current="page"]`).innerText()).includes("Địa 12"));
-  await pg.locator("[data-my-classes]").getByRole("link", { name: /^Sử 12$/ }).click();
-  await pg.waitForURL(u => u.searchParams.get("course") === A.id, { timeout: 90000 });
-  await pg.locator("[data-course-hero]").waitFor({ timeout: 90000 });
-  check("đổi lớp bằng 'Các lớp của bạn' → sang Sử 12", (await pg.locator("[data-course-hero]").innerText()).includes("Sử 12") && !(await pg.locator("[data-course-hero]").innerText()).includes("nâng cao"));
-  await pg.getByRole("link", { name: "← Lớp của tôi" }).click();
+  await h1(pg, "Địa 12").waitFor({ timeout: 90000 });
+  check("bấm 'Địa 12' → vào đúng lớp Địa 12 (không phải lớp đầu tiên khác)", await h1(pg, "Địa 12").isVisible() && courseParam(pg) === B.id);
+  // SCL-G-HS: trang lớp theo bản chốt không còn khối "Các lớp của bạn" / "← Lớp của tôi"; đổi lớp = mục "Lớp của tôi" trên thanh module → thư viện → chọn lớp.
+  const railLop = () => pg.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ });
+  check("trong lớp: mục 'Lớp của tôi' trên thanh module sáng (aria-current=page)", (await railLop().getAttribute("aria-current")) === "page");
+  await railLop().click();
   await pg.locator("[data-class-catalog]").waitFor({ timeout: 90000 });
-  check("'← Lớp của tôi' quay lại danh mục (không bị đẩy vào lớp)", new URL(pg.url()).pathname === "/student/hoc-tap" && courseParam(pg) === null);
+  check("bấm 'Lớp của tôi' → quay lại danh mục (không bị đẩy vào lớp)", new URL(pg.url()).pathname === "/student/hoc-tap" && courseParam(pg) === null);
+  await pg.locator(`[data-class-card="${A.id}"]`).getByRole("link", { name: "Sử 12", exact: true }).click();
+  await pg.waitForURL(u => u.searchParams.get("course") === A.id, { timeout: 90000 });
+  await h1(pg, "Sử 12").waitFor({ timeout: 90000 });
+  check("đổi lớp qua danh mục → sang Sử 12 (không phải Sử 12 nâng cao)", await h1(pg, "Sử 12").isVisible() && await h1(pg, "Sử 12 nâng cao").count() === 0);
 
   section("NC2-041 — đếm bài theo ID lớp: 'Sử 12' không đếm lẫn bài của 'Sử 12 nâng cao'");
+  // SCL-G-HS: số bài cần làm của lớp là số đếm cạnh "Cần làm" ở đầu trang lớp (thẻ của CHÍNH lớp đó).
   const need = async (id: string) => {
     await go(pg, `/student/hoc-tap?course=${id}`);
-    await pg.locator("[data-course-hero]").waitFor({ timeout: 120000 });
-    await pg.getByRole("tab", { name: "Tổng quan" }).click(); // LOI-03: "Thông tin lớp" nằm ở tab Tổng quan
-    await eventually("khối 'Thông tin lớp' đã có số bài", async () => /Bài cần làm: \d/.test(await pg.getByRole("region", { name: "Thông tin lớp" }).innerText()), 30000);
-    return (await pg.getByRole("region", { name: "Thông tin lớp" }).innerText());
+    const box = pg.locator("[data-lop-can-lam]");
+    await eventually("mục 'Cần làm' đã tải", async () => (await box.locator("[data-can-lam-the]").count()) > 0 || /chưa có việc nào cần làm/.test(await box.innerText().catch(() => "")), 120000);
+    return { n: await box.locator("[data-can-lam-the]").count(), dem: (await box.locator("[data-dem-can-lam]").innerText().catch(() => "")).trim(), text: await box.innerText() };
   };
   const tA = await need(A.id), tC = await need(C.id), tB = await need(B.id);
-  check("Sử 12: 'Bài cần làm: 1' (chỉ bài của Sử 12)", /Bài cần làm: 1\b/.test(tA), tA);
-  check("Sử 12 nâng cao: 'Bài cần làm: 2'", /Bài cần làm: 2\b/.test(tC), tC);
-  check("Địa 12: 'Bài cần làm: 0'", /Bài cần làm: 0\b/.test(tB), tB);
+  check("Sử 12: 'Cần làm 1' (chỉ bài của Sử 12)", tA.n === 1 && tA.dem === "1" && /Sử: bài A1/.test(tA.text) && !/Nâng cao/.test(tA.text), tA);
+  check("Sử 12 nâng cao: 'Cần làm 2'", tC.n === 2 && tC.dem === "2", tC);
+  check("Địa 12: không việc nào ('Lớp này chưa có việc nào cần làm')", tB.n === 0 && tB.dem === "", tB);
 
   section("NC2-042 — bản ghi theo tháng, thu gọn / mở được");
-  await go(pg, `/student/hoc-tap?course=${A.id}`);
-  await pg.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
+  await go(pg, `/student/hoc-tap?course=${A.id}&xem=bai-hoc`); // SCL-G-HS: bản ghi ở cuối màn "Tất cả bài học"
   await pg.locator("[data-recording-months]").waitFor({ timeout: 90000 });
   const months = pg.locator("[data-recording-month]");
   check("3 nhóm theo thứ tự: Tháng 10/2026, Tháng 9/2026, Chưa gắn buổi", (await months.evaluateAll(els => els.map(e => e.getAttribute("data-recording-month")))).join() === "2026-10,2026-09,chua-gan-buoi");
@@ -152,8 +156,8 @@ const H = 3_600_000;
   check("1 lớp → /student/hoc-tap VẪN là thư viện (không ?course=), đúng 1 thẻ Sử 12", courseParam(p1) === null && (await p1.locator("[data-class-card]").count()) === 1 && (await p1.locator(`[data-class-card="${A.id}"]`).count()) === 1);
   await p1.locator(`[data-class-card="${A.id}"]`).getByRole("link", { name: "Sử 12", exact: true }).click();
   await p1.waitForURL(u => u.searchParams.get("course") === A.id, { timeout: 90000 });
-  await p1.locator("[data-course-hero]").waitFor({ timeout: 90000 });
-  check("trong lớp: có '← Lớp của tôi' (luôn có), KHÔNG có 'Các lớp của bạn' khi chỉ có 1 lớp", (await p1.locator("[data-all-classes]").count()) === 1 && (await p1.locator("[data-my-classes]").count()) === 0);
+  await p1.getByRole("heading", { level: 1, name: "Sử 12", exact: true }).waitFor({ timeout: 90000 });
+  check("trong lớp: lối về danh mục là mục 'Lớp của tôi' của thanh module (luôn có), không khối đổi lớp thừa", (await p1.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ }).count()) === 1 && (await p1.locator("[data-my-classes]").count()) === 0);
   await c1.close();
   const cl = await ctxFor(LONE, { width: 1280, height: 900 });
   const pl = await cl.newPage(); watch(pl);
@@ -220,23 +224,30 @@ const H = 3_600_000;
   await pr.route(`**/api/courses/${B.id}`, async r => { await new Promise(res => setTimeout(res, 4500)); await r.continue().catch(() => {}); });
   // Bản ghi trễ LÂU HƠN trang lớp (12 giây so với 4,5 giây): hero hiện ra khi bản ghi còn đang tải — đúng khoảng mà lỗi cũ để lộ bản ghi của lớp trước.
   await pr.route(`**/api/courses/${B.id}/recordings`, async r => { await new Promise(res => setTimeout(res, 12000)); await r.continue().catch(() => {}); });
+  // SCL-G-HS: đổi lớp đi qua danh mục (không còn "Các lớp của bạn" trong lớp) — điều hướng phía trình duyệt, nên phản hồi muộn vẫn có thể về tới trang đang mở.
+  const railR = () => pr.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ });
+  const toB = async () => {
+    await railR().click();
+    await pr.locator(`[data-class-card="${B.id}"]`).getByRole("link", { name: "Địa 12", exact: true }).click({ timeout: 120000 });
+    await pr.waitForURL(u => courseParam(pr) === B.id && u.pathname === "/student/hoc-tap", { timeout: 30000 });
+  };
   await go(pr, `/student/hoc-tap?course=${A.id}`);
-  await pr.locator("[data-my-classes]").waitFor({ timeout: 120000 });
-  await pr.locator("[data-my-classes]").getByRole("link", { name: /^Địa 12$/ }).click();
-  await pr.waitForURL(u => courseParam(pr) === B.id && u.pathname === "/student/hoc-tap", { timeout: 30000 });
-  await pr.goBack();
+  await pr.getByRole("heading", { level: 1, name: "Sử 12", exact: true }).waitFor({ timeout: 120000 });
+  await toB();
+  await pr.goBack(); await pr.goBack();
   await pr.waitForURL(() => courseParam(pr) === A.id, { timeout: 30000 });
-  await pr.locator("[data-course-hero]").waitFor({ timeout: 60000 });
+  await pr.getByRole("heading", { level: 1, name: "Sử 12", exact: true }).waitFor({ timeout: 60000 });
   await pr.waitForTimeout(6500); // đợi phản hồi chậm của Địa 12 về tới nơi
-  check("P2-1: đã quay về Sử 12, phản hồi muộn của Địa 12 KHÔNG ghi đè (hero vẫn 'Sử 12', URL vẫn Sử 12)", courseParam(pr) === A.id && (await pr.locator("[data-course-hero]").innerText()).includes("Sử 12") && !(await pr.locator("[data-course-hero]").innerText()).includes("Địa 12"), await pr.locator("[data-course-hero]").innerText());
+  const h1R = async () => (await pr.locator("main h1:visible").first().innerText()).trim();
+  check("P2-1: đã quay về Sử 12, phản hồi muộn của Địa 12 KHÔNG ghi đè (h1 vẫn 'Sử 12', URL vẫn Sử 12)", courseParam(pr) === A.id && (await h1R()) === "Sử 12", await h1R());
   // P2-2: bản ghi của Sử 12 không được hiện sang Địa 12 trong lúc bản ghi Địa 12 còn đang tải.
-  await pr.getByRole("tab", { name: "Tổng quan" }).click();
+  await go(pr, `/student/hoc-tap?course=${A.id}&xem=bai-hoc`);
   await pr.locator("[data-recording-months]").waitFor({ timeout: 60000 });
-  await pr.locator("[data-my-classes]").getByRole("link", { name: /^Địa 12$/ }).click();
-  await pr.waitForURL(() => courseParam(pr) === B.id, { timeout: 30000 });
-  await pr.locator("[data-course-hero]").waitFor({ timeout: 60000 });
-  check("P2-2: sang lớp khác thì về tab mặc định 'Nội dung' (không mang tab của lớp trước)", (await pr.getByRole("tab", { name: "Nội dung" }).getAttribute("aria-selected")) === "true");
-  await pr.getByRole("tab", { name: "Tổng quan" }).click();
+  await toB();
+  check("P2-2: sang lớp khác thì về trang lớp (không mang màn 'Tất cả bài học' của lớp trước)", new URL(pr.url()).searchParams.get("xem") === null);
+  await pr.getByRole("heading", { level: 1, name: "Địa 12", exact: true }).waitFor({ timeout: 60000 });
+  await pr.locator("[data-tat-ca-bai]:visible").click();
+  await pr.getByRole("heading", { level: 1, name: "Tất cả bài học" }).waitFor({ timeout: 60000 });
   await pr.waitForTimeout(800);
   const midText = await pr.locator("main").innerText();
   check("P2-2: trong lúc bản ghi Địa 12 còn tải, KHÔNG thấy bản ghi của Sử 12 ('Bản ghi 16/10', 'Tháng 10/2026')", !/Bản ghi 16\/10|Bản ghi 20\/09|Tháng 10\/2026/.test(midText) && /Đang tải bản ghi/.test(midText), midText.slice(0, 300));
@@ -306,7 +317,7 @@ const H = 3_600_000;
   const cm = await ctxFor(S, { width: 390, height: 844 });
   const pm = await cm.newPage(); watch(pm);
   await pm.addStyleTag({ content: "[data-agentation-root]{display:none!important}" }).catch(() => {});
-  for (const [name, path, ready] of [["Danh mục lớp", "/student/hoc-tap", "[data-class-catalog]"], ["Trong lớp (có 'Các lớp của bạn')", `/student/hoc-tap?course=${A.id}`, "[data-my-classes]"], ["Thi thử theo tháng", "/thi-thu", "[data-exam-month]"]] as const) {
+  for (const [name, path, ready] of [["Danh mục lớp", "/student/hoc-tap", "[data-class-catalog]"], ["Trong lớp", `/student/hoc-tap?course=${A.id}`, "[data-lop-can-lam]"], ["Thi thử theo tháng", "/thi-thu", "[data-exam-month]"]] as const) {
     await go(pm, path);
     await pm.locator(ready).first().waitFor({ timeout: 120000 });
     await pm.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
@@ -315,8 +326,7 @@ const H = 3_600_000;
     check(`${name}: mọi nút / liên kết trong trang cao ≥ 44px`, small.length === 0, small.slice(0, 5));
     await shot(pm, `lop-nhieu-lop-${name.split(" ")[0].toLowerCase()}-390`);
   }
-  await go(pm, `/student/hoc-tap?course=${A.id}`);
-  await pm.getByRole("tab", { name: "Tổng quan" }).click({ timeout: 120000 });
+  await go(pm, `/student/hoc-tap?course=${A.id}&xem=bai-hoc`);
   await pm.locator("[data-recording-months]").waitFor({ timeout: 90000 });
   check("bản ghi theo tháng ở 390px: không tràn ngang, tiêu đề tháng ≥ 44px", (await overflow(pm)) <= 0 && ((await pm.locator('[data-recording-month="2026-09"] button').boundingBox())?.height ?? 0) >= 44);
   await cm.close();

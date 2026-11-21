@@ -1,6 +1,6 @@
 // MD-02 + MD-17 — Bản ghi của lớp: gia sư dán link bản ghi sau buổi học, gắn vào đúng buổi; và bảng ai đã xem video bài giảng của lớp.
 // Quyền: gia sư CHỦ lớp (và quản trị cấp 1/nội dung) vào được; gia sư lớp khác và người lạ thấy 404 (không lộ lớp có tồn tại); học sinh của lớp
-// được chuyển sang tab "Tài liệu & bản ghi" trong Lớp của tôi. Tên học sinh trong bảng "ai đã xem" CHỈ hiện cho gia sư chủ lớp.
+// được chuyển sang mục "Bản ghi các buổi học" (màn Tất cả bài học) trong Lớp của tôi. Tên học sinh trong bảng "ai đã xem" CHỈ hiện cho gia sư chủ lớp.
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { recordingAccess } from "@/lib/classRecordingsServer";
@@ -20,7 +20,7 @@ export default async function BanGhiPage({ params, searchParams }: Props) {
   const acc = await recordingAccess(session, courseId);
   if (!acc.ok && acc.suspended) return <SuspendedNotice contactHref={acc.contactHref ?? null} />;
   if (!acc.ok) notFound();
-  if (acc.role === "student") redirect(`/student/hoc-tap?course=${encodeURIComponent(courseId)}&tab=video`); // SCL-D: video bài + bản ghi ở tab Video
+  if (acc.role === "student") redirect(`/student/hoc-tap?course=${encodeURIComponent(courseId)}&xem=bai-hoc#ban-ghi`); // SCL-G-HS: bản ghi nằm cuối màn "Tất cả bài học" (tab Video đã bỏ)
 
   const isOwner = session.role === "admin" && session.adminRole === "teacher" && acc.course.ownerId === session.userId;
   const view = await loadClassVideoView(courseId, isOwner);
