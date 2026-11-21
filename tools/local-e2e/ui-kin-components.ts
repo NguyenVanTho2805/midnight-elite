@@ -77,17 +77,41 @@ const same = (a: string, b: string) => parse(a).join() === parse(b).join();
   await pg.evaluate(`document.documentElement.setAttribute("data-chu-de", "navy")`);
 
   // ───────── Thẻ trạng thái
-  section("Thẻ trạng thái (Figma 8:139): chấm 7px + chữ, hai bộ màu");
+  section("Thẻ trạng thái (Figma 8:139 · SCL-G-0 §3.6): HÌNH 16px + chữ, hai bộ màu");
   const tt = pg.locator('[data-mau="tt"] [data-kin-status]');
-  check("4 thẻ: xong / cho / loi / mo, mỗi thẻ có chữ", await tt.count() === 4 && (await tt.allInnerTexts()).join("|") === "Đã chấm|Cần nhắc|Cần xử lý|Chờ 1 ngày", (await tt.allInnerTexts()).join("|"));
+  check("5 thẻ: xong / cho / loi / mo / qua-han, mỗi thẻ có chữ", await tt.count() === 5 && (await tt.allInnerTexts()).join("|") === "Đã chấm|Cần nhắc|Cần xử lý|Chờ 1 ngày|Quá hạn", (await tt.allInnerTexts()).join("|"));
   // 23/10/2026 (ac8b8e8): thẻ trạng thái theo chữ gốc 14px (--kin-co-goc, khớp chữ dòng phụ cạnh nó trong ảnh Figma gia sư), cao 20px (dòng 20). Đọc cỡ chữ từ token, không gán cứng.
   check("cao 20px, chữ = --kin-co-goc (14px)", (await tt.evaluateAll((els, goc) => els.every(e => Math.round(e.getBoundingClientRect().height) === 20 && getComputedStyle(e).fontSize === goc), coGoc)));
-  const dots = await tt.evaluateAll(els => els.map(e => { const d = e.firstElementChild as HTMLElement; const r = d.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), bg: getComputedStyle(d).backgroundColor, hidden: d.getAttribute("aria-hidden"), text: getComputedStyle(e).color }; }));
-  check("chấm 7×7, aria-hidden (chấm chỉ để trang trí)", dots.every(d => d.w === 7 && d.h === 7 && d.hidden === "true"), dots);
-  const want = [["rgb(5, 150, 105)", "rgb(4, 120, 87)"], ["rgb(217, 119, 6)", "rgb(180, 83, 9)"], ["rgb(220, 38, 38)", "rgb(220, 38, 38)"], ["rgb(118, 127, 142)", "rgb(107, 114, 128)"]];
-  check("màu chấm / màu chữ đúng bảng Figma (#059669/#047857, #D97706/#B45309, #DC2626, #767F8E/#6B7280)", dots.every((d, i) => same(d.bg, want[i][0]) && same(d.text, want[i][1])), dots);
-  check("chữ đạt 4,5:1, chấm đạt 3:1 trên nền trắng", dots.every(d => ratio(parse(d.text), WHITE) >= 4.5 && ratio(parse(d.bg), WHITE) >= 3), dots.map(d => [ratio(parse(d.text), WHITE).toFixed(2), ratio(parse(d.bg), WHITE).toFixed(2)]));
-  check("chấm xong ≠ chữ xong (hai bộ mã, không gộp)", !same(dots[0].bg, dots[0].text) && !same(dots[1].bg, dots[1].text));
+  // Màu của hình = fill của vòng đầu tiên nếu tô kín, không thì nét vẽ (vòng rỗng / nét đứt).
+  const dots = await tt.evaluateAll(els => els.map(e => { const d = e.firstElementChild as SVGSVGElement; const r = d.getBoundingClientRect(); const c = d.querySelector("circle")!; const cs = getComputedStyle(c); return { w: Math.round(r.width), h: Math.round(r.height), shape: d.getAttribute("data-kin-hinh"), bg: cs.fill !== "none" ? cs.fill : cs.stroke, hidden: d.getAttribute("aria-hidden"), text: getComputedStyle(e).color }; }));
+  check("hình 16×16, aria-hidden (hình chỉ để trang trí); mỗi tone một hình", dots.every(d => d.w === 16 && d.h === 16 && d.hidden === "true") && dots.map(d => d.shape).join() === "kin,nua,loi,chua,qua-han", dots);
+  const want = [["rgb(5, 150, 105)", "rgb(4, 120, 87)"], ["rgb(217, 119, 6)", "rgb(180, 83, 9)"], ["rgb(220, 38, 38)", "rgb(220, 38, 38)"], ["rgb(118, 127, 142)", "rgb(55, 65, 81)"], ["rgb(185, 28, 28)", "rgb(185, 28, 28)"]];
+  check("màu hình / màu chữ đúng bảng (#059669/#047857, #D97706/#B45309, #DC2626, #767F8E/#374151 chữ phụ, #B91C1C quá hạn)", dots.every((d, i) => same(d.bg, want[i][0]) && same(d.text, want[i][1])), dots);
+  check("chữ đạt 4,5:1, hình đạt 3:1 trên nền trắng", dots.every(d => ratio(parse(d.text), WHITE) >= 4.5 && ratio(parse(d.bg), WHITE) >= 3), dots.map(d => [ratio(parse(d.text), WHITE).toFixed(2), ratio(parse(d.bg), WHITE).toFixed(2)]));
+  check("hình xong ≠ chữ xong (hai bộ mã, không gộp)", !same(dots[0].bg, dots[0].text) && !same(dots[1].bg, dots[1].text));
+  const diem = pg.locator('[data-mau="tt-diem"] [data-kin-status]');
+  check("nhãn điểm dùng chung: Chưa nộp / Quá hạn / Chờ chấm / Chờ duyệt / Đã nộp / Đã chấm, chờ chấm ≠ chờ duyệt về hình", (await diem.allInnerTexts()).join("|") === "Chưa nộp|Quá hạn|Chờ chấm|Chờ duyệt|Đã nộp|Đã chấm"
+    && (await diem.evaluateAll(els => els.map(e => e.firstElementChild!.getAttribute("data-kin-hinh")))).join() === "chua,qua-han,nua,ba-phan-tu,kin,kin");
+
+  section("Dòng danh sách (SCL-G-0 §3.3): tiêu đề xuống dòng, cột phải, hàng đang chọn");
+  const hang = pg.locator('[data-mau="hang"] [data-kin-list-row]');
+  const t0r = await hang.nth(0).locator("[data-kin-list-title]").evaluate(e => ({ lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), ov: getComputedStyle(e).textOverflow, fs: getComputedStyle(e).fontSize }));
+  check("tiêu đề dài xuống ≥ 2 dòng, không cắt '…', 16px (size lg)", t0r.lines >= 2 && t0r.ov !== "ellipsis" && t0r.fs === "16px", t0r);
+  check("hàng lg cao ≥ 56px; hàng đang chọn có aria-current + nền đang chọn", (await hang.nth(0).evaluate(e => e.getBoundingClientRect().height)) >= 56 && (await hang.nth(1).getAttribute("aria-current")) === "true" && same(await css(hang.nth(1), "backgroundColor"), await tok("--kin-nen-dang-chon")));
+  check("cột phải ở bên phải tiêu đề, có KinStatus kèm chữ", await hang.nth(0).locator("[data-kin-list-aside] [data-kin-status]").innerText() === "Chờ chấm 4"
+    && await hang.nth(0).evaluate(e => e.querySelector("[data-kin-list-aside]")!.getBoundingClientRect().left > e.querySelector("[data-kin-list-title]")!.getBoundingClientRect().right - 1));
+
+  section("Hộp thoại chung (SCL-G-0): Escape, giữ tiêu điểm, trả tiêu điểm");
+  const moHop = pg.locator('[data-mau="hop-chung"] button');
+  await moHop.click();
+  const dlg = pg.getByRole("dialog", { name: "Gắn link YouTube" });
+  await dlg.waitFor();
+  check("mở: role=dialog aria-modal, tiêu điểm vào ô nhập đầu tiên, nút 'Đóng' có chữ ≥ 44px", (await dlg.getAttribute("aria-modal")) === "true" && await pg.locator('[data-mau="hop-o"]').evaluate(e => e === document.activeElement)
+    && (await dlg.getByRole("button", { name: "Đóng" }).evaluate(e => e.getBoundingClientRect().height)) >= 44);
+  for (let i = 0; i < 6; i++) await pg.keyboard.press("Tab");
+  check("Tab 6 lần vẫn ở trong hộp (xoay vòng)", await dlg.evaluate(e => e.contains(document.activeElement)));
+  await pg.keyboard.press("Escape");
+  await eventually("Escape đóng hộp và trả tiêu điểm về nút mở", async () => await dlg.count() === 0 && await moHop.evaluate(e => e === document.activeElement));
 
   // ───────── Tab
   section("Tab (Figma 106:30): gạch chân 2px màu nhấn, bàn phím, cao ≥ 44px");

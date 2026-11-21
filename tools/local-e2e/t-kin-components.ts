@@ -182,5 +182,59 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   check("ks5. ô kiểm required: giá trị không khớp lựa chọn ⇒ rỗng (chưa chọn); khớp ⇒ giữ", kinRequiredCheckValue(A, "z") === "" && kinRequiredCheckValue(A, "a") === "a");
   check("ks6. KinSelect dùng đúng hai hàm này (không chỉ khai báo)", /kinUncontrolledAdjust\(options, inner, innerSeenOk\)/.test(ks) && /value=\{kinRequiredCheckValue\(options, value\)\}/.test(ks));
 
+  // SCL-G-0 (21/11/2026): nền giao diện theo docs/kin/thiet-ke/scl/QUYET-DINH-GIAO-DIEN.md §3.1–3.3, 3.6, 3.7 + phần I (tiếp cận).
+  section("SCL-G-0 · token mới (tương phản tính theo WCAG)");
+  const tokCss = read("src/app/kin-tokens.css");
+  const hex = (t: string) => [1, 3, 5].map(i => parseInt(t.slice(i, i + 2), 16));
+  const lumi = (c: number[]) => { const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; const [r, g, b] = c.map(f); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const contrast = (a: number[], b: number[]) => { const [x, y] = [lumi(a), lumi(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const tint = (c: number[], bg: number[], p: number) => c.map((v, i) => Math.round(v * p + bg[i] * (1 - p))); // = color-mix(in srgb, c p%, bg) của --kin-tt-nen-loi
+  const vals = (name: string) => [...tokCss.matchAll(new RegExp(`${name}:\\s*(#[0-9a-fA-F]{6})`, "g"))].map(m => m[1]);
+  const dam = vals("--kin-tt-chu-loi-dam"), loiTok = vals("--kin-tt-chu-loi");
+  check("--kin-tt-chu-loi-dam khai ở sáng + tối (data-che-do) + tối (theo máy)", dam.length === 3, dam);
+  const W = hex("#ffffff"), D = hex("#0b0e14");
+  const sangOk = contrast(hex(dam[0]), W) >= 4.5 && contrast(hex(dam[0]), tint(hex(loiTok[0]), W, 0.09)) >= 4.5;
+  const toiOk = dam.slice(1).every(d => contrast(hex(d), D) >= 4.5 && contrast(hex(d), tint(hex(loiTok[1]), D, 0.09)) >= 4.5);
+  check(`"Quá hạn" ≥ 4,5:1 trên nền trắng và trên --kin-tt-nen-loi, cả sáng lẫn tối (sáng ${contrast(hex(dam[0]), W).toFixed(2)} / ${contrast(hex(dam[0]), tint(hex(loiTok[0]), W, 0.09)).toFixed(2)})`, sangOk && toiOk);
+  check("PHÁ: --kin-tt-chu-loi cũ (#dc2626) trên --kin-tt-nen-loi trượt 4,5:1 — lý do có token mới", contrast(hex("#dc2626"), tint(hex("#dc2626"), W, 0.09)) < 4.5);
+  check("--kin-cao-thanh-duoi: 64px", /--kin-cao-thanh-duoi:\s*64px/.test(tokCss));
+  check("vùng sáng khoá cho khách (kin-site.css) cũng có --kin-tt-chu-loi-dam", /\[data-vung="sang"\] \{[\s\S]*?--kin-tt-chu-loi-dam: #b91c1c;/.test(read("src/app/kin-site.css")));
+
+  section("SCL-G-0 · KinStatus có HÌNH + chữ, tone Quá hạn, nhãn điểm dùng chung");
+  const St = await import("@/components/kin/Status");
+  const st = (p: Record<string, unknown>) => renderToStaticMarkup(h(St.KinStatus, p as never, "x"));
+  const shapes = (["xong", "cho", "loi", "mo", "qua-han"] as const).map(t => (st({ tone: t }).match(/data-kin-hinh="([^"]+)"/) ?? [])[1]);
+  check("mỗi tone một hình mặc định khác nhau (kin / nua / loi / chua / qua-han)", shapes.join() === "kin,nua,loi,chua,qua-han", shapes);
+  check("hình aria-hidden, không còn chấm 7px", /<svg[^>]*aria-hidden="true"/.test(st({ tone: "xong" })) && !/w-\[7px\]/.test(read("src/components/kin/Status.tsx")));
+  check("Quá hạn: chữ + hình --kin-tt-chu-loi-dam, chữ đậm; Chưa nộp (mo): chữ --kin-chu-phu", /color:var\(--kin-tt-chu-loi-dam\)/.test(st({ tone: "qua-han" })) && /font-semibold/.test(st({ tone: "qua-han" })) && /color:var\(--kin-chu-phu\)/.test(st({ tone: "mo" })));
+  check("đỏ chỉ ở loi / qua-han: xong, cho, mo không dùng token đỏ", (["xong", "cho", "mo"] as const).every(t => !/--kin-tt-chu-loi/.test(st({ tone: t }))));
+  check("shape ghi đè hình (cho + ba-phan-tu = chờ duyệt)", /data-kin-hinh="ba-phan-tu"/.test(st({ tone: "cho", shape: "ba-phan-tu" })));
+  const labels = Object.values(St.GRADE_STATUS).map(g => g.label).join("|");
+  check("nhãn dùng chung: Chưa nộp / Quá hạn / Chờ chấm / Chờ duyệt / Đã nộp / Đã chấm", labels === "Chưa nộp|Quá hạn|Chờ chấm|Chờ duyệt|Đã nộp|Đã chấm", labels);
+  const gs = renderToStaticMarkup(h(St.KinGradeStatus, { state: "cho-duyet" }));
+  check("KinGradeStatus: chờ duyệt = tone cho + hình 3/4 + chữ chung; children thay chữ", /data-kin-status="cho"/.test(gs) && /data-kin-hinh="ba-phan-tu"/.test(gs) && />Chờ duyệt<\/span>$/.test(gs) && /Chờ duyệt · 7,5/.test(renderToStaticMarkup(h(St.KinGradeStatus, { state: "cho-duyet" }, "Chờ duyệt · 7,5"))));
+  check("index.ts xuất KinGradeStatus, GRADE_STATUS, KinStatusIcon, KinDialog", ["KinGradeStatus", "GRADE_STATUS", "KinStatusIcon", "KinDialog"].every(n => new RegExp(`\\b${n}\\b`).test(idx)));
+
+  section("SCL-G-0 · KinListRow: tiêu đề xuống dòng, cột phải, hàng đang chọn");
+  const LR = await import("@/components/kin/ListRow");
+  const row = (p: Record<string, unknown>) => renderToStaticMarkup(h(LR.KinListRow, { title: "Tiêu đề", ...p } as never));
+  const lrSrc = read("src/components/kin/ListRow.tsx").replace(/^\/\/.*$/gm, "");
+  check("tiêu đề không truncate / line-clamp / ellipsis, có overflow-wrap:anywhere", !/truncate|line-clamp|ellipsis/.test(lrSrc) && /data-kin-list-title[^>]*\[overflow-wrap:anywhere\]/.test(row({})));
+  check("aside dựng cột phải (data-kin-list-aside, chữ 14px --kin-chu-phu)", /data-kin-list-aside[^>]*--kin-chu-phu/.test(row({ aside: "Nộp 4/12" })) && />Nộp 4\/12</.test(row({ aside: "Nộp 4/12" })) && !/data-kin-list-aside/.test(row({})));
+  check("current ⇒ aria-current + nền --kin-nen-dang-chon; không current ⇒ không có", /aria-current="true"/.test(row({ current: true })) && /--kin-nen-dang-chon/.test(row({ current: true })) && !/aria-current/.test(row({})));
+  check("size lg: hàng 56px, tiêu đề 16px, dòng phụ --kin-chu-phu", /min-h-14/.test(row({ size: "lg", sub: "s" })) && /--kin-co-body/.test(row({ size: "lg" })) && /--kin-chu-phu/.test(row({ size: "lg", sub: "s" })));
+
+  section("SCL-G-0 · tiếp cận chung (phần I)");
+  const dlg = read("src/components/kin/Dialog.tsx");
+  check("KinDialog: role=dialog + aria-modal + aria-labelledby + useModalDialog (Escape, giữ tiêu điểm) + nút Đóng có chữ", /role="dialog"/.test(dlg) && /aria-modal="true"/.test(dlg) && /aria-labelledby=\{titleId\}/.test(dlg) && /useModalDialog\(open, boxRef, onClose\)/.test(dlg) && />Đóng</.test(dlg));
+  const siteCss = read("src/app/kin-site.css");
+  check("chuyển động hộp thoại chỉ opacity/transform, tắt dưới prefers-reduced-motion", /@keyframes kin-hop-vao \{ from \{ opacity: 0; transform: translateY\(8px\); \}/.test(siteCss) && /prefers-reduced-motion: reduce\) \{ \.kin-hop-vao \{ animation: none; \}/.test(siteCss));
+  check("ô nhập điện thoại 16px (max-width: 767px) cho input/select/textarea, chừa ô mã CodeBoxes", /@media \(max-width: 767px\) \{\s*input:not\(\[type="checkbox"\][\s\S]*?select:not\(\.kin-code-cell[\s\S]*?textarea:not\(\.kin-code-cell[\s\S]*?\{ font-size: 16px; \}/.test(siteCss));
+  for (const f of ["src/components/student/StudentShell.tsx", "src/components/tutor/TutorShell.tsx", "src/components/admin/AdminShell.tsx"]) {
+    const t = read(f), links = (t.match(/<KinSkipLink \/>/g) ?? []).length, targets = (t.match(/<KinSkipTarget \/>/g) ?? []).length;
+    check(`${f.split("/").pop()}: "Bỏ qua tới nội dung" là con đầu của vỏ, đích ngay trước nội dung (${links} vỏ)`, links >= 1 && links === targets && /md:flex[^"]*"[^>]*>\s*<KinSkipLink \/>/.test(t));
+  }
+  check("SkipLink: chữ 'Bỏ qua tới nội dung', tìm đích trong CÙNG vỏ (Next 16 giữ trang ẩn ⇒ id có thể trùng)", /Bỏ qua tới nội dung/.test(read("src/components/kin/shell/SkipLink.tsx")) && /parentElement\?\.querySelector<HTMLElement>\("\[data-kin-noi-dung\]"\)/.test(read("src/components/kin/shell/SkipLink.tsx")));
+
   await done();
 })();

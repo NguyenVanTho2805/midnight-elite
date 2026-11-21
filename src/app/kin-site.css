@@ -83,6 +83,7 @@
   --kin-tt-chu-xong: #047857;
   --kin-tt-chu-cho: #b45309;
   --kin-tt-chu-loi: #dc2626;
+  --kin-tt-chu-loi-dam: #b91c1c;
   --kin-tt-cham-xong: #059669;
   --kin-tt-cham-cho: #d97706;
   --kin-tt-cham-trung-tinh: #767f8e;
@@ -237,3 +238,16 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
 .kin-khung[data-flush] li:last-child,
 .kin-khung[data-flush] li:last-child > *,
 .kin-khung[data-flush] > [data-kin-list-row]:last-child { border-bottom-width: 0; }
+
+/* ── SCL-G-0 (21/11/2026, QUYET-DINH-GIAO-DIEN phần I) ─────────────────────────
+   Ô nhập trên điện thoại ≥ 16px: Safari iOS tự phóng to trang khi chạm vào ô chữ < 16px (rồi không tự thu lại). Không nằm trong @layer nên thắng lớp tiện ích
+   text-[length:var(--kin-co-goc)] / text-sm của Tailwind. Bỏ qua ô không gõ chữ, và ô CỐ Ý chữ to hơn 16px (ô mã CodeBoxes, ô ghi cỡ tiêu đề/số): đặt 16px sẽ thu nhỏ chúng. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"], [type="submit"], [type="button"], [type="reset"], [type="image"]):not(.kin-code-cell, [class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="--kin-co-tieu-de"], [class*="--kin-co-h"], [class*="--kin-co-so"], [class*="--kin-co-display"]),
+  select:not(.kin-code-cell, [class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="--kin-co-tieu-de"], [class*="--kin-co-h"], [class*="--kin-co-so"], [class*="--kin-co-display"]),
+  textarea:not(.kin-code-cell, [class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="--kin-co-tieu-de"], [class*="--kin-co-h"], [class*="--kin-co-so"], [class*="--kin-co-display"]) { font-size: 16px; }
+}
+/* Hộp thoại chung (KinDialog): hiện ra bằng opacity + transform 180ms; tắt hẳn dưới prefers-reduced-motion. */
+@keyframes kin-hop-vao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.kin-hop-vao { animation: kin-hop-vao 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .kin-hop-vao { animation: none; } }

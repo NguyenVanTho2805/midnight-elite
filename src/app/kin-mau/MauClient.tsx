@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { KinButton, KinConfirm, KinSkeleton, KinStateCard, KinStatus, KinTabs, KinToast, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
+import { KinButton, KinConfirm, KinDialog, KinGradeStatus, KinListRow, KinSkeleton, KinStateCard, KinStatus, KinTabs, KinToast, GRADE_STATUS, type GradeState, type KinButtonVariant, type StatusTone, type ToastTone } from "@/components/kin";
 import { useToast } from "@/components/kin/ToastProvider";
 
 const VARIANTS: { v: KinButtonVariant; label: string }[] = [
@@ -8,7 +8,7 @@ const VARIANTS: { v: KinButtonVariant; label: string }[] = [
   { v: "danger", label: "Nguy hiểm" }, { v: "danger-solid", label: "Nguy hiểm (đặc)" },
 ];
 const STATUSES: { tone: StatusTone; label: string }[] = [
-  { tone: "xong", label: "Đã chấm" }, { tone: "cho", label: "Cần nhắc" }, { tone: "loi", label: "Cần xử lý" }, { tone: "mo", label: "Chờ 1 ngày" },
+  { tone: "xong", label: "Đã chấm" }, { tone: "cho", label: "Cần nhắc" }, { tone: "loi", label: "Cần xử lý" }, { tone: "mo", label: "Chờ 1 ngày" }, { tone: "qua-han", label: "Quá hạn" },
 ];
 const TOASTS: { tone: ToastTone; title: string; detail: string }[] = [
   { tone: "xong", title: "Đã lưu điểm danh buổi 24/09.", detail: "4 buổi được tính tiền · 600.000đ" },
@@ -22,6 +22,7 @@ export default function MauClient() {
   const [tab, setTab] = useState<"hs" | "ph" | "gs">("hs");
   const [ask, setAsk] = useState<null | "thuong" | "nguy-hiem">(null);
   const [loading, setLoading] = useState(false);
+  const [hop, setHop] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const note = (s: string) => setLog(l => [...l, s]);
 
@@ -52,6 +53,30 @@ export default function MauClient() {
           <div className="flex flex-wrap gap-6" data-mau="tt">
             {STATUSES.map(s => <KinStatus key={s.tone} tone={s.tone}>{s.label}</KinStatus>)}
           </div>
+          {/* SCL-G-0: nhãn trạng thái bài/điểm dùng chung (QUYET-DINH-GIAO-DIEN §3.6). */}
+          <div className="flex flex-wrap gap-6" data-mau="tt-diem">
+            {(Object.keys(GRADE_STATUS) as GradeState[]).map(k => <KinGradeStatus key={k} state={k} />)}
+          </div>
+        </section>
+
+        <section aria-labelledby="m-hang" className="flex flex-col gap-3">
+          <h2 id="m-hang" className="font-semibold">Dòng danh sách</h2>
+          <div data-mau="hang" className="bg-[var(--kin-nen-trang)] border border-[var(--kin-vien-thuong)] rounded-[var(--kin-bo-the)] overflow-hidden">
+            <KinListRow size="lg" href="#m-hang" title="05 · Hệ phương trình bậc nhất hai ẩn và cách giải bằng phương pháp cộng đại số" sub="Video 42 phút · 2 tài liệu"
+              aside={<><span>Nộp 4/12</span><KinGradeStatus state="cho-cham">Chờ chấm 4</KinGradeStatus></>} />
+            <KinListRow size="lg" current title="04 · Giải hệ bằng phương pháp thế" sub="Thứ Năm 12/11" aside={<span className="font-bold text-[length:var(--kin-co-body)] text-[var(--kin-chu-chinh)]">8,5/10</span>} />
+            <KinListRow title="Dòng thường 14px" sub="Dòng phụ" trailing="18:15" />
+          </div>
+        </section>
+
+        <section aria-labelledby="m-hop" className="flex flex-col gap-3">
+          <h2 id="m-hop" className="font-semibold">Hộp thoại</h2>
+          <div data-mau="hop-chung"><KinButton variant="secondary" onClick={() => setHop(true)}>Mở hộp thoại</KinButton></div>
+          <KinDialog open={hop} title="Gắn link YouTube" onClose={() => setHop(false)}
+            footer={<><KinButton variant="secondary" onClick={() => setHop(false)}>Huỷ</KinButton><KinButton onClick={() => setHop(false)}>Lưu</KinButton></>}>
+            <label className="flex flex-col gap-1.5"><span className="font-semibold text-[length:var(--kin-co-goc)]">Link YouTube</span>
+              <input data-mau="hop-o" className="min-h-[var(--kin-cham-toi-thieu)] px-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-o-nhap)] bg-[var(--kin-nen-trang)] text-[length:var(--kin-co-goc)]" /></label>
+          </KinDialog>
         </section>
 
         <section aria-labelledby="m-tab" className="flex flex-col gap-3">

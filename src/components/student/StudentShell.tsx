@@ -18,6 +18,7 @@ import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem, type NavGroup } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { KinSkipLink, KinSkipTarget } from "@/components/kin/shell/SkipLink";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { useRail } from "@/components/kin/shell/railStore";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
@@ -109,6 +110,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
 
   return (
     <div className="md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <KinSkipLink />
       <ModuleRail roleLabel="HỌC SINH" ariaLabel="Module của học sinh" modules={modules} groups={wide} onCollapse={closeMore} mobileMore
         home={{ href: "/", label: "KiN — Trang chủ" }} footnote="Miễn phí ra mắt" />
 
@@ -139,6 +141,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
               links={visibleLinks([{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }])} />}
           </div>
         </div>
+        <KinSkipTarget />
         {children}
       </div>
 

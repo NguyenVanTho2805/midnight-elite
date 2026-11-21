@@ -16,6 +16,7 @@ import { KinLogo } from "@/components/kin/KinLogo";
 import { ModuleRail, type ModuleItem, type NavGroup, type NavItem } from "@/components/kin/shell/ModuleRail";
 import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
+import { KinSkipLink, KinSkipTarget } from "@/components/kin/shell/SkipLink";
 import NotificationBell from "@/components/NotificationBell";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
@@ -146,6 +147,7 @@ export default function TutorShell({
   return (
     // kin-chu-than: chữ thân Inter như ảnh Figma các màn gia sư (trước đó thừa kế Be Vietnam Pro của <body>, rộng hơn nên dòng xuống hàng khác Figma).
     <div className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <KinSkipLink />
       <ModuleRail roleLabel={head ? "CHỦ NHIỆM" : "GIA SƯ"} ariaLabel="Module của gia sư" modules={items} groups={wide} onCollapse={closeMore} mobileMore
         home={{ href: home, label: homeLabel }} footnote="Miễn phí ra mắt" />
 
@@ -172,6 +174,7 @@ export default function TutorShell({
                 : [{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }, { label: "Trang chủ KiN", href: "/" }]} />}
           </div>
         </div>
+        <KinSkipTarget />
         {children}
       </div>
 
@@ -184,6 +187,7 @@ function PendingShell({ user, onLogout, children }: { user: { name: string; emai
   const wide: NavGroup[] = [{ title: "Hồ sơ gia sư", items: PENDING_ITEMS.map(m => ({ key: m.key, label: m.label, href: m.href ?? TUTOR_PENDING_PATH, icon: m.icon })) }];
   return (
     <div data-tutor-pending-shell className="kin-chu-than md:flex min-h-screen bg-[var(--kin-nen-trang)] [--kin-top:48px] md:[--kin-top:68px]">
+      <KinSkipLink />
       <ModuleRail roleLabel="CHỜ DUYỆT" ariaLabel="Module của gia sư" modules={PENDING_ITEMS} groups={wide}
         home={{ href: TUTOR_PENDING_PATH, label: "KiN — Hồ sơ gia sư đang chờ duyệt" }} footnote="Miễn phí ra mắt" />
 
@@ -201,6 +205,7 @@ function PendingShell({ user, onLogout, children }: { user: { name: string; emai
               links={[{ label: "Trạng thái hồ sơ", href: TUTOR_PENDING_PATH }, { label: "Sửa hồ sơ", href: "/lop-cua-toi/ho-so" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }]} />}
           </div>
         </div>
+        <KinSkipTarget />
         {/* Băng chờ duyệt: chữ nói rõ trạng thái (không chỉ màu), một liên kết đi tiếp. */}
         <div data-tutor-pending-band className="mx-4 md:mx-10 mt-4">
           <KinCallout title="Hồ sơ gia sư đang chờ duyệt">
