@@ -11,6 +11,7 @@ import { CATEGORY_GRADIENT } from "@/lib/courseData";
 import { KinLoader } from "@/components/kin/KinLoader";
 import { kinButtonClass } from "@/components/kin/buttonClass";
 import { useAuth } from "@/contexts/AuthContext";
+import { MAIN_HOST } from "@/lib/hostRouting";
 import GiaoChuLop from "@/components/admin/courses/GiaoChuLop";
 import { classBase } from "@/lib/tutorClassRoutes";
 
@@ -525,12 +526,13 @@ export default function KhoaHocDetailPage() {
   const rawTab       = searchParams.get("tab");
   const activeTab: TabId = (rawTab && TABS.some(t => t.id === rawTab) ? rawTab : "cai-dat") as TabId;
   function setTab(tab: TabId) { router.push(`/admin/khoa-hoc/${courseSlug}?tab=${tab}`); }
-  const tutorHref = classBase(courseSlug);
-  const moved = !!rawTab && MOVED_TABS.has(rawTab);
-  // Tải cứng (không router): proxy đưa /lop-cua-toi/... sang tên miền chính.
-  useEffect(() => { if (moved) window.location.replace(tutorHref); }, [moved, tutorHref]);
-
   const { user } = useAuth();
+  // Quản trị ở tên miền admin: cookie không dùng chung hai tên miền ⇒ địa chỉ TUYỆT ĐỐI ở tên miền chính (như nhóm "Quản lý" của SCL-B); gia sư ở sẵn tên miền chính.
+  const tutorHref = user?.adminRole === "teacher" ? classBase(courseSlug) : `https://${MAIN_HOST}${classBase(courseSlug)}`;
+  const moved = !!rawTab && MOVED_TABS.has(rawTab);
+  // Tải cứng (không router): sang tên miền chính.
+  useEffect(() => { if (moved && user) window.location.replace(tutorHref); }, [moved, tutorHref, user]); // chờ biết vai mới chọn tên miền
+
   const [course, setCourse] = useState<CourseDB | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]    = useState("");

@@ -3,6 +3,7 @@
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-admin-tai-lieu.ts
 import { mkSuper, mkTutor, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN } from "./ui";
+import { MAIN_HOST } from "@/lib/hostRouting";
 import { BASE } from "./h";
 import { prisma } from "@/lib/prisma";
 
@@ -44,7 +45,7 @@ import { prisma } from "@/lib/prisma";
   await pg.goto(`${ADMIN}/admin/khoa-hoc/${course.id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.locator("[data-mo-vo-gia-su]").waitFor({ timeout: 60000 });
   check("không còn tab 'Chương bài'", (await pg.getByRole("button", { name: /Chương bài/ }).count()) === 0);
-  check("có nút 'Mở lớp trong vỏ gia sư' trỏ trang lớp", (await pg.locator("[data-mo-vo-gia-su]").getAttribute("href")) === `/lop-cua-toi/quan-lop/${course.id}`);
+  check("có nút 'Mở lớp trong vỏ gia sư' trỏ trang lớp — địa chỉ TUYỆT ĐỐI ở tên miền chính (cookie không dùng chung hai tên miền)", (await pg.locator("[data-mo-vo-gia-su]").getAttribute("href")) === `https://${MAIN_HOST}/lop-cua-toi/quan-lop/${course.id}`);
   check("không input[type=file] nhận tài liệu", !(await docInputs(pg)).some(isDocAccept));
   await ctx.close();
 

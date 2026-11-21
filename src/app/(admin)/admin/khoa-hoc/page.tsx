@@ -6,6 +6,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { MAIN_HOST } from "@/lib/hostRouting";
 import { useContentHref } from "@/components/tutor/useContentHref";
 import {
   KinPage, KinPageHeader, KinButton, KinStateCard, KinEmptyState, KinTableSkeleton, KinToast, KinStatus, kinButtonClass,
@@ -36,6 +37,8 @@ function KhoaHocListInner() {
   const { user } = useAuth();
   const isTeacher = user?.adminRole === "teacher";
   const href = useContentHref(); // gia sư sang bí danh /lop-cua-toi/quan-lop/…
+  // Quản trị ở tên miền admin: cookie không dùng chung hai tên miền ⇒ lối sang vỏ gia sư là địa chỉ TUYỆT ĐỐI ở tên miền chính (như nhóm "Quản lý" của SCL-B).
+  const createHref = isTeacher ? CREATE_HREF : `https://${MAIN_HOST}${CREATE_HREF}`;
 
   const [rows, setRows] = useState<CatalogRow[]>([]);
   const [truncated, setTruncated] = useState(false);
@@ -46,7 +49,7 @@ function KhoaHocListInner() {
 
   const [filter, setFilter] = useState<CatalogFilter>(() => readFilter(sp));
   // ?tao=1 (liên kết cũ "Tạo khoá"): sang cửa tạo lớp duy nhất. Tải cứng (không router) vì proxy đưa đường /lop-cua-toi sang tên miền chính.
-  useEffect(() => { if (sp.get("tao") === "1") window.location.replace(CREATE_HREF); }, [sp]);
+  useEffect(() => { if (sp.get("tao") === "1" && user) window.location.replace(createHref); }, [sp, createHref, user]); // chờ biết vai mới chọn tên miền
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busyIds] = useState<Set<string>>(() => new Set());
@@ -181,7 +184,7 @@ function KhoaHocListInner() {
         title="Khoá học"
         sub={sub}
         live
-        actions={<a href={CREATE_HREF} className={`max-md:hidden ${kinButtonClass("primary")}`}>Tạo lớp</a>}
+        actions={<a href={createHref} className={`max-md:hidden ${kinButtonClass("primary")}`}>Tạo lớp</a>}
       />
 
       {state === "loading" && <KinTableSkeleton label="Đang tải danh sách khoá học" rows={8} />}
@@ -216,7 +219,7 @@ function KhoaHocListInner() {
             <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-cho)]">Chỉ hiện 1000 khoá đầu — thu hẹp bằng bộ lọc để thấy đủ.</p>
           )}
           {total === 0 ? (
-            <KinEmptyState title="Chưa có khoá học" action={<a href={CREATE_HREF} className={kinButtonClass("primary")}>Tạo lớp đầu tiên</a>}>
+            <KinEmptyState title="Chưa có khoá học" action={<a href={createHref} className={kinButtonClass("primary")}>Tạo lớp đầu tiên</a>}>
               Khi bạn tạo khoá, nó sẽ hiện ở đây để sửa nhanh, ẩn/hiện và xem sĩ số.
             </KinEmptyState>
           ) : filtered.length === 0 ? (
@@ -236,7 +239,7 @@ function KhoaHocListInner() {
 
       {/* Nút Tạo khoá nổi ở điện thoại */}
       {state !== "loading" && (
-        <a href={CREATE_HREF}
+        <a href={createHref}
           className={`md:hidden fixed bottom-4 right-4 z-30 shadow-[var(--kin-bong-noi)] ${kinButtonClass("primary", "lg")}`}>
           Tạo lớp
         </a>

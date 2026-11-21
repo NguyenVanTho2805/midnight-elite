@@ -158,6 +158,8 @@ function judge(sc: Scenario, requested: URL, r: { status: number | null; final: 
     if (crossHost && r.final.searchParams.get("redirect") === requested.pathname + requested.search) return HOSTGATE;
     return sc.user ? "bị đẩy về trang đăng nhập dù đã đăng nhập" : gated ? GATE : "bị đẩy về trang đăng nhập";
   }
+  // Đã đăng nhập mà mở /dang-nhap?redirect=<trang> (vd lối "Tôi có mã mời vào lớp" của SCL-E) ⇒ trang đăng nhập đưa thẳng tới <trang>: có chủ đích, mọi vai.
+  if (sc.user && reqP === "/dang-nhap" && norm(requested.searchParams.get("redirect") ?? "") === finP) return null;
   if (reqP !== finP) return expectedRedirect(sc, reqP, finP) ? null : `đổi đích: ${requested.host}${reqP} → ${r.final.host}${finP}`;
   return null;
 }

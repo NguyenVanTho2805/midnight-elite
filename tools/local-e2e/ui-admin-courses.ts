@@ -2,6 +2,7 @@
 // lỗi tải không bị nuốt thành "không tìm thấy", sức chứa, vai gia sư, điện thoại 390px. Không có ô sửa giá.
 import { mkTutor, mkUser, mkCourse, mkSuper, wipe, check, section, done, BASE } from "./h";
 import { launch, ctxFor, shot, closeAll, ADMIN, kinSelect } from "./ui";
+import { MAIN_HOST } from "@/lib/hostRouting";
 import { prisma } from "@/lib/prisma";
 
 (async () => {
@@ -138,7 +139,7 @@ import { prisma } from "@/lib/prisma";
   check("bộ lọc gập vào nút 'Lọc'", await mp.getByRole("button", { name: /^Lọc/ }).isVisible() && !(await mp.getByRole("combobox", { name: /Kỳ thi/ }).isVisible()));
   const fab = mp.getByRole("link", { name: "Tạo lớp", exact: true }); // SCL-F2: một cửa tạo lớp (TaoLop trong vỏ gia sư)
   const box = await fab.boundingBox();
-  check("nút 'Tạo lớp' thấy được không cần cuộn, trỏ /lop-cua-toi/lop/tao", (await fab.getAttribute("href")) === "/lop-cua-toi/lop/tao" && !!box && box.y + box.height <= 800 && box.height >= 44, box);
+  check("nút 'Tạo lớp' thấy được không cần cuộn, trỏ /lop-cua-toi/lop/tao ở tên miền chính (địa chỉ tuyệt đối)", (await fab.getAttribute("href")) === `https://${MAIN_HOST}/lop-cua-toi/lop/tao` && !!box && box.y + box.height <= 800 && box.height >= 44, box);
   await mp.locator("[data-course-row] button").first().click();
   const sp = mp.locator("[data-side-panel]");
   await sp.waitFor({ timeout: 15000 });

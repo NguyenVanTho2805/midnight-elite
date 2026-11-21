@@ -3,6 +3,10 @@
 import { BASE, mkSuper, mkTutor, mkUser, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, shot, closeAll, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
+
+// HP-BO: cờ HOC_PHI tắt (mặc định) ⇒ bước 1 KHÔNG có mục học phí, lớp tạo ra là lớp mặc định. Bài đọc cùng biến môi trường với máy chủ.
+const FEE_ON = featureOn("HOC_PHI");
 
 (async () => {
   await wipe();
@@ -23,18 +27,20 @@ import { prisma } from "@/lib/prisma";
   await p.goto(`${BASE}/lop-cua-toi/lop/tao`, { waitUntil: "networkidle", timeout: 120000 });
   await p.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
   const stepOf = async () => p.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step");
-  check("3 bước hiện đủ; đang ở bước 1 'Thông tin', có 'Cách tính học phí'", await p.locator("[data-wizard-step]").count() === 3 && await stepOf() === "1" && await p.getByText("Cách tính học phí").first().isVisible());
+  check(`3 bước hiện đủ; đang ở bước 1 'Thông tin', ${FEE_ON ? "có" : "KHÔNG có (cờ HOC_PHI tắt)"} 'Cách tính học phí'`, await p.locator("[data-wizard-step]").count() === 3 && await stepOf() === "1" && (FEE_ON ? await p.getByText("Cách tính học phí").first().isVisible() : (await p.getByText(/Cách tính học phí|Có học phí/).count()) === 0 && (await p.getByLabel(/Đơn giá/).count()) === 0));
   check("bước 1 chưa có nút tạo lớp (chỉ 'Tiếp tục')", await p.getByRole("button", { name: /^Tạo lớp/ }).count() === 0 && await p.getByRole("button", { name: "Tiếp tục" }).isVisible());
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("tên trống → ở lại bước 1, có lỗi", await stepOf() === "1" && await p.locator("p[role=alert]").filter({ hasText: "tên lớp" }).isVisible());
   await p.getByLabel(/Tên lớp/).fill("Toán 9 wizard");
   // HOCPHI-THEO-BUOI: mặc định "Theo buổi"; "Theo giờ" nằm trong mục gập "Cách tính khác" nên phải mở trước.
-  check("mặc định là Theo buổi, 'Theo giờ' chưa hiện (đang gập)", await p.getByLabel(/^Theo buổi/).isChecked() && !(await p.getByLabel(/^Theo giờ/).isVisible()));
-  await p.locator("[data-fee-other] summary").click();
-  await p.getByLabel(/^Theo giờ/).check();
-  await p.getByRole("button", { name: "Tiếp tục" }).click();
-  check("theo giờ mà thiếu đơn giá → lỗi, ở lại bước 1 (học phí kiểu mới được kiểm)", await stepOf() === "1" && await p.locator("p[role=alert]").isVisible());
-  await p.getByLabel(/^Đơn giá/).fill("150000");
+  if (FEE_ON) {
+    check("mặc định là Theo buổi, 'Theo giờ' chưa hiện (đang gập)", await p.getByLabel(/^Theo buổi/).isChecked() && !(await p.getByLabel(/^Theo giờ/).isVisible()));
+    await p.locator("[data-fee-other] summary").click();
+    await p.getByLabel(/^Theo giờ/).check();
+    await p.getByRole("button", { name: "Tiếp tục" }).click();
+    check("theo giờ mà thiếu đơn giá → lỗi, ở lại bước 1 (học phí kiểu mới được kiểm)", await stepOf() === "1" && await p.locator("p[role=alert]").isVisible());
+    await p.getByLabel(/^Đơn giá/).fill("150000");
+  }
   await p.getByRole("button", { name: "Tiếp tục" }).click();
   check("sang bước 2 'Lịch học' (BU-01: Thông tin → Lịch học → Cách vào lớp)", await stepOf() === "2" && await p.getByRole("button", { name: "Thêm khung giờ" }).isVisible());
   // SCL-F2 (P2-18): bước Lịch học TUỲ CHỌN — không còn lỗi "ít nhất một khung giờ", không còn liên kết/hộp "buổi lẻ" (ca không lịch ở section dưới).
@@ -82,7 +88,8 @@ import { prisma } from "@/lib/prisma";
   await p.waitForURL(/\/lop-cua-toi\/quan-lop\/toan-9-wizard/, { timeout: 90000 });
   const made = await prisma.course.findFirstOrThrow({ where: { ownerId: T.id, name: "Toán 9 wizard" } });
   const rate = await prisma.courseFeeRate.findFirst({ where: { courseId: made.id } });
-  check("DB: lớp của cô Lan, học phí theo giờ 150.000 (đơn giá lưu ở CourseFeeRate, một buổi 90 phút)", made.ownerId === T.id && made.feeMode === "per_hour" && rate?.rate === 150000 && rate?.sessionMinutes === 90, { m: made.feeMode, r: rate });
+  if (FEE_ON) check("DB: lớp của cô Lan, học phí theo giờ 150.000 (đơn giá lưu ở CourseFeeRate, một buổi 90 phút)", made.ownerId === T.id && made.feeMode === "per_hour" && rate?.rate === 150000 && rate?.sessionMinutes === 90, { m: made.feeMode, r: rate });
+  else check("DB: lớp của cô Lan, feeMode mặc định, KHÔNG CourseFeeRate (cờ HOC_PHI tắt)", made.ownerId === T.id && made.feeMode === "monthly_sessions" && !rate, { m: made.feeMode, r: rate });
   await eventually("DB: khung giờ T3 19:00–20:30 (đúng 1 khung)", async () => (await prisma.classSchedule.count({ where: { courseId: made.id, dayOfWeek: 2, startTime: "19:00", endTime: "20:30" } })) === 1);
   await eventually("DB: 2 em ghi danh vào lớp mới (active)", async () => (await prisma.enrollment.count({ where: { courseId: made.id, status: "active", userId: { in: [A.id, B.id] } } })) === 2);
   check("tới trang lớp, mục Mã mời (tab Học sinh) mở sẵn + thông báo 'Đã thêm 2 học sinh'", /muc=ma-moi/.test(p.url()) && (await p.getByRole("navigation", { name: "Mục của Học sinh" }).locator("[aria-current=page]").innerText()).trim() === "Mã mời" && await p.getByText("Đã thêm 2 học sinh vào lớp").isVisible());
@@ -95,7 +102,7 @@ import { prisma } from "@/lib/prisma";
   await o.getByRole("heading", { name: "Tạo lớp học", level: 1 }).waitFor({ timeout: 90000 });
   await o.getByLabel(/Tên lớp/).fill("Lớp buổi lẻ");
   await kinSelect(o.locator("#tl-mon"), "Toán"); await kinSelect(o.locator("#tl-khoi"), "Lớp 9");
-  await o.getByRole("radio", { name: /^Miễn phí/ }).check();
+  if (FEE_ON) await o.getByRole("radio", { name: /^Miễn phí/ }).check(); // cờ HOC_PHI tắt: không có lựa chọn Miễn phí / Có học phí
   await o.getByRole("button", { name: "Tiếp tục" }).click();
   check("bước 2 chưa có khung → 'Tiếp tục' sang bước 3 luôn, không hộp thoại", await o.locator("[data-wizard-step][aria-current=step]").getAttribute("data-wizard-step") === "2");
   await o.getByRole("button", { name: "Tiếp tục" }).click();
@@ -165,7 +172,7 @@ import { prisma } from "@/lib/prisma";
   for (const path of ["/lop-cua-toi/lop/tao", `/lop-cua-toi/quan-lop/${old.id}/hoc-vien`]) {
     await m.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 120000 });
     await m.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), undefined, { timeout: 90000 });
-    if (path.includes("tao")) { await m.getByLabel(/Tên lớp/).fill("Lớp thử 390"); await m.getByLabel(/^Đơn giá/).fill("120000"); await m.getByRole("button", { name: "Tiếp tục" }).click();
+    if (path.includes("tao")) { await m.getByLabel(/Tên lớp/).fill("Lớp thử 390"); if (FEE_ON) await m.getByLabel(/^Đơn giá/).fill("120000"); await m.getByRole("button", { name: "Tiếp tục" }).click();
       await m.locator("[data-week-editor]").waitFor({ timeout: 30000 });
       const sm2 = await m.evaluate(`[...document.querySelectorAll('[data-wizard-schedule] button:not([data-block-id]), [data-wizard-schedule] select')].filter(e => e.offsetParent && (e.getBoundingClientRect().height < 43.5 || e.getBoundingClientRect().width < 43.5)).map(e => e.textContent.trim().slice(0,20))`) as string[];
       check("390px bước 2 (Lịch học): không tràn ngang, nút/ô chọn ngày ≥ 44px", (await m.evaluate("document.documentElement.scrollWidth")) as number <= 390 && sm2.length === 0, sm2);

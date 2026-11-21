@@ -6,7 +6,7 @@
 //      tab Video của lớp: bản ghi YouTube "Xem" ⇒ iframe youtube-nocookie; không tràn ngang.
 //   D. Học sinh 390: chọn 2 ảnh ⇒ "Gộp 2 ảnh thành PDF" ⇒ MỘT tệp .pdf tải lên (ảnh gốc không gửi), Nộp bài ⇒ tệp đã nộp có /Count 2.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/ui-scl-d.ts
-import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
+import { BASE, mkTutor, mkUser, mkSuper, mkCourse, wipe, check, section, done, eventually } from "./h";
 import { launch, ctxFor, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
 
@@ -86,11 +86,19 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   await Promise.all([pt.waitForURL(/\/quan-lop\/[^/]+\/video\?ok=1/, { timeout: 60000 }), pt.getByRole("button", { name: "Lưu bản ghi" }).click()]);
   check("dán bản ghi ⇒ 303 về lại tab Video (?ok=1), bản ghi mới hiện", /Bản ghi buổi 2/.test(await pt.locator("[data-tab-video]").last().innerText()));
   await pt.goto(`${BASE}/lop-cua-toi/quan-lop/${C.id}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  const sw = pt.getByRole("switch", { name: "Hiển thị lớp" });
+  // SCL-F2 (P2-25): gia sư không còn công tắc hiện/ẩn — máy chủ suy từ cách vào lớp, trang chỉ ghi chữ trạng thái.
+  const hien = pt.locator("[data-cai-dat-hien]:visible");
+  await hien.waitFor({ timeout: 120000 });
+  check("gia sư: Cài đặt ghi chữ hiện/ẩn, KHÔNG có công tắc", /công khai/.test(await hien.innerText()) && (await pt.getByRole("switch").locator("visible=true").count()) === 0);
+  check("Cài đặt không còn mục 'Bản ghi' (đã sang tab Video)", !(await pt.locator('[aria-label="Mục của Cài đặt"]').innerText().catch(() => "")).includes("Bản ghi"));
+  // Công tắc chỉ còn với Chủ nhiệm (quản trị trung tâm) mở cùng lớp trong vỏ gia sư.
+  const pa = await (await ctxFor(await mkSuper("Chủ nhiệm SCL-D"), { width: 1280, height: 900 })).newPage(); watch(pa);
+  await pa.goto(`${BASE}/lop-cua-toi/quan-lop/${C.id}?tab=cai-dat`, { waitUntil: "domcontentloaded", timeout: 180000 });
+  const sw = pa.getByRole("switch", { name: /trang (Khoá học )?công khai/ }).locator("visible=true");
   await sw.waitFor({ timeout: 120000 });
   const box = await sw.boundingBox();
-  check("Toggle: role=switch, aria-checked, có tên, vùng bấm ≥ 44px", ["true", "false"].includes((await sw.getAttribute("aria-checked")) ?? "") && (box?.height ?? 0) >= 43.5 && (box?.width ?? 0) >= 43.5, box);
-  check("Cài đặt không còn mục 'Bản ghi' (đã sang tab Video)", !(await pt.locator('[aria-label="Mục của Cài đặt"]').innerText().catch(() => "")).includes("Bản ghi"));
+  check("Toggle (Chủ nhiệm): role=switch, aria-checked, có tên, vùng bấm ≥ 44px", ["true", "false"].includes((await sw.getAttribute("aria-checked")) ?? "") && (box?.height ?? 0) >= 43.5 && (box?.width ?? 0) >= 43.5, box);
+  await pa.close();
 
   // ── C ────────────────────────────────────────────────────────────────────
   section("C. Học sinh 390: video nocookie, tải tài liệu, danh sách bài là hộp thoại, tab Video");
@@ -119,7 +127,8 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
 
   await ps.goto(`${BASE}/student/hoc-tap?course=${C.id}&tab=video`, { waitUntil: "domcontentloaded", timeout: 180000 });
   await ps.locator("[data-video-tab]").last().waitFor({ timeout: 120000 });
-  check("tab Video của lớp: video bài giảng + bản ghi ở một chỗ", /Buổi 1: Hàm số/.test(await ps.locator("[data-video-tab]").last().innerText()) && /Bản ghi buổi 1/.test(await ps.locator("[data-video-tab]").last().innerText()));
+  // Next 16 giữ trang vừa xem ẩn trong DOM và phần dưới có thể còn đang tải ⇒ đọc bản ĐANG HIỆN, chờ tới khi đủ.
+  await eventually("tab Video của lớp: video bài giảng + bản ghi ở một chỗ", async () => { const vt = await ps.locator("[data-video-tab]:visible").last().innerText(); return /Buổi 1: Hàm số/.test(vt) && /Bản ghi buổi 1/.test(vt); }, 30000);
   await ps.getByRole("button", { name: "Xem bản ghi Bản ghi buổi 2" }).click();
   const rsrc = await ps.locator("iframe[data-ban-ghi-video]").getAttribute("src");
   check("bản ghi YouTube xem ngay qua youtube-nocookie", /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/.test(rsrc ?? ""), rsrc);
