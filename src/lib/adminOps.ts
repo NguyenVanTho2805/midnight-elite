@@ -54,16 +54,12 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: bảy tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: bốn tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
-  { key: "expire-tutor-subscriptions", label: "Hết hạn gói VIP gia sư", path: "/api/cron/expire-tutor-subscriptions", schedule: "Mỗi ngày 08:00 giờ VN", maxGapHours: 36 },
-  { key: "pro-renewal-reminders", label: "Nhắc gia hạn gói KiN Pro", path: "/api/cron/pro-renewal-reminders", schedule: "Mỗi ngày 07:30 giờ VN", maxGapHours: 36 },
-  { key: "english-voa", label: "Lấy bài VOA Learning English", path: "/api/cron/english-voa", schedule: "Mỗi ngày 06:30 giờ VN", maxGapHours: 36 },
-  // BU-08 (ADM-002): báo học sinh khi bài hẹn giờ đã lên. Bài hẹn giờ vẫn HIỆN đúng giờ nhờ lọc publishedAt; cron chỉ lo THÔNG BÁO.
-  // Lịch hằng ngày 07:15 giờ VN (00:15 UTC): thông báo chậm tối đa một ngày. Muốn sát giờ hơn (vd */15) cần gói Vercel Pro — đổi cả vercel.json lẫn dòng này (và nới t-adm-003-lib).
-  { key: "article-publish", label: "Báo bài hẹn giờ đã lên", path: "/api/cron/article-publish", schedule: "Mỗi ngày 07:15 giờ VN", maxGapHours: 36 },
+  // SCL F1 (P2-28): english-voa, article-publish đã xoá cùng phần của chúng; expire-tutor-subscriptions, pro-renewal-reminders (phần KINH_DOANH đang ẩn)
+  // rút khỏi vercel.json, GIỮ route — bật lại Kinh doanh thì thêm lại hai dòng ở đây và ở vercel.json (t-adm-003-lib so hai chiều).
   // BU-HS-NOP-TEP: dọn tệp nộp bài hết hạn 60 ngày. Mặc định CHẠY KHÔ (đường dẫn không có ?xoa=1); chuyển sang xoá thật là commit riêng, kèm đổi `path` ở đây và ở vercel.json.
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
@@ -245,7 +241,6 @@ export interface TodayCounts {
   /** Số LỚP có yêu cầu vào lớp chờ quá JOIN_SLOW_DAYS ngày (BU-01). */
   joinSlowCourses?: number | null;
   /** Số bài hẹn giờ (đã đặt xuất bản, chưa tới giờ). */
-  scheduledArticles?: number | null;
   /** Số tác vụ định kỳ "Chậm so với lịch". */
   cronSlow?: number | null;
 }
@@ -267,11 +262,10 @@ export function buildTodayList(c: TodayCounts, env?: FeatureEnv): TodayItem[] {
     c.proOrdersPending === null ? null : { key: "goi-pro", group: "duyet", label: "Yêu cầu gói Pro chờ kích hoạt", count: c.proOrdersPending, href: "/admin/goi-pro", hint: "Xử lý ở trang Gói KiN Pro (không qua Hàng chờ): đối chiếu sao kê rồi kích hoạt" },
     c.supportOpen === null ? null : { key: "ho-tro", group: "duyet", label: "Yêu cầu hỗ trợ gia sư đang chờ", count: c.supportOpen, href: "/admin/ho-tro", hint: "Trả lời ở trang Hỗ trợ gia sư (không qua Hàng chờ), trong giờ hành chính" },
     c.joinSlowCourses == null ? null : { key: "vao-lop-cham", group: "theo-doi", label: "Lớp để học sinh chờ vào quá lâu", count: c.joinSlowCourses, href: queueHref("vao-lop"), hint: "Gia sư của lớp chưa duyệt yêu cầu vào lớp" },
-    c.scheduledArticles == null ? null : { key: "bai-hen-gio", group: "theo-doi", label: "Bài viết hẹn giờ sắp lên", count: c.scheduledArticles, href: "/admin/tin-tuc", hint: "Học sinh được báo khi bài lên" },
     c.cronSlow == null ? null : { key: "cron-cham", group: "he-thong", label: "Tác vụ định kỳ chạy chậm", count: c.cronSlow, href: "/admin/trien-khai", hint: "Xem lần gọi gần nhất ở màn Triển khai" },
   ];
   // DG (14/11/2026): dòng dẫn tới trang của phần đang ẨN (src/lib/features.ts) bị bỏ — "Yêu cầu gói Pro chờ kích hoạt" (/admin/goi-pro, cờ KINH_DOANH),
-  // "Bài viết hẹn giờ sắp lên" (/admin/tin-tuc, cờ TIN_TUC). Dòng đã ẩn cũng không vào tổng việc chờ của Hôm nay.
+  // (SCL F1: dòng "Bài viết hẹn giờ sắp lên" đã bỏ cùng phần Tin tức). Dòng đã ẩn cũng không vào tổng việc chờ của Hôm nay.
   return rows.filter((r): r is TodayItem => !!r && r.count > 0 && !isLinkHidden(r.href, env));
 }
 const QUEUE_SHORT: Record<string, string> = {

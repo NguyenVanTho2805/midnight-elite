@@ -35,9 +35,8 @@ check("cờ CRON_SECRET thiếu ở production nói rõ 'bị từ chối (503)'
 
 section("Lần gọi cron gần nhất");
 const job = CRON_JOBS[0];
-check("đủ tám tác vụ (ADM-003 thêm english-voa, BU-08 thêm article-publish, BU-HS-NOP-TEP thêm het-han-tep-nop-bai, LOI-04 thêm nhac-hoc-sang), khoá cài đặt riêng từng cái", CRON_JOBS.length === 8 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 8 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/article-publish,/api/cron/english-voa,/api/cron/expire-tutor-subscriptions,/api/cron/het-han-tep-nop-bai,/api/cron/nhac-hoc-sang,/api/cron/pro-renewal-reminders,/api/cron/remind-class,/api/cron/remind-exam");
-const ap = CRON_JOBS.find(j => j.key === "article-publish")!;
-check("article-publish: đường /api/cron/article-publish, 'Mỗi ngày 07:15 giờ VN', maxGapHours 36 (cron hằng ngày); quá 36 giờ mới 'Chậm', trong 36 giờ 'Đúng lịch'", ap.path === "/api/cron/article-publish" && ap.schedule === "Mỗi ngày 07:15 giờ VN" && ap.maxGapHours === 36 && cronView(ap, new Date(NOW.getTime() - 35 * 3600_000).toISOString(), NOW).status === "Đúng lịch" && cronView(ap, new Date(NOW.getTime() - 37 * 3600_000).toISOString(), NOW).status === "Chậm so với lịch");
+// SCL F1 (P2-28): english-voa, article-publish xoá cùng phần của chúng; expire-tutor-subscriptions, pro-renewal-reminders (Kinh doanh đang ẩn) rút khỏi vercel.json.
+check("đủ bốn tác vụ, khoá cài đặt riêng từng cái; không còn cron của phần đã xoá / đang tắt", CRON_JOBS.length === 4 && new Set(CRON_JOBS.map(j => cronSettingKey(j.key))).size === 4 && CRON_JOBS.map(j => j.path).sort().join() === "/api/cron/het-han-tep-nop-bai,/api/cron/nhac-hoc-sang,/api/cron/remind-class,/api/cron/remind-exam", CRON_JOBS.map(j => j.key));
 check("mọi tác vụ trong CRON_JOBS có tệp route thật dưới src/app/api/cron", CRON_JOBS.every(j => { try { return statSync(join(process.cwd(), "src/app", j.path, "route.ts")).isFile(); } catch { return false; } }), CRON_JOBS.filter(j => { try { return !statSync(join(process.cwd(), "src/app", j.path, "route.ts")).isFile(); } catch { return true; } }).map(j => j.key));
 check("chưa có lần nào / giá trị hỏng → 'Chưa ghi nhận' (không đoán)", cronView(job, null, NOW).status === "Chưa ghi nhận" && cronView(job, "rác", NOW).status === "Chưa ghi nhận" && cronView(job, "", NOW).tone === "mo");
 check("gọi 5 giờ trước → Đúng lịch, hiện 'hôm nay 07:00'", cronView(job, "2026-10-24T00:00:00Z", NOW).status === "Đúng lịch" && cronView(job, "2026-10-24T00:00:00Z", NOW).lastText === "Gọi gần nhất hôm nay 07:00", cronView(job, "2026-10-24T00:00:00Z", NOW).lastText);
@@ -81,13 +80,13 @@ check("mọi loại hàng chờ dẫn tới /admin/kiem-duyet?loai=<loại>; kh�
 })());
 
 section("Hôm nay: nhóm duyet · theo-doi · he-thong (BU-08)");
-// DG (14/11/2026): "bài hẹn giờ" (/admin/tin-tuc, cờ TIN_TUC) và "gói Pro chờ kích hoạt" (/admin/goi-pro, cờ KINH_DOANH) chỉ hiện khi phần đó mở — các ca nhóm / gộp
+// DG (14/11/2026): "gói Pro chờ kích hoạt" (SCL F1: dòng "bài hẹn giờ" đã bỏ cùng Tin tức) (/admin/goi-pro, cờ KINH_DOANH) chỉ hiện khi phần đó mở — các ca nhóm / gộp
 // dưới đây truyền FE_ON (mọi cờ mở) để kiểm đúng luật cũ; mục "DG" ở cuối kiểm mặc định ẩn.
-const FE_ON = { TIN_TUC: "1", KINH_DOANH: "1" };
-const full = buildTodayList({ ...base, tutorsPending: 2, reviewsPending: 5, topupsPending: 1, guestQuestions: 3, joinSlowCourses: 2, scheduledArticles: 4, cronSlow: 1 }, FE_ON);
-check("đủ nhóm: duyet (gia-su, danh-gia, khach-hoi, nap-coin khi cờ Coin bật), theo-doi (vao-lop-cham, bai-hen-gio), he-thong (cron-cham)", full.map(i => `${i.group}:${i.key}`).join() === (COIN_LOGIC_ON ? "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,duyet:nap-coin," : "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,") + "theo-doi:vao-lop-cham,theo-doi:bai-hen-gio,he-thong:cron-cham", full.map(i => `${i.group}:${i.key}`));
-check("loại không đủ quyền (null / vắng) KHÔNG hiện dù đếm được: reviewsPending vắng + guestQuestions null + cronSlow null", buildTodayList({ ...base, tutorsPending: 1, guestQuestions: null, cronSlow: null, joinSlowCourses: null, scheduledArticles: null }).map(i => i.key).join() === "gia-su");
-check("số 0 không hiện ở bất kỳ nhóm nào", buildTodayList({ ...base, reviewsPending: 0, guestQuestions: 0, joinSlowCourses: 0, scheduledArticles: 0, cronSlow: 0 }).length === 0);
+const FE_ON = { KINH_DOANH: "1" };
+const full = buildTodayList({ ...base, tutorsPending: 2, reviewsPending: 5, topupsPending: 1, guestQuestions: 3, joinSlowCourses: 2, cronSlow: 1 }, FE_ON);
+check("đủ nhóm: duyet (gia-su, danh-gia, khach-hoi, nap-coin khi cờ Coin bật), theo-doi (vao-lop-cham), he-thong (cron-cham)", full.map(i => `${i.group}:${i.key}`).join() === (COIN_LOGIC_ON ? "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,duyet:nap-coin," : "duyet:gia-su,duyet:danh-gia,duyet:khach-hoi,") + "theo-doi:vao-lop-cham,he-thong:cron-cham", full.map(i => `${i.group}:${i.key}`));
+check("loại không đủ quyền (null / vắng) KHÔNG hiện dù đếm được: reviewsPending vắng + guestQuestions null + cronSlow null", buildTodayList({ ...base, tutorsPending: 1, guestQuestions: null, cronSlow: null, joinSlowCourses: null }).map(i => i.key).join() === "gia-su");
+check("số 0 không hiện ở bất kỳ nhóm nào", buildTodayList({ ...base, reviewsPending: 0, guestQuestions: 0, joinSlowCourses: 0, cronSlow: 0 }).length === 0);
 const groups = groupTodayItems(full);
 check("groupTodayItems: 3 nhóm, thứ tự duyet → theo-doi → he-thong, mỗi nhóm có nhãn tiếng Việt", groups.map(g => g.key).join() === "duyet,theo-doi,he-thong" && groups.map(g => g.label).join() === "Việc chờ,Theo dõi,Hệ thống" && groups[0].items.length === (COIN_LOGIC_ON ? 4 : 3));
 check("nhóm rỗng bị bỏ: chỉ có việc duyet → 1 nhóm", groupTodayItems(buildTodayList({ ...base, tutorsPending: 1 })).length === 1 && groupTodayItems([]).length === 0);
@@ -103,12 +102,11 @@ check("mô tả dòng tổng chỉ có số theo loại, không tên người / 
 check("không có việc duyệt trong Hàng chờ → không thêm dòng tổng; Pro/hỗ trợ đứng một mình", foldQueueItems(buildTodayList({ ...base, proOrdersPending: 1 }, FE_ON)).map(i => i.key).join() === "goi-pro");
 section("DG (14/11/2026): dòng của phần đang ẩn không vào Hôm nay");
 {
-  const c: TodayCounts = { ...base, tutorsPending: 1, proOrdersPending: 3, supportOpen: 2, scheduledArticles: 4 };
+  const c: TodayCounts = { ...base, tutorsPending: 1, proOrdersPending: 3, supportOpen: 2 };
   const off = buildTodayList(c, {});
-  check("cờ KINH_DOANH + TIN_TUC tắt: không 'Yêu cầu gói Pro chờ kích hoạt', không 'Bài viết hẹn giờ'; Hỗ trợ gia sư và hồ sơ gia sư còn", off.map(i => i.key).join() === "gia-su,ho-tro", off.map(i => i.key));
-  check("tổng việc chờ không đếm dòng đã ẩn (1 + 2, không cộng 3 Pro / 4 bài)", foldQueueItems(off).reduce((n, i) => n + i.count, 0) === 3);
-  check("bật riêng KINH_DOANH → có gói Pro; bật riêng TIN_TUC → có bài hẹn giờ", buildTodayList(c, { KINH_DOANH: "1" }).some(i => i.key === "goi-pro") && !buildTodayList(c, { KINH_DOANH: "1" }).some(i => i.key === "bai-hen-gio")
-    && buildTodayList(c, { TIN_TUC: "1" }).some(i => i.key === "bai-hen-gio") && !buildTodayList(c, { TIN_TUC: "1" }).some(i => i.key === "goi-pro"));
+  check("cờ KINH_DOANH tắt: không 'Yêu cầu gói Pro chờ kích hoạt'; Hỗ trợ gia sư và hồ sơ gia sư còn", off.map(i => i.key).join() === "gia-su,ho-tro", off.map(i => i.key));
+  check("tổng việc chờ không đếm dòng đã ẩn (1 + 2, không cộng 3 Pro)", foldQueueItems(off).reduce((n, i) => n + i.count, 0) === 3);
+  check("bật riêng KINH_DOANH → có gói Pro; không còn dòng bài hẹn giờ ở bất kỳ cờ nào (SCL F1)", buildTodayList(c, { KINH_DOANH: "1" }).some(i => i.key === "goi-pro") && !buildTodayList(c, { KINH_DOANH: "1", COIN: "1" }).some(i => i.key === "bai-hen-gio"));
 }
 check("KHÔNG có trường tiền tổng nào trong mục Hôm nay (chỉ số lượng)", !/amount|total|tong|vnd|coin\b/i.test(Object.keys(full[0]).join()) && full.every(i => Number.isInteger(i.count)));
 

@@ -9,22 +9,6 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/cron/expire-tutor-subscriptions",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/pro-renewal-reminders",
-      "schedule": "30 0 * * *"
-    },
-    {
-      "path": "/api/cron/english-voa",
-      "schedule": "30 23 * * *"
-    },
-    {
-      "path": "/api/cron/article-publish",
-      "schedule": "15 0 * * *"
-    },
-    {
       "path": "/api/cron/het-han-tep-nop-bai",
       "schedule": "30 18 * * *"
     },

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession, isNextResponse } from "@/lib/auth-guard";
 import { dropHeldResults } from "@/lib/examHold";
-import { countUsersWithBetterBest } from "@/lib/rankServer";
 
 export async function GET() {
   const session = await requireSession();
@@ -28,9 +27,6 @@ export async function GET() {
     ? Math.round(examResults.reduce((s, r) => s + r.score / r.totalPoints * 10, 0) / examResults.length * 10) / 10
     : null;
 
-  // EXP: 10 pts per completed lesson
-  const exp = lessonProgress.length * 10;
-
   // Streak: consecutive days with at least 1 lesson completed (counting from today)
   const activityDays = new Set(
     lessonProgress.map(p => new Date(p.completedAt).toISOString().slice(0, 10))
@@ -48,11 +44,6 @@ export async function GET() {
     }
   }
 
-  // Rank: số người có điểm tốt nhất cao hơn của em (STU-003: đếm ở cơ sở dữ liệu, không tải cả bảng điểm — xem rankServer.ts).
-  const myBest = examResults.length ? Math.max(...examResults.map(r => r.score)) : 0;
-  const betterCount: number | null = myBest > 0 ? await countUsersWithBetterBest(myBest) : null;
-  const rank = betterCount !== null ? betterCount + 1 : null;
-  const totalStudents = await prisma.user.count({ where: { role: "student", deletedAt: null } });
-
-  return NextResponse.json({ gpa, streak, rank, totalStudents, exp });
+  // SCL F1 (Q8): bỏ hạng toàn trường và EXP — phần Xếp hạng chung đã xoá.
+  return NextResponse.json({ gpa, streak });
 }

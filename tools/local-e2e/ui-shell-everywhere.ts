@@ -8,7 +8,7 @@ import type { Page } from "./ui";
 
 // Mọi chức năng học viên từng có lối vào ở "Khác" (StudentShell). BU-00 bước 6 (31/10/2026) rút bảng "Khác" còn 7 mục nhưng các ROUTE này vẫn chạy,
 // nên vẫn mở bằng địa chỉ để kiểm vỏ. Mỗi mục: mở xong phải còn thanh bên, không có chân trang / thanh trên của khách.
-const PATHS = ["/student/thi-thu", "/student/hoi-dap", "/student/cong-dong", "/student/bang-xep-hang", "/student/tin-tuc", "/thu-vien", "/khoa-hoc", "/khoa-hoc-da-luu", "/giang-vien", "/diem-chuan", "/cai-dat/chu-de"];
+const PATHS = ["/student/thi-thu", "/student/hoi-dap", "/student/cong-dong", "/thu-vien", "/khoa-hoc", "/khoa-hoc-da-luu", "/giang-vien", "/cai-dat/chu-de"];
 
 async function guestChromeLeft(p: Page) {
   return p.evaluate(() => ({

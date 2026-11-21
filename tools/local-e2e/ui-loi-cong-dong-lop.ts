@@ -138,12 +138,12 @@ import { featureOn } from "@/lib/features";
       await pm.waitForTimeout(800);
       check(`dấu rác ${q} → KHÔNG nhắc (chỉ nhận đúng tên cờ)`, (await pm.locator("[data-paused-notice]").count()) === 0);
     }
-    if (!featureOn("TIN_TUC")) {
+    if (!featureOn("TRA_CUU")) { // SCL F1: Tin tức đã xoá ⇒ dùng /tra-cuu (cờ TRA_CUU) làm phần đang tạm đóng
       const cg2 = await ctxFor(null, { width: 390, height: 844 }); const pg2 = await cg2.newPage(); watch(pg2);
-      await settle(pg2, "/tin-tuc/bai-tin-cu");
+      await settle(pg2, "/tra-cuu");
       await pg2.waitForURL(u => new URL(u).pathname === "/", { timeout: 60000 }).catch(() => {});
-      await pg2.locator('[data-paused-notice="TIN_TUC"]').waitFor({ timeout: 60000 }).catch(() => {});
-      check("khách mở bài tin tức cũ → '/' + dòng nhắc (cùng component)", new URL(pg2.url()).pathname === "/" && await pg2.locator('[data-paused-notice="TIN_TUC"]').isVisible(), pg2.url());
+      await pg2.locator('[data-paused-notice="TRA_CUU"]').waitFor({ timeout: 60000 }).catch(() => {});
+      check("khách mở trang tra cứu cũ → '/' + dòng nhắc (cùng component)", new URL(pg2.url()).pathname === "/" && await pg2.locator('[data-paused-notice="TRA_CUU"]').isVisible(), pg2.url());
       await cg2.close();
     }
   }

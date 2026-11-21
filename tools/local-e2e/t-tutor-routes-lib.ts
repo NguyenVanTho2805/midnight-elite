@@ -9,7 +9,12 @@
 //     giaoTrinhHref không encode courseId → ca "id lạ không thoát khỏi đường dẫn" đỏ.
 //   - LOI-02: để lại tab "Giáo trình"/"Lịch học"/"Bài tập" → ca "KHÔNG còn nhãn…" đỏ; bỏ điều kiện `!ROOT_NON_BAI_HOC_TABS` → hàng "?tab=lich-hoc → không tab nào"
 //     và "?tab=cai-dat → Cài đặt" (hai tab sáng) đỏ; bỏ lọc vai → hai ca A3 đỏ; giaoTrinhHref(…, true) còn trả …/giao-trinh → ca đầu mục giaoTrinhHref đỏ.
+//   - SCL F1: bỏ điều kiện featureOn("DIEM_DANH") quanh tab Điểm danh → ca "cờ tắt: không tab Điểm danh" đỏ.
 import { toTutorPath, toAdminPath, contentHref, contentTabsFor, giaoTrinhHref, baiHocHref } from "@/lib/tutorRoutes";
+// Các ca dải tab bên dưới viết cho lúc phần Điểm danh MỞ; ca cờ tắt kiểm riêng (SCL F1).
+delete process.env.NEXT_PUBLIC_KIN_MO_DIEM_DANH;
+const ddOffTabs = contentTabsFor("/lop-cua-toi/quan-lop/toan-9")?.tabs.map(t => t.label).join(" · ");
+process.env.NEXT_PUBLIC_KIN_MO_DIEM_DANH = "1";
 import { classBase } from "@/lib/tutorClassRoutes";
 import { check, section, done } from "./h";
 
@@ -84,6 +89,9 @@ check("/lop-cua-toi/de-thi/abc (một đề) → 'Đề thi' sáng", contentTabs
 check("/lop-cua-toi/de-thi/ma-tran/m1 → 'Ma trận đề' sáng; /de-thi/abc/ma-de → 'Đề thi' sáng", contentTabsFor("/lop-cua-toi/de-thi/ma-tran/m1")?.tabs.filter(t => t.active).map(t => t.label).join() === "Ma trận đề" && contentTabsFor("/lop-cua-toi/de-thi/abc/ma-de")?.tabs.filter(t => t.active).map(t => t.label).join() === "Đề thi");
 check("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1 → 'Ngân hàng câu hỏi' sáng (tiền tố dài nhất, không phải 'Đề thi')", contentTabsFor("/lop-cua-toi/de-thi/ngan-hang-cau-hoi/bank1")?.tabs.filter(t => t.active).map(t => t.label).join() === "Ngân hàng câu hỏi");
 check("/lop-cua-toi/de-thi/ngan-hang-de-thi → 'Tệp đề gốc' sáng; href các tab là đường gia sư", (() => { const g = contentTabsFor("/lop-cua-toi/de-thi/ngan-hang-de-thi")!; return g.tabs.find(t => t.active)?.label === "Tệp đề gốc" && g.tabs.every(t => t.href.startsWith("/lop-cua-toi/de-thi")); })());
+
+section("SCL F1 — Điểm danh theo cờ");
+check("cờ DIEM_DANH tắt: không tab Điểm danh (route …/diem-danh đang bị chặn)", ddOffTabs === "Bài học · Video · Học sinh · Thông báo · Cài đặt", ddOffTabs);
 
 section("LOI-02 A2 — dải 5 tab của chủ lớp (TB-LOP thêm Thông báo)");
 const Q = "/lop-cua-toi/quan-lop/toan-9";

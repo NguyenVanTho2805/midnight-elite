@@ -28,7 +28,7 @@ check("mỗi nhóm trong module ≤ 6 tab (dải tab của vỏ)", overGroup.len
 check("module không có `group` thì cả module ≤ 6 trang con", ADMIN_MODULES.filter(m => m.subs.every(s => !s.group)).every(m => m.subs.length <= 6));
 check("Hàng chờ nằm ở module Việc chờ; Hôm nay (/admin) KHÔNG còn là trang con của module nào nhưng matchSub gán cho Việc chờ; Gia sư (lịch sử) ở Con người", matchSub("/admin/kiem-duyet")?.moduleKey === "viec-cho" && matchSub("/admin")?.moduleKey === "viec-cho" && !allSubs.some(s => s.href === "/admin") && matchSub("/admin/gia-su")?.moduleKey === "con-nguoi");
 check("hai đường đã gỡ không còn là trang con riêng (đã 308)", !allSubs.some(s => s.href === "/admin/ho-so-gia-su" || s.href === "/admin/cong-dong/bao-cao"));
-check("groupSubs giữ thứ tự xuất hiện và gom đúng: Học vụ có 4 nhóm", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group).join("|") === "Lớp|Đề và ngân hàng|Truyền thông|Tuyển sinh", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group));
+check("groupSubs giữ thứ tự xuất hiện và gom đúng: Học vụ có 3 nhóm (SCL F1: nhóm Tuyển sinh / Điểm chuẩn đã xoá)", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group).join("|") === "Lớp|Đề và ngân hàng|Truyền thông", groupSubs(ADMIN_MODULES[2].subs).map(g => g.group));
 
 section("Gia sư (teacher): không dùng vỏ quản trị");
 check("visibleModules('teacher') → [] (không module nào)", visibleModules("teacher", FE).length === 0, visibleModules("teacher", FE).map(m => m.key));
@@ -51,8 +51,8 @@ check(`bản đồ có trang cần MANAGE_ADMINS (${adminsOnly.length}) và MANA
 check("admin_content KHÔNG thấy trang cần MANAGE_ADMINS (Quản trị viên, Nhật ký)", adminsOnly.every(h => !content.includes(h)), adminsOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Gói KiN Pro, Triển khai và hạn mức, Lịch sử nạp Coin (MANAGE_REVENUE)", ["/admin/goi-pro", "/admin/trien-khai", ...(COIN_VISIBLE ? ["/admin/topups"] : [])].every(h => !content.includes(h) && revenueOnly.includes(h)), revenueOnly.filter(h => content.includes(h)));
 check("admin_content KHÔNG thấy Học sinh (MANAGE_STUDENTS) và Doanh thu (VIEW_REVENUE)", !content.includes("/admin/hoc-sinh") && !content.includes("/admin/doanh-thu"));
-check("admin_content vẫn thấy Hàng chờ, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Tin tức, Cộng đồng, Hỗ trợ gia sư",
-  ["/admin/kiem-duyet", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/tin-tuc", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)));
+check("admin_content vẫn thấy Hàng chờ, Gia sư, Lớp, Lịch sử đánh giá, Đề thi, Cộng đồng, Hỗ trợ gia sư; không còn Tin tức (SCL F1)",
+  ["/admin/kiem-duyet", "/admin/gia-su", "/admin/khoa-hoc", "/admin/danh-gia", "/admin/thi-thu", "/admin/cong-dong", "/admin/ho-tro"].every(h => content.includes(h)) && !content.includes("/admin/tin-tuc"));
 check("module không còn trang con nào thì ẩn cả module (không có trường hợp này với admin_content: Con người còn Gia sư)", visibleModules("admin_content", FE).some(m => m.key === "con-nguoi") && visibleModules("admin_content", FE).find(m => m.key === "con-nguoi")!.subs.length === 1);
 check("mọi trang admin_content thấy đều đúng quyền của vai đó (không lọt trang ngoài quyền)", allSubs.filter(s => content.includes(s.href)).every(s => !s.permission || checkPermission("admin_content", s.permission)));
 check("Hôm nay chỉ có MỘT đường vào: không vai nào có /admin trong menu (logo dẫn /admin ở vỏ); mọi vai quản lý vẫn thấy Hàng chờ", !hrefsOf("admin_super").includes("/admin") && !hrefsOf("admin_content").includes("/admin") && hrefsOf("admin_super").includes("/admin/kiem-duyet") && hrefsOf("admin_content").includes("/admin/kiem-duyet"));

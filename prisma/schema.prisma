@@ -2102,6 +2102,7 @@ model ExamResult {
 
 // ─── BADGES ───────────────────────────────────────────────────────────────────
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model UserBadge {
   id        String   @id @default(cuid())
   userId    String
@@ -2326,6 +2327,7 @@ model AnswerReport {
 
 // ─── NEWS / ARTICLES ──────────────────────────────────────────────────────────
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model Article {
   id          String    @id @default(cuid())
   slug        String    @unique
@@ -2424,6 +2426,7 @@ model SessionPlan {
 // Thang điểm khác nhau giữa các phương thức/năm (30, 90, 100, 150, 1200…) nên lưu kèm `scale` — không so sánh chéo thang.
 // verified = quản trị đã đối chiếu với thông báo chính thức của trường (mặc định chưa).
 // variant = chương trình/tổ hợp để phân biệt (VD "Chương trình tiên tiến"); chuỗi rỗng khi không có (để khoá duy nhất hoạt động).
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model AdmissionScore {
   id         String   @id @default(cuid())
   school     String
@@ -2451,6 +2454,7 @@ model AdmissionScore {
 //   inputs  : [{ key: "m1", label, max, weight }]   — các môn / thành phần nhập vào
 //   bonuses : [{ key: "b1", label, max }]            — điểm cộng (ưu tiên, khuyến khích…), cộng sau khi nhân
 // Kiểm hợp lệ và tính ở src/lib/admissionFormula.ts. Không lưu điểm người dùng nhập (tính ở trình duyệt). Công khai chỉ khi published = true VÀ có đường dẫn nguồn.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model AdmissionFormula {
   id         String   @id @default(cuid())
   name       String
@@ -2913,6 +2917,7 @@ model ExamGradeEdit {
 // Quy tắc riêng tư: mọi thứ có ownerId/userId chỉ chủ sở hữu thấy. Sách người học tải lên (có bản quyền)
 // KHÔNG BAO GIỜ công khai — chỉ lưu chữ đã trích, không lưu file PDF.
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngProfile {
   userId         String   @id
   targetBand     Float    @default(6.5)
@@ -2930,6 +2935,7 @@ model EngProfile {
 }
 
 // Kho từ chung: NGSL 1.01 + từ bổ sung + NAWL (CC BY-SA 4.0, Browne, Culligan & Phillips) và từ người học tự bắt.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngWord {
   id           String   @id @default(cuid())
   lemma        String   @unique
@@ -2950,6 +2956,7 @@ model EngWord {
   @@map("eng_words")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngUserWord {
   id        String   @id @default(cuid())
   userId    String
@@ -2971,6 +2978,7 @@ model EngUserWord {
 }
 
 // Thẻ ôn FSRS (ts-fsrs). key: "w:<wordId>:<cardType>" hoặc "x:<exerciseId>" — chống trùng ở tầng DB.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngCard {
   id            String    @id @default(cuid())
   userId        String
@@ -3002,6 +3010,7 @@ model EngCard {
   @@map("eng_cards")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngReviewLog {
   id            String   @id @default(cuid())
   cardId        String
@@ -3022,6 +3031,7 @@ model EngReviewLog {
 
 // Bài đọc / nghe. ownerId = null: bài công khai (VOA Learning English — public domain).
 // ownerId có giá trị: bài người học tự dán hoặc trích từ sách — chỉ người đó thấy.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngText {
   id          String    @id @default(cuid())
   ownerId     String?
@@ -3044,6 +3054,7 @@ model EngText {
   @@map("eng_texts")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngBook {
   id         String   @id @default(cuid())
   ownerId    String
@@ -3067,6 +3078,7 @@ model EngBook {
   @@map("eng_books")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngBookPage {
   id     String @id @default(cuid())
   bookId String
@@ -3079,6 +3091,7 @@ model EngBookPage {
   @@map("eng_book_pages")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngUnit {
   id               String   @id @default(cuid())
   bookId           String
@@ -3108,6 +3121,7 @@ model EngUnit {
 }
 
 // Đoạn văn của sách cho "Hỏi sách" (RAG). embedding: gemini-embedding-001, 768 chiều — đọc/ghi qua $queryRaw như question_bank_items.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngChunk {
   id        String                      @id @default(cuid())
   bookId    String
@@ -3124,6 +3138,7 @@ model EngChunk {
   @@map("eng_chunks")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngExercise {
   id          String   @id @default(cuid())
   ownerId     String? // null = câu hỏi của bài công khai
@@ -3151,6 +3166,7 @@ model EngExercise {
   @@map("eng_exercises")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngAttempt {
   id         String   @id @default(cuid())
   userId     String
@@ -3167,6 +3183,7 @@ model EngAttempt {
   @@map("eng_attempts")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngUnitProgress {
   id            String   @id @default(cuid())
   userId        String
@@ -3184,6 +3201,7 @@ model EngUnitProgress {
   @@map("eng_unit_progress")
 }
 
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngWriting {
   id           String   @id @default(cuid())
   userId       String
@@ -3204,6 +3222,7 @@ model EngWriting {
 }
 
 // Nhật ký học theo NGÀY GIỜ VIỆT NAM — nguồn của chuỗi ngày học và thống kê. Một dòng / người / ngày / module.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngStudyLog {
   id      String @id @default(cuid())
   userId  String
@@ -3221,6 +3240,7 @@ model EngStudyLog {
 }
 
 // Bộ nhớ đệm tra nghĩa theo ngữ cảnh (khoá = băm của từ + câu) — một câu chỉ hỏi AI một lần.
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngLookup {
   key       String   @id
   lemma     String
@@ -3233,6 +3253,7 @@ model EngLookup {
 
 // Thi thử IELTS. Listening/Reading: phiếu 40 câu chấm theo đáp án người học dán từ sách (Cambridge IELTS…) → điểm thô → band
 // (bảng xấp xỉ trong lib/english/mock.ts). Writing/Speaking: band do người học tự nhập (giáo viên/người 7.0+ chấm).
+// không còn dùng (SCL F1, 21/11/2026): phần này đã xoá khỏi mã; bảng giữ nguyên vì schema chỉ thêm.
 model EngMock {
   id        String   @id @default(cuid())
   userId    String

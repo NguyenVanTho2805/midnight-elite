@@ -100,7 +100,8 @@ const D = 86_400_000;
   check("cron nhắc: đòi CRON_SECRET, production thiếu khoá → 503, ghi dấu lần chạy", /CRON_SECRET/.test(cron) && /cronSecretMissingIsFatal/.test(cron) && /Bearer \$\{secret\}/.test(cron) && /recordCronRun\("pro-renewal-reminders"\)/.test(cron));
   check("nhắc chạy: bỏ qua bản xem trước và khi chưa mở bán; thông báo và dòng chống trùng cùng MỘT giao dịch", /isPreviewEnv\(\)/.test(ren) && /proPayConfig\(\)\.open/.test(ren) && /\$transaction/.test(ren) && ren.indexOf("proRenewalReminder.create") < ren.indexOf("notification.create"));
   check("nhắc chỉ gửi cho chủ gói: where theo userId của đơn active, không gọi notifyMany/broadcast", !/notifyMany/.test(ren) && /status: "active"/.test(ren));
-  check("vercel.json có cron nhắc gia hạn", JSON.parse(read("vercel.json")).crons.some((c: { path: string }) => c.path === "/api/cron/pro-renewal-reminders"));
+  // SCL F1 (P2-28): phần Kinh doanh đang ẩn ⇒ cron nhắc gia hạn rút khỏi vercel.json (route giữ) và tự bỏ qua khi cờ KINH_DOANH tắt.
+  check("vercel.json KHÔNG còn cron nhắc gia hạn; nhắc bỏ qua khi cờ KINH_DOANH tắt", !JSON.parse(read("vercel.json")).crons.some((c: { path: string }) => c.path === "/api/cron/pro-renewal-reminders") && /featureOn\("KINH_DOANH"\)[\s\S]{0,40}feature-off/.test(ren));
   check("schema chỉ THÊM: hai bảng mới, ràng buộc unique chỉ nằm trong bảng mới", (() => {
     const s = read("prisma/schema.prisma");
     const blk = (n: string) => new RegExp(`model ${n} \\{[\\s\\S]*?\\n\\}`).exec(s)?.[0] ?? "";

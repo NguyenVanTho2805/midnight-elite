@@ -35,7 +35,6 @@ export interface HomeBlocks {
   myClass: boolean;   // "Lớp của tôi": chỉ học sinh thường
   community: boolean; // bảng tin: mọi người, mọi vai — khi phần Cộng đồng đang mở (LOI-01)
   quiz: boolean;      // theo cờ, cùng một giá trị cho mọi vai; nằm trong khối bảng tin nên ẩn theo nó
-  score: boolean;     // tính điểm thi: mọi người — khi phần Điểm chuẩn đang mở (LOI-01)
   ctaFinal: boolean;  // nút đăng ký cuối trang: khách (và lúc chưa biết) — người đã có tài khoản không cần
 }
 
@@ -46,7 +45,6 @@ export function homeBlocksFor(v: HomeViewer, f: HomeFlags, env?: FeatureEnv): Ho
     myClass: kind === "student",
     community,
     quiz: community && f?.quiz === true,
-    score: featureOn("DIEM_CHUAN", env),
     // `loading` KHÔNG hiện ctaFinal theo đặc tả 5.1 ("ẩn CTA cuối khi biết đã đăng nhập"): HTML tĩnh đã có sẵn CTA cho khách, khối này chỉ quyết việc ẨN sau khi biết.
     // Hai điều kiện đều đúng với bảng: khách → true; loading → false (không vẽ thêm gì lúc chưa biết); mọi vai đã đăng nhập → false.
     ctaFinal: kind === "guest",
@@ -61,7 +59,6 @@ export function homeNavFor(v: HomeViewer, env?: FeatureEnv): HomeNavItem[] {
     { label: "Lớp học", href: "/khoa-hoc" },
     { label: "Thi thử", href: "/thi-thu" },
     { label: "Cộng đồng", href: "/cong-dong" },
-    { label: "Tin tức", href: "/tin-tuc" },
   ];
   if (v?.kind === "student") items.push({ label: "Lớp của tôi", href: "/student/hoc-tap" });
   return visibleLinks(items, env);
@@ -80,22 +77,18 @@ export function isHomeActive(pathname: string | null | undefined): boolean {
 /**
  * Các đích đã RÚT khỏi menu học sinh ở BU-00 (31/10/2026) — không được xuất hiện làm `href` của một mục trong StudentShell / MorePanel
  * (route vẫn chạy, chỉ ẩn lối vào). Lấy từ `ui-student-shell.ts` (mục "BU-00: … đã rời bảng Khác") và đầu tệp StudentShell.tsx:
- * Thư viện, Thi thử, Bảng xếp hạng, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Tra cứu điểm chuẩn, Ví và Coin.
+ * Thư viện, Thi thử, Hỏi đáp, Khoá học đang mở, Lớp đang theo dõi, Ví và Coin (Bảng xếp hạng, Tra cứu điểm chuẩn: SCL F1 đã xoá hẳn trang).
  *
  * KHÔNG có ở đây:
  *  - "/khoa-hoc?gia=free" ("Lớp miễn phí", thêm 08/11/2026 làm lối tìm lớp): href khác hẳn "/khoa-hoc" nên so khớp chính xác không dính.
- *  - "/student/tieng-anh": hiện còn là lối tắt `active: false` trong nhóm "Tự học" (sửa sau BU-00 ngày 01/11); đặc tả 6.7 ghi "không thêm", chứ không bắt rút lại.
  *  - "/student/thi-thu": là `also` của module "Việc của tôi" (đề được giao nằm ở đó), không phải href của mục menu. `also` không nằm trong phạm vi kiểm này.
  */
 export const BU00_REMOVED_MENU_HREFS: readonly string[] = [
   "/thu-vien",
   "/thi-thu",
   "/student/thi-thu",
-  "/bang-xep-hang",
-  "/student/bang-xep-hang",
   "/student/hoi-dap",
   "/khoa-hoc",
   "/khoa-hoc-da-luu",
-  "/diem-chuan",
   "/student/vi",
 ];

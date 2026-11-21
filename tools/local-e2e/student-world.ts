@@ -129,12 +129,9 @@ export async function seedStudentWorld(opts: { empty?: boolean } = {}) {
   await prisma.answer.create({ data: { questionId: qA.id, authorId: T.id, content: "Dùng biệt thức Δ = b² − 4ac rồi xét dấu." } });
   const qB = await prisma.question.create({ data: { authorId: S3.id, title: "Câu hỏi của bạn lớp khác", content: "Nội dung câu hỏi lớp khác.", bountyPaid: 0 } });
 
-  // Tin tức, điểm chuẩn, đánh giá lớp, lớp đã lưu, huy hiệu
-  const article = await prisma.article.create({ data: { slug: "tin-thu-nghiem-hs", title: "Tin thử nghiệm cho học sinh", excerpt: "Tóm tắt tin", content: "Nội dung tin thử nghiệm.", category: "tuyen-sinh", author: "KiN", authorId: SA.id, published: true, publishedAt: new Date() } });
-  await prisma.admissionScore.create({ data: { school: "ĐH Bách khoa Hà Nội", major: "Khoa học máy tính", year: 2025, method: "Điểm thi THPT", score: 28.5, scale: 30, sourceUrl: "https://example.org/nguon-diem-chuan", sourceName: "Nguồn thử", published: true, verified: true } });
+  // Đánh giá lớp, lớp đã lưu (SCL F1: tin tức, điểm chuẩn, huy hiệu đã xoá)
   await prisma.courseReview.create({ data: { userId: S2.id, courseId: C1.id, rating: 5, comment: "Lớp rất hay, cô dạy dễ hiểu.", status: "approved" } });
   if (!opts.empty) await prisma.cartItem.create({ data: { userId: S.id, courseId: C4.id } });
-  await prisma.userBadge.create({ data: { userId: S2.id, badgeId: "chuyen-can", grantedBy: SA.id } });
 
   // Phụ huynh: liên kết đã xác nhận (+ cổng "Sổ của con" qua link riêng) và một yêu cầu xác nhận vào lớp C3 đang chờ
   const pl = await prisma.parentLink.create({ data: { parentId: P.id, studentId: S.id, status: "verified", verifiedAt: new Date(), portalToken: TOKENS.portal } });
@@ -147,12 +144,11 @@ export async function seedStudentWorld(opts: { empty?: boolean } = {}) {
     { type: "answer", title: "Câu hỏi của bạn có đáp án", message: "Cô Lan đã trả lời.", link: `/student/hoi-dap/${qA.id}` },
     { type: "exam", title: "Đề thi mới", message: "Thi thử Toán công khai.", link: "/thi-thu" },
     { type: "enrollment", title: "Bạn đã được thêm vào lớp", message: "Toán 9.", link: `/student/hoc-tap?course=${C1.id}` },
-    { type: "news", title: "Tin mới", message: "Tin thử nghiệm.", link: `/tin-tuc/${article.slug}` },
   ];
   for (const n of notifs) await prisma.notification.create({ data: { userId: S.id, ...n } });
 
   return {
-    empty: !!opts.empty, SA, T, T2, S, S2, S3, P, C1, C2, C3, C4, invite, article, th1, th2, th3, qA, qB, E1, E2, E3,
+    empty: !!opts.empty, SA, T, T2, S, S2, S3, P, C1, C2, C3, C4, invite, th1, th2, th3, qA, qB, E1, E2, E3,
     lessons: { rec: lRec, paid: lPaid, live: lLive, doc: lDoc, other: lOther }, aGraded, aQuiz, notifs, enr1, enr3,
   };
 }

@@ -6,6 +6,7 @@ import { effectiveSlot } from "@/lib/sessionChange";
 import { loadChanges } from "@/lib/sessionChangeServer";
 import { parseAzotaDeadline } from "@/lib/azotaDeadline";
 import { isListedToStudent, listedToStudentWhere } from "@/lib/examVariantRoute";
+import { isClosedPublicExam } from "@/lib/publicExamGate";
 import { isEnrollmentActive } from "@/lib/enrollment";
 import { firstHttpLink } from "@/lib/lessonLinks";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
@@ -75,7 +76,8 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
       variantOfId: true, courseId: true, owner: { select: { adminRole: true } },
     },
   });
-  const exams = examRows.filter(e => grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses));
+  // SCL F1 (P2-12): đề thi thử CÔNG KHAI khi cờ THI_THU_CONG_KHAI tắt không lên lịch / "Việc của tôi" — bấm vào là bị chặn (cùng luật publicExamGate với API đề).
+  const exams = examRows.filter(e => (grantedExams.has(e.id) || isListedToStudent(e, e.owner?.adminRole, enrolledCourses)) && !isClosedPublicExam({ courseId: e.courseId, ownerAdminRole: e.owner?.adminRole }));
 
   for (const exam of exams) {
     const iso = toISO(exam.date);

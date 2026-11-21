@@ -62,18 +62,6 @@ export function PendingJoinBlock({ className = "" }: { className?: string }) {
   );
 }
 
-export function SelfStudy({ className = "" }: { className?: string }) {
-  // LOI-01: khối Tự học chỉ hiện khi phần Tiếng Anh tự học đang mở (src/lib/features.ts).
-  if (!featureOn("TIENG_ANH")) return null;
-  return (
-    <section aria-labelledby="lop-tu-hoc" data-self-study className={className}>
-      <KinSectionHead id="lop-tu-hoc" title="Tự học" />
-      <p className={`pt-4 ${GOC} text-[var(--kin-chu-mo)]`}>Lộ trình Tiếng Anh IELTS, từ vựng, đọc, nghe, viết và thi thử — không cần vào lớp.</p>
-      <Link href="/student/tieng-anh" className={`${kinButtonClass("secondary")} mt-4`}>Mở Tiếng Anh tự học</Link>
-    </section>
-  );
-}
-
 // ── Thẻ lớp ────────────────────────────────────────────────────────────────────
 
 function Cover({ row }: { row: ThuVienRow }) {
@@ -230,7 +218,6 @@ export default function ThuVienLop() {
         )}
         <div className="mt-10 max-w-[560px] space-y-8">
           <PendingJoinBlock />
-          <SelfStudy />
         </div>
       </>
     );

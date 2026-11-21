@@ -1,7 +1,7 @@
 // Mục nào của thanh bên đang được chọn khi người dùng đứng ở một đường dẫn. THUẦN (không đụng React / DOM) để test.
 //
-// Vì sao cần: nhiều mục của thanh bên là BÍ DANH — /student/thi-thu, /student/bang-xep-hang, /student/hoi-dap, /student/cong-dong, /student/tin-tuc chỉ chuyển tới trang công khai
-// (/thi-thu, /bang-xep-hang, /cong-dong, /tin-tuc) và mở TRONG khung học sinh. Sau khi chuyển, đường dẫn không còn bắt đầu bằng href của mục nên không mục nào sáng.
+// Vì sao cần: nhiều mục của thanh bên là BÍ DANH — /student/thi-thu, /student/hoi-dap, /student/cong-dong chỉ chuyển tới trang công khai
+// (/thi-thu, /cong-dong) và mở TRONG khung học sinh. Sau khi chuyển, đường dẫn không còn bắt đầu bằng href của mục nên không mục nào sáng.
 // Mỗi mục khai thêm `also` = đường dẫn đích; và trong MỘT nhóm chỉ mục khớp DÀI NHẤT được sáng ("Hỏi đáp" /cong-dong/hoi-dap thắng "Cộng đồng" /cong-dong).
 export interface NavMatchable { href: string; also?: readonly string[]; active?: boolean }
 

@@ -6,6 +6,7 @@
 // Proxy (src/lib/hostRouting.ts) thấy gia sư mở /admin/... thì 307 sang đường ở đây; link cũ trong thông báo đã lưu DB vẫn tới nhờ 307.
 //
 import { classBase } from "@/lib/tutorClassRoutes";
+import { featureOn } from "@/lib/features";
 
 // Quy tắc: `danh-muc` (danh mục khoá học) KHÔNG có bí danh — gia sư không có quyền; mọi /admin/... khác cũng → null (proxy đưa về /lop-cua-toi).
 
@@ -140,7 +141,8 @@ export function contentTabsFor(pathname: string, tab: string | null = null, role
       { label: "Video", href: `${base}/video`, active: onSub("video") }, // SCL-D (P2-4): video bài giảng + bản ghi một chỗ
       { label: "Học sinh", href: `${base}/hoc-vien`, active: onSub("hoc-vien") || onRoot("hoc-vien") },
       { label: "Thông báo", href: `${base}/thong-bao`, active: onSub("thong-bao") }, // TB-LOP (17/11/2026): tin một chiều cho cả lớp
-      { label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") },
+      // SCL F1 (P3): tab Điểm danh chỉ khi phần Điểm danh mở — cờ tắt thì route …/diem-danh bị chặn 307, tab là đường chết.
+      ...(featureOn("DIEM_DANH") ? [{ label: "Điểm danh", href: `${base}/diem-danh`, active: onSub("diem-danh") }] : []),
       { label: "Cài đặt", href: `${base}?tab=cai-dat`, active: onRoot("cai-dat") },
     ],
   };

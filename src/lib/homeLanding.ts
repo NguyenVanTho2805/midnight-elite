@@ -1,5 +1,5 @@
-// BU-HS-LANDING — phần THUẦN (không prisma, không next, không react) của bốn khối dữ liệu thật trên trang chủ công khai: Gia sư, Lớp theo kỳ thi,
-// Thi thử miễn phí, Tin tức. Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-LANDING.md mục 2.4, 2.5, 7.
+// BU-HS-LANDING — phần THUẦN (không prisma, không next, không react) của ba khối dữ liệu thật trên trang chủ công khai: Gia sư, Lớp theo kỳ thi,
+// Thi thử miễn phí (Tin tức: SCL F1 đã xoá). Đặc tả: docs/kin/phong-ban/dac-ta/BU-HS-LANDING.md mục 2.4, 2.5, 7.
 // Phần chạm DB (loadHomeLanding + bốn bộ tải) nằm ở src/lib/homeLandingServer.ts. Test thuần: tools/local-e2e/t-home-landing-lib.ts.
 //
 // Nguyên tắc:
@@ -9,12 +9,11 @@
 //  • Mốc giờ do máy chủ truyền vào (`now`); trình duyệt không tính mốc nào. Giờ Việt Nam là +07:00 cố định (VN_OFFSET_MS), không phụ thuộc TZ tiến trình.
 import { catalogChips, hasSeat, type Chip, type PublicCard } from "@/lib/courseCatalogPublic";
 import { computeExamStatus, VN_OFFSET_MS } from "@/lib/examData";
-import type { ArticleCard } from "@/lib/articlesPublic";
 import { toListItem, type SearchableTutor, type TutorListItem } from "@/lib/tutorSearch";
 import { sortTutors } from "@/lib/tutorActivity";
 
 // ─── Hằng ────────────────────────────────────────────────────────────────────────────────────────────────────
-export const HOME_LANDING_LIMITS = { tutors: 4, tutorsMin: 2, courses: 6, exams: 6, articles: 3, excerpt: 140, avatarChars: 24_000 } as const;
+export const HOME_LANDING_LIMITS = { tutors: 4, tutorsMin: 2, courses: 6, exams: 6, avatarChars: 24_000 } as const;
 
 /** Cùng giá trị với `Footer.tsx` (test khoá hai bên bằng nhau). Không có ô nhập nào: chỉ liên kết gọi/nhắn. */
 export const HOME_CONTACT = {
@@ -47,21 +46,11 @@ export interface LandingExam {
   state: "open" | "upcoming";
   startsAtMs: number;
 }
-export interface LandingArticle {
-  slug: string;
-  title: string;
-  excerpt: string;
-  categoryLabel: string;
-  /** "dd/mm/yyyy" giờ Việt Nam. */
-  dateText: string;
-  coverImage: string | null;
-}
 export interface HomeLanding {
   tutors: TutorListItem[];
   courses: PublicCard[];
   courseChips: Chip[];
   exams: LandingExam[];
-  articles: LandingArticle[];
 }
 
 /** Mọi mảng rỗng. Bất biến (đóng băng) để không ai vô tình sửa bản dùng chung. */
@@ -70,7 +59,6 @@ export const EMPTY_LANDING: HomeLanding = Object.freeze({
   courses: Object.freeze([]) as unknown as PublicCard[],
   courseChips: Object.freeze([]) as unknown as Chip[],
   exams: Object.freeze([]) as unknown as LandingExam[],
-  articles: Object.freeze([]) as unknown as LandingArticle[],
 }) as HomeLanding;
 
 // ─── Chữ & ngày ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -223,18 +211,4 @@ export function pickHomeExams(rows: readonly ExamRowLike[], now: Date, max: numb
   }
   out.sort((a, b) => b.startsAtMs - a.startsAtMs || a.code.localeCompare(b.code, "vi") || a.id.localeCompare(b.id));
   return out.slice(0, cap);
-}
-
-// ─── Tin tức ─────────────────────────────────────────────────────────────────────────────────────────────────
-/** Chỉ chép trường cần ra thẻ (không tác giả, không lượt xem, không nội dung). Ngày = giờ đăng, bài cũ không có giờ đăng → ngày tạo. */
-export function toLandingArticle(a: ArticleCard): LandingArticle {
-  const when = a.publishedAt ?? a.createdAt;
-  return {
-    slug: a.slug,
-    title: clipText(a.title, TITLE_MAX),
-    excerpt: clipText(a.excerpt ?? "", HOME_LANDING_LIMITS.excerpt),
-    categoryLabel: a.categoryLabel,
-    dateText: viDate(when),
-    coverImage: typeof a.coverImage === "string" && a.coverImage.trim() !== "" ? a.coverImage : null,
-  };
 }

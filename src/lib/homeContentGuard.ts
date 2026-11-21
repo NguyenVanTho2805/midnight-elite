@@ -119,7 +119,7 @@ export function limitFor(path: string): number | null {
 
 /** Đường dẫn gợi ý cho ô liên kết (không bắt buộc dùng). */
 // LOI-01: đường dẫn vào phần đang ẩn (src/lib/features.ts) không gợi ý — gõ tay thì bị nhắc "mở thử" như mọi đường lạ.
-export const HREF_SUGGESTIONS: readonly string[] = ["/khoa-hoc", "/thi-thu", "/giang-vien", "/dang-ky", "/dang-ky?vai=gia-su", "/dang-nhap", "/cong-dong", "/tin-tuc", "/diem-chuan"].filter(h => !isLinkHidden(h));
+export const HREF_SUGGESTIONS: readonly string[] = ["/khoa-hoc", "/thi-thu", "/giang-vien", "/dang-ky", "/dang-ky?vai=gia-su", "/dang-nhap", "/cong-dong"].filter(h => !isLinkHidden(h));
 
 /** Đường dẫn nội bộ không nằm trong gợi ý và không phải ô kỳ thi (đã tự dựng từ danh mục) → nhắc người sửa mở thử. */
 export function hrefNeedsManualCheck(href: string): boolean {

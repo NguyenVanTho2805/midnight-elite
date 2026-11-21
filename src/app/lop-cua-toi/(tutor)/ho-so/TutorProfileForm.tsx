@@ -5,6 +5,7 @@ import { required, type FieldRule } from "@/lib/fieldRules";
 import { KinButton } from "@/components/kin";
 import { CARD_STYLE, FIELD_STYLE, callApi, useNotify } from "@/components/tutor/shared";
 import { CITY_MAX, CREDENTIAL_MAX, DISTRICT_MAX, MODE_LABEL, TEACHING_MODES, priceText as fmtPrice, type TeachingMode, type TutorTeaching } from "@/lib/tutorArea";
+import { featureOn } from "@/lib/features";
 import { isValidCover, parseIntroVideoInput } from "@/lib/tutorSearchMedia"; // hàm thuần, không kéo Prisma vào gói trình duyệt
 
 const BIO_MAX = 2000, SUBJECTS_MAX = 10, SUBJECT_LEN = 50;
@@ -228,8 +229,9 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
         </div>
       </section>
 
-      {/* ĐX-06 (Thọ chốt Q4): tuỳ chọn, không nhóm nào bắt buộc, KHÔNG nằm ở form đăng ký. Tự khai, KiN không xác minh. */}
-      <section className="rounded-xl p-5 space-y-4" style={CARD_STYLE} aria-labelledby="h-khu-vuc">
+      {/* ĐX-06 (Thọ chốt Q4): tuỳ chọn, không nhóm nào bắt buộc, KHÔNG nằm ở form đăng ký. Tự khai, KiN không xác minh.
+          SCL F1 (P3): khu vực / giá chỉ phục vụ sàn Tìm gia sư — ẩn khi cờ TIM_GIA_SU tắt; giá trị đã lưu vẫn giữ nguyên khi bấm Lưu. */}
+      {featureOn("TIM_GIA_SU") && <section className="rounded-xl p-5 space-y-4" style={CARD_STYLE} aria-labelledby="h-khu-vuc">
         <div>
           <h2 id="h-khu-vuc" className="font-bold mb-1" style={{ color: "var(--kin-chu-chinh)" }}>Khu vực và hình thức dạy</h2>
           <p className="text-xs" style={{ color: "var(--kin-chu-phu)" }}>
@@ -283,7 +285,7 @@ export default function TutorProfileForm({ initialBio, initialSubjects, initialC
           {price && <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }} data-testid="gia-xem-truoc">{fmtPrice(Number(price))}</p>}
           <p className="text-xs mt-1" style={{ color: "var(--kin-chu-phu)" }}>Tắt thì hồ sơ không hiện giá (phụ huynh hỏi qua Zalo). Đây chỉ là giá tham khảo: KiN không thu hộ và không dùng số này để tính tiền.</p>
         </div>
-      </section>
+      </section>}
 
       {/* BU-06b rà soát: khoá Lưu khi ảnh bìa còn đang thu nhỏ — nếu không "Đã lưu hồ sơ." hiện ra mà ảnh mới chưa được gửi. */}
       <KinButton size="lg" onClick={save} loading={saving} disabled={coverBusy}>Lưu hồ sơ</KinButton>
