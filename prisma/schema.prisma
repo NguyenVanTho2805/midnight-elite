@@ -2089,6 +2089,9 @@ model ExamResult {
   score       Float
   totalPoints Int      @default(150)
   completedAt DateTime @default(now())
+  // SCL-A (Q5, chỉ thêm): true = điểm học sinh TỰ KHAI (đề Azota, POST /api/exam-results) đang chờ gia sư duyệt; chưa duyệt thì không vào báo cáo tháng.
+  // Mặc định false: điểm máy chấm (finalizeAttempt) và dòng cũ không đổi gì. Đợt 2 (nhóm C) đặt lại false khi gia sư duyệt.
+  pendingReview Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)

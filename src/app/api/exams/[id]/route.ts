@@ -8,6 +8,7 @@ import { closedPublicExam } from "@/lib/publicExamGate";
 import { PERMISSIONS } from "@/lib/permissions";
 import { examPasswordPatch, withoutExamSecrets } from "@/lib/examPassword";
 import { rootIdOf } from "@/lib/examVariantRoute";
+import { classExamViewBlock } from "@/lib/examResultAccessServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -30,6 +31,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // QZ-04: bản nháp chưa phát hành chỉ quản trị / gia sư thấy; học sinh gõ đúng địa chỉ cũng nhận 404 (không lộ tên bản nháp).
     // BU-04 rà soát: gia sư cũng là role "admin" (adminRole teacher) nên chỉ kiểm role là để gia sư B đọc được nháp của gia sư A (id là slug theo tên, đoán được) → thêm ownsResource.
     if (exam.isDraft && !(isStaff && ownsResource(session, exam.ownerId))) return NextResponse.json({ error: "Không tìm thấy đề thi" }, { status: 404 });
+    // SCL-A (P2-7): đề gắn lớp chỉ người trong lớp mở được (gia sư lớp khác, học sinh lớp khác → 403). Quản trị trung tâm vẫn xem mọi đề.
+    const viewBlock = await classExamViewBlock(session, exam);
+    if (viewBlock) return NextResponse.json(viewBlock, { status: 403 });
     // DG (14/11/2026): thi thử công khai đang đóng (cờ THI_THU_CONG_KHAI) — em chưa từng làm đề này thì như không có đề (link trực tiếp cũ không mở được).
     // Em đã làm (có lượt hoặc có điểm) vẫn mở được để xem lại điểm của mình. Đề gắn lớp không bị ảnh hưởng.
     if (!isStaff && await closedPublicExam(exam)) {

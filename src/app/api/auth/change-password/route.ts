@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getSession } from "@/lib/session";
+import { createSession, getSession } from "@/lib/session";
+import { commitMark, iatForMark } from "@/lib/sessionVerify";
 import { prisma } from "@/lib/prisma";
 import { limitOrBlock, getClientIp } from "@/lib/rate-limit";
 
@@ -33,10 +34,13 @@ export async function POST(req: Request) {
   }
 
   const hashed = await bcrypt.hash(newPassword, 10);
+  // SCL-A (P2-8): đổi mật khẩu → mọi phiên cũ (máy khác) hết hiệu lực; cookie của chính máy này cấp lại với iat = mốc nên vẫn đăng nhập (cùng cách reset-password).
+  const mark = commitMark(); // sát câu lệnh ghi, sau bcrypt
   await prisma.user.update({
     where: { id: session.userId },
-    data:  { password: hashed },
+    data:  { password: hashed, sessionsValidAfter: mark },
   });
+  await createSession({ userId: session.userId, role: session.role, ...(session.adminRole ? { adminRole: session.adminRole } : {}) }, { iat: iatForMark(mark) });
 
   return NextResponse.json({ success: true });
 }
