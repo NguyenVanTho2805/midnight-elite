@@ -1,7 +1,7 @@
 // BU-01 — luật thuần của cách vào lớp / xin vào lớp (src/lib/joinRequest.ts). Không DB.
 import { check, section, done } from "./h";
 import {
-  parseJoinPolicy, effectivePolicy, nextJoinState, redeemOutcome, joinDecision, isFreeClass, canUseOpenPolicy,
+  parseJoinPolicy, effectivePolicy, redeemPolicy, nextJoinState, redeemOutcome, joinDecision, isFreeClass, canUseOpenPolicy,
   normalizeJoinNote, joinStatusLabel, FREE_CLASS_TAG, REAPPLY_COOLDOWN_HOURS, JOIN_NOTE_MAX,
   type JoinStatus, type JoinEvent, type JoinPolicy,
 } from "@/lib/joinRequest";
@@ -15,6 +15,13 @@ for (const bad of ["Open", "OPEN", "", " open", 5, {}, [], true]) check(`CA PHÁ
 section("effectivePolicy");
 check("null / undefined / chuỗi lạ ⇒ invite_only", effectivePolicy(null) === "invite_only" && effectivePolicy(undefined) === "invite_only" && effectivePolicy("x") === "invite_only" && effectivePolicy("Open") === "invite_only");
 check("giá trị hợp lệ giữ nguyên", effectivePolicy("open") === "open" && effectivePolicy("approve") === "approve");
+
+section("redeemPolicy (SCL Q7: lớp cũ null ⇒ chờ duyệt khi dùng mã)");
+check("CA PHÁ: chủ là gia sư, null / undefined ⇒ approve (không vào thẳng)", redeemPolicy(null, true) === "approve" && redeemPolicy(undefined, true) === "approve");
+check("CA PHÁ: chủ KHÔNG phải gia sư (lớp quản trị tạo), null ⇒ invite_only (không kẹt chờ duyệt)", redeemPolicy(null, false) === "invite_only" && redeemPolicy(undefined, false) === "invite_only");
+check("đã chọn thì giữ nguyên", ([true, false] as const).every(t => redeemPolicy("invite_only", t) === "invite_only" && redeemPolicy("open", t) === "open" && redeemPolicy("approve", t) === "approve"));
+check("chuỗi lạ ⇒ invite_only như effectivePolicy", redeemPolicy("Open", true) === "invite_only");
+check("effectivePolicy KHÔNG đổi (trang công khai vẫn coi null là chỉ mã)", effectivePolicy(null) === "invite_only");
 
 section("redeemOutcome");
 const cls = { kind: "class", boundUserId: null };

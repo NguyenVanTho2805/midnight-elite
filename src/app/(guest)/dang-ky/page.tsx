@@ -11,22 +11,9 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinInput } from "@/components/kin/Input";
 import { SignupCodeForm } from "@/components/guest/SignupCodeForm";
 import { safeRedirect } from "@/lib/safeRedirect";
+import { landingPath } from "@/lib/landing";
 import { useFieldValidation } from "@/components/kin/useFieldValidation";
 import { email as emailRule, matches, minLength, phoneVn, required, type FieldRule } from "@/lib/fieldRules";
-import { KinSelect } from "@/components/kin/KinSelect";
-
-// Danh sách 34 tỉnh/thành sau sáp nhập (2025)
-const PROVINCES = [
-  "Tỉnh An Giang","Tỉnh Bắc Ninh","Tỉnh Cà Mau","Tỉnh Cao Bằng",
-  "Thành phố Cần Thơ","Thành phố Đà Nẵng","Tỉnh Đắk Lắk","Tỉnh Điện Biên",
-  "Tỉnh Đồng Nai","Tỉnh Đồng Tháp","Tỉnh Gia Lai","Thành phố Hà Nội",
-  "Tỉnh Hà Tĩnh","Thành phố Hải Phòng","Thành phố Hồ Chí Minh","Thành phố Huế",
-  "Tỉnh Hưng Yên","Tỉnh Khánh Hòa","Tỉnh Lai Châu","Tỉnh Lâm Đồng",
-  "Tỉnh Lạng Sơn","Tỉnh Lào Cai","Tỉnh Nghệ An","Tỉnh Ninh Bình",
-  "Tỉnh Phú Thọ","Tỉnh Quảng Ngãi","Tỉnh Quảng Ninh","Tỉnh Quảng Trị",
-  "Tỉnh Sơn La","Tỉnh Tây Ninh","Tỉnh Thái Nguyên","Tỉnh Thanh Hóa",
-  "Tỉnh Tuyên Quang","Tỉnh Vĩnh Long",
-];
 
 // FE-100 (06/10/2026): thêm chọn vai trò Học viên / Gia sư.
 type Role = "student" | "tutor";
@@ -39,7 +26,7 @@ const TUTOR_SUBJECTS = [
 ];
 
 interface Step1Fields {
-  name: string; phone: string; parentPhone: string; city: string; school: string;
+  name: string; phone: string;
   // FE-100: field riêng của Gia sư — chỉ validate khi role === "tutor"
   bio: string; subjects: string[];
 }
@@ -54,20 +41,19 @@ const COMMON1: Record<string, readonly FieldRule[]> = {
   name: [required("Vui lòng nhập họ và tên")],
   phone: [required("Vui lòng nhập số điện thoại có Zalo"), phoneVn(PHONE_BAD)],
 };
-const RULES1: Record<Role, Record<string, readonly FieldRule[]>> = {
-  student: {
-    ...COMMON1,
-    parentPhone: [phoneVn(PHONE_BAD)],
-    city: [required("Vui lòng chọn tỉnh / thành phố")],
-    school: [required("Vui lòng nhập tên trường")],
-  },
-  tutor: {
-    ...COMMON1,
-    bio: [required("Vui lòng viết vài dòng giới thiệu"), minLength(30, "Giới thiệu cần ít nhất 30 ký tự")],
-    subjects: [required("Chọn ít nhất 1 môn dạy")], // giá trị = các môn nối bằng dấu phẩy
-  },
+const RULES1: Record<string, readonly FieldRule[]> = {
+  ...COMMON1,
+  bio: [required("Vui lòng viết vài dòng giới thiệu"), minLength(30, "Giới thiệu cần ít nhất 30 ký tự")],
+  subjects: [required("Chọn ít nhất 1 môn dạy")], // giá trị = các môn nối bằng dấu phẩy
 };
 const PASS_MIN: FieldRule = v => (v === "" || v.length >= 8 ? null : "Mật khẩu cần ít nhất 8 ký tự");
+// SCL P2-17 / Q6 (21/11/2026): học sinh chỉ còn 3 ô — họ tên, email, mật khẩu — một bước, không màn chặn mã email. Đăng ký xong là đăng nhập luôn và đi tiếp
+// (link mời ⇒ ô nhập mã); xác thực email làm sau bằng băng vàng "Email chưa được xác thực". Không thu SĐT, SĐT phụ huynh, trường, tỉnh của học sinh nữa.
+const STUDENT_RULES: Record<string, readonly FieldRule[]> = {
+  name: [required("Vui lòng nhập họ và tên")],
+  email: [required("Vui lòng nhập email"), emailRule("Email không đúng định dạng")],
+  password: [required("Vui lòng nhập mật khẩu"), PASS_MIN],
+};
 
 function getPasswordStrength(p: string) {
   if (!p) return { level: 0, label: "", color: "" };
@@ -109,11 +95,13 @@ export default function DangKyPage() {
   const [serverError, setServerError] = useState("");
   const [emailSent, setEmailSent]     = useState(true);
 
-  const [s1, setS1] = useState<Step1Fields>({ name: "", phone: "", parentPhone: "", city: "", school: "", bio: "", subjects: [] });
+  const [s1, setS1] = useState<Step1Fields>({ name: "", phone: "", bio: "", subjects: [] });
   const [s2, setS2] = useState<Step2Fields>({ email: "", password: "", confirmPassword: "" });
   const form1Ref = useRef<HTMLFormElement>(null);
   const form2Ref = useRef<HTMLFormElement>(null);
-  const fv1 = useFieldValidation(RULES1[role]);
+  const fv1 = useFieldValidation(RULES1);
+  const fvS = useFieldValidation(STUDENT_RULES);
+  const formSRef = useRef<HTMLFormElement>(null);
   const rules2 = useMemo<Record<string, readonly FieldRule[]>>(() => ({
     email: [required("Vui lòng nhập email"), emailRule("Email không đúng định dạng")],
     password: [required("Vui lòng nhập mật khẩu"), PASS_MIN],
@@ -125,7 +113,7 @@ export default function DangKyPage() {
   /** aria-invalid + onBlur cho ô không phải KinInput (select, textarea): cùng luật, cùng thời điểm hiện lỗi. */
   const selectBind = (name: string, value: string) => {
     const b = fv1.bind(name, value);
-    return { onBlur: b.onBlur, "aria-invalid": b.error ? (true as const) : undefined, "aria-describedby": b.error ? `dk-${name === "city" ? "city" : "bio"}-err` : undefined };
+    return { onBlur: b.onBlur, "aria-invalid": b.error ? (true as const) : undefined, "aria-describedby": b.error ? `dk-${name}-err` : undefined };
   };
 
   function toggleSubject(s: string) {
@@ -137,7 +125,7 @@ export default function DangKyPage() {
 
   function goNext(ev: React.FormEvent) {
     ev.preventDefault();
-    const vals: Record<string, string> = { name: s1.name, phone: s1.phone, parentPhone: s1.parentPhone, city: s1.city, school: s1.school, bio: s1.bio, subjects: sv };
+    const vals: Record<string, string> = { name: s1.name, phone: s1.phone, bio: s1.bio, subjects: sv };
     if (!fv1.validateAll(vals)) { fv1.focusFirst(form1Ref.current); return; }
     setStep(2);
   }
@@ -149,24 +137,16 @@ export default function DangKyPage() {
     setSubmitting(true);
     setServerError("");
     try {
-      // FE-100: role tutor → /api/auth/register-tutor (BE-050) kèm bio +
-      // subjects; role student → /api/auth/register như cũ.
-      const endpoint = role === "tutor" ? "/api/auth/register-tutor" : "/api/auth/register";
+      // FE-100: gia sư → /api/auth/register-tutor (BE-050) kèm bio + subjects. Học sinh đi submitStudent (SCL P2-17).
       const body: Record<string, unknown> = {
         name:        s1.name.trim(),
         phone:       s1.phone.replace(/\s/g, ""),
         email:       s2.email.trim(),
         password:    s2.password,
+        bio:         s1.bio.trim(),
+        subjects:    s1.subjects,
       };
-      if (role === "tutor") {
-        body.bio = s1.bio.trim();
-        body.subjects = s1.subjects;
-      } else {
-        body.parentPhone = s1.parentPhone.replace(/\s/g, "");
-        body.city        = s1.city;
-        body.school      = s1.school.trim();
-      }
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/auth/register-tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -178,6 +158,32 @@ export default function DangKyPage() {
     } catch {
       setServerError("Lỗi kết nối, vui lòng thử lại");
     } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitStudent(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (submitting) return;
+    if (!fvS.validateAll({ name: s1.name, email: s2.email, password: s2.password })) { fvS.focusFirst(formSRef.current); return; }
+    if (!agreed) { setServerError("Bạn cần đồng ý Điều khoản và Chính sách bảo mật"); return; }
+    setSubmitting(true); setServerError("");
+    const email = s2.email.trim();
+    try {
+      const post = (url: string, b: unknown) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+      const res = await post("/api/auth/register", { name: s1.name.trim(), email, password: s2.password });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setServerError(data.error ?? "Đăng ký thất bại"); setSubmitting(false); return; }
+      // Q6: không chặn ở màn nhập mã email — đăng nhập luôn. Đăng nhập lỗi (hiếm) thì về màn cũ có ô nhập mã để không bỏ người dùng lơ lửng.
+      const lr = await post("/api/auth/login", { identifier: email, password: s2.password });
+      const me = await lr.json().catch(() => ({}));
+      if (!lr.ok) { setEmailSent(data.emailSent !== false); setSubmitted(true); setSubmitting(false); return; }
+      const back = safeRedirect(new URLSearchParams(window.location.search).get("redirect"));
+      const landing = landingPath(me.role ?? "student", me.adminRole ?? null, me.tutorPending === true);
+      // Tải cứng: AuthProvider chỉ hỏi /api/auth/me lúc mở trang.
+      window.location.assign(back && back.startsWith("/student") && landing.startsWith("/student") ? back : landing);
+    } catch {
+      setServerError("Lỗi kết nối, vui lòng thử lại");
       setSubmitting(false);
     }
   }
@@ -214,9 +220,9 @@ export default function DangKyPage() {
       aside={(
         <>
           <AuthAsideBlock title="Nếu chọn học sinh">
-            Dùng họ tên và email cá nhân. Có thể nhập mã mời từ cô hoặc tham gia lớp sau khi tạo tài khoản.
+            Chỉ cần họ tên, email và mật khẩu. Tạo xong là nhập mã mời của gia sư để vào lớp.
           </AuthAsideBlock>
-          <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Tôi đã có mã mời vào lớp</Link>
+          <Link href="/dang-nhap?vai=hoc-sinh&redirect=%2Fstudent%2Fnhap-ma-lop" className={kinButtonClass("secondary")}>Tôi đã có mã mời vào lớp</Link>
           <KinCallout title="Nếu chọn gia sư">
             Hồ sơ gia sư chờ quản trị KiN duyệt trước khi mở lớp. Sau khi vào được, bạn sẽ thấy các bước bắt đầu ở Hộp việc.
           </KinCallout>
@@ -227,7 +233,8 @@ export default function DangKyPage() {
       )}>
       <div className="w-full">
 
-        {/* Progress steps */}
+        {/* Progress steps — chỉ gia sư có 2 bước (SCL P2-17) */}
+        {role === "tutor" && (
         <div className="flex items-center gap-0 mb-6 px-2">
           {([1, 2] as const).map((n, i) => (
             <div key={n} className="flex items-center flex-1">
@@ -249,18 +256,17 @@ export default function DangKyPage() {
             </div>
           ))}
         </div>
+        )}
 
         {/* Card */}
-        <div className="rounded-xl p-8" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
+        <div className="rounded-xl p-5 sm:p-8" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)", boxShadow: "rgba(15,15,15,0.08) 0px 4px 12px 0px" }}>
 
-          {/* ── BƯỚC 1 ── */}
-          {step === 1 && (
+          {/* ── HỌC SINH: một bước, 3 ô (SCL P2-17, Q6) ── */}
+          {role === "student" && (
             <div className="space-y-4">
-            {role === "student" && <SocialButtons consent />}
-            <form ref={form1Ref} onSubmit={goNext} noValidate className="space-y-4">
-              {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin.
-                  Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ dẫn
-                  sang /api/auth/register-tutor để tạo đơn pending. */}
+            <SocialButtons consent />
+            <form ref={formSRef} onSubmit={submitStudent} noValidate className="space-y-4" data-dang-ky-hoc-sinh>
+              {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin. Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ (đơn chờ duyệt). */}
               <div>
                 <p className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>Bạn đăng ký với vai trò nào? *</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -268,8 +274,69 @@ export default function DangKyPage() {
                     { v: "student", label: "Học viên",  desc: "Học thử & tham gia lớp" },
                     { v: "tutor",   label: "Gia sư",    desc: "Mở lớp, dạy & hướng dẫn" },
                   ] as const).map(opt => (
-                    <button key={opt.v} type="button" onClick={() => setRole(opt.v)}
-                      className="rounded-xl p-3 text-left transition-all"
+                    <button key={opt.v} type="button" onClick={() => { setRole(opt.v); setServerError(""); }} aria-pressed={role === opt.v}
+                      className="rounded-xl p-3 min-h-11 text-left transition-all"
+                      style={{
+                        background: role === opt.v ? "var(--kin-nen-nhan)" : "var(--kin-nen-trang)",
+                        border: `1px solid ${role === opt.v ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`,
+                      }}>
+                      <p className="text-sm font-bold" style={{ color: role === opt.v ? "var(--kin-nhan-nen)" : "var(--kin-chu-chinh)" }}>{opt.label}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--kin-chu-mo)" }}>{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <KinInput type="text" label="Họ và tên *" placeholder="Nguyễn Văn A" autoComplete="name" value={s1.name}
+                onChange={e => setS1(p => ({ ...p, name: e.target.value }))} {...fvS.bind("name", s1.name)} />
+              <KinInput type="email" inputMode="email" autoComplete="email" label="Email *" placeholder="ten@gmail.com" value={s2.email}
+                onChange={e => setS2(p => ({ ...p, email: e.target.value }))} {...fvS.bind("email", s2.email)} />
+              <KinInput type={showPass ? "text" : "password"} autoComplete="new-password" label="Mật khẩu *" placeholder="Tối thiểu 8 ký tự" value={s2.password}
+                onChange={e => setS2(p => ({ ...p, password: e.target.value }))} {...fvS.bind("password", s2.password)}
+                suffix={<button type="button" className="min-w-11 min-h-11 -mx-3 px-3 flex items-center justify-center" style={{ color: "var(--kin-chu-mo)" }}
+                  aria-label={showPass ? "Ẩn mật khẩu" : "Hiện mật khẩu"} onClick={() => setShowPass(!showPass)}>
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>} />
+              {serverError && (
+                <div role="alert" className="px-4 py-3 rounded-lg text-sm font-medium"
+                  style={{ background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi)", border: "1px solid var(--kin-tt-vien-loi)" }}>
+                  {serverError}
+                </div>
+              )}
+              <div className="flex items-start gap-3 pt-1">
+                <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)}
+                  className="w-4 h-4 rounded flex-shrink-0 mt-0.5 cursor-pointer accent-blue-600" />
+                <p className="text-xs leading-relaxed" style={{ color: "var(--kin-chu-mo)" }}>
+                  Tôi đồng ý với{" "}
+                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Điều khoản dịch vụ</Link>
+                  {" "}và{" "}
+                  <Link href="/chinh-sach" className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Chính sách bảo mật</Link>
+                </p>
+              </div>
+              <button type="submit" disabled={!agreed || submitting}
+                className="w-full min-h-11 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                style={{ background: agreed && !submitting ? "var(--kin-nhan-nen)" : "var(--kin-vien-o-nhap)", color: "var(--kin-chu-tren-nut-chinh)", cursor: agreed && !submitting ? "pointer" : "not-allowed" }}>
+                {submitting ? "Đang tạo tài khoản..." : "Tạo tài khoản miễn phí"}
+              </button>
+              <p className="text-xs" style={{ color: "var(--kin-chu-mo)" }}>Tạo xong là vào ngay. KiN gửi mã xác thực vào email, bạn xác thực sau cũng được.</p>
+            </form>
+            </div>
+          )}
+
+          {/* ── GIA SƯ · BƯỚC 1 ── */}
+          {role === "tutor" && step === 1 && (
+            <div className="space-y-4">
+            <form ref={form1Ref} onSubmit={goNext} noValidate className="space-y-4">
+              {/* FE-100: chọn vai trò — 2 card bấm trước khi nhập thông tin. Mặc định là Học viên vì luồng chính; Gia sư là nhánh phụ (đơn chờ duyệt). */}
+              <div>
+                <p className="text-sm font-semibold mb-2" style={{ color: "var(--kin-chu-phu)" }}>Bạn đăng ký với vai trò nào? *</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { v: "student", label: "Học viên",  desc: "Học thử & tham gia lớp" },
+                    { v: "tutor",   label: "Gia sư",    desc: "Mở lớp, dạy & hướng dẫn" },
+                  ] as const).map(opt => (
+                    <button key={opt.v} type="button" onClick={() => { setRole(opt.v); setServerError(""); }} aria-pressed={role === opt.v}
+                      className="rounded-xl p-3 min-h-11 text-left transition-all"
                       style={{
                         background: role === opt.v ? "var(--kin-nen-nhan)" : "var(--kin-nen-trang)",
                         border: `1px solid ${role === opt.v ? "var(--kin-nhan-nen)" : "var(--kin-vien-thuong)"}`,
@@ -286,47 +353,18 @@ export default function DangKyPage() {
                 )}
               </div>
 
-              <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>
-                {role === "tutor" ? "Thông tin gia sư" : "Thông tin học sinh"}
-              </p>
+              <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Thông tin gia sư</p>
 
-              {/* Họ và tên */}
               <KinInput type="text" label="Họ và tên *" placeholder="Nguyễn Văn A" autoComplete="name" value={s1.name}
                 onChange={e => setS1(p => ({ ...p, name: e.target.value }))} {...fv1.bind("name", s1.name)} />
 
-              {/* SĐT học sinh + SĐT phụ huynh */}
-              <div className={role === "tutor" ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 sm:grid-cols-2 gap-3"}>
-                <div>
-                  <KinInput type="tel" inputMode="tel" autoComplete="tel" label={role === "tutor" ? "Số điện thoại (Zalo) *" : "SĐT học sinh (Zalo) *"} placeholder="0901 234 567" value={s1.phone}
-                    onChange={e => setS1(p => ({ ...p, phone: e.target.value }))} {...fv1.bind("phone", s1.phone)} />
-                  {role === "tutor" && (
-                    <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
-                      Quản trị KiN dùng số này để liên hệ xác minh hồ sơ. Số không hiện công khai (bạn tự bật nếu muốn hiện Zalo trên hồ sơ).
-                    </p>
-                  )}
-                </div>
-                {role === "student" && (
-                  <KinInput type="tel" inputMode="tel" label={<>SĐT phụ huynh<span className="ml-1 font-normal" style={{ color: "var(--kin-chu-mo)" }}>(tuỳ chọn)</span></>}
-                    placeholder="0901 234 567" value={s1.parentPhone}
-                    onChange={e => setS1(p => ({ ...p, parentPhone: e.target.value }))} {...fv1.bind("parentPhone", s1.parentPhone)} />
-                )}
+              <div>
+                <KinInput type="tel" inputMode="tel" autoComplete="tel" label="Số điện thoại (Zalo) *" placeholder="0901 234 567" value={s1.phone}
+                  onChange={e => setS1(p => ({ ...p, phone: e.target.value }))} {...fv1.bind("phone", s1.phone)} />
+                <p className="text-xs mt-1" style={{ color: "var(--kin-chu-mo)" }}>
+                  Quản trị KiN dùng số này để liên hệ xác minh hồ sơ. Số không hiện công khai (bạn tự bật nếu muốn hiện Zalo trên hồ sơ).
+                </p>
               </div>
-
-              {/* Tỉnh + Trường */}
-              {role === "student" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="dk-city" className="block text-sm font-medium mb-1.5" style={{ color: "var(--kin-chu-chinh)" }}>Tỉnh / Thành phố *</label>
-                  <KinSelect id="dk-city" value={s1.city} onChange={v => setS1(p => ({ ...p, city: v }))} {...selectBind("city", s1.city)}>
-                    <option value="">Chọn tỉnh / thành phố</option>
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </KinSelect>
-                  <FieldError id="dk-city-err" msg={fv1.bind("city", s1.city).error} />
-                </div>
-                <KinInput type="text" label="Tên trường *" placeholder="THPT Chu Văn An" value={s1.school}
-                  onChange={e => setS1(p => ({ ...p, school: e.target.value }))} {...fv1.bind("school", s1.school)} />
-              </div>
-              )}
 
               {/* FE-100: Field riêng Gia sư — bio + subjects. Render inline
                   thay vì tạo step riêng để giữ 2-bước gọn và cùng UX. */}
@@ -377,8 +415,8 @@ export default function DangKyPage() {
             </div>
           )}
 
-          {/* ── BƯỚC 2 ── */}
-          {step === 2 && (
+          {/* ── GIA SƯ · BƯỚC 2 ── */}
+          {role === "tutor" && step === 2 && (
             <form ref={form2Ref} onSubmit={handleSubmit} noValidate className="space-y-4">
               <p className="text-sm font-semibold mb-1" style={{ color: "var(--kin-chu-phu)" }}>Thông tin tài khoản</p>
 

@@ -18,13 +18,13 @@ import LopChiTiet, { type LopTab } from "@/components/tutor/LopChiTiet";
 import { formatScheduleRules } from "@/lib/tutorClassTable";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { normalizeFeeMode } from "@/lib/tuitionFee";
-import { effectivePolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
+import { effectivePolicy, redeemPolicy, canUseOpenPolicy, isFreeClass } from "@/lib/joinRequest";
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { courseRoleForPage } from "@/lib/courseAccessServer";
 import { legacyClassTarget } from "@/lib/tutorClassRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
-import { TUTOR_PENDING_PATH } from "@/lib/tutorGate";
+import { TUTOR_PENDING_PATH, isTeacher as isTeacherAccount } from "@/lib/tutorGate";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,7 @@ export default async function LopPage({ params, searchParams }: Props) {
 
   const course = await prisma.course.findUnique({
     where:  { id: courseId },
-    select: { id: true, name: true, category: true, ownerId: true, feeMode: true, joinPolicy: true, tag: true, price: true },
+    select: { id: true, name: true, category: true, ownerId: true, feeMode: true, joinPolicy: true, tag: true, price: true, owner: { select: { role: true, adminRole: true } } },
   });
   if (!course) notFound();
 
@@ -120,7 +120,7 @@ export default async function LopPage({ params, searchParams }: Props) {
       sessionsTaught: taught, inviteCode: usable?.code ?? null,
       initialTab: TABS.find(t => t === sp.tab) ?? "diem-danh", justCreated: sp.moi === "1", scheduleFailed: sp.lich === "loi", addedStudents: /^\d{1,3}$/.test(sp.them ?? "") ? Number(sp.them) : null, addFailed: sp.them === "loi", codeFailed: sp.ma === "loi",
       // Đồng giảng/bộ môn: giá trị trung tính, không đẩy chính sách vào lớp / miễn phí / feeMode thật xuống client.
-      joinPolicy: co ? effectivePolicy(null) : effectivePolicy(course.joinPolicy), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
+      joinPolicy: co ? effectivePolicy(null) : redeemPolicy(course.joinPolicy, isTeacherAccount(course.owner)), isFree: co ? false : isFreeClass(feeInfo), canOpen: co ? false : canUseOpenPolicy(feeInfo),
       pending, pendingFailed, duyet: sp.duyet ?? null, duyetN: /^\d{1,3}$/.test(sp.n ?? "") ? Number(sp.n) : null, feeMode: normalizeFeeMode(co ? null : course.feeMode),
     }} />;
   }

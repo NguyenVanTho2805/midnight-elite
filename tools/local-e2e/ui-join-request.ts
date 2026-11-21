@@ -6,6 +6,7 @@
 import { BASE, mkUser, mkTutor, mkCourse, api, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll, type Page, kinSelect } from "./ui";
 import { prisma } from "@/lib/prisma";
+import { featureOn } from "@/lib/features";
 
 const FREE_TAG = "Miễn phí";
 
@@ -148,7 +149,9 @@ async function mobileReport(page: Page) {
   await sFree.goto(`${BASE}/student/nhap-ma-lop?code=${inv.json.code}`, { waitUntil: "networkidle", timeout: 120000 });
   await sFree.getByText("Bạn sắp vào lớp").waitFor({ timeout: 60000 });
   const prev = await sFree.locator("section[aria-label='Xem trước lớp']").innerText();
-  check("ghi 'Học phí Miễn phí'; không có 'học phí tính theo tháng'", /Học phí\s*Miễn phí/.test(prev) && (await sFree.getByText(/học phí tính theo tháng/).count()) === 0, prev);
+  // SCL P2-11: dòng "Học phí" ở màn vào lớp chỉ hiện khi cờ HOC_PHI bật.
+  check(featureOn("HOC_PHI") ? "ghi 'Học phí Miễn phí'; không có 'học phí tính theo tháng'" : "HOC_PHI tắt: không có dòng 'Học phí' nào",
+    (featureOn("HOC_PHI") ? /Học phí\s*Miễn phí/.test(prev) : !/Học phí/.test(prev)) && (await sFree.getByText(/học phí tính theo tháng/).count()) === 0, prev);
 
   // ───────── Wizard
   section("Wizard tạo lớp: đúng thứ tự bước; Miễn phí ẩn mục học phí; Vào ngay khoá khi có học phí");

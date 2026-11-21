@@ -2,6 +2,7 @@
 //   POST /api/courses/[id]/invites — gia sư tạo mã mời
 //     Body { ensure: true } (BU-01, "Cách học sinh vào lớp"): đảm bảo lớp có ĐÚNG MỘT mã lớp dài hạn (không giới hạn lượt, không hết hạn, chưa thu hồi) —
 //     đã có thì trả lại mã đó (200, existing: true), chưa có mới tạo (201). Gọi hai lần không sinh hai mã (khoá tư vấn theo lớp trong giao dịch).
+//     Body { rotate: true } (SCL Q7, nút "Đổi mã"): thu hồi mã lớp dài hạn đang dùng và cấp MỘT mã mới (một giao dịch, khoá theo lớp). Giới hạn tần suất theo tài khoản.
 //   GET  /api/courses/[id]/invites — xem danh sách mã mời của lớp
 //
 // Scope: `ownsResource` → gia sư chỉ thấy/tạo mã mời cho LỚP CỦA MÌNH;
@@ -14,6 +15,8 @@ import { generateInviteCode, invites } from "@/lib/classInvite";
 import { logAction } from "@/lib/auditLog";
 import { assertCanAddStudent, tutorLimitMessage } from "@/lib/planServer";
 import { PLAN_LIMIT_CODE } from "@/lib/planLimits";
+import { limitOrBlock } from "@/lib/rate-limit";
+import { INVITE_ROTATE_LIMIT } from "@/lib/joinRequest";
 
 async function authorize(id: string) {
   const auth = await requirePermission(PERMISSIONS.MANAGE_COURSES);
@@ -32,11 +35,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (r.res) return r.res;
   const auth = r.auth!;
 
-  let body: { maxUses?: unknown; expiresAt?: unknown; ensure?: unknown } = {};
+  let body: { maxUses?: unknown; expiresAt?: unknown; ensure?: unknown; rotate?: unknown } = {};
   try { body = await req.json(); } catch { /* không bắt buộc có body */ }
   const ensure = body.ensure === true;
 
   if (ensure) return ensureClassCode(id, auth.userId, r.ownerId ?? null);
+  if (body.rotate === true) {
+    const limited = limitOrBlock(auth.userId, "invite-rotate", INVITE_ROTATE_LIMIT.max, INVITE_ROTATE_LIMIT.windowMs);
+    if (limited) return limited;
+    return rotateClassCode(id, auth.userId);
+  }
 
   // Validate maxUses: null | số nguyên dương
   let maxUses: number | null = null;
@@ -131,6 +139,31 @@ async function ensureClassCode(courseId: string, userId: string, ownerId: string
       if ((e as { code?: string })?.code === "P2002") continue;
       console.error("[POST /api/courses/[id]/invites ensure]", e);
       return NextResponse.json({ error: "Tạo mã lớp thất bại" }, { status: 500 });
+    }
+  }
+  return NextResponse.json({ error: "Không sinh được mã lớp (thử lại sau)" }, { status: 503 });
+}
+
+/** SCL Q7 — "Đổi mã": mã lớp dài hạn cũ hết hiệu lực ngay (revoked), lớp có đúng một mã lớp mới. Học sinh đã vào lớp / yêu cầu đang chờ không bị đụng. */
+async function rotateClassCode(courseId: string, userId: string) {
+  const permanent = { courseId, kind: "class", revoked: false, maxUses: null, expiresAt: null };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateInviteCode();
+    try {
+      const out = await prisma.$transaction(async tx => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"class_code:" + courseId}))`;
+        const old = await tx.classInvite.findMany({ where: permanent, select: { id: true } });
+        if (old.length) await tx.classInvite.updateMany({ where: { id: { in: old.map(o => o.id) } }, data: { revoked: true } });
+        const inv = await tx.classInvite.create({ data: { courseId, code, maxUses: null, expiresAt: null, createdBy: userId, kind: "class", boundUserId: null } });
+        return { inv, revoked: old.map(o => o.id) };
+      });
+      for (const rid of out.revoked) await logAction(userId, "class_invite.revoke", "ClassInvite", rid, { courseId, rotate: true });
+      await logAction(userId, "class_invite.create", "ClassInvite", out.inv.id, { courseId, code: out.inv.code, maxUses: null, expiresAt: null, rotate: true });
+      return NextResponse.json({ ...out.inv, rotated: out.revoked.length }, { status: 201 });
+    } catch (e: unknown) {
+      if ((e as { code?: string })?.code === "P2002") continue;
+      console.error("[POST /api/courses/[id]/invites rotate]", e);
+      return NextResponse.json({ error: "Đổi mã lớp thất bại" }, { status: 500 });
     }
   }
   return NextResponse.json({ error: "Không sinh được mã lớp (thử lại sau)" }, { status: 503 });

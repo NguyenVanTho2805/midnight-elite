@@ -12,13 +12,19 @@ import { isNextResponse } from "@/lib/auth-guard";
 import { invites, checkInviteValidity } from "@/lib/classInvite";
 import { showsSharedTuitionTiers, tuitionPreview } from "@/lib/invitePreview";
 import { taughtSessionWhere } from "@/lib/taughtSessions";
-import { effectivePolicy, isFreeClass, redeemOutcome } from "@/lib/joinRequest";
+import { isTeacher } from "@/lib/tutorGate";
+import { redeemPolicy, isFreeClass, redeemOutcome, INVITE_LOOKUP_LIMIT } from "@/lib/joinRequest";
+import { limitOrBlock } from "@/lib/rate-limit";
 import { loadFeeRateCourseIds, requireStudentForJoin } from "@/lib/enrollServer";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   // Học sinh thật (cùng cổng với redeem / my-requests): gia sư chờ duyệt 403, không xem trước được lớp.
   const session = await requireStudentForJoin();
   if (isNextResponse(session)) return session;
+
+  // SCL P2-9: giới hạn số lần tra mã theo tài khoản (chống dò mã).
+  const limited = limitOrBlock(session.userId, "invite-lookup", INVITE_LOOKUP_LIMIT.max, INVITE_LOOKUP_LIMIT.windowMs);
+  if (limited) return limited;
 
   const { code } = await params;
   if (typeof code !== "string" || code.length < 4 || code.length > 20) {
@@ -38,13 +44,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     select: {
       id: true, name: true, shortTitle: true, category: true,
       classStatus: true, capacity: true, joinPolicy: true, price: true, tag: true, feeMode: true,
-      owner: { select: { id: true, name: true } },
+      owner: { select: { id: true, name: true, role: true, adminRole: true } },
     },
   });
   if (!course) return NextResponse.json({ status: "invalid", error: "Lớp không còn tồn tại" });
 
   // BU-01: mã cá nhân của người khác — chỉ báo "gắn với tài khoản khác", KHÔNG trả tên lớp / gia sư / lịch.
-  const policy = effectivePolicy(course.joinPolicy);
+  const policy = redeemPolicy(course.joinPolicy, isTeacher(course.owner));
   const outcome = redeemOutcome({ policy, invite: { kind: inv!.kind ?? null, boundUserId: inv!.boundUserId ?? null }, userId: session.userId });
   if (outcome.action === "deny") return NextResponse.json({ status: "invalid", reason: outcome.status, error: outcome.error });
 

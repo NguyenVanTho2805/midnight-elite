@@ -176,6 +176,7 @@ let seq = 700;
 
   section("Hộp việc của lớp: Mã mời");
   await page.goto(`${BASE}/lop-cua-toi/quan-lop/${c1.id}/hoc-vien?muc=ma-moi`, { waitUntil: "networkidle" }); // GS-LOP-GON: Mã mời là mục con của Học sinh
+  await page.getByText("Mã có giới hạn lượt hoặc hạn dùng (tuỳ chọn)").click(); // SCL Q7: mã có giới hạn nằm trong khối gập
   await page.getByText("Tạo mã mời mới").waitFor({ timeout: 60000 });
   await eventually("chưa có mã → thông báo", () => page.getByText("Chưa có mã mời nào.").isVisible());
   await page.getByLabel(/Số lượt dùng tối đa/).fill("2");

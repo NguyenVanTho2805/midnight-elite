@@ -29,7 +29,7 @@ import { NO_AUTOFIX } from "@/components/kin/noAutofix";
 import { LockCountdown } from "@/components/kin/LockCountdown";
 import { replayClass } from "@/lib/replayClass";
 import { KinTabs } from "@/components/kin/Tabs";
-import { safeRedirect } from "@/lib/safeRedirect";
+import { safeRedirect, loginVaiFor, isInviteEntry, INVITE_ENTRY } from "@/lib/safeRedirect";
 import { SocialButtons } from "@/components/guest/SocialButtons";
 import { SOCIAL_NOTICES } from "@/lib/socialNotices";
 import { maskPhone, normalizeVnPhone } from "@/lib/phone";
@@ -72,7 +72,8 @@ function DangNhapForm() {
 
   const [phoneOn, setPhoneOn]       = useState(false); // máy chủ đã mở đăng nhập bằng SMS chưa
   const [method, setMethod]         = useState<Method>(searchParams.get("cach") === "ma" ? "ma" : "mat-khau");
-  const [vai, setVai]               = useState<Vai>(searchParams.get("vai") === "hoc-sinh" ? "hoc-sinh" : "gia-su");
+  // SCL P1-5: đang định vào khu học sinh / cầm link mời (?redirect=/student…, …code=) ⇒ mở sẵn tab Học sinh.
+  const [vai, setVai]               = useState<Vai>(() => loginVaiFor(searchParams.get("vai"), searchParams.get("redirect")));
   const [step, setStep]             = useState<Step>("email");
   const [email, setEmail]           = useState("");   // ô "tài khoản": dùng chung cho cả hai tab
   const [password, setPassword]     = useState("");
@@ -352,7 +353,11 @@ function DangNhapForm() {
             {/* Chỉ dành cho khách / học viên ở tên miền chính — ẩn ở cửa quản trị (data-chi-khach, xem src/lib/hostChrome.ts). `contents`: khối bọc không tạo hộp, các phần tử vẫn xếp trong cột. */}
             <div data-chi-khach className="contents">
               {/* Figma 464:9828: mã mời là việc của học sinh, nên nằm ở tab Học sinh. */}
-              {vai === "hoc-sinh" && <Link href="/student/nhap-ma-lop" className={outlineBtn}>Tôi có mã mời vào lớp</Link>}
+              {/* SCL P1-5: nút cũ dẫn tới /student/nhap-ma-lop, mà chưa đăng nhập thì bị đưa lại đây (vòng lặp). Nay nút chỉ ghi nhớ "đăng nhập xong thì tới ô nhập mã";
+                  khi đã đang trên đường tới ô nhập mã thì thay bằng câu hướng dẫn. */}
+              {vai === "hoc-sinh" && (isInviteEntry(redirectTo)
+                ? <p data-invite-hint className="text-[length:var(--kin-co-small)] text-[var(--kin-chu-chinh)]">Bạn có mã mời: đăng nhập, hoặc tạo tài khoản học sinh mới ở dưới. Xong là tới ngay bước vào lớp.</p>
+                : <Link href={`/dang-nhap?vai=hoc-sinh&redirect=${encodeURIComponent(INVITE_ENTRY)}`} className={outlineBtn}>Tôi có mã mời vào lớp</Link>)}
               <div className="flex flex-col gap-3">
                 <p className="text-[length:var(--kin-co-caption)] text-[var(--kin-chu-mo)]">Chưa có tài khoản? Đăng ký gia sư hoặc học sinh.</p>
                 <Link href={`/dang-ky?vai=${vai}${redirectTo ? `&redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={outlineBtn}>Tạo tài khoản KiN</Link>

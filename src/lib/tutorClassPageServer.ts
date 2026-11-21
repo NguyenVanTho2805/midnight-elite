@@ -8,7 +8,8 @@ import type { SessionPayload } from "@/lib/session";
 import { loadCourseAccess } from "@/lib/courseAccessServer";
 import { vnDateKeyOf } from "@/lib/classSessions";
 import { normalizeFeeMode, type FeeMode } from "@/lib/tuitionFee";
-import { effectivePolicy, canUseOpenPolicy, isFreeClass, type JoinPolicy } from "@/lib/joinRequest";
+import { isTeacher } from "@/lib/tutorGate";
+import { redeemPolicy, canUseOpenPolicy, isFreeClass, type JoinPolicy } from "@/lib/joinRequest";
 import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { coTeacherClassHref, mucCaiDatOf, mucHocSinhOf, type ClassQuery, type MucCaiDat, type MucHocSinh } from "@/lib/tutorClassRoutes";
@@ -93,7 +94,7 @@ const smallInt = (s: string | undefined): number | null => (/^\d{1,3}$/.test(s ?
 export async function loadStudentsTab(session: SessionPayload, courseId: string, query: ClassQuery): Promise<StudentsTabData | null> {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { id: true, name: true, category: true, feeMode: true, joinPolicy: true, tag: true, price: true },
+    select: { id: true, name: true, category: true, feeMode: true, joinPolicy: true, tag: true, price: true, owner: { select: { role: true, adminRole: true } } },
   });
   if (!course) return null;
   const [viewer, hasFeeRate, students, classCodeRow] = await Promise.all([
@@ -116,7 +117,7 @@ export async function loadStudentsTab(session: SessionPayload, courseId: string,
     muc: mucHocSinhOf(first(query, "muc")),
     students: students.map(s => ({ id: s.userId, name: s.user.name ?? "Học sinh" })), studentCount: students.length,
     inviteCode: classCodeRow?.code ?? null,
-    joinPolicy: effectivePolicy(course.joinPolicy), isFree: isFreeClass(feeInfo), canOpen: canUseOpenPolicy(feeInfo), feeMode: normalizeFeeMode(course.feeMode),
+    joinPolicy: redeemPolicy(course.joinPolicy, isTeacher(course.owner)), isFree: isFreeClass(feeInfo), canOpen: canUseOpenPolicy(feeInfo), feeMode: normalizeFeeMode(course.feeMode),
     pending, pendingFailed,
     duyet: first(query, "duyet") ?? null, duyetN: smallInt(first(query, "n")),
     justCreated: first(query, "moi") === "1", addedStudents: smallInt(them), addFailed: them === "loi", codeFailed: first(query, "ma") === "loi", scheduleFailed: first(query, "lich") === "loi",
