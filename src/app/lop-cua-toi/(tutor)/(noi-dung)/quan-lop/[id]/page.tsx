@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 export default async function QuanLopPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { id } = await params;
   const sp = await searchParams;
-  const session = await redirectIfNotTutor(await getSession(), { path: classBase(id), adminTo: "/admin" });
+  const session = await redirectIfNotTutor(await getSession(), { allowAdmin: true, path: classBase(id), adminTo: "/admin" });
   const gate = await gateClassPage(session, id, { ownerOnly: false });
   if (!gate.ok) return null;
   const d = classPageDecision(id, sp);
@@ -38,5 +38,5 @@ export default async function QuanLopPage({ params, searchParams }: { params: Pr
   if (gate.role !== "owner") redirect(classBase(id)); // Cài đặt chỉ của chủ lớp: đồng giảng về "Bài học" của họ
   const settings = await loadClassSettings(id, sp);
   if (!settings) return null;
-  return <CaiDatTab d={settings} />;
+  return <CaiDatTab d={{ ...settings, centerAdmin: gate.centerAdmin }} />;
 }

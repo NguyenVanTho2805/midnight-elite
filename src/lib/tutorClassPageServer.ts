@@ -13,7 +13,8 @@ import { loadPendingJoinRequests } from "@/lib/enrollServer";
 import type { PendingJoinRequest } from "@/components/tutor/JoinRequests";
 import { coTeacherClassHref, mucCaiDatOf, mucHocSinhOf, type ClassQuery, type MucCaiDat, type MucHocSinh } from "@/lib/tutorClassRoutes";
 
-/** Vai của người xem trong lớp khi đã qua cổng gia sư (quản trị trung tâm không vào đường này — redirectIfNotTutor đã đưa đi). */
+/** Vai của người xem trong lớp khi đã qua cổng gia sư. SCL-B (Q1): quản trị trung tâm (Chủ nhiệm) vào đây như "owner" — ma trận courseAccess cho vai admin
+ *  đúng tập quyền của chủ lớp, nên dùng chung mọi nhánh "owner" của trang lớp thay vì viết kiểm tra riêng. */
 export type ClassViewRole = "owner" | "co_teacher" | "subject_teacher";
 
 /** Đầu lớp: một lần cho mọi tab (ClassHead). Chỉ SỐ học sinh, không tên. */
@@ -21,29 +22,30 @@ export interface ClassHeadData {
   id: string; name: string; category: string; classStatus: string; hidden: boolean; studentCount: number;
 }
 export type ClassGate =
-  | { ok: true; role: ClassViewRole; head: ClassHeadData }
+  | { ok: true; role: ClassViewRole; head: ClassHeadData; centerAdmin: boolean }
   | { ok: false; reason: "not_found" | "forbidden" };
 
 /**
  * Cổng của mọi trang quan-lop/[id]*. Id lạ (rỗng / NUL / > 200 ký tự) và lớp không có → not_found (404); lớp của người khác → forbidden (403, KHÔNG mang tên lớp / môn);
- * chủ lớp hoặc đồng giảng / giáo viên bộ môn đang hoạt động → ok kèm đầu lớp. Quản trị trung tâm (role "admin" của loadCourseAccess) không thuộc đường này → forbidden.
+ * chủ lớp, quản trị trung tâm (như chủ lớp) hoặc đồng giảng / giáo viên bộ môn đang hoạt động → ok kèm đầu lớp.
  */
 export async function loadClassHead(session: SessionPayload, courseId: string): Promise<ClassGate> {
   const acc = await loadCourseAccess(session, courseId);
   if (!acc.ok) return { ok: false, reason: acc.res.status === 404 ? "not_found" : "forbidden" };
-  if (acc.role === "admin") return { ok: false, reason: "forbidden" };
   const [c, studentCount] = await Promise.all([
     prisma.course.findUnique({ where: { id: courseId }, select: { id: true, name: true, category: true, classStatus: true, status: true } }),
     prisma.enrollment.count({ where: { courseId, status: "active" } }),
   ]);
   if (!c) return { ok: false, reason: "not_found" };
-  return { ok: true, role: acc.role, head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
+  return { ok: true, role: acc.role === "admin" ? "owner" : acc.role, centerAdmin: acc.role === "admin", head: { id: c.id, name: c.name, category: c.category, classStatus: c.classStatus, hidden: !c.status, studentCount } };
 }
 
 export interface ClassPageGate {
   /** false = người này không có quyền với lớp: layout đã hiện màn "Bạn không có quyền với lớp này"; trang trả null và KHÔNG tải dữ liệu lớp. */
   ok: boolean;
   role: ClassViewRole;
+  /** SCL-B: người xem là Chủ nhiệm (quản trị trung tâm) — đi nhánh "owner" nhưng các API ghi chỉ-gia-sư (thêm em, mã mời, duyệt, học online, học phí) vẫn 403 ⇒ trang ẩn nút ghi đó. */
+  centerAdmin: boolean;
 }
 
 /**
@@ -54,10 +56,10 @@ export async function gateClassPage(session: SessionPayload, courseId: string, o
   const g = await loadClassHead(session, courseId);
   if (!g.ok) {
     if (g.reason === "not_found") notFound();
-    return { ok: false, role: "owner" };
+    return { ok: false, role: "owner", centerAdmin: false };
   }
   if (o.ownerOnly && g.role !== "owner") redirect(coTeacherClassHref(courseId));
-  return { ok: true, role: g.role };
+  return { ok: true, role: g.role, centerAdmin: g.centerAdmin };
 }
 
 // ─── Tab Học sinh ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -124,6 +126,8 @@ export async function loadStudentsTab(session: SessionPayload, courseId: string,
 // ─── Tab Cài đặt ───────────────────────────────────────────────────────────────────────────────────────────────
 export interface ClassSettingsData {
   courseId: string; courseName: string; feeMode: FeeMode; muc: MucCaiDat;
+  /** SCL-B: Chủ nhiệm xem — ẩn mục Học phí / Học online (API chỉ của gia sư chủ lớp). */
+  centerAdmin?: boolean;
   /** DG-HOC-ONLINE: link học online chung (Course.classJoinUrl) + nhắc email trước giờ học (Course.reminderLeadMinutes, null = tắt). `onlineFlash` từ ?luu= / ?loi= sau POST + 303. */
   online?: { joinUrl: string | null; leadMinutes: number | null; flash: "ok" | "link" | "lead" | null };
 }

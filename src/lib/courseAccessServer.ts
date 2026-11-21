@@ -196,8 +196,7 @@ export async function requireAttendanceSessionAccess(sessionId: string) {
 export async function requireCurriculumAccess(courseId: string): Promise<{ session: SessionPayload; acc: Extract<CourseAccess, { ok: true }> } | NextResponse> {
   const acc = await requireCourseAccess(courseId, "content.edit.own");
   if (!acc.ok) return acc.res;
-  // Màn giáo trình của gia sư (tutor/lop/…): quản trị trung tâm vẫn 403 như trước (hành vi cũ của requireCourseTutor).
-  if (acc.role === "admin") return NextResponse.json({ error: "Chỉ gia sư mới dùng chức năng này" }, { status: 403, headers: NO_STORE });
+  // SCL-B (Q1): quản trị trung tâm soạn giáo trình như chủ lớp (vai admin = owner trong ma trận), không còn chốt 403 riêng.
   return { session: acc.session, acc };
 }
 

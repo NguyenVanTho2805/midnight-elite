@@ -5,6 +5,7 @@
 // `group` (BU-08): nhóm con trong module. Vỏ chỉ hiện dải tab của NHÓM đang ở (≤ 6 tab) và đặt tên nhóm làm tiêu đề phụ ở thanh bên rộng.
 import { COIN_VISIBLE, isLinkHidden, type FeatureEnv } from "@/lib/features";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
+import { ADMIN_HOST } from "@/lib/hostRouting";
 
 export interface AdminSub { label: string; href: string; permission?: Permission; group?: string }
 export interface AdminModuleDef { key: string; label: string; icon: string; subs: AdminSub[] }
@@ -115,4 +116,20 @@ export function matchSub(pathname: string): { moduleKey: string; sub: AdminSub }
     }
   }
   return best;
+}
+
+// SCL-B (21/11/2026, Q1): Chủ nhiệm (quản trị trung tâm) đứng lớp trong vỏ gia sư ở tên miền chính; nhóm "Quản lý" của vỏ ấy trỏ sang ĐÚNG các trang quản người
+// đã có ở tên miền admin (không chép trang). Cookie không dùng chung hai tên miền nên liên kết là địa chỉ tuyệt đối; quyền từng trang như ADMIN_MODULES.
+const TUTOR_SHELL_MANAGE = ["/admin/gia-su", "/admin/hoc-sinh", "/admin/kiem-duyet"] as const;
+type ManageHref = (typeof TUTOR_SHELL_MANAGE)[number];
+const MANAGE_LABEL: Record<ManageHref, string> = { "/admin/gia-su": "Gia sư", "/admin/hoc-sinh": "Học sinh", "/admin/kiem-duyet": "Hàng chờ duyệt" };
+
+/** Mục "Quản lý" cho vỏ gia sư của Chủ nhiệm: chỉ trang người này đủ quyền và không thuộc phần đang ẩn; `href` là địa chỉ tuyệt đối ở tên miền admin. */
+export function tutorShellManageLinks(role: AdminRole | undefined | null, env?: FeatureEnv): { label: string; href: string }[] {
+  if (role !== "admin_super" && role !== "admin_content") return [];
+  const subs = ADMIN_MODULES.flatMap(m => m.subs);
+  return TUTOR_SHELL_MANAGE
+    .map(href => subs.find(s => s.href === href))
+    .filter((s): s is AdminSub => !!s && allowed(role, s) && !isLinkHidden(s.href, env))
+    .map(s => ({ label: MANAGE_LABEL[s.href as ManageHref], href: `https://${ADMIN_HOST}${s.href}` }));
 }

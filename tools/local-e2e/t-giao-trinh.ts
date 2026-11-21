@@ -43,7 +43,9 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   check("gia sư LỚP KHÁC → 403, không mang dữ liệu lớp", (await g(A.id, T2)).status === 403 && !JSON.stringify((await g(A.id, T2)).json).includes("Bài 1"));
   check("lớp không tồn tại → 404", (await g("khong-co-lop", T)).status === 404);
   check("gia sư CHỜ DUYỆT → 403", (await g(A.id, P)).status === 403);
-  check("học sinh → 403; quản trị cấp 1 → 403 (màn của gia sư)", (await g(A.id, S)).status === 403 && (await g(A.id, SUP)).status === 403);
+  check("học sinh → 403", (await g(A.id, S)).status === 403);
+  // SCL-B (Q1): Chủ nhiệm (quản trị cấp 1) mở giáo trình lớp của gia sư khác như chủ lớp. Phá cố ý: trả lại chốt `if (acc.role === "admin") return 403` ở giao-trinh/route.ts → đỏ.
+  check("SCL-B: quản trị cấp 1 (Chủ nhiệm) → 200 ở lớp của gia sư khác", (await g(A.id, SUP)).status === 200 && (await g(A.id, SUP)).json.courseId === A.id);
   check("khách → 401", (await g(A.id)).status === 401);
 
   section("G2 · POST muc — thêm link vào bài có sẵn");
@@ -97,7 +99,7 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   check("T2 gửi vào lớp B bài của B → 201 (chủ lớp B thao tác được)", (await post(B.id, T2, { lessonId: LB.id, url: yt(9) })).status === 201);
   check("chapterId của lớp B nhưng đường dẫn lớp A → 404, không tạo bài", (await post(A.id, T, { chapterId: tB.chapter.id, newLessonTitle: "Lén", url: yt(10) })).status === 404 && (await prisma.lesson.count({ where: { chapterId: tB.chapter.id } })) === 1);
   check("lớp không tồn tại → 404", (await post("khong-co-lop", T, { lessonId: L1.id, url: yt(11) })).status === 404);
-  check("gia sư CHỜ DUYỆT → 403; học sinh → 403; quản trị → 403; khách → 401", (await post(A.id, P, { lessonId: L3.id, url: yt(12) })).status === 403 && (await post(A.id, S, { lessonId: L3.id, url: yt(12) })).status === 403 && (await post(A.id, SUP, { lessonId: L3.id, url: yt(12) })).status === 403 && (await post(A.id, undefined as never, { lessonId: L3.id, url: yt(12) })).status === 401);
+  check("gia sư CHỜ DUYỆT → 403; học sinh → 403; khách → 401", (await post(A.id, P, { lessonId: L3.id, url: yt(12) })).status === 403 && (await post(A.id, S, { lessonId: L3.id, url: yt(12) })).status === 403 && (await post(A.id, undefined as never, { lessonId: L3.id, url: yt(12) })).status === 401);
   check("sau mọi ca bị chặn: cột các bài vẫn nguyên", (await snap()) === before);
   check("lessonId không tồn tại → 404", (await post(A.id, T, { lessonId: "khong-co-bai", url: yt(13) })).status === 404);
 
@@ -192,6 +194,15 @@ const post = (courseId: string, as: Parameters<typeof api>[2] extends infer O ? 
   check("học sinh chưa ghi danh: GET /api/lessons/<id>/context không có link (hoặc bị chặn)", !leaks(ctxSX.json), ctxSX.status);
   check("học sinh ĐÃ ghi danh vẫn thấy đủ", leaks((await api("GET", `/api/courses/${A.id}`, { as: S })).json));
   check("gia sư LỚP KHÁC xem /api/courses/<A> không thấy link", !leaks((await api("GET", `/api/courses/${A.id}`, { as: T2 })).json));
+
+  section("SCL-B · Chủ nhiệm sửa giáo trình lớp của gia sư khác");
+  // Phá cố ý: trả lại chốt `if (acc.role === "admin") return 403` trong courseAccessServer.requireCurriculumAccess → hai ca đầu đỏ.
+  const LB2 = await prisma.lesson.create({ data: { id: `les-${stamp}-${++seq}`, code: "B9", title: "Bài Chủ nhiệm soạn", type: "document", order: 9, chapterId: tB.chapter.id, isLocked: false, isFree: false, documents: "[]" } });
+  const supAdd = await post(B.id, SUP, { lessonId: LB2.id, url: yt(77) });
+  check("quản trị cấp 1 thêm YouTube vào bài lớp B (của T2) → 201, cột ghi", supAdd.status === 201 && (await lessonDb(LB2.id)).videoUrl === yt(77), supAdd.json);
+  const supDel = await api("DELETE", `/api/tutor/lop/${B.id}/giao-trinh/muc`, { as: SUP, body: { lessonId: LB2.id, key: supAdd.json.item?.key } });
+  check("quản trị cấp 1 gỡ lại mục vừa thêm → 2xx, cột trống", supDel.status < 300 && (await lessonDb(LB2.id)).videoUrl === null, supDel.json);
+  check("gia sư A vẫn không đụng được lớp B → 403", (await post(B.id, T, { lessonId: LB.id, url: yt(78) })).status === 403 && (await g(B.id, T)).status === 403);
 
   await done();
 })().catch(e => { console.error(e); process.exit(1); });

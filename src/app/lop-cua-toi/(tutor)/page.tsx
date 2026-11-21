@@ -19,7 +19,7 @@ import TutorOverviewStats from "@/components/tutor/TutorOverviewStats";
 import { readPreferences, isTutorModuleVisible } from "@/lib/userPreferences";
 import { contentHref } from "@/lib/tutorRoutes";
 import { loadTutorStatus } from "@/lib/tutorGateServer";
-import { isApplicant, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
+import { isApplicant, isCenterAdmin, TUTOR_PENDING_PATH } from "@/lib/tutorGate";
 import ThuVienLop from "@/components/student/ThuVienLop";
 import { featureOn, isLinkHidden } from "@/lib/features";
 import { TUTOR_HOME_NO_INBOX } from "@/lib/landing";
@@ -40,6 +40,9 @@ export default async function LopCuaToiPage() {
     if (!isTutorModuleVisible(readPreferences(me?.preferences), "hop-viec")) redirect(isLinkHidden("/lop-cua-toi/lich") ? TUTOR_HOME_NO_INBOX : "/lop-cua-toi/lich");
     return <HopViec top={<Suspense fallback={null}><TutorOverviewStats tutorId={session.userId} /></Suspense>} />;
   }
+
+  // SCL-B (Q1): Chủ nhiệm (quản trị trung tâm) không có Hộp việc của riêng mình — trang đầu là danh sách MỌI lớp.
+  if (isCenterAdmin(session)) redirect(TUTOR_HOME_NO_INBOX);
 
   // BU-00 bước 5: gia sư CHỜ DUYỆT (role student + đơn đang chờ) không có lớp nào để liệt kê — trang đầu của họ là Trạng thái hồ sơ.
   if (session.role === "student" && isApplicant(await loadTutorStatus(session))) redirect(TUTOR_PENDING_PATH);

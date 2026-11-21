@@ -45,6 +45,7 @@ export type RouteDecision =
 export const isAdminHost = (host: string): boolean => host === ADMIN_HOST || host.startsWith(`${ADMIN_HOST}:`); // cho phép cổng khi giả lập Host cục bộ
 
 const isTeacher = (s: RouteSession | null): boolean => !!s && s.role === "admin" && s.adminRole === "teacher";
+const isCenter = (s: RouteSession | null): boolean => !!s && s.role === "admin" && (s.adminRole === "admin_super" || s.adminRole === "admin_content");
 const isLearnerOrTeacher = (s: RouteSession | null): boolean => !!s && (s.role === "student" || isTeacher(s));
 const isAdminPath = (p: string) => p === "/admin" || p.startsWith("/admin/");
 const AUTH_PAGES = ["/dang-nhap", "/dang-ky"];
@@ -114,7 +115,10 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
   }
 
   // DG (14/11/2026): Hộp việc ẩn (cờ HOP_VIEC) ⇒ gia sư mở gốc /lop-cua-toi → 307 sang thư viện Lớp (bỏ tham số, như các chốt khác). Học sinh / quản trị không đổi.
+  // SCL-B (Q1): Chủ nhiệm (quản trị trung tâm) đứng lớp trong vỏ gia sư — gốc /lop-cua-toi của họ cũng là thư viện Lớp (họ không có Hộp việc riêng).
   if (pathname === TUTOR_ROOT && isTeacher(session) && !featureOn("HOP_VIEC")) return { kind: "redirect", status: 307, pathname: TUTOR_HOME_NO_INBOX };
+  // Cờ HOP_VIEC mở thì proxy không giải mã phiên ở gốc này (needsSession) — trang (tutor)/page.tsx tự chuyển Chủ nhiệm sang thư viện Lớp.
+  if (pathname === TUTOR_ROOT && isCenter(session)) return { kind: "redirect", status: 307, pathname: TUTOR_HOME_NO_INBOX };
 
   // LOI-01: phần đang ẩn → trang đầu theo vai. Quản trị đi thẳng sang tên miền admin (ở tên miền chính /admin lại bị đẩy sang đó — bớt một vòng).
   // LOI-07: bỏ tham số cũ, CHỈ gắn dấu `?tam-dong=<CỜ>` (features.pausedSearch) để trang đích nói một dòng "Phần này đang tạm đóng." — vẫn 307 + no-store như cũ.

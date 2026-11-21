@@ -7,8 +7,8 @@
 //   - gia sư CHỜ DUYỆT (role student + đơn đang chờ, không cột mới, không đổi JWT) → vỏ GIA SƯ dạng "chờ duyệt": chỉ Trạng thái hồ sơ ·
 //     Liên hệ hỗ trợ · Cài đặt; mở trang gia sư nào khác đều về /lop-cua-toi/cho-duyet;
 //   - học sinh thường                                      → vỏ HỌC SINH (danh sách lớp đang học ở /lop-cua-toi, trang lớp…), trang chỉ-gia-sư thì về /lop-cua-toi;
-//   - quản trị cấp 1 / cấp nội dung                        → vỏ HỌC SINH kèm băng "xem thử" (cookie không dùng chung hai tên miền nên họ đăng nhập ở tên miền chính
-//     để xem như học sinh — src/lib/hostRouting.ts); trang chỉ-gia-sư thì về /lop-cua-toi (hoặc /admin ở nhóm nội dung).
+//   - quản trị cấp 1 / cấp nội dung (SCL-B 21/11/2026, Q1: "Chủ nhiệm" đứng lớp)  → vỏ GIA SƯ (bản Chủ nhiệm: module Lớp + nhóm "Quản lý"); chỉ vào các trang
+//     DẠY HỌC đánh dấu `allowAdmin` (danh sách lớp, trang lớp, giáo trình) — trang riêng của một gia sư (Hộp việc, Lịch, Học phí…) vẫn về /lop-cua-toi (hoặc /admin).
 import type { TutorApplicationStatus } from "@/lib/tutorProfile";
 
 export interface GateSession { role: string | null; adminRole?: string | null }
@@ -27,7 +27,7 @@ export const isApplicant = (status: TutorApplicationStatus | null | undefined): 
 /** Vỏ cho người đang xem một trang dưới /lop-cua-toi. `status` chỉ có nghĩa khi role là student (người khác truyền gì cũng bỏ qua). */
 export function tutorShellKind(s: GateSession | null, status?: TutorApplicationStatus | null): TutorShellKind | null {
   if (!s) return null;
-  if (isTeacher(s)) return "tutor";
+  if (isTeacher(s) || isCenterAdmin(s)) return "tutor";
   if (s.role === "student") return isApplicant(status) ? "tutor-pending" : "student";
   if (s.role === "admin") return "admin-preview";
   return null;
@@ -42,6 +42,8 @@ export interface GateOptions {
   adminTo?: string;
   /** Trang này cho gia sư chờ duyệt vào (Trạng thái hồ sơ, Liên hệ hỗ trợ, Hồ sơ gia sư). */
   allowPending?: boolean;
+  /** SCL-B (Q1): trang DẠY HỌC — quản trị trung tâm (Chủ nhiệm) vào như gia sư; quyền trong từng lớp vẫn do ma trận courseAccess (vai admin = như chủ lớp). */
+  allowAdmin?: boolean;
 }
 
 /** Trang chỉ-gia-sư: trả null = cho vào, trả chuỗi = đường phải chuyển hướng tới (307 qua redirect()). */
@@ -52,6 +54,7 @@ export function tutorGateTarget(s: GateSession | null, status: TutorApplicationS
     if (isApplicant(status)) return o.allowPending ? null : TUTOR_PENDING_PATH;
     return o.studentTo ?? TUTOR_HOME;
   }
+  if (o.allowAdmin && isCenterAdmin(s)) return null;
   return o.adminTo ?? TUTOR_HOME;
 }
 
