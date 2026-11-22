@@ -4,7 +4,7 @@
 // hai tab Tổng quan · Nội dung (mặc định Nội dung, cây CourseOutline [data-outline-lesson]); bài tập quiz ở "Bài tập của lớp" trong Tổng quan; "Nhập mã lớp" nay ở thư viện lớp
 // (không còn trong trang lớp) — trang lớp có chữ "Phiếu học phí của bạn →" (không số tiền).
 // SCL-G-HS (21/11/2026) sửa theo bản chốt: "Việc của tôi" thành "Cần làm" (thẻ việc, Đã nộp chờ chấm, Buổi học sắp tới, đề không lặp); trang lớp không tab / thẻ tiến độ
-// (Cần làm trên cùng, Buổi gần đây, Tất cả bài học, đầu trang có tên cô + lịch); kết quả đã chấm sang mục Điểm (đủ bài, có ngày chấm). Lịch học chỉ kiểm khi cờ LICH bật.
+// (Cần làm trên cùng, Các chương (SCL5), Tất cả bài học, đầu trang có tên cô + lịch); kết quả đã chấm sang mục Điểm (đủ bài, có ngày chấm). Lịch học chỉ kiểm khi cờ LICH bật.
 import { BASE, mkTutor, mkUser, mkCourse, wipe, check, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
 import { prisma } from "@/lib/prisma";
@@ -93,7 +93,7 @@ const H = 3_600_000, D = 24 * H;
   const head = await pg.locator("[data-dau-lop]").innerText();
   check("đầu trang: tên cô + lịch học trên một dòng ('GV · <thứ>, 19:00')", /GV · (Thứ \S+|Chủ nhật), 19:00/.test(head), head);
   check("không còn tab, không thẻ tiến độ cũ", await pg.getByRole("tab").count() === 0 && await pg.locator("[data-course-hero]").count() === 0);
-  check("'Buổi gần đây' liệt kê 3 bài, hàng là link tới bài", await pg.locator("[data-lop-gan-day] [data-lesson-row]").count() === 3 && /^\/student\/bai-giang\/l-sp-\d$/.test((await pg.locator("[data-lop-gan-day] [data-lesson-row] a").first().getAttribute("href")) ?? ""));
+  check("(SCL5) 'Các chương' liệt kê 3 bài, hàng là link tới bài", await pg.locator("[data-lop-chuong] [data-lesson-row]").count() === 3 && /^\/student\/bai-giang\/l-sp-\d$/.test((await pg.locator("[data-lop-chuong] [data-lesson-row] a").first().getAttribute("href")) ?? ""));
   check("liên kết 'Tất cả bài học (3)'", (await pg.locator("[data-tat-ca-bai]").innerText()).includes("Tất cả bài học (3)"));
   check("không có khối link lẻ cuối trang ('Xem điểm của lớp này')", await pg.locator("[data-lop-diem]").count() === 0);
   check("Phiếu học phí theo cờ HOC_PHI, chỉ chữ KHÔNG số tiền", isLinkHidden("/student/hoc-phi") ? await pg.locator("[data-lop-hoc-phi]").count() === 0 : (await pg.locator("[data-lop-hoc-phi]").getAttribute("href")) === "/student/hoc-phi" && !/\d\s*(đ|₫|VND)/i.test(head));

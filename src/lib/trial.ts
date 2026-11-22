@@ -35,6 +35,14 @@ export function trialState(e: TrialFields, now: Date = new Date()): TrialState {
 
 export const isTrialExpired = (e: TrialFields, now: Date = new Date()): boolean => trialState(e, now).kind === "het_han";
 
+/** SCL5: hình dạng gửi cho giao diện học sinh — còn hạn (kèm mốc hết hạn ISO, để ghi giờ tuyệt đối) hoặc chưa bắt đầu. Hết hạn / chính thức ⇒ null. */
+export function trialView(e: TrialFields, now: Date = new Date()): { kind: "dang_thu"; daysLeft: number; endsAt: string } | { kind: "chua_bat_dau" } | null {
+  const s = trialState(e, now);
+  if (s.kind === "chua_bat_dau") return s;
+  if (s.kind === "dang_thu") return { ...s, endsAt: trialEndsAt(e)!.toISOString() };
+  return null;
+}
+
 /** Nhãn ngắn cho danh sách học sinh của gia sư. */
 export function trialLabel(e: TrialFields & { trialConvertRequestedAt?: Date | string | null }, now: Date = new Date()): string | null {
   const s = trialState(e, now);

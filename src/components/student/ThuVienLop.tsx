@@ -15,7 +15,9 @@ import { KinSectionHead } from "@/components/kin/SectionHead";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinStatus } from "@/components/kin/Status";
 import { KinProgressRing } from "@/components/kin/ProgressRing";
-import { WorkSkeleton } from "@/components/student/shared";
+import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { classAccentFor } from "@/lib/classColor";
+import { nextClass, vnWeekdayDate } from "@/lib/studentClassPage";
 import { featureOn } from "@/lib/features";
 
 const FREE_ON = featureOn("TIM_GIA_SU");
@@ -89,22 +91,28 @@ function PctRing({ row, size, className }: { row: ThuVienRow; size: number; clas
   );
 }
 
-function ClassCard({ row }: { row: ThuVienRow }) {
+function ClassCard({ row, buoiToi }: { row: ThuVienRow; buoiToi?: string }) {
   const lopHref = `/student/hoc-tap?course=${encodeURIComponent(row.id)}`;
   const sub = [row.giaSu, row.category.trim()].filter(Boolean).join(" · ");
   const empty = row.total === 0;
   return (
-    <li data-class-card={row.id} data-trial-het-han={row.trialExpired ? "1" : undefined} className={`flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:gap-6 p-[var(--kin-kc-6)] md:p-[var(--kin-kc-7)] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] ${row.trialExpired ? "opacity-60" : ""}`}>
+    <li data-class-card={row.id} data-trial-het-han={row.trialExpired ? "1" : undefined} className={`relative overflow-hidden flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:gap-6 p-[var(--kin-kc-6)] pt-[calc(var(--kin-kc-6)+4px)] md:p-[var(--kin-kc-7)] md:pt-[calc(var(--kin-kc-7)+4px)] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]`}>
+      {/* SCL5: dải màu lớp (màu gia sư đặt hoặc màu tự gán theo mã lớp) — chỉ trang trí, tên lớp luôn đi kèm. */}
+      <span aria-hidden data-lop-mau className="absolute inset-x-0 top-0 h-1" style={{ background: classAccentFor(row.id, row.color) }} />
       {/* Vòng dạy thử 14/11: lớp không có ảnh bìa ⇒ ẩn ô bìa ở màn điện thoại (ô chữ cao ~160px chỉ lặp lại tên lớp, 4 lớp dài ~4 màn). */}
       <div className={`${row.cover ? "w-full aspect-video max-h-[180px]" : "hidden md:block"} md:w-[240px] md:h-[135px] md:max-h-none md:aspect-auto flex-shrink-0 overflow-hidden rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)]`}>
         <Cover row={row} />
       </div>
       <div className="min-w-0 flex-1">
-        {row.trialExpired ? <KinStatus tone="qua-han">Hết thời gian học thử</KinStatus> : <KinStatus tone={row.trangThai === "hoan-thanh" ? "xong" : "cho"}>{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus>}
+        <span className="flex flex-wrap gap-2">
+          {row.trialExpired ? <KinStatus tone="qua-han">Hết thời gian học thử</KinStatus> : <KinStatus tone={row.trangThai === "hoan-thanh" ? "xong" : "cho"}>{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus>}
+          {row.trial && <KinStatus tone="mo">{row.trial.kind === "dang_thu" ? `Học thử · còn ${row.trial.daysLeft} ngày` : "Học thử · chưa bắt đầu tính ngày"}</KinStatus>}
+        </span>
         <h2 className="mt-1 text-[length:var(--kin-co-tieu-de)] font-semibold leading-6 text-[var(--kin-chu-chinh)]">
           <Link href={lopHref} className="inline-flex items-center min-h-11 break-words [overflow-wrap:anywhere] hover:underline">{row.name}</Link>
         </h2>
         {sub && <p className={`${GOC} leading-5 text-[var(--kin-chu-mo)] break-words`}>{sub}</p>}
+        {buoiToi && !row.trialExpired && <p data-lop-buoi-toi className={`mt-1 ${GOC} leading-5 text-[var(--kin-chu-phu)] tabular-nums`}>Buổi tới: {buoiToi}</p>}
         <div className="mt-3 flex items-center gap-4">
           <div className="min-w-0 flex-1">
             {empty ? (
@@ -158,6 +166,12 @@ export default function ThuVienLop() {
     return () => { live = false; };
   }, [tick]);
   const retry = useCallback(() => { setSt({ s: "dang-tai" }); setTick(t => t + 1); }, []);
+  // SCL5: "Buổi tới" của từng thẻ lấy từ lịch thật (cùng nguồn với Cần làm, một yêu cầu cho mọi lớp). Lịch lỗi ⇒ không có dòng, thẻ vẫn đủ.
+  const work = useStudentWork();
+  const buoiToi = (id: string) => {
+    const n = work.events ? nextClass(work.events, new Date(), id) : null;
+    return n ? `${n.today ? "Hôm nay" : vnWeekdayDate(n.start)} · ${n.event.time}` : undefined;
+  };
 
   const rows = st.s === "ok" ? st.rows : [];
   const head = (
@@ -213,7 +227,7 @@ export default function ThuVienLop() {
           </div>
         ) : (
           <ul aria-label="Các lớp của tôi" data-class-catalog className="mt-6 flex flex-col gap-[var(--kin-kc-6)]">
-            {shown.map(r => <ClassCard key={r.id} row={r} />)}
+            {shown.map(r => <ClassCard key={r.id} row={r} buoiToi={buoiToi(r.id)} />)}
           </ul>
         )}
         <div className="mt-10 max-w-[560px] space-y-8">

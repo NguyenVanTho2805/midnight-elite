@@ -84,10 +84,10 @@ async function layoutOk(p: Page, w: number) {
   await layoutOk(p, 390);
   await shot(p, "ui-chao-lop-bat-dau-390");
 
-  section("Còn ≤ 3 ngày ⇒ băng cảnh báo");
+  section("Còn ≤ 3 ngày ⇒ băng nhắc sắp hết");
   await prisma.enrollment.updateMany({ where: { userId: u!.id }, data: { trialStartedAt: new Date(Date.now() - 12 * D) } });
   await p.goto(`${BASE}/student/hoc-tap?course=bca-toan`, { waitUntil: "networkidle", timeout: 120000 });
-  await eventually("băng 'Học thử · còn 2 ngày' tone cảnh báo", async () => (await p.locator("[data-trial-bang='canh-bao']:visible").count()) === 1 && (await p.locator("[data-trial-bang]:visible").innerText()).includes("còn 2 ngày"), 60000);
+  await eventually("băng 'Học thử · còn 2 ngày' (giọng trung tính, có lối đăng ký)", async () => (await p.locator("[data-trial-bang='sap-het']:visible").count()) === 1 && (await p.locator("[data-trial-bang]:visible").innerText()).includes("còn 2 ngày"), 60000);
   await shot(p, "ui-chao-lop-sap-het-390");
 
   section("Hết hạn ⇒ thẻ lớp mờ + thẻ khoá");

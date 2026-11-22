@@ -339,7 +339,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("sau 'Thử lại' trong lúc chờ: có khung xương (aria-busy), chưa hiện bài", busy >= 1 && (await e.locator("[data-lesson-row]").count()) === 0, busy);
     await e.locator("[data-tat-ca-bai]:visible").waitFor({ timeout: 90000 });
     await e.waitForTimeout(500);
-    check("tải xong: 'Buổi gần đây' có bài + lối 'Tất cả bài học (24)', khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-lop-gan-day] [data-lesson-row]:visible").count()) > 0 && /\(24\)/.test(await e.locator("[data-tat-ca-bai]:visible").innerText()));
+    check("tải xong: 'Các chương' (SCL5) có bài + lối 'Tất cả bài học (24)', khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-lop-chuong] [data-lesson-row]:visible").count()) > 0 && /\(24\)/.test(await e.locator("[data-tat-ca-bai]:visible").innerText()));
     await c.close();
   }
 

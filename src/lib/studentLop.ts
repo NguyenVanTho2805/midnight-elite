@@ -292,7 +292,12 @@ export interface ThuVienRow {
   hocTiep: { lessonId: string; title: string; reason: "dang-xem" | "chua-hoc" | "on-lai" } | null;
   /** SCL đợt 5: học thử đã hết hạn ⇒ thẻ mờ + "Hết thời gian học thử". */
   trialExpired?: boolean;
+  /** SCL5: màu lớp gia sư đặt (Course.calendarColor, có thể null) — giao diện qua classAccentFor, không dùng thô. */
+  color?: string | null;
+  /** SCL5: học thử còn hạn (mốc hết hạn ISO) / chưa bắt đầu tính ngày. Không có ⇒ ghi danh chính thức hoặc đã hết hạn. */
+  trial?: TrialView;
 }
+export type TrialView = { kind: "dang_thu"; daysLeft: number; endsAt: string } | { kind: "chua_bat_dau" };
 export interface ThuVienResp { classes: ThuVienRow[] }
 
 /** GET /api/student/hom-nay — một bài sắp tới (gọn). */

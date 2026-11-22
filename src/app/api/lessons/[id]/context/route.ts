@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { isEnrollmentActive } from "@/lib/enrollment";
+import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { isTrialExpired } from "@/lib/trial";
 import { openTrialClockFor } from "@/lib/trialServer";
 import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
@@ -70,8 +71,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       fullAccess = true;
       await openTrialClockFor(session.userId, enrolled); // SCL đợt 5 (D5): mở bài lần đầu ⇒ bắt đầu tính 14 ngày
     } else if (!lesson.isFree) {
-      // Chưa enroll và bài này không phải học thử miễn phí
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+      // Chưa enroll và bài này không phải học thử miễn phí. SCL5: học thử hết hạn ⇒ VẪN 403 (không mở gì), chỉ kèm mã để trang bài hiện thẻ khoá thay lỗi chung.
+      const trialOver = !!enrolled && (enrolled.status === ENROLLMENT_STATUS.TRIAL_EXPIRED || (enrolled.status === ENROLLMENT_STATUS.ACTIVE && isTrialExpired(enrolled)));
+      return NextResponse.json(trialOver ? { error: "Hết thời gian học thử", code: "trial_expired", courseId } : { error: "Không có quyền truy cập" }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
     }
     // Chưa enroll nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
   }

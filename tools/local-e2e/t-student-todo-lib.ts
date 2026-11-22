@@ -19,7 +19,7 @@ check("còn 2 ngày / còn 2 ngày 5 giờ", remainingText(new Date(NOW.getTime(
 check("quá hạn 1 giờ 5 phút", remainingText(new Date(NOW.getTime() - 65 * 60_000), NOW) === "quá hạn 1 giờ 5 phút");
 check("dưới 1 phút vẫn báo ≥ 1 phút", remainingText(new Date(NOW.getTime() + 20_000), NOW) === "còn 1 phút");
 check("nhãn ngày: Hôm nay / Ngày mai / thứ / dd/mm", whenLabel(vn("2026-10-13", "23:00"), NOW) === "Hôm nay" && whenLabel(vn("2026-10-14", "08:00"), NOW) === "Ngày mai"
-  && whenLabel(vn("2026-10-16", "08:00"), NOW) === "Thứ 6" && whenLabel(vn("2026-10-25", "08:00"), NOW) === "25/10" && whenLabel(vn("2026-10-09", "08:00"), NOW) === "09/10");
+  && whenLabel(vn("2026-10-16", "08:00"), NOW) === "Thứ Sáu" && whenLabel(vn("2026-10-25", "08:00"), NOW) === "25/10" && whenLabel(vn("2026-10-09", "08:00"), NOW) === "09/10");
 check("nhãn ngày tính theo giờ VN (23:30 VN = 16:30Z vẫn là hôm nay)", whenLabel(new Date("2026-10-13T16:30:00Z"), NOW) === "Hôm nay" && whenLabel(new Date("2026-10-13T17:30:00Z"), NOW) === "Ngày mai");
 
 section("Bài tập chưa nộp");
@@ -83,8 +83,8 @@ check(`tối đa ${MAX_ITEMS} dòng`, run(Array.from({ length: 80 }, (_, i) => b
 check("cùng giờ thì thứ tự ổn định theo id (không nhảy giữa các lần tải)", JSON.stringify(run([base({ id: "b" }), base({ id: "a" })]).items.map(i => i.id)) === JSON.stringify(["bai-tap:a", "bai-tap:b"]));
 
 section("Mảnh chữ cho màn Figma Học sinh (task / session)");
-check("hạn viết dạng Figma: 'hạn hôm nay, 23:59' / 'ngày mai' / 'Thứ 6 16/10' / '25/10'", dueTextOf(vn("2026-10-13", "23:59"), NOW) === "hạn hôm nay, 23:59" && dueTextOf(vn("2026-10-14", "21:00"), NOW) === "hạn ngày mai, 21:00"
-  && dueTextOf(vn("2026-10-16", "08:00"), NOW) === "hạn Thứ 6 16/10, 08:00" && dueTextOf(vn("2026-10-25", "08:00"), NOW) === "hạn 25/10, 08:00");
+check("hạn viết dạng Figma: 'hạn hôm nay, 23:59' / 'ngày mai' / 'Thứ Sáu 16/10' / '25/10'", dueTextOf(vn("2026-10-13", "23:59"), NOW) === "hạn hôm nay, 23:59" && dueTextOf(vn("2026-10-14", "21:00"), NOW) === "hạn ngày mai, 21:00"
+  && dueTextOf(vn("2026-10-16", "08:00"), NOW) === "hạn Thứ Sáu 16/10, 08:00" && dueTextOf(vn("2026-10-25", "08:00"), NOW) === "hạn 25/10, 08:00");
 const tk = run([base({})]).items[0].task!;
 check("bài chưa nộp: phase chua-nop, tên trần, dòng lớp 'Toán 9 · thầy Thanh', đường dẫn bài giảng", tk.phase === "chua-nop" && tk.name === "Bài tập Vi-ét" && tk.courseLine === "Toán 9 · thầy Thanh" && tk.href === "/student/bai-giang/l1" && tk.dueText === "hạn hôm nay, 23:59", tk);
 const tsub = run([base({ submission: { submittedAt: vn("2026-10-13", "19:10"), score: null, gradedAt: null, comment: null } })]).items[0].task!;

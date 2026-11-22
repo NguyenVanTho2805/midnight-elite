@@ -114,6 +114,12 @@ Quy tắc dùng:
 ## Đã có từ trước (cùng thư mục)
 `KinInput`, `KinTabs`, `KinToast`, `KinConfirm` + `useKinConfirm` (thay `window.confirm`), `KinLoader`, `KinFold`, `KinLogo`, `KinCopyButton`, `KinSubmitButton`, `CodeBoxes`, `ProgressRing`.
 
+## Khối ghép của màn học sinh SCL5 (`src/components/student/`, không phải bộ `kin/`)
+Ghép từ thành phần KiN sẵn có, không thêm token, không thêm thành phần `kin/` mới (phương án C + ghép B, `docs/kin/thiet-ke/scl5/QUYET-DINH-HOI-DONG.md`).
+- `HocThu.tsx` — `HocThuBang` (băng học thử: `KinPanel variant="nhan"`, giọng trung tính, mốc hết hạn tuyệt đối; còn ≤ 3 ngày thì thêm lối Đăng ký chính thức + Zalo, `data-trial-bang="sap-het"`) và `HocThuKhoa` (màn hết hạn D16: `KinStatRow boxed` đã học / đã nộp / điểm TB + điểm từng bài bằng chữ, không link).
+- `HomNayPhu.tsx` — `LopCuaBan` (lưới thẻ lớp nhỏ: dải màu lớp `classAccentFor`, ảnh bìa nhỏ nếu có, `KinProgressRing`) và `NhatKyDemHoc` (14 buổi điểm danh thật, hình `KinStatusIcon` + nhãn chữ; không dữ liệu ⇒ không hiện).
+- Trang lớp (`LopCuaToi.tsx`): `MucLuc` = chương gập (`KinFold` + `KinProgressRing`) › hàng bài `KinListRow` có trạng thái `KinStatus` và điểm ở lề phải.
+
 ## Vỏ (`src/components/kin/shell/`)
 - `ModuleRail`: thanh bên RỘNG 272px theo nhóm (mặc định từ 25/10/2026, Figma "Điều hướng"; chi tiết ở `thanh-ben-trai.md` mục 9) hoặc hẹp 79px (logo KiN đầu thanh, nhãn "Miễn phí ra mắt" chân thanh) + thanh dưới 60px trên điện thoại (các tab xám bo góc, mục đang chọn nền xanh nhạt, số đỏ có nhãn chữ). Cờ `desktopOnly` / `mobileOnly` trên `ModuleItem` chọn mục nào hiện ở đâu.
 - `AccountMenu`: "Tên ⌄" ở dải trên; prop `onOpenMore` thêm mục "Tất cả mục" (chỉ điện thoại) mở bảng "Khác" vì thanh dưới chỉ có 4 tab.

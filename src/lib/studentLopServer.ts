@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/prisma";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import { trialView } from "@/lib/trial";
 import { coverImageOf } from "@/lib/tutorClassRoutes";
 import {
   orderedLessonIds, lopProgress, hocTiep, lopTrangThai, giaSuLabel, chiaHomNay, vnWindow, vnDayTitle, docLinks, azotaLinks,
@@ -22,7 +23,7 @@ export async function loadThuVienLop(userId: string): Promise<ThuVienRow[]> {
     // SCL đợt 5 (D7): lớp học thử đã hết hạn vẫn hiện (mờ, khoá) để em biết đường đăng ký chính thức — không có "Học tiếp".
     where: { userId, status: { in: [ACTIVE, "trial_expired"] } },
     orderBy: [{ createdAt: "asc" }, { courseId: "asc" }],
-    select: { status: true, trialDays: true, trialStartedAt: true, course: { select: { id: true, name: true, category: true, instructor: true, bg: true } } },
+    select: { status: true, trialDays: true, trialStartedAt: true, course: { select: { id: true, name: true, category: true, instructor: true, bg: true, calendarColor: true } } },
   });
   if (enrolls.length === 0) return [];
   const courseIds = enrolls.map(e => e.course.id);
@@ -89,6 +90,8 @@ export async function loadThuVienLop(userId: string): Promise<ThuVienRow[]> {
       trangThai: lopTrangThai(prog),
       hocTiep: !trialExpired && ht.lessonId && ht.reason !== "trong" ? { lessonId: ht.lessonId, title: titleOf.get(ht.lessonId) ?? "", reason: ht.reason } : null,
       ...(trialExpired ? { trialExpired: true } : {}),
+      color: course.calendarColor ?? null,
+      ...(!trialExpired && trialView(e) ? { trial: trialView(e)! } : {}),
     };
   });
 }

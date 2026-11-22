@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
-import { isTrialExpired, trialState } from "@/lib/trial";
+import { isTrialExpired, trialView } from "@/lib/trial";
 import { isSuspended, contactTutorHref } from "@/lib/suspendedContent";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
@@ -112,8 +112,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ...view, role: coRole, canSeeMoney: canSeeMoney(coRole) }, { headers: { "Cache-Control": "private, no-store" } });
     }
     // SCL đợt 5: băng "Học thử · còn N ngày" / "Bắt đầu tính 14 ngày từ hôm nay" — chỉ cho CHÍNH em có ghi danh thử.
-    const ts = enrolled && hasAccess ? trialState(enrolled) : null;
-    const trial = ts && (ts.kind === "dang_thu" || ts.kind === "chua_bat_dau") ? ts : undefined;
+    const trial = enrolled && hasAccess ? trialView(enrolled) ?? undefined : undefined;
     const out: Record<string, unknown> = { ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}), ...(trial ? { trial } : {}) };
     // SCL-J: mã tài khoản chủ lớp và tên nội bộ trong trang quản trị chỉ cho quản lý lớp; khách / học sinh không cần (không màn nào của họ đọc hai trường này).
     if (!isManager) { delete out.ownerId; delete out.adminName; }

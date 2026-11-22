@@ -1,6 +1,6 @@
 // SCL-G-HS (21/11/2026) — các màn học sinh theo bản chốt (docs/kin/thiet-ke/scl/QUYET-DINH-GIAO-DIEN.md §2.1, §3.3–3.6, §3.9; ban-chot.html khung 1–4)
 // trên trình duyệt thật: trang lớp (một dòng đầu trang + vạch 4px, Cần làm trên cùng, thẻ có viền trái / hạn đủ thứ-ngày-giờ / nút Nộp bài ≥ 48px, MỘT nút chính,
-// không còn 3 viên tab, Buổi gần đây hàng 56px mới nhất trước, dock chỉ hiện khi thẻ đã cuộn khỏi màn và không che hàng cuối, phản hồi sau khi nộp),
+// không còn 3 viên tab, (SCL5) mục lục Các chương hàng 56px có trạng thái + điểm ở lề, dock chỉ hiện khi thẻ đã cuộn khỏi màn và không che hàng cuối, phản hồi sau khi nộp),
 // Tất cả bài học (nhóm theo chương, chương mới nhất trên, ô tìm không dấu, bản ghi buổi học), Cần làm gom mọi lớp (nhóm Quá hạn / Tuần này…),
 // Điểm (x/10, Trung bình, "Chờ gia sư duyệt" KHÔNG có số — kể cả trong JSON), thanh dưới 64px (Cần làm có badge · Lớp · [Lịch] · Điểm, aria-current),
 // link Zalo ?course=…&bai=… mở thẳng bài, POST nộp bài có `ve` quay về đúng màn. 360/390/1280 không tràn ngang. Chụp ảnh vào SHOTS_DIR nếu có.
@@ -95,8 +95,9 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   check("h1 đậm 700 (thứ bậc theo bản chốt)", (await pg.locator("main h1:visible").first().evaluate(e => getComputedStyle(e).fontWeight)) === "700");
   check("vạch màu lớp cao 4px", Math.round((await pg.locator("[data-vach-lop]:visible").boundingBox())?.height ?? 0) === 4);
   check("không còn dải tab Nội dung / Video / Kết quả", await pg.getByRole("tab").count() === 0 && await pg.getByRole("tablist").count() === 0);
-  const order = await pg.evaluate(`({ canLam: document.querySelector("[data-lop-can-lam]")?.getBoundingClientRect().top ?? -1, ganDay: document.querySelector("[data-lop-gan-day]")?.getBoundingClientRect().top ?? -1 })`) as { canLam: number; ganDay: number };
-  check("'Cần làm' nằm TRÊN 'Buổi gần đây'", order.canLam >= 0 && order.canLam < order.ganDay, order);
+  // SCL5 (phương án C): "Buổi gần đây" thay bằng mục lục "Các chương" (chương › bài, trạng thái từng bài, điểm ở lề phải).
+  const order = await pg.evaluate(`({ canLam: document.querySelector("[data-lop-can-lam]")?.getBoundingClientRect().top ?? -1, chuong: document.querySelector("[data-lop-chuong]")?.getBoundingClientRect().top ?? -1 })`) as { canLam: number; chuong: number };
+  check("'Cần làm' nằm TRÊN 'Các chương'", order.canLam >= 0 && order.canLam < order.chuong, order);
   const cards = pg.locator("[data-lop-can-lam] [data-can-lam-the]:visible");
   check("Cần làm có 3 thẻ của lớp này (2 bài tập + 1 kiểm tra), không lẫn bài lớp Vật lý", await cards.count() === 3 && !(await pg.locator("[data-lop-can-lam]").innerText()).includes("Bài tập chương 1"), await cards.count());
   check("số đếm cạnh 'Cần làm' = 3", (await pg.locator("[data-dem-can-lam]:visible").innerText()).trim() === "3");
@@ -110,13 +111,16 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   const cb = await first.boundingBox();
   check("nút 'Nộp bài' cao ≥ 48px, rộng gần hết thẻ", !!nb && !!cb && nb.height >= 48 && nb.width >= cb.width - 48, { nb, cb });
   check("đúng MỘT nút chính trên màn (bài hạn gần nhất), dock không tính", (await primaries(pg)).length === 1, await primaries(pg));
-  const rows = pg.locator("[data-lop-gan-day] [data-kin-list-row]:visible");
-  const rowH = await rows.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
-  check("Buổi gần đây: hàng mảnh ≥ 56px, tối đa 5 hàng", rowH.length >= 4 && rowH.length <= 5 && rowH.every(h => h >= 56), rowH);
-  const firstRow = await pg.locator("[data-lop-gan-day] [data-lesson-row]:visible").first().innerText(); // bản ghi tạo "hôm nay" nên đứng trên mọi bài
-  check("bài đầu = bài mới nhất ('Hệ phương trình bậc nhất'), dòng phụ có ngày, 'Video 42 phút', '2 tài liệu', 'Bài tập'", /Hệ phương trình bậc nhất/.test(firstRow) && /Video 42 phút/.test(firstRow) && /2 tài liệu/.test(firstRow) && /Bài tập/.test(firstRow) && /(Thứ \S+|Chủ nhật) \d\d\/\d\d/.test(firstRow), firstRow);
-  check("bài đã chấm ghi 'Đã chấm 8,5/10' ngay trong hàng", /Đã chấm 8,5\/10/.test(await pg.locator("[data-lesson-row='l-3']:visible").innerText()));
-  check("bản ghi buổi học nằm trong Buổi gần đây", await pg.locator("[data-lop-gan-day] [data-recording-row-ngan]:visible").count() === 1);
+  const chuong = await pg.locator("[data-chuong-muc]:visible").evaluateAll(els => els.map(e => ({ id: e.getAttribute("data-chuong-muc"), open: e.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded") })));
+  check("Các chương theo thứ tự giáo trình, KHÔNG hiện tầng Phần; chương đang học (chương 1, bài chưa học đầu tiên) mở sẵn, chương khác gập", JSON.stringify(chuong) === JSON.stringify([{ id: "c-a1", open: "true" }, { id: "c-a2", open: "false" }]) && await pg.locator("[data-lop-chuong]").getByText("Phần 1").count() === 0, chuong);
+  const rowH = await pg.locator("[data-chuong-muc='c-a1'] [data-kin-list-row]:visible").evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().height)));
+  check("hàng bài ≥ 56px; trạng thái của riêng em có chữ ('Chưa học')", rowH.length === 2 && rowH.every(h => h >= 56) && /Chưa học/.test(await pg.locator("[data-lesson-row='l-1']:visible").innerText()), rowH);
+  await pg.locator("[data-chuong-muc='c-a2'] button[aria-expanded]").click();
+  await pg.locator("[data-lesson-row='l-4']:visible").waitFor({ timeout: 10000 });
+  const rowL4 = await pg.locator("[data-lesson-row='l-4']:visible").innerText();
+  check("chương gập mở trong MỘT lần chạm; hàng có ngày, 'Video 42 phút', '2 tài liệu', 'Bài tập'", /Hệ phương trình bậc nhất/.test(rowL4) && /Video 42 phút/.test(rowL4) && /2 tài liệu/.test(rowL4) && /Bài tập/.test(rowL4) && /(Thứ \S+|Chủ nhật) \d\d\/\d\d/.test(rowL4), rowL4);
+  check("bài đã chấm ghi 'Đã chấm 8,5/10' ở lề phải của hàng", /Đã chấm 8,5\/10/.test(await pg.locator("[data-lesson-row='l-3']:visible [data-kin-list-aside]").innerText()));
+  check("bản ghi buổi học: lối 'Bản ghi các buổi học (1)' dưới mục lục", (await pg.locator("[data-lop-ban-ghi]:visible").innerText()).includes("Bản ghi các buổi học (1)"));
   check("bài nháp không hiện; hàng là liên kết thật tới trang bài", await pg.getByText("Bài nháp không được thấy").count() === 0 && (await pg.locator("[data-lesson-row='l-4'] a").getAttribute("href")) === "/student/bai-giang/l-4");
   check("liên kết 'Tất cả bài học (4)'", (await pg.locator("[data-tat-ca-bai]:visible").innerText()).includes("Tất cả bài học (4)"));
   check("mọi trạng thái có chữ + hình", (await statusesOk(pg)).every(s => s.t && s.svg), await statusesOk(pg));
@@ -127,6 +131,8 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
   check("mọi nút / liên kết trong trang cao ≥ 44px", ins.length === 0, ins);
 
   section("Dock nộp bài ghim đáy");
+  await pg.evaluate(() => window.scrollTo(0, 0));
+  await pg.waitForFunction(() => document.querySelector("[data-nop-dock]")?.getAttribute("data-nop-dock") === "an", null, { timeout: 10000 }).catch(() => {});
   check("chưa cuộn: dock ẩn (inert)", (await pg.locator("[data-nop-dock]").getAttribute("data-nop-dock")) === "an");
   await snap(pg, "hs-trang-lop-390");
   await pg.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
@@ -138,7 +144,7 @@ const statusesOk = (pg: Page) => pg.locator("main [data-kin-status]:visible").ev
     const last = [...document.querySelectorAll("main a, main button, main p, main li")].filter(e => !e.closest("[data-nop-dock]") && e.getBoundingClientRect().height > 0).map(e => e.getBoundingClientRect().bottom);
     return { gap: Math.round(bar.top - d.bottom), lastBottom: Math.round(Math.max(...last)), dockTop: Math.round(d.top), barH: Math.round(bar.height), btn: Math.round(document.querySelector("[data-nop-dock] button").getBoundingClientRect().height) };
   })()`) as { gap: number; lastBottom: number; dockTop: number; barH: number; btn: number };
-  check("dock cách thanh dưới ≥ 12px, không che hàng cuối (trang chừa padding), nút ≥ 48px", geo.gap >= 12 && geo.lastBottom <= geo.dockTop && geo.btn >= 48, geo);
+  check("dock cách thanh dưới ≥ 12px, không che hàng cuối (trang chừa padding), nút ≥ 48px", geo.gap >= 12 && geo.lastBottom <= geo.dockTop && geo.btn >= 48, { geo, dbg: await pg.evaluate(`[...document.querySelectorAll("main a, main button, main p, main li")].filter(e => !e.closest("[data-nop-dock]") && e.getBoundingClientRect().height > 0 && e.getBoundingClientRect().bottom > 640).map(e => e.tagName + ":" + (e.textContent||"").trim().slice(0,40) + ":" + Math.round(e.getBoundingClientRect().bottom))`) });
   check("thanh dưới cao 64px", geo.barH === 64, geo);
   await snap(pg, "hs-trang-lop-390-dock");
   await pg.evaluate(() => window.scrollTo(0, 0));

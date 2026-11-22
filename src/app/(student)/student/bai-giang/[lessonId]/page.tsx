@@ -23,6 +23,7 @@ import { DocumentRows, AzotaPanel, StampedNotes, parseMaterials } from "@/compon
 import { KinLoader } from "@/components/kin/KinLoader";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline from "@/components/student/CourseOutline";
+import { HocThuKhoa } from "@/components/student/HocThu";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -559,6 +560,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const [ctx, setCtx]               = useState<LessonContext | null>(null);
   const [ctxStatus, setCtxStatus]   = useState<number | null>(null);
   const [suspended, setSuspended]   = useState<{ contactHref: string | null } | null>(null);
+  const [trialOver, setTrialOver]   = useState<string | null>(null); // SCL5: mã lớp khi học thử đã hết hạn (máy chủ vẫn 403, chỉ đổi màn báo)
   const [ctxLoading, setCtxLoading] = useState(true);
 
   useEffect(() => {
@@ -566,13 +568,15 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     setCtx(null);
     setCtxStatus(null);
     setSuspended(null);
+    setTrialOver(null);
     fetch(`/api/lessons/${params.lessonId}/context`)
       .then(async r => {
         setCtxStatus(r.status);
         if (r.ok) return r.json();
         // Đã nghỉ lớp (quyết định 06/11/2026): 403 kèm code → trang thông báo riêng, không phải "chưa vào lớp".
-        const body = r.status === 403 ? await r.json().catch(() => null) as { code?: string; contactHref?: string | null } | null : null;
+        const body = r.status === 403 ? await r.json().catch(() => null) as { code?: string; contactHref?: string | null; courseId?: string } | null : null;
         if (body?.code === "enrollment_suspended") setSuspended({ contactHref: body.contactHref ?? null });
+        if (body?.code === "trial_expired" && body.courseId) setTrialOver(body.courseId);
         return null;
       })
       .then(data => setCtx(data))
@@ -589,6 +593,15 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   }
 
   if (!ctx && suspended) return <SuspendedNotice contactHref={suspended.contactHref} />;
+  // SCL5 (D16): học thử hết hạn ⇒ thẻ khoá có kết quả em đã có, thay lỗi 403 chung. Nội dung bài KHÔNG tải (máy chủ đã chặn).
+  if (!ctx && trialOver) {
+    return (
+      <div className="max-w-[720px] pt-2" data-bai-khoa-thu>
+        <Link href={`/student/hoc-tap?course=${encodeURIComponent(trialOver)}`} className="inline-flex items-center min-h-11 text-[length:var(--kin-co-goc)] text-[var(--kin-nhan-link)] underline">← Về trang lớp</Link>
+        <HocThuKhoa courseId={trialOver} courseName="của lớp này" />
+      </div>
+    );
+  }
 
   if (!ctx) {
     const isForbidden = ctxStatus === 403;
@@ -663,6 +676,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     isFree:      dbLesson.isFree,
     stats: { videos: dbLesson.statsVideos, materials: dbLesson.statsMaterials, views: dbLesson.statsViews },
   };
+  const chapterTitle = sections.flatMap(s => s.chapters).find(c => c.lessons.some(l => l.id === params.lessonId))?.title?.trim() ?? "";
   const prevLesson = lessonIdx > 0 ? allLessons[lessonIdx - 1] : null;
   const nextLesson = lessonIdx >= 0 && lessonIdx < allLessons.length - 1 ? allLessons[lessonIdx + 1] : null;
 
@@ -717,14 +731,11 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         {/* ── MAIN CONTENT ── */}
         <div className="flex-1 min-w-0 px-4 md:px-6 py-5 space-y-4">
 
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-xs flex-wrap" style={{ color: "var(--kin-chu-mo)" }}>
-            <Link href="/student" style={{ color: "var(--kin-nhan-link)" }}>Tổng quan</Link>
-            <span>/</span>
-            <Link href={`/student/hoc-tap?course=${dbCourse.id}`} style={{ color: "var(--kin-nhan-link)" }}>{dbCourse.name}</Link>
-            <span>/</span>
-            <span style={{ color: "var(--kin-chu-chinh)" }} className="truncate max-w-[200px]">{lesson.title}</span>
-          </div>
+          {/* SCL5: lối về Lớp › chương › bài (chữ ≥ 14px, link cao 44px). */}
+          <nav aria-label="Vị trí bài" data-bai-vi-tri className="flex items-center gap-x-2 flex-wrap text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>
+            <Link href={`/student/hoc-tap?course=${encodeURIComponent(dbCourse.id)}`} className="inline-flex items-center min-h-11 underline [overflow-wrap:anywhere]" style={{ color: "var(--kin-nhan-link)" }}>{dbCourse.name}</Link>
+            {chapterTitle && <><span aria-hidden>›</span><span className="[overflow-wrap:anywhere]">{chapterTitle}</span></>}
+          </nav>
 
           {/* Content by type */}
           {lesson.type === "record" && (
@@ -776,7 +787,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           {/* DG (14/11/2026, chủ: "trang bài một cột"): bỏ dải tab Tài liệu · Bài tập · Ghi chú — xếp dọc dưới video theo đúng thứ tự học: xem → đọc tài liệu → làm bài
               → ghi chú. Mỗi khối có tiêu đề chữ; nội dung từng khối giữ nguyên thành phần cũ (DocumentRows, TabBaiTap, StampedNotes). */}
           <section aria-labelledby="bai-tai-lieu" data-lesson-section="tai-lieu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu")}
+            {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu kèm")}
             <DocumentRows materials={lesson.materials} />
           </section>
           <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
@@ -792,7 +803,7 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           {/* Prev / Next — chỉ 1 dòng phân cách mảnh, không phải 2 ô riêng */}
           <div className="flex items-stretch gap-4 pt-4 pb-6" style={{ borderTop: "1px solid var(--kin-vien-thuong)" }}>
             {prevLesson ? (
-              <Link href={`/student/bai-giang/${prevLesson.id}`} className="flex-1 min-w-0 group">
+              <Link href={`/student/bai-giang/${prevLesson.id}`} data-bai-truoc className="flex-1 min-w-0 min-h-11 group">
                 <p className="text-xs mb-1 flex items-center gap-1" style={{ color: "var(--kin-chu-mo)" }}>
                   <ArrowLeft size={12} /> Bài trước
                 </p>
@@ -801,9 +812,9 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             ) : <div className="flex-1" />}
             <div className="w-px" style={{ background: "var(--kin-vien-thuong)" }} />
             {nextLesson ? (
-              <Link href={`/student/bai-giang/${nextLesson.id}`} className="flex-1 min-w-0 text-right group">
+              <Link href={`/student/bai-giang/${nextLesson.id}`} data-bai-sau className="flex-1 min-w-0 min-h-11 text-right group">
                 <p className="text-xs mb-1 flex items-center gap-1 justify-end" style={{ color: "var(--kin-chu-mo)" }}>
-                  Bài tiếp <ArrowRight size={12} />
+                  Bài sau <ArrowRight size={12} />
                 </p>
                 <p className="text-sm font-semibold truncate group-hover:underline" style={{ color: "var(--kin-chu-chinh)" }}>{nextLesson.title}</p>
               </Link>

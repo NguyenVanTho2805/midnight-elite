@@ -251,3 +251,6 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
 @keyframes kin-hop-vao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .kin-hop-vao { animation: kin-hop-vao 180ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .kin-hop-vao { animation: none; } }
+
+/* SCL5 (P2-14): nút của trình phát video (Plyr, mặc định 32px) đạt vùng chạm 44×44; icon giữ nguyên cỡ, chỉ nới vùng bấm. */
+.plyr .plyr__controls .plyr__control { min-width: 44px; min-height: 44px; justify-content: center; }

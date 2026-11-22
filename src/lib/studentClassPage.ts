@@ -158,3 +158,52 @@ export function buildTodoCards(items: StudentTodoItem[], events: ScheduleEvent[]
   if (first) first.primary = true;
   return out;
 }
+
+// ── SCL5 (phương án C + ghép B): Hôm nay, trang lớp theo chương, học thử ─────────────────────────────────────────────────────────
+
+/** Ngày trong tuần ĐẦY ĐỦ, viết hoa đầu (D18): "Thứ Ba 24/11". */
+export function vnWeekdayDate(at: Date): string {
+  const k = vnDateKeyOf(at);
+  return cap(`${WEEKDAY[dayOfWeekOfKey(k)]} ${dm(k)}`);
+}
+/** Mốc hết học thử tuyệt đối (P2-11): "21:40 Thứ Tư 25/11". Hỏng ⇒ "". */
+export function trialEndLine(endsAt: string): string {
+  const t = new Date(endsAt);
+  return valid(t) ? `${hmOf(vnMinutesOfDay(t))} ${vnWeekdayDate(t)}` : "";
+}
+
+export type NhatKyStatus = "co-mat" | "nghi-bao" | "vang";
+/** AttendanceRecord.status ⇒ ba ô của nhật ký đêm học. Đi muộn vẫn là có mặt; giá trị lạ ⇒ null (bỏ, không đoán). */
+export function nhatKyStatus(raw: string): NhatKyStatus | null {
+  return raw === "present" || raw === "late" ? "co-mat" : raw === "excused" ? "nghi-bao" : raw === "absent" ? "vang" : null;
+}
+export const NHAT_KY_LABEL: Record<NhatKyStatus, string> = { "co-mat": "Có mặt", "nghi-bao": "Nghỉ có báo", vang: "Vắng" };
+/** Số buổi giữ nhịp liền, tính lùi từ buổi gần nhất: có mặt HOẶC nghỉ có báo đều giữ nhịp (P2-16); gặp buổi vắng thì dừng. Mảng cũ → mới. */
+export function nhipLien(items: { status: NhatKyStatus }[]): number {
+  let n = 0;
+  for (let i = items.length - 1; i >= 0 && items[i].status !== "vang"; i--) n++;
+  return n;
+}
+
+/** Buổi học kế tiếp (chưa kết thúc, chưa huỷ) trong lịch, của một lớp nếu có `courseId`. Buổi đang diễn ra vẫn tính (để còn nút vào phòng). */
+export function nextClass(events: ScheduleEvent[], now: Date, courseId?: string): { event: ScheduleEvent; start: Date; today: boolean } | null {
+  let best: { event: ScheduleEvent; start: Date; today: boolean } | null = null;
+  for (const e of events) {
+    if (e.type !== "class" || e.topic.startsWith("[ĐÃ HUỶ]") || (courseId && e.courseId !== courseId)) continue;
+    const sm = parseHm(e.time);
+    if (sm === null) continue;
+    const start = instantOf(e.isoDate, sm);
+    const em = parseHm(e.endTime ?? "");
+    const end = em !== null && em > sm ? instantOf(e.isoDate, em) : new Date(start.getTime() + 2 * H);
+    if (end.getTime() <= now.getTime()) continue;
+    if (!best || start.getTime() < best.start.getTime()) best = { event: e, start, today: e.isoDate === vnDateKeyOf(now) };
+  }
+  return best;
+}
+
+export type BaiTrangThai = "da-hoc" | "dang-hoc" | "chua-hoc";
+/** Trạng thái một bài cho riêng em, chỉ từ tiến độ thật (LessonProgress): xong ⇒ đã học; đã xem một đoạn ⇒ đang học; còn lại chưa học. */
+export function baiTrangThai(id: string, completed: Set<string>, watching: Record<string, number>): BaiTrangThai {
+  return completed.has(id) ? "da-hoc" : (watching[id] ?? 0) > 0 ? "dang-hoc" : "chua-hoc";
+}
+export const BAI_TRANG_THAI_LABEL: Record<BaiTrangThai, string> = { "da-hoc": "Đã học", "dang-hoc": "Đang học", "chua-hoc": "Chưa học" };

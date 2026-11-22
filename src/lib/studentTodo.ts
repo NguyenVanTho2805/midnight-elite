@@ -3,7 +3,8 @@
 //
 // Quy tắc "một việc = một hàng dữ liệu có thật": mọi dòng sinh từ một bài tập có hạn, một buổi học trong lịch, hoặc một hạn nộp ngoài.
 // Badge đỏ CHỈ đếm việc cần học sinh ra tay (chưa nộp mà sắp tới hạn / quá hạn), không đếm mục chưa đọc.
-import { DAY_LABELS_VI } from "@/lib/types";
+// SCL5 D18: ngày trong tuần ghi đầy đủ ("Thứ Ba"), không "Thứ 3"/"T3".
+const DAY_LABELS_VI = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"] as const;
 import { addDaysKey, dayOfWeekOfKey, hmOf, instantOf, parseHm, vnDateKeyOf, vnMinutesOfDay } from "@/lib/classSessions";
 import { placeLabel } from "@/lib/sessionBook";
 
@@ -115,7 +116,7 @@ export function fmtScore(n: number): string {
   return String(Math.round(n * 100) / 100).replace(".", ",");
 }
 
-/** "Hôm nay" / "Ngày mai" / "Thứ 5" (trong 6 ngày tới) / "22/09". */
+/** "Hôm nay" / "Ngày mai" / "Thứ Năm" (trong 6 ngày tới) / "22/09". */
 export function whenLabel(at: Date, now: Date): string {
   const k = vnDateKeyOf(at), today = vnDateKeyOf(now);
   if (k === today) return "Hôm nay";
