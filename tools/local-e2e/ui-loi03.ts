@@ -146,8 +146,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await p.locator("[data-lop-can-lam] [data-can-lam-the]").first().waitFor({ timeout: 120000 });
     check("h1 = tên lớp; đầu trang có tên cô; không tab, không thẻ tiến độ cũ", await p.getByRole("heading", { level: 1, name: "Toán 9 (LOI-03)" }).isVisible() && /Cô Lan/.test(await p.locator("[data-dau-lop]").innerText()) && (await p.getByRole("tab").count()) === 0 && (await p.locator("[data-course-hero]").count()) === 0);
     check("Cần làm: thẻ 'Bài tập Vi-ét' có nút 'Nộp bài'", await p.locator("[data-lop-can-lam] [data-can-lam-the]").filter({ hasText: "Bài tập Vi-ét" }).getByRole("button", { name: /^Nộp bài/ }).count() === 1);
-    const recentIds = await p.locator("[data-lop-gan-day] [data-lesson-row]").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
-    check("Buổi gần đây: mới nhất trước (bài 6 hẹn +3 ngày đứng đầu), tối đa 5 hàng; tên bài nháp không lộ", recentIds[0] === L(6) && recentIds.length === 5 && !(await p.content()).includes("NHAP-BI-MAT"), recentIds);
+    // SCL5 (D15): "Buổi gần đây" thay bằng mục lục "Các chương" [data-lop-chuong]
+    const rowIds = await p.locator("[data-lop-chuong] [data-lesson-row]").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
+    check("Các chương: có hàng bài, chỉ bài của lớp này; tên bài nháp không lộ", rowIds.length > 0 && rowIds.every(id => (id ?? "").endsWith(`-${X.id}`)) && !(await p.content()).includes("NHAP-BI-MAT"), rowIds);
     check("'Tất cả bài học (6)' (bài nháp không đếm)", (await p.locator("[data-tat-ca-bai]").innerText()).includes("Tất cả bài học (6)"));
     const hoi = p.locator("[data-hoi-trong-lop]");
     if (!featureOn("CONG_DONG")) {

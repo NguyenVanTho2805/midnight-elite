@@ -35,9 +35,9 @@ const H = 3_600_000;
   const accountRail = async (id: string) => ((await prisma.user.findUnique({ where: { id }, select: { preferences: true } }))?.preferences as any)?.rail ?? null;
   // 23/10/2026: "Việc của tôi" của học viên nay là TRANG DỌC (tiêu đề h1 + mục "Cần làm"…), không còn listbox / khung "Danh sách" "Chi tiết".
   // Đợi tiêu đề trang hiện và khung xương "Đang tải Việc của tôi" biến mất; "khung nội dung" = thẻ gốc chứa tiêu đề (đệm ngang nằm bên trong nó).
-  const h1 = (p: any) => p.getByRole("heading", { name: "Cần làm", level: 1 });
+  const h1 = (p: any) => p.getByRole("heading", { name: /^Hôm nay/, level: 1 }) /* SCL5: h1 "Hôm nay còn N việc" */;
   const ready = async (p: any) => { await h1(p).waitFor({ timeout: 90000 }); await p.locator('[aria-busy="true"][aria-label="Đang tải Việc của tôi"]').waitFor({ state: "detached", timeout: 90000 }).catch(() => {}); };
-  const pageBox = (p: any) => h1(p).locator("xpath=ancestor::div[contains(@class,'pt-6')][1]");
+  const pageBox = (p: any) => h1(p).locator("xpath=ancestor::div[contains(@class,'max-w-[1120px]')][1]");
   const focusIs = (p: any, sel: string) => p.evaluate(`document.activeElement?.matches(${JSON.stringify(sel)}) ?? false`) as Promise<boolean>;
 
   // ───────────────────────────── Học viên: thu / mở
@@ -64,7 +64,8 @@ const H = 3_600_000;
   check("tiêu điểm chuyển sang nút 'Mở thanh bên' (người dùng bàn phím không bị mất chỗ)", await focusIs(pg, "[data-rail-open]"));
   const listX1 = (await pageBox(pg).boundingBox())?.x ?? -1;
   const readW1 = (await pageBox(pg).boundingBox())?.width ?? 0;
-  check("khung nội dung dịch sang mép trái (x=0), rộng thêm 272px", Math.round(listX1) === 0 && Math.round(readW1 - readW0) === 272, { listX1, grow: readW1 - readW0 });
+  // SCL5: khung "Hôm nay" có max-w 1120px ⇒ rộng thêm tới trần, không đủ 272px ở 1280
+  check("khung nội dung dịch sang mép trái (x=0), rộng thêm (tới trần 1120px)", Math.round(listX1) === 0 && readW1 > readW0 && Math.round(readW1) <= 1120, { listX1, readW0, readW1 });
   const trapped = await pg.evaluate(`(() => { const a = document.querySelector('#kin-rail a'); if (!a) return 'no-link'; a.focus(); return document.activeElement === a; })()`);
   check("khi thu, liên kết trong thanh KHÔNG nhận được tiêu điểm (Tab không rơi vào chỗ ẩn)", trapped === false, trapped);
   check("lưu theo TÀI KHOẢN: User.preferences.rail = 'thu'", await (async () => { for (let i = 0; i < 40; i++) { if ((await accountRail(S.id)) === "thu") return true; await new Promise(r => setTimeout(r, 200)); } return false; })());
@@ -107,11 +108,14 @@ const H = 3_600_000;
   check("thanh rộng: KHÔNG có nút 'Khác' (mọi mục đã nằm trong nhóm)", (await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).count()) === 0 || !(await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).isVisible()));
   await pg.locator("[data-rail-widen]").click();
   await eventually("thu hẹp về 79px", async () => (await wrapW(pg)) === 79);
-  await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).click();
-  check("mở 'Khác' → hiện bảng", await pg.getByRole("dialog", { name: "Các mục khác" }).isVisible());
-  await closeBtn(pg).click();
-  await eventually("thu thanh → bảng 'Khác' (neo vào thanh) cũng đóng", async () => (await pg.getByRole("dialog", { name: "Các mục khác" }).count()) === 0);
-  await openBtn(pg).click();
+  // Bảng "Khác" chỉ có khi còn mục khám phá đang bật (Gia sư / Cộng đồng / Lớp miễn phí — cờ tắt hết thì không có nút).
+  if (await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).count()) {
+    await rail(pg, RAIL.student).getByRole("button", { name: /^Khác/ }).click();
+    check("mở 'Khác' → hiện bảng", await pg.getByRole("dialog", { name: "Các mục khác" }).isVisible());
+    await closeBtn(pg).click();
+    await eventually("thu thanh → bảng 'Khác' (neo vào thanh) cũng đóng", async () => (await pg.getByRole("dialog", { name: "Các mục khác" }).count()) === 0);
+    await openBtn(pg).click();
+  } else check("cờ khám phá đang tắt: không có nút 'Khác' (bỏ qua phần bảng)", true);
 
   section("Chấm đỏ 'còn việc' không bị giấu khi thu");
   await closeBtn(pg).click();
