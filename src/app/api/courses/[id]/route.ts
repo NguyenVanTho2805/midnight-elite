@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
@@ -62,6 +63,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         // "pending_consent" chưa được học, "suspended" (đã nghỉ lớp) cũng không xem được nữa (quyết định 06/11/2026) — hasAccess ở route này
         // quyết định mở khoá toàn bộ lessons, nên dùng active làm chuẩn.
         hasAccess = isEnrollmentActive(enrolled);
+        // SCL đợt 5 (D5): trang lớp tải cây bài + link qua đây (fetch sau khi trang dựng, không prefetch) ⇒ đây là chỗ mở đồng hồ, không phải lúc dựng trang GET.
+        if (hasAccess) await openTrialClockFor(session.userId, enrolled);
       }
     }
 

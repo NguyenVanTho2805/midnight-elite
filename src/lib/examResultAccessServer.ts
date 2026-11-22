@@ -1,4 +1,5 @@
 // SCL-A (P2-7) — phần đọc DB cho canSeeClassExam (luật thuần ở src/lib/examResultRules.ts). Dùng ở GET /api/exam-results?examId= và GET /api/exams/[id].
+import { ENROLLMENT_ACCESS_SELECT } from "@/lib/enrollment";
 import { prisma } from "@/lib/prisma";
 import type { SessionPayload } from "@/lib/session";
 import { canSeeClassExam } from "@/lib/examResultRules";
@@ -15,7 +16,7 @@ export async function classExamViewBlock(session: SessionPayload, exam: { id: st
   const isStudent = session.role !== "admin";
   const [isHelper, enrollment, guest] = await Promise.all([
     isActiveHelperOfCourse(session, courseId, course?.ownerId ?? null),
-    isStudent ? prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } }, select: { status: true } }) : null,
+    isStudent ? prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId } }, select: ENROLLMENT_ACCESS_SELECT }) : null,
     isStudent ? prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId: session.userId, examId: exam.id } }, select: { userId: true } }) : null,
   ]);
   const facts = { courseId, examOwnerId: exam.ownerId, courseOwnerId: course?.ownerId ?? null, price: exam.price, isHelper, enrollment, hasGuestAccess: !!guest };

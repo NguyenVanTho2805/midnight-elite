@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if ("res" in r) return r.res;
   const [items, enr] = await Promise.all([
     listCoursePackages(id),
-    prisma.enrollment.findMany({ where: { courseId: id, status: "active" }, include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: "asc" } } }),
+    prisma.enrollment.findMany({ where: { courseId: id, status: "active", trialDays: null }, include: { user: { select: { id: true, name: true } } }, orderBy: { user: { name: "asc" } } }),
   ]);
   return NextResponse.json({ items, students: enr.map(e => ({ id: e.user.id, name: e.user.name })), notice: PACKAGE_NOTICE }, { headers: NO_STORE });
 }

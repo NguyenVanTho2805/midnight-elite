@@ -17,7 +17,7 @@ export interface MediaContext {
   /** Course.ownerId của lớp chứa bài. */
   courseOwnerId: string | null;
   /** Học viên có Enrollment của lớp này và status = "active"? (admin để false cũng được) */
-  enrollment: ({ status: string } & TrialFields) | null | undefined;
+  enrollment: ({ status: string } & Required<TrialFields>) | null | undefined;
   /** TUT-dong-giang: người xem là đồng giảng / giáo viên bộ môn ĐANG HIỆU LỰC của lớp (route đã kiểm qua loadCourseAccess). Xem học liệu như quản lý lớp; KHÔNG sửa được gì thêm. */
   coTeacher?: boolean;
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { isEnrollmentActive } from "@/lib/enrollment";
-import { startTrialClock } from "@/lib/trialServer";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
@@ -68,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
     if (isEnrollmentActive(enrolled)) {
       fullAccess = true;
-      await startTrialClock(session.userId); // SCL đợt 5 (D5): mở bài lần đầu ⇒ bắt đầu tính 14 ngày
+      await openTrialClockFor(session.userId, enrolled); // SCL đợt 5 (D5): mở bài lần đầu ⇒ bắt đầu tính 14 ngày
     } else if (!lesson.isFree) {
       // Chưa enroll và bài này không phải học thử miễn phí
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
@@ -82,7 +82,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // This prevents admins forgetting to set isLocked=true from leaking paid content.
   // MD-03: ngoài isLocked, mọi bài trong cây mà người xem chưa được mở thì bị bỏ link (trước đây người xem MỘT bài miễn phí nhận
   // luôn videoUrl/documents/azotaUrl của cả khoá). "suspended" không còn quyền (xem trên); chỉ còn bài miễn phí.
-  const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active" } : enrolled };
+  const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active", trialDays: null, trialStartedAt: null } : enrolled };
   // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) của lớp chỉ dành cho quản lý lớp và học viên ĐANG HỌC (kể cả khi xem lại bài ở trạng thái
   // tạm ngưng: được xem nội dung đã mở nhưng không cần link nhóm). `course` cũng chính là lesson.chapter.section.course (cùng một đối tượng) nên sửa tại chỗ.
   if (!canViewAllMaterials({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled })) Object.assign(course, redactCourseLinks(course));

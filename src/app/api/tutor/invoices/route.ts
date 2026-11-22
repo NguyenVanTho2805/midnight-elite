@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     studentIds = [...new Set(body.studentIds as string[])];
   } else {
     const enr = await prisma.enrollment.findMany({
-      where: { status: ENROLLMENT_STATUS.ACTIVE, course: { ownerId: auth.userId } },
+      where: { status: ENROLLMENT_STATUS.ACTIVE, trialDays: null, course: { ownerId: auth.userId } }, // SCL đợt 5: em chỉ đang học thử không vào lập phiếu hàng loạt
       select: { userId: true }, distinct: ["userId"], take: 300,
     });
     studentIds = enr.map(e => e.userId);
@@ -117,7 +117,13 @@ export async function POST(req: NextRequest) {
   const names = new Map((await prisma.user.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true } })).map(u => [u.id, u.name]));
   const created: Array<{ id: string; code: string; studentId: string; studentName: string; amountDue: number; status: string; creditApplied: number }> = [];
   const skipped: Array<{ studentId: string; studentName: string; reason: string }> = [];
+  // SCL đợt 5: invoiceServer (tệp tiền khoá) đếm MỌI ghi danh active — kể cả lớp học thử — vào bậc thang / phí theo buổi. Tới khi chủ chốt luật,
+  // em nào còn ghi danh THỬ ở lớp của gia sư này thì KHÔNG lập phiếu (bỏ qua có lý do), để học thử miễn phí không bị tính và phiếu môn chính thức không bị đổi.
+  const onTrial = new Set((await prisma.enrollment.findMany({
+    where: { userId: { in: studentIds }, status: ENROLLMENT_STATUS.ACTIVE, trialDays: { not: null }, course: { ownerId: auth.userId } }, select: { userId: true },
+  })).map(e => e.userId));
   for (const studentId of studentIds) {
+    if (onTrial.has(studentId)) { skipped.push({ studentId, studentName: names.get(studentId) ?? "—", reason: "Em đang học thử một lớp của bạn — xác nhận chính thức trước khi lập phiếu" }); continue; }
     const r = await issueInvoice({ tutorId: auth.userId, studentId, yearMonth: ym.yearMonth, scholarship, discount });
     const studentName = names.get(studentId) ?? "—";
     if (r.ok) created.push({ ...r.invoice, studentName });

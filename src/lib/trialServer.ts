@@ -13,6 +13,12 @@ export async function startTrialClock(userId: string, now: Date = new Date()): P
   return r.count;
 }
 
+/** Mọi đường trả học liệu (lớp, bài, thư viện, video, tệp) gọi hàm này với ghi danh của em: ghi danh thử còn hiệu lực mà chưa tính ngày ⇒ mở đồng hồ (D5).
+ *  Một chỗ chung để không đường nào cho xem học liệu mà quên bắt đầu đếm. Lỗi không chặn việc xem. */
+export async function openTrialClockFor(userId: string, e: { status: string; trialDays: number | null; trialStartedAt: Date | string | null } | null | undefined): Promise<void> {
+  if (e && e.status === ENROLLMENT_STATUS.ACTIVE && e.trialDays !== null && e.trialStartedAt === null) await startTrialClock(userId).catch(() => 0);
+}
+
 /** D7: lật active → trial_expired cho ghi danh thử đã quá hạn (trialDays != null ⇒ chưa được xác nhận chính thức). `userId` để lật riêng một em (vỏ học sinh). */
 export async function expireTrials(opts: { userId?: string; now?: Date } = {}): Promise<{ id: string; userId: string; courseId: string }[]> {
   const now = opts.now ?? new Date();

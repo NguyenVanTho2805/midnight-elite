@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { requireCourseAccessBy, isActiveHelperOfCourse, roleForbidden } from "@/lib/courseAccessServer";
@@ -52,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (isSuspended(enrolled)) return NextResponse.json(suspendedBody(contactTutorHref({ id: courseId, ownerId: lesson.chapter.section.course.ownerId })), { status: 403, headers: { "Cache-Control": "private, no-store" } });
   if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  await openTrialClockFor(session.userId, enrolled); // SCL đợt 5 (D5): đường nào trả học liệu cũng bắt đầu đếm
 
   const ctx: MediaContext = { viewer: { userId: session.userId, role: "student" }, courseOwnerId: lesson.chapter.section.course.ownerId, enrollment: enrolled };
   return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));

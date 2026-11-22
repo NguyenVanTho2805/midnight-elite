@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { ENROLLMENT_ACCESS_SELECT, ENROLLMENT_STATUS, isEnrollmentActive } from "@/lib/enrollment";
 import type { SessionPayload } from "@/lib/session";
 
 // Quyền với thread gắn lớp (Thread.courseId != null) — 1.4.7.
@@ -41,10 +41,10 @@ export async function canAccessClass(session: SessionPayload | null, courseId: s
   if (session.role === "admin" && session.adminRole === "teacher" && (await isActiveCourseHelper(session.userId, courseId))) return true;
   const enrolled = await prisma.enrollment.findUnique({
     where:  { userId_courseId: { userId: session.userId, courseId } },
-    select: { status: true, user: { select: { role: true } } },
+    select: { ...ENROLLMENT_ACCESS_SELECT, user: { select: { role: true } } },
   });
-  // H4: ghi danh cũ của tài khoản đã thành gia sư/quản trị KHÔNG còn là tư cách học viên (vai đọc lại từ DB).
-  return enrolled?.status === ENROLLMENT_STATUS.ACTIVE && enrolled.user.role === "student";
+  // H4: ghi danh cũ của tài khoản đã thành gia sư/quản trị KHÔNG còn là tư cách học viên (vai đọc lại từ DB). SCL5: học thử quá hạn chưa lật cũng không.
+  return isEnrollmentActive(enrolled) && enrolled!.user.role === "student";
 }
 
 // Where-clause cho feed mặc định (không lọc lớp cụ thể): cộng đồng chung +
@@ -58,8 +58,8 @@ export async function visibleThreadScope(
     prisma.course.findMany({ where: { ownerId: session.userId }, select: { id: true } }),
     prisma.enrollment.findMany({
       where:  { userId: session.userId, status: ENROLLMENT_STATUS.ACTIVE, user: { role: "student" } },
-      select: { courseId: true },
-    }),
+      select: { courseId: true, ...ENROLLMENT_ACCESS_SELECT },
+    }).then(rows => rows.filter(e => isEnrollmentActive(e))),
     session.role === "admin" && session.adminRole === "teacher" ? activeHelperCourseIds(session.userId) : Promise.resolve([] as string[]),
   ]);
   const ids = [...owned.map(c => c.id), ...enrolled.map(e => e.courseId), ...helping];

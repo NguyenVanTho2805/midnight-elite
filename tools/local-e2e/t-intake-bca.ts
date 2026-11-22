@@ -116,6 +116,22 @@ const enrollsOf = (userId: string) => prisma.enrollment.findMany({ where: { user
   const w3 = await prisma.intakeWelcome.findUnique({ where: { tokenHash: hashWelcomeToken(tokenOf(r3.json?.next ?? "")) } });
   check("gửi lại sau khi đã đặt mật khẩu ⇒ mã mới đánh dấu 'đã có mật khẩu'", !!w3?.passwordSetAt);
 
+  section("Chiếm trước (P2 rà SCL5): kẻ gõ Gmail người khác rồi đặt mật khẩu ⇒ chủ thật vào bằng Google cắt mọi lối của kẻ đó");
+  const squatCookie = (ok.headers.get("set-cookie") ?? "").match(/midnight_session=[^;]+/)?.[0] ?? "";
+  const me = async () => (await fetch(`${BASE}/api/auth/me`, { headers: { cookie: squatCookie } })).json().catch(() => null) as Promise<{ id?: string } | null>;
+  check("phiên của người đặt mật khẩu đang dùng được", (await me())?.id === u!.id);
+  const squatHash = (await prisma.user.findUnique({ where: { id: u!.id } }))!.password;
+  const { resolveSocialUser } = await import("@/lib/socialAuth");
+  await new Promise(r => setTimeout(r, 1100)); // mốc thu hồi tính theo giây (iat)
+  const g = await resolveSocialUser("google", { id: "google-sub-an", email: "an.bca@gmail.com", name: "An" });
+  const ua = await prisma.user.findUnique({ where: { id: u!.id } });
+  check("Google (đã xác minh hộp thư) vào đúng tài khoản, emailVerified=true", g.ok && g.userId === u!.id && ua!.emailVerified === true, g);
+  check("mật khẩu kẻ đặt bị thay bằng chuỗi ngẫu nhiên", ua!.password !== squatHash);
+  check("phiên cũ của kẻ đặt bị huỷ (/api/auth/me trả null)", (await me()) === null);
+  const r5 = await send(form({ gmail: "an.bca@gmail.com" }));
+  const p5 = await api("GET", `/chao/${tokenOf(r5.json?.next ?? "")}`);
+  check("phiếu mới sau đó: không còn form đặt mật khẩu", !p5.text.includes('action="/api/chao/dat-mat-khau"'));
+
   section("Đã có tài khoản KiN (cùng Gmail) từ trước");
   const old = await mkUser({ name: "Trần Thị Bình", emailVerified: false });
   const before = (await prisma.user.findUnique({ where: { id: old.id } }))!.password;
@@ -125,7 +141,7 @@ const enrollsOf = (userId: string) => prisma.enrollment.findMany({ where: { user
   check("KHÔNG đổi mật khẩu, KHÔNG đổi tên", oldAfter!.password === before && oldAfter!.name === "Trần Thị Bình");
   check("ghi danh thêm lớp Toán (học thử)", (await enrollsOf(old.id)).some(e => e.courseId === "bca-toan" && e.trialDays === 14));
   const p4 = await api("GET", `/chao/${tokenOf(r4.json?.next ?? "")}`);
-  check("trang chào ⇒ 'Đăng nhập', không form, chào 'Bình'", p4.text.includes("data-chao-dang-nhap") && !p4.text.includes('action="/api/chao/dat-mat-khau"') && p4.text.includes("Chào Bình"));
+  check("trang chào ⇒ 'Đăng nhập', không form, chào 'bạn' — KHÔNG lộ tên thật trong DB (P2 rà SCL5: dò tài khoản)", p4.text.includes("data-chao-dang-nhap") && !p4.text.includes('action="/api/chao/dat-mat-khau"') && p4.text.includes("Chào bạn") && !p4.text.includes("Bình") && !p4.text.includes("Bạn đã có tài khoản KiN"));
   const steal = await fetch(`${BASE}/api/chao/dat-mat-khau`, { method: "POST", body: new URLSearchParams({ token: tokenOf(r4.json?.next ?? ""), password: "chiemquyen1", confirm: "chiemquyen1" }), redirect: "manual" });
   check("POST thẳng vẫn không đổi được mật khẩu tài khoản có sẵn", steal.status === 303 && (await prisma.user.findUnique({ where: { id: old.id } }))!.password === before);
 

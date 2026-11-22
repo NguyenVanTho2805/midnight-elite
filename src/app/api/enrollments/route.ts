@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { ENROLLMENT_STATUS, splitEnrollmentIds } from "@/lib/enrollment";
+import { ENROLLMENT_ACCESS_SELECT, ENROLLMENT_STATUS, isEnrollmentActive, splitEnrollmentIds } from "@/lib/enrollment";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { isStudentInDb } from "@/lib/studentOnly";
 
@@ -21,11 +21,11 @@ export async function GET(req: Request) {
   const where = { userId: session.userId, status: { in: [ENROLLMENT_STATUS.ACTIVE, ENROLLMENT_STATUS.PENDING_CONSENT, ENROLLMENT_STATUS.SUSPENDED] } };
   const orderBy = [{ createdAt: "asc" as const }, { courseId: "asc" as const }];
   if (!detail) {
-    const rows = await prisma.enrollment.findMany({ where, select: { courseId: true, status: true }, orderBy });
-    return NextResponse.json(splitEnrollmentIds(rows));
+    const rows = await prisma.enrollment.findMany({ where, select: { courseId: true, ...ENROLLMENT_ACCESS_SELECT }, orderBy });
+    return NextResponse.json(splitEnrollmentIds(rows.map(asAccess)));
   }
 
-  const all = await prisma.enrollment.findMany({ where, select: { courseId: true, status: true, course: { select: { id: true, name: true, instructor: true, category: true } } }, orderBy });
+  const all = (await prisma.enrollment.findMany({ where, select: { courseId: true, ...ENROLLMENT_ACCESS_SELECT, course: { select: { id: true, name: true, instructor: true, category: true } } }, orderBy })).map(asAccess);
   const { courseIds, pendingConsentCourseIds, suspendedCourseIds } = splitEnrollmentIds(all);
   const rows = all.filter(r => r.status === ENROLLMENT_STATUS.ACTIVE);
   // Số bài tính từ bài học thật của lớp (Course.lessons là số gõ tay, có thể lệch): MỘT truy vấn cho mọi lớp, cộng số bài theo từng chương.
@@ -37,4 +37,9 @@ export async function GET(req: Request) {
   for (const s of sections) lessonCount.set(s.courseId, (lessonCount.get(s.courseId) ?? 0) + s.chapters.reduce((n, c) => n + c._count.lessons, 0));
   const courses = rows.map(r => ({ id: r.course.id, name: r.course.name, instructor: r.course.instructor, category: r.course.category, lessonCount: lessonCount.get(r.courseId) ?? 0 }));
   return NextResponse.json({ courseIds, pendingConsentCourseIds, suspendedCourseIds, courses });
+}
+
+/** SCL đợt 5: học thử đã quá hạn mà cron chưa lật ⇒ coi như trial_expired (không vào "đang học"). */
+function asAccess<T extends { status: string; trialDays: number | null; trialStartedAt: Date | null }>(r: T): T {
+  return r.status === ENROLLMENT_STATUS.ACTIVE && !isEnrollmentActive(r) ? { ...r, status: ENROLLMENT_STATUS.TRIAL_EXPIRED } : r;
 }

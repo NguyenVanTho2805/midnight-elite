@@ -1,5 +1,6 @@
 // SCL đợt 5 (D2/D3) — trang chào sau khi gửi phiếu BCA Midnight Class: /chao/<mã một lần, 7 ngày>. Công khai (không cần đăng nhập), noindex.
-// Chỉ ở đây (mã hợp lệ) mới có link nhóm Zalo học thử. Chào theo TÊN (không họ đầy đủ, không SĐT/Gmail). Lịch học đọc từ ClassSchedule của lớp (D10).
+// Chỉ ở đây (mã hợp lệ) mới có link nhóm Zalo học thử. Chào theo TÊN (không họ đầy đủ, không SĐT/Gmail) — CHỈ khi tài khoản do chính phiếu này tạo, chưa dùng
+// (hiện form); tài khoản có sẵn ⇒ "Chào bạn" + câu chung, để ai gõ Gmail người khác vào phiếu cũng không đọc được tên thật trong DB. Lịch học đọc từ ClassSchedule của lớp (D10).
 // Đặt mật khẩu: form POST + 303 tới /api/chao/dat-mat-khau (mã đi trong thân form). Tài khoản đã có mật khẩu ⇒ nút "Đăng nhập".
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -55,7 +56,7 @@ export default async function ChaoPage({ params, searchParams }: { params: Promi
   return wrap(<>
     <header data-chao>
       <p className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-nhan-link)]">BCA Midnight Class</p>
-      <h1 className="mt-1 text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{`Chào ${firstName(w.user.name)}, bạn đã vào lớp học thử`}</h1>
+      <h1 className="mt-1 text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{`Chào ${showForm ? firstName(w.user.name) : "bạn"}, bạn đã vào lớp học thử`}</h1>
       <p className={`mt-2 ${P}`}>Phiếu của bạn đã tới. Dưới đây là lớp, lịch học và cách vào học. Giữ trang này tới khi bạn đặt xong mật khẩu.</p>
     </header>
 
@@ -104,7 +105,7 @@ export default async function ChaoPage({ params, searchParams }: { params: Promi
       ) : (
         <>
           {err && <p role="status" className={`${P} pb-3`}>{err}</p>}
-          <p className={`${P} pb-3`}>Bạn đã có tài khoản KiN. Đăng nhập bằng Gmail đã ghi trong phiếu. Quên mật khẩu thì dùng Quên mật khẩu với Gmail đó.</p>
+          <p className={`${P} pb-3`}>Đăng nhập bằng Gmail đã ghi trong phiếu (hoặc Tiếp tục với Google). Chưa có hay quên mật khẩu thì dùng Quên mật khẩu với Gmail đó.</p>
           <div className="flex flex-wrap gap-3">
             <Link href="/dang-nhap?redirect=/student/viec-cua-toi" data-chao-dang-nhap className={kinButtonClass("primary")}>Đăng nhập</Link>
             <Link href="/quen-mat-khau" className={kinButtonClass("secondary")}>Quên mật khẩu</Link>

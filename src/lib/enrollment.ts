@@ -18,7 +18,8 @@ export type EnrollmentStatus = (typeof ENROLLMENT_STATUS)[keyof typeof ENROLLMEN
 // true khi học viên có quyền hoạt động (xem bài, nộp bài, đánh giá) — hiện
 // chỉ "active" được, nhưng tách ra 1 chỗ để đổi quy tắc không phải sửa 10 route.
 // SCL đợt 5: ghi danh thử đã quá hạn ⇒ false NGAY cả khi status chưa được cron lật (người gọi phải đọc cả trialDays/trialStartedAt — ENROLLMENT_ACCESS_SELECT).
-export function isEnrollmentActive(e: ({ status: string } & TrialFields) | null | undefined): boolean {
+// Hai cột học thử BẮT BUỘC có trong kiểu (Required): route nào chỉ select `status` sẽ đỏ tsc thay vì lặng lẽ coi em học thử quá hạn là chính thức.
+export function isEnrollmentActive(e: ({ status: string } & Required<TrialFields>) | null | undefined): boolean {
   return !!e && e.status === ENROLLMENT_STATUS.ACTIVE && !isTrialExpired(e);
 }
 

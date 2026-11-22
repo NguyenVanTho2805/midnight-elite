@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENROLLMENT_ACCESS_SELECT } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { loadPublishState, loadPublishStates } from "@/lib/quizPublication";
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
   if (bad) return NextResponse.json({ error: bad }, { status: 400 });
   if (exam.courseId) {
     const [enrollment, guest] = await Promise.all([
-      prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } }, select: { status: true } }),
+      prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: exam.courseId } }, select: ENROLLMENT_ACCESS_SELECT }),
       prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId: session.userId, examId } }, select: { userId: true } }),
     ]);
     if (!canWriteAttempt({ courseId: exam.courseId, price: exam.price, enrollment, hasGuestAccess: !!guest })) {

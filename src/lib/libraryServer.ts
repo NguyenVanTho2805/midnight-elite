@@ -2,6 +2,8 @@
 //   Học viên: các lớp đang học (Enrollment.status = "active"), kèm tiến độ xem và bài nộp CỦA CHÍNH HỌ.
 //   Gia sư  : các lớp mình sở hữu (Course.ownerId), kèm số bài nộp / chờ chấm.
 // Chỉ liệt kê bài có gì để xem (video, tài liệu hoặc bài tập); số bài còn trống được đếm riêng để giao diện nói rõ.
+import { ENROLLMENT_ACCESS_SELECT, isEnrollmentActive } from "@/lib/enrollment";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { learnerLessonWhere } from "@/lib/lessonVisibility";
 import { assignmentStatus, parseDurationSeconds, parseLessonDocuments, tutorAssignmentSummary, watchLabel, shortDate, type LibDoc, type LibTone } from "@/lib/library";
@@ -55,8 +57,10 @@ function flatten(c: CourseTree) {
 }
 
 export async function loadStudentLibrary(userId: string, now: Date): Promise<LibClass[]> {
-  const enr = await prisma.enrollment.findMany({ where: { userId, status: "active" }, select: { courseId: true } });
+  // SCL đợt 5 (tình huống 13): trang này không qua vỏ học sinh ⇒ không trông cron lật; em học thử quá hạn bị lọc ngay ở đây, em chưa tính ngày thì mở đồng hồ (D5).
+  const enr = (await prisma.enrollment.findMany({ where: { userId, status: "active" }, select: { courseId: true, ...ENROLLMENT_ACCESS_SELECT } })).filter(e => isEnrollmentActive(e));
   if (enr.length === 0) return [];
+  await openTrialClockFor(userId, enr.find(e => e.trialDays !== null && e.trialStartedAt === null));
   const courses = await loadTrees({ id: { in: enr.map(e => e.courseId) } }, true);
   const flat = courses.map(c => ({ c, items: flatten(c) }));
   const lessonIds = flat.flatMap(f => f.items.map(i => i.l.id));

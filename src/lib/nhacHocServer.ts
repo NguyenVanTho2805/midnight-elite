@@ -5,6 +5,7 @@
 // và bài `published` (ĐÓNG KHI LẠ). Kiểm lại cả lúc ĐỌC: bài chuyển nháp / em nghỉ lớp ⇒ `lop: null`, không lộ tên bài.
 // Mục tự động theo lớp = loadHomNay của LOI-03 (không viết truy vấn bài thứ hai cho giao diện).
 // Ghi chú / tiêu đề là dữ liệu cá nhân: không vào log, không vào thông báo. Log lỗi chỉ ghi tên lỗi.
+import { ENROLLMENT_ACCESS_SELECT, isEnrollmentActive } from "@/lib/enrollment";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
 import { loadHomNay } from "@/lib/studentLopServer";
@@ -106,11 +107,12 @@ export async function checkAttach(userId: string, courseId?: string | null, less
     if (!l) return fail;
     const cid = l.chapter.section.courseId;
     if (courseId && courseId !== cid) return fail;
+    if (!isEnrollmentActive(await prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: cid } }, select: ENROLLMENT_ACCESS_SELECT }))) return fail; // SCL5: học thử quá hạn chưa lật
     return { ok: true, courseId: cid, lessonId };
   }
   if (courseId) {
-    const e = await prisma.enrollment.findFirst({ where: { userId, courseId, status: ACTIVE }, select: { id: true } });
-    return e ? { ok: true, courseId, lessonId: null } : fail;
+    const e = await prisma.enrollment.findFirst({ where: { userId, courseId, status: ACTIVE }, select: ENROLLMENT_ACCESS_SELECT });
+    return isEnrollmentActive(e) ? { ok: true, courseId, lessonId: null } : fail;
   }
   return { ok: true, courseId: null, lessonId: null };
 }
