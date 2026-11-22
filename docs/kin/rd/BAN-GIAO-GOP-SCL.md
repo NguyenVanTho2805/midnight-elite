@@ -25,7 +25,7 @@ Kế hoạch và các quyết định Q1–Q15: `docs/kin/rd/SUA-CHUA-LON-KE-HOA
 | 2 | [#165](https://github.com/NguyenVanTho2805/midnight-elite/pull/165) SCL đợt 2: sổ điểm, tài liệu + YouTube + nộp ảnh thành PDF, hiệu năng | `claude/sua-chua-lon-2` | `claude/sua-chua-lon` |
 | 3 | [#166](https://github.com/NguyenVanTho2805/midnight-elite/pull/166) SCL đợt 3F: xoá 4 phần thừa, bịt lối vào phần tắt, một cửa tạo lớp | `claude/sua-chua-lon-3` | `claude/sua-chua-lon-2` |
 | 4 | [#167](https://github.com/NguyenVanTho2805/midnight-elite/pull/167) SCL đợt 4: giao diện theo bản chốt | `claude/sua-chua-lon-4` | `claude/sua-chua-lon-3` |
-| 5 | PR SCL đợt 5: học thử có hạn + nhận phiếu form BCA + trang chào (số PR ghi trong mô tả PR #167 / danh sách PR mở) | `claude/sua-chua-lon-5` | `claude/sua-chua-lon-4` |
+| 5 | [#168](https://github.com/NguyenVanTho2805/midnight-elite/pull/168) SCL đợt 5: học thử có hạn + nhận phiếu form BCA + trang chào | `claude/sua-chua-lon-5` | `claude/sua-chua-lon-4` |
 
 Mỗi PR chứa trọn PR trước nó. Commit cuối của #167: `b3593777`.
 
@@ -42,7 +42,7 @@ gh pr merge 164 --merge
 gh pr edit 165 --base main && gh pr merge 165 --merge
 gh pr edit 166 --base main && gh pr merge 166 --merge
 gh pr edit 167 --base main && gh pr merge 167 --merge
-# PR đợt 5: gh pr edit <số> --base main && gh pr merge <số> --merge
+gh pr edit 168 --base main && gh pr merge 168 --merge
 ```
 Xung đột khi đổi base ⇒ **DỪNG**, không tự giải xung đột trên `main`.
 
