@@ -25,6 +25,10 @@ Ngày chốt: 22/11/2026. Nhánh `claude/sua-chua-lon-5` (rẽ từ đợt 4, PR
 | D12 | Màn học sinh làm lại cho "đầy đặn": thẻ lớp có ảnh bìa + màu môn + tiến độ; danh mục **chương › bài** có trạng thái; trang bài học như một bài giảng đủ khối (video, tài liệu, bài tập, bài trước/sau); động lực nhẹ (chuỗi ngày, vinh danh, điểm). Thương hiệu KiN, tên lớp "BCA Midnight Class". Điện thoại và máy tính ngang nhau. |
 | D13 | Quy trình thiết kế: tham khảo các bên → **3 phương án** → hội đồng agent nhiều kiểu người chấm độc lập → chủ chọn → mới code. |
 | D14 | Tài liệu: chủ tự kéo thả dần (không nhập hàng loạt từ máy). |
+| D15 | (23/11) Giao diện học sinh: **phương án C "Thẻ việc hôm nay"** (hội đồng 8,3, 5/5 vai) + ghép từ B: nhật ký đêm học 14 buổi ("nghỉ có báo vẫn giữ nhịp"), Mục tiêu bài + Tự kiểm tra (không tính điểm), khu Tài liệu kèm cố định, mục lục chương sắp mở có ngày mở; từ A+B: điểm từng bài ở lề phải. Xem `docs/kin/thiet-ke/scl5/QUYET-DINH-HOI-DONG.md`. |
+| D16 | (23/11) Hết hạn học thử vẫn **khoá hẳn** (giữ D7), nhưng màn khoá **hiện kết quả em đã có**: đã học N bài, nộp M bài, điểm từng bài (chỉ chữ, không mở được nội dung). |
+| D17 | (23/11) **Bỏ vinh danh trong vỏ học sinh**; vinh danh học bổng tháng chỉ ở trang giới thiệu GitHub. Trong lớp chỉ có chuỗi/nhật ký + điểm của riêng em. |
+| D18 | (23/11) Ngày trong tuần ghi **đầy đủ** ("Thứ Ba"), không viết tắt "T3". |
 
 ## Các tình huống phải xử lý (đã vạch)
 1. **Gửi trùng**: cùng SĐT/Gmail gửi lại phiếu thử ⇒ không tạo tài khoản thứ hai, không gia hạn thêm; trang chào hiện lại link đặt mật khẩu / đăng nhập.
