@@ -4,6 +4,7 @@
 //   • học viên đã ghi danh ĐANG HIỆU LỰC (status = active) → thấy hết      • bài miễn phí (isFree) → ai cũng thấy
 //   • còn lại (khách, chưa ghi danh, đã tạm ngưng/chờ đồng ý) → link bị bỏ trống, khung bài vẫn hiện để biết lớp có gì.
 import { isEnrollmentActive } from "@/lib/enrollment";
+import type { TrialFields } from "@/lib/trial";
 
 export interface MediaViewer {
   userId: string;
@@ -16,7 +17,7 @@ export interface MediaContext {
   /** Course.ownerId của lớp chứa bài. */
   courseOwnerId: string | null;
   /** Học viên có Enrollment của lớp này và status = "active"? (admin để false cũng được) */
-  enrollment: { status: string } | null | undefined;
+  enrollment: ({ status: string } & TrialFields) | null | undefined;
   /** TUT-dong-giang: người xem là đồng giảng / giáo viên bộ môn ĐANG HIỆU LỰC của lớp (route đã kiểm qua loadCourseAccess). Xem học liệu như quản lý lớp; KHÔNG sửa được gì thêm. */
   coTeacher?: boolean;
 }

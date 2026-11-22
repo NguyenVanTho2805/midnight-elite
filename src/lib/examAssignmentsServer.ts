@@ -16,7 +16,7 @@ const MAX_ITEMS = 200;
 
 export async function listStudentAssignments(userId: string, now: Date): Promise<AssignmentItem[]> {
   const [enrollments, myAttempts] = await Promise.all([
-    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
+    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true, trialDays: true, trialStartedAt: true } }),
     prisma.examAttempt.findMany({ where: { userId }, select: { id: true, examId: true, status: true, expiresAt: true } }),
   ]);
   const courseIds = enrollments.filter(e => isEnrollmentActive(e)).map(e => e.courseId);

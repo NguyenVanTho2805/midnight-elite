@@ -94,13 +94,13 @@ function ClassCard({ row }: { row: ThuVienRow }) {
   const sub = [row.giaSu, row.category.trim()].filter(Boolean).join(" · ");
   const empty = row.total === 0;
   return (
-    <li data-class-card={row.id} className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:gap-6 p-[var(--kin-kc-6)] md:p-[var(--kin-kc-7)] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]">
+    <li data-class-card={row.id} data-trial-het-han={row.trialExpired ? "1" : undefined} className={`flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:gap-6 p-[var(--kin-kc-6)] md:p-[var(--kin-kc-7)] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)] ${row.trialExpired ? "opacity-60" : ""}`}>
       {/* Vòng dạy thử 14/11: lớp không có ảnh bìa ⇒ ẩn ô bìa ở màn điện thoại (ô chữ cao ~160px chỉ lặp lại tên lớp, 4 lớp dài ~4 màn). */}
       <div className={`${row.cover ? "w-full aspect-video max-h-[180px]" : "hidden md:block"} md:w-[240px] md:h-[135px] md:max-h-none md:aspect-auto flex-shrink-0 overflow-hidden rounded-[var(--kin-bo-md)] bg-[var(--kin-nen-bang)]`}>
         <Cover row={row} />
       </div>
       <div className="min-w-0 flex-1">
-        <KinStatus tone={row.trangThai === "hoan-thanh" ? "xong" : "cho"}>{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus>
+        {row.trialExpired ? <KinStatus tone="qua-han">Hết thời gian học thử</KinStatus> : <KinStatus tone={row.trangThai === "hoan-thanh" ? "xong" : "cho"}>{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus>}
         <h2 className="mt-1 text-[length:var(--kin-co-tieu-de)] font-semibold leading-6 text-[var(--kin-chu-chinh)]">
           <Link href={lopHref} className="inline-flex items-center min-h-11 break-words [overflow-wrap:anywhere] hover:underline">{row.name}</Link>
         </h2>
@@ -127,7 +127,7 @@ function ClassCard({ row }: { row: ThuVienRow }) {
           <Link href={`/student/bai-giang/${encodeURIComponent(row.hocTiep.lessonId)}`} data-hoc-tiep={row.hocTiep.lessonId} aria-label={`${hocTiepLabel(row.hocTiep.reason, row.done).replace(" →", "")}: ${row.hocTiep.title} (${row.name})`}
             className={`${kinButtonClass("primary")} w-full md:w-auto`}>{hocTiepLabel(row.hocTiep.reason, row.done)}</Link>
         ) : (
-          <Link href={lopHref} className={`${kinButtonClass("secondary")} w-full md:w-auto`}>Vào lớp</Link>
+          <Link href={lopHref} className={`${kinButtonClass("secondary")} w-full md:w-auto`}>{row.trialExpired ? "Xem lớp" : "Vào lớp"}</Link>
         )}
       </div>
     </li>

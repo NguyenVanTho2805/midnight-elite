@@ -3,11 +3,18 @@
 // AuthGuard ở trang bài đưa đi đăng nhập rồi quay lại đúng bài). Mã lạ ⇒ bỏ qua, vào trang lớp như thường.
 import { redirect } from "next/navigation";
 import LopCuaToi from "@/components/student/LopCuaToi";
+import { getSession } from "@/lib/session";
+import { startTrialClock } from "@/lib/trialServer";
 
 export default async function HocTapPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { bai, course, tab } = await searchParams;
   if (typeof bai === "string" && /^[\w-]{1,100}$/.test(bai)) redirect(`/student/bai-giang/${bai}`);
   // Link cũ tới tab Video (đã bỏ): bản ghi nay ở cuối màn Tất cả bài học.
   if (tab === "video" && typeof course === "string" && course) redirect(`/student/hoc-tap?course=${encodeURIComponent(course)}&xem=bai-hoc#ban-ghi`);
+  // SCL đợt 5 (D5): lần đầu em mở trang lớp ⇒ mọi ghi danh thử chưa tính ngày của em bắt đầu đếm 14 ngày (một hạn chung).
+  if (typeof course === "string" && course) {
+    const s = await getSession().catch(() => null);
+    if (s?.role === "student") await startTrialClock(s.userId).catch(() => 0);
+  }
   return <LopCuaToi />;
 }

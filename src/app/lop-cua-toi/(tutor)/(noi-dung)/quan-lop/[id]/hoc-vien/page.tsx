@@ -7,6 +7,7 @@ import { gateClassPage, loadStudentsTab } from "@/lib/tutorClassPageServer";
 import { classBase } from "@/lib/tutorClassRoutes";
 import HocSinhTab from "@/components/tutor/HocSinhTab";
 import AdminManageNote from "@/components/tutor/quan-lop/AdminManageNote";
+import TrialRoster from "@/components/tutor/TrialRoster";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,10 @@ export default async function HocSinhPage({ params, searchParams }: { params: Pr
   const gate = await gateClassPage(session, id, { ownerOnly: true });
   if (!gate.ok) return null;
   // SCL-B: thêm em / mã mời / duyệt đều là API chỉ của gia sư chủ lớp (403 với Chủ nhiệm) ⇒ không vẽ các nút đó.
-  if (gate.centerAdmin) return <AdminManageNote courseId={id} what="Thêm học sinh" />;
+  // SCL đợt 5: khối Học thử (xác nhận chính thức / gia hạn) cho cả chủ lớp lẫn Chủ nhiệm.
+  const flash = typeof sp.hocthu === "string" ? sp.hocthu : null;
+  if (gate.centerAdmin) return <><TrialRoster courseId={id} flash={flash} /><AdminManageNote courseId={id} what="Thêm học sinh" /></>;
   const d = await loadStudentsTab(session, id, sp);
   if (!d) return null;
-  return <HocSinhTab d={d} />;
+  return <><TrialRoster courseId={id} flash={flash} /><HocSinhTab d={d} /></>;
 }

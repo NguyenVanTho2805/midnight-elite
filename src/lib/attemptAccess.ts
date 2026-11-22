@@ -64,7 +64,7 @@ async function accessInputOf(userId: string, examId: string): Promise<AccessInpu
   const exam = await rootExamOf(examId);
   if (!exam?.courseId) return null;
   const [enrollment, guest] = await Promise.all([
-    prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exam.courseId } }, select: { status: true } }),
+    prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exam.courseId } }, select: { status: true, trialDays: true, trialStartedAt: true } }),
     prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId, examId: exam.id } }, select: { userId: true } }),
   ]);
   return { courseId: exam.courseId, price: exam.price, enrollment, hasGuestAccess: !!guest };

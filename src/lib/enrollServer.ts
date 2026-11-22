@@ -20,7 +20,7 @@ import {
 
 type Tx = Prisma.TransactionClient;
 
-export type EnrollSource = "class_invite" | "join_open" | "join_approved";
+export type EnrollSource = "class_invite" | "join_open" | "join_approved" | "intake"; // intake: SCL đợt 5, phiếu BCA qua /api/intake/bca
 export interface EnrollCourse { id: string; ownerId: string | null; capacity: number | null; classStatus: string }
 export type EnrollResult =
   | { ok: true; enrollmentId: string; status: "active" | "pending_consent" | "suspended"; created: boolean }
@@ -32,7 +32,7 @@ export type EnrollResult =
  *  Không ghi log: gọi logEnrollment() SAU khi commit (logAction dùng prisma toàn cục, không dùng tx). */
 export async function enrollInTx(
   tx: Tx,
-  i: { userId: string; course: EnrollCourse; source: EnrollSource; inviteId?: string | null },
+  i: { userId: string; course: EnrollCourse; source: EnrollSource; inviteId?: string | null; trial?: { trialDays: number; trialStartedAt: Date | null; trialConvertRequestedAt: Date | null } },
 ): Promise<EnrollResult> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`class_enroll:${i.course.id}`}))`;
 
@@ -44,7 +44,8 @@ export async function enrollInTx(
   const existing = await tx.enrollment.findUnique({ where: { userId_courseId: { userId: i.userId, courseId: i.course.id } }, select: { id: true, status: true } });
   if (existing) {
     // Đã nghỉ lớp (suspended) được trả ĐÚNG là "suspended" — không giả làm "active" (người gọi báo "đã trong lớp" sai và có vẻ như đã học lại). Không tự mở lại.
-    const status = existing.status === ENROLLMENT_STATUS.PENDING_CONSENT ? "pending_consent" : existing.status === ENROLLMENT_STATUS.SUSPENDED ? "suspended" : "active";
+    // SCL đợt 5: học thử hết hạn (trial_expired) cũng KHÔNG phải "active" — người gọi không được báo "đã trong lớp" như đang học; trả "suspended" (không tự mở lại).
+    const status = existing.status === ENROLLMENT_STATUS.PENDING_CONSENT ? "pending_consent" : existing.status === ENROLLMENT_STATUS.SUSPENDED || existing.status === ENROLLMENT_STATUS.TRIAL_EXPIRED ? "suspended" : "active";
     return { ok: true, enrollmentId: existing.id, status, created: false };
   }
 
@@ -64,7 +65,7 @@ export async function enrollInTx(
   if (!gate.allow) return { ok: false, code: "CLASS_NOT_ACCEPTING", status: 409, error: CLASS_PAUSED_MESSAGE, gate };
 
   const status = await deriveStatusForNewEnrollment(i.userId);
-  const enr = await tx.enrollment.create({ data: { userId: i.userId, courseId: i.course.id, status } });
+  const enr = await tx.enrollment.create({ data: { userId: i.userId, courseId: i.course.id, status, ...(i.trial ?? {}) } });
   return { ok: true, enrollmentId: enr.id, status: status === ENROLLMENT_STATUS.PENDING_CONSENT ? "pending_consent" : "active", created: true };
 }
 

@@ -63,7 +63,7 @@ export async function loadStudentScheduleEvents(userId: string, now: Date = new 
   // cùng luật `isListedToStudent` với GET /api/exams (một nguồn).
   // STU-004 (cùng luật GET /api/exams): đề của lớp em không học thì KHÔNG hiện tên ở lịch, trừ đề đã được cấp quyền vào (ExamGuestAccess).
   const [enr, acc] = await Promise.all([
-    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
+    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true, trialDays: true, trialStartedAt: true } }),
     prisma.examGuestAccess.findMany({ where: { userId }, select: { examId: true } }),
   ]);
   const enrolledCourses = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));

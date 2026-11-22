@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { isEnrollmentActive } from "@/lib/enrollment";
+import { startTrialClock } from "@/lib/trialServer";
 import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
@@ -53,7 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const isManager = fullAccess;
   // BU-02-PHẲNG (R3a): bài chính Nháp/Ẩn và người xem không phải quản lý lớp ⇒ 404 TRƯỚC nhánh isFree / 403.
   if (!isManager && !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-  let enrolled: { status: string } | null = null;
+  let enrolled: { status: string; trialDays: number | null; trialStartedAt: Date | null } | null = null;
 
   if (!fullAccess) {
     enrolled = session.role === "student"
@@ -64,8 +66,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (suspendedBlocksLesson(enrolled, lesson)) {
       return NextResponse.json(suspendedBody(contactTutorHref({ id: courseId, ownerId: course.ownerId })), { status: 403, headers: { "Cache-Control": "private, no-store" } });
     }
-    if (enrolled && enrolled.status === "active") {
+    if (isEnrollmentActive(enrolled)) {
       fullAccess = true;
+      await startTrialClock(session.userId); // SCL đợt 5 (D5): mở bài lần đầu ⇒ bắt đầu tính 14 ngày
     } else if (!lesson.isFree) {
       // Chưa enroll và bài này không phải học thử miễn phí
       return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });

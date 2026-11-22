@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const session = await getSession();
     const isAdmin = session?.role === "admin";
     // Trạng thái ghi danh của học viên theo từng lớp: để quyết định ai được thấy link nhóm Zalo / link học online của lớp (xem courseFor).
-    const enrollmentOf = new Map<string, { status: string }>();
+    const enrollmentOf = new Map<string, { status: string; trialDays: number | null; trialStartedAt: Date | null }>();
 
     let statusWhere: Record<string, unknown>;
 
@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
       if (session?.role === "student") {
         const enrollments = await prisma.enrollment.findMany({
           where:  { userId: session.userId },
-          select: { courseId: true, status: true },
+          select: { courseId: true, status: true, trialDays: true, trialStartedAt: true },
         });
-        for (const e of enrollments) enrollmentOf.set(e.courseId, { status: e.status });
+        for (const e of enrollments) enrollmentOf.set(e.courseId, e);
         const enrolledIds = enrollments.map(e => e.courseId);
         statusWhere = enrolledIds.length > 0
           ? { OR: [{ status: true }, { id: { in: enrolledIds } }] }

@@ -290,6 +290,8 @@ export interface ThuVienRow {
   trangThai: LopTrangThai;
   /** null khi lớp chưa có bài Đã đăng. */
   hocTiep: { lessonId: string; title: string; reason: "dang-xem" | "chua-hoc" | "on-lai" } | null;
+  /** SCL đợt 5: học thử đã hết hạn ⇒ thẻ mờ + "Hết thời gian học thử". */
+  trialExpired?: boolean;
 }
 export interface ThuVienResp { classes: ThuVienRow[] }
 

@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     let granted = new Set<string>(); // đề thu phí đã được cấp quyền vào (ExamGuestAccess) vẫn phải hiện
     if (!sessionIsAdmin && studentUserId) {
       const [enr, acc] = await Promise.all([
-        prisma.enrollment.findMany({ where: { userId: studentUserId }, select: { courseId: true, status: true } }),
+        prisma.enrollment.findMany({ where: { userId: studentUserId }, select: { courseId: true, status: true, trialDays: true, trialStartedAt: true } }),
         prisma.examGuestAccess.findMany({ where: { userId: studentUserId }, select: { examId: true } }),
       ]);
       enrolled = new Set(enr.filter(e => isEnrollmentActive(e)).map(e => e.courseId));

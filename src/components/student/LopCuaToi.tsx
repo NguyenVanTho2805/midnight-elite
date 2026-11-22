@@ -26,6 +26,8 @@ import { kinButtonClass } from "@/components/kin/Button";
 import { KinListRow } from "@/components/kin/ListRow";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinCallout } from "@/components/kin/Callout";
+import { KinPanel } from "@/components/kin/Panel";
+import { TRIAL_DAYS, TRIAL_WARN_DAYS } from "@/lib/trial";
 import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import ThuVienLop from "@/components/student/ThuVienLop";
@@ -102,7 +104,38 @@ function RecordingMonths({ months }: { months: RecordingMonthGroup<RecRow>[] }) 
 }
 interface Chapter { id: string; title: string; order: number; isImplicit?: boolean; lessons: Lesson[] }
 interface Section { id: string; title: string; order: number; chapters: Chapter[] }
-interface Course { id: string; name: string; instructor: string; category: string; calendarColor?: string | null; sections: Section[]; suspended?: { contactHref: string | null } }
+interface Course {
+  id: string; name: string; instructor: string; category: string; calendarColor?: string | null; sections: Section[]; suspended?: { contactHref: string | null };
+  /** SCL đợt 5: học thử còn hạn / chưa bắt đầu (từ /api/courses/[id]); trialExpired ⇒ thẻ khoá. */
+  trial?: { kind: "dang_thu"; daysLeft: number } | { kind: "chua_bat_dau" }; trialExpired?: boolean;
+}
+
+/** SCL đợt 5 (D7): hết hạn học thử — lớp khoá hẳn, chỉ còn đường đăng ký chính thức và Zalo anh Thanh. Không tên, không tiền. */
+function TrialLocked() {
+  return (
+    <div data-trial-khoa className="pt-6">
+      <KinEmptyState title="Hết thời gian học thử" action={
+        <div className="flex flex-wrap justify-center gap-3">
+          <a href="https://aodtsix-cmd.github.io/bca-midnight-class/" target="_blank" rel="noopener noreferrer" data-dang-ky-chinh-thuc className={kinButtonClass("primary")}>Đăng ký chính thức</a>
+          <a href="https://zalo.me/0384409051" target="_blank" rel="noopener noreferrer" className={kinButtonClass("secondary")}>Nhắn Zalo anh Thanh</a>
+        </div>
+      }>
+        14 ngày học thử của lớp này đã hết. Tài liệu và bài tập đang khoá. Đăng ký chính thức để học tiếp, bài đã nộp và điểm vẫn được giữ.
+      </KinEmptyState>
+    </div>
+  );
+}
+
+/** Băng học thử (tình huống 9, 10): chưa bắt đầu / vừa bắt đầu hôm nay (trang máy chủ đã mở đồng hồ trước khi tải lớp) ⇒ "Bắt đầu tính 14 ngày từ hôm nay"; còn ≤ 3 ngày ⇒ tone cảnh báo. */
+function TrialBand({ t }: { t: NonNullable<Course["trial"]> }) {
+  const warn = t.kind === "dang_thu" && t.daysLeft <= TRIAL_WARN_DAYS;
+  return (
+    <KinPanel variant={warn ? "canh-bao" : "nhan"} data-trial-bang={warn ? "canh-bao" : "nhan"} className="mt-4">
+      <p className={`${GOC} font-medium text-[var(--kin-chu-chinh)]`}>{t.kind === "dang_thu" && t.daysLeft < TRIAL_DAYS ? `Học thử · còn ${t.daysLeft} ngày` : `Bắt đầu tính ${TRIAL_DAYS} ngày học thử từ hôm nay`}</p>
+      {warn && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>Sắp hết hạn học thử. <a href="https://aodtsix-cmd.github.io/bca-midnight-class/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Đăng ký chính thức</a> để học tiếp.</p>}
+    </KinPanel>
+  );
+}
 
 /** Sắp theo (order, id) như studentLopServer.ts (orderBy [order, id]). Trả BẢN SAO, không đổi mảng gốc. */
 function byOrderId<T extends { id: string; order?: number }>(a: T, b: T): number {
@@ -216,6 +249,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
       <div className="pt-4"><ErrorStrip message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."} onRetry={() => setTick(t => t + 1)} /></div>
       <div className="pt-4"><Link href="/student/hoc-tap" data-all-classes className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Về Lớp của tôi</Link></div></>);
   }
+  if (course.trialExpired) return wrap(<>{title(course.name)}<TrialLocked /></>);
   if (course.suspended) return wrap(<>{title(course.name)}<SuspendedNotice contactHref={course.suspended.contactHref} /></>);
 
   const color = classAccentFor(course.id, course.calendarColor);
@@ -288,6 +322,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
       <div aria-hidden data-vach-lop className="h-1 w-16 rounded-[var(--kin-bo-tron)] mb-3" style={{ background: color }} />
       {title(course.name)}
       {(teacher || sched) && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>{[teacher, sched].filter(Boolean).join(" · ")}</p>}
+      {course.trial && <TrialBand t={course.trial} />}
       {/* Lối phụ của lớp gom lên đầu trang (không còn khối link lẻ cuối trang). LOI-01: hỏi gia sư TRONG lớp khi bảng tin chung ẩn; DG: Phiếu học phí theo cờ HOC_PHI (chỉ chữ, KHÔNG số tiền). */}
       {enrolledHere && (!featureOn("CONG_DONG") || !isLinkHidden("/student/hoc-phi")) && (
         <p data-lop-thong-tin className={`flex flex-wrap gap-x-4 ${GOC}`}>

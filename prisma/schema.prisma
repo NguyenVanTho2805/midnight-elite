@@ -990,6 +990,7 @@ model User {
   assignmentSubmissions AssignmentSubmission[] @relation("AssignmentSubmissions")
   assignmentAnswers     AssignmentAnswer[]     @relation("AssignmentAnswers")
   enrollments         Enrollment[]
+  intakeWelcomes      IntakeWelcome[]
   courseTeachings     CourseTeacher[] @relation("CourseTeacherUser") // TUT-dong-giang
   verifyTokens        VerifyToken[]
   passwordResetTokens PasswordResetToken[]
@@ -1133,6 +1134,12 @@ model Enrollment {
   //   - "suspended"       : đã hết hạn gói hoặc bị tạm dừng — vẫn xem lại được
   //                          nội dung cũ nhưng không có hoạt động mới (R01).
   status String @default("active")
+  //   - "trial_expired"   : SCL đợt 5 (D7) — học thử hết hạn mà chưa lên chính thức: khoá hẳn tài liệu/bài tập, vẫn đăng nhập được.
+
+  // SCL đợt 5 — học thử có hạn (docs/kin/rd/HOC-THU-VA-DANG-KY.md, D5/D8). Luật thuần ở src/lib/trial.ts.
+  trialDays               Int? // null = ghi danh chính thức (không hạn)
+  trialStartedAt          DateTime? // lần đầu em mở lớp trên web; null = chưa tính ngày
+  trialConvertRequestedAt DateTime? // đã gửi phiếu chính thức, chờ chủ xác nhận
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -1142,6 +1149,22 @@ model Enrollment {
   @@unique([userId, courseId])
   @@index([status])
   @@map("enrollments")
+}
+
+// SCL đợt 5 (D2/D3) — mã chào một lần cho người vừa gửi phiếu BCA qua Apps Script (/api/intake/bca → /chao/<mã>). Chỉ lưu BĂM sha256 của mã;
+// hết hạn 7 ngày. passwordSetAt: lúc em đặt mật khẩu qua trang chào (hoặc đặt sẵn khi tài khoản đã có mật khẩu từ trước ⇒ trang chỉ hiện "Đăng nhập").
+model IntakeWelcome {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  userId        String
+  expiresAt     DateTime
+  passwordSetAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("intake_welcomes")
 }
 
 // ─── TUITION (AS-192 + AS-193, chốt 06/10/2026) ───────────────────────────────
