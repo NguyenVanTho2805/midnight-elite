@@ -25,6 +25,7 @@ Kế hoạch và các quyết định Q1–Q15: `docs/kin/rd/SUA-CHUA-LON-KE-HOA
 | 2 | [#165](https://github.com/NguyenVanTho2805/midnight-elite/pull/165) SCL đợt 2: sổ điểm, tài liệu + YouTube + nộp ảnh thành PDF, hiệu năng | `claude/sua-chua-lon-2` | `claude/sua-chua-lon` |
 | 3 | [#166](https://github.com/NguyenVanTho2805/midnight-elite/pull/166) SCL đợt 3F: xoá 4 phần thừa, bịt lối vào phần tắt, một cửa tạo lớp | `claude/sua-chua-lon-3` | `claude/sua-chua-lon-2` |
 | 4 | [#167](https://github.com/NguyenVanTho2805/midnight-elite/pull/167) SCL đợt 4: giao diện theo bản chốt | `claude/sua-chua-lon-4` | `claude/sua-chua-lon-3` |
+| 5 | PR SCL đợt 5: học thử có hạn + nhận phiếu form BCA + trang chào (số PR ghi trong mô tả PR #167 / danh sách PR mở) | `claude/sua-chua-lon-5` | `claude/sua-chua-lon-4` |
 
 Mỗi PR chứa trọn PR trước nó. Commit cuối của #167: `b3593777`.
 
@@ -41,6 +42,7 @@ gh pr merge 164 --merge
 gh pr edit 165 --base main && gh pr merge 165 --merge
 gh pr edit 166 --base main && gh pr merge 166 --merge
 gh pr edit 167 --base main && gh pr merge 167 --merge
+# PR đợt 5: gh pr edit <số> --base main && gh pr merge <số> --merge
 ```
 Xung đột khi đổi base ⇒ **DỪNG**, không tự giải xung đột trên `main`.
 
@@ -49,7 +51,14 @@ Xung đột khi đổi base ⇒ **DỪNG**, không tự giải xung đột trên
 - Gộp vào `main` ⇒ Vercel tự build production. Lệnh build: `prisma generate && node scripts/db-push-on-production.mjs && next build`.
 - **Schema chỉ THÊM** (không mất dữ liệu): cột `ExamResult.pendingReview` (mặc định false) và bảng mới `login_failures`. `db push` chạy tự động lúc build production. Nếu build báo `db push` đòi chấp nhận mất dữ liệu ⇒ **DỪNG**, không thêm `--accept-data-loss`.
 - Các bảng của phần đã xoá (Tiếng Anh, Tin tức…) **vẫn giữ trong DB**, chỉ thêm chú thích; không có lệnh xoá bảng.
-- **Không cần biến môi trường mới.** Không bật cờ `NEXT_PUBLIC_KIN_MO_*` nào — để nguyên như hiện tại (tắt).
+- **PR 1–4 không cần biến môi trường mới.** Không bật cờ `NEXT_PUBLIC_KIN_MO_*` nào — để nguyên như hiện tại (tắt).
+- **PR 5 (đợt 5)** thêm schema chỉ-thêm: 3 cột trên `enrollments` (`trialDays`, `trialStartedAt`, `trialConvertRequestedAt`), bảng `intake_welcomes`; cron mới `het-han-hoc-thu` (mỗi ngày). Biến môi trường Vercel (Production) — **chủ đặt, KHÔNG dán giá trị vào PR hay chat**:
+  - `KIN_INTAKE_KEY`: chuỗi ngẫu nhiên ≥ 24 ký tự (vd `openssl rand -base64 32`); đặt CÙNG giá trị vào Script Property `KIN_INTAKE_KEY` của Apps Script.
+  - `KIN_INTAKE_COURSES`: JSON môn → mã lớp KiN, vd `{"Toán":"<mã lớp>","Sử":"<mã lớp>","Địa":"<mã lớp>","Anh":"<mã lớp>"}` (tạo 4 lớp trên KiN trước; môn chưa có lớp thì bỏ khỏi JSON).
+  - `KIN_ZALO_HOC_THU` (tuỳ chọn): link nhóm Zalo học thử; mặc định `https://zalo.me/g/ruroagad4wqf3xianfoc`.
+  - Kiểm `NEXT_PUBLIC_APP_URL` = `https://midnightelite-edu.com` (link trang chào dựng từ biến này).
+  - Thiếu `KIN_INTAKE_KEY` thì `/api/intake/bca` trả 503 và form chạy như cũ — an toàn để gộp trước, bật sau.
+- **Phía form (làm SAU khi PR 5 lên production và đã đặt env):** bản vá Apps Script + trang GitHub nằm ở máy chủ của chủ (`midnight-elite/.local-dev/bca-ban-va/`, KHÔNG có trong kho vì Code.gs chứa số tài khoản). Làm theo `HUONG-DAN-DAN.md` trong thư mục đó: dán Code.gs, đặt 2 Script Properties, **Manage deployments ▸ Edit ▸ Phiên bản mới** (không "New deployment"), đẩy index.html lên kho `aodtsix-cmd/bca-midnight-class`.
 - Cron (`vercel.json`): bỏ `english-voa`, `article-publish` (phần đã xoá) và `pro-renewal-reminders` (phần Kinh doanh đang ẩn; route vẫn giữ). **Kiểm:** nếu production còn người đang dùng gói Pro trả tiền thì báo chủ trước khi gộp #166, vì họ sẽ không còn nhận email nhắc gia hạn.
 
 ### Việc sau khi lên production (chủ làm hoặc duyệt)
@@ -78,6 +87,7 @@ Dùng tài khoản thật của chủ, **không** tạo dữ liệu giả trên 
 Có lỗi nghiêm trọng ⇒ Vercel → Deployments → **Promote** bản trước đó (hoàn tác tức thì, schema thêm không ảnh hưởng bản cũ). Báo chủ.
 
 ## 5. Hành vi mới cần biết (để không tưởng là lỗi)
+- (PR 5) Học sinh Khối 11/12 gửi phiếu ⇒ KiN tự tạo tài khoản + ghi danh học thử 14 ngày (tính từ lần đầu em mở lớp, chung mọi môn) và chuyển tới `/chao/<mã>`. Hết hạn ⇒ khoá hẳn tài liệu/bài. Tab Học sinh của lớp có khối Học thử: "Xác nhận chính thức", "Gia hạn 7 ngày".
 - Ngăn "Sửa bài" của gia sư **tự lưu** sau 1,5 giây ngừng gõ; đóng ngăn hay đổi bài là lưu ngay.
 - Dải tab lớp gia sư: Video / Thông báo / Cài đặt / Điểm danh nằm sau nút **"Khác"**.
 - Trang lớp học sinh bỏ cây chương; cây vẫn ở thanh bên trang bài học.
