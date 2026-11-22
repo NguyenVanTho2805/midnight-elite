@@ -104,6 +104,7 @@ const EXPIRED_TEXT = "Tệp đã được xoá sau 60 ngày; điểm và nhận 
   check("data-trang-thai=trong", (await p1.locator(BOX).getAttribute("data-trang-thai")) === "trong");
   const zone = p1.locator(`${BOX} [data-nop-tep-vung-tha]`);
   check("vùng thả là <button> thật, cao ≥160px ở 1280", (await zone.evaluate(e => e.tagName)) === "BUTTON" && (((await zone.boundingBox())?.height ?? 0) >= 160));
+  await p1.locator(`${BOX} [data-nop-tep-quy-dinh]`).click(); // SCL5: quy định nộp tệp gập sau nút
   const cap = (await p1.locator(`${BOX} [data-nop-tep-chu-thich]`).textContent()) ?? "";
   check("chú thích: Word hoặc PDF, dưới 10 MB, ảnh gộp thành PDF trên máy, không nhận video, lưu 60 ngày (SCL-D Q3)", /Word hoặc PDF, dưới 10 MB\. Ảnh chụp bài làm được gộp thành một tệp PDF ngay trên máy bạn.*Không nhận video\. Tệp được lưu 60 ngày rồi tự xoá\./.test(cap), cap);
   check("khối cảnh báo thông tin cá nhân hiện", await p1.locator(`${BOX} [data-nop-tep-canh-bao]`).isVisible());

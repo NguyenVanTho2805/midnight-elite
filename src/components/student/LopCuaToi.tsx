@@ -30,7 +30,7 @@ import { KinPanel } from "@/components/kin/Panel";
 import type { TrialView } from "@/lib/studentLop";
 import { HocThuBang, HocThuKhoa } from "@/components/student/HocThu";
 import { KinProgressRing } from "@/components/kin/ProgressRing";
-import { KinStatus } from "@/components/kin/Status";
+import { KinStatus, KinStatusIcon, STATUS_DOT } from "@/components/kin/Status";
 import { useProgress } from "@/hooks/useProgress";
 import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
@@ -41,7 +41,7 @@ import { featureOn, isLinkHidden } from "@/lib/features";
 import { classAccentFor } from "@/lib/classColor";
 import { nopTepResultMessage } from "@/lib/nopTep";
 import { hocTiep, hocTiepLabel, orderedLessonIds } from "@/lib/studentLop";
-import { BAI_TRANG_THAI_LABEL, baiTrangThai, buildTodoCards, lessonDate, on10, matchesQuery, newestFirst, nextClass, scheduleLine, vnDayLabel, vnWeekdayDate, type BaiTrangThai } from "@/lib/studentClassPage";
+import { BAI_TRANG_THAI_LABEL, baiTrangThai, buildTodoCards, lessonDate, on10, matchesQuery, newestFirst, nextClass, scheduleLine, vnDayLabel, vnWeekdayDate, joinLabel, opensLine, type BaiTrangThai } from "@/lib/studentClassPage";
 
 interface Lesson {
   id: string; code: string; title: string; type: string; duration?: string | null; isLocked: boolean; isFree: boolean; documents?: string | null;
@@ -110,7 +110,7 @@ interface Section { id: string; title: string; order: number; chapters: Chapter[
 interface Course {
   id: string; name: string; instructor: string; category: string; calendarColor?: string | null; sections: Section[]; suspended?: { contactHref: string | null };
   /** SCL đợt 5: học thử còn hạn (kèm mốc hết hạn) / chưa bắt đầu (từ /api/courses/[id]); trialExpired ⇒ thẻ khoá (D16). */
-  trial?: TrialView; trialExpired?: boolean;
+  trial?: TrialView; trialExpired?: boolean; trialDays?: number | null;
   /** Link nhóm Zalo của lớp — máy chủ chỉ gửi cho người trong lớp (mediaAccess PRIVATE_COURSE_FIELDS). */
   zaloGroupUrl?: string | null; zaloGroupLink?: string | null;
 }
@@ -135,20 +135,24 @@ const ST_TONE: Record<BaiTrangThai, "xong" | "cho" | "mo"> = { "da-hoc": "xong",
 
 /** Hàng một bài (§3.3, KinListRow 56px): tên; dòng phụ "Thứ Ba 17/11 · Video 42 phút · 2 tài liệu · Bài tập". Lề phải (SCL5, A+B): "Đã chấm 8,5/10" và/hoặc
  *  trạng thái của riêng em (Đã học / Đang học / Chưa học — chỉ từ tiến độ thật). Cả hàng là link thật. */
-function LessonRow({ l, grade, linked, st }: { l: Lesson; grade?: string; linked: boolean; st?: BaiTrangThai }) {
+function LessonRow({ l, grade, linked, st, now }: { l: Lesson; grade?: string; linked: boolean; st?: BaiTrangThai; now: Date }) {
   const d = lessonDate(l);
+  const mo = opensLine(l.scheduledAt ? new Date(l.scheduledAt) : null, now);
   const video = parseLessonType(l.type) === "record" || firstPlayableVideo(l.videoUrl) !== null;
   const docs = parseMaterials(l.documents).length;
   const hw = (l._count?.assignments ?? 0) > 0 || !!l.azotaUrl;
   const parts = [
-    d && <span key="d">{vnDayLabel(d)}</span>,
+    mo ? <span key="d" data-mo-tu className="font-medium text-[var(--kin-chu-chinh)]">{mo}</span> : d && <span key="d">{vnDayLabel(d)}</span>,
     video && <span key="v">{part(<IconVideo />, l.duration ? `Video ${l.duration}` : "Video")}</span>,
     docs > 0 && <span key="t">{part(<IconTaiLieu />, `${docs} tài liệu`)}</span>,
     hw && <span key="b">{part(<IconBaiTapNho />, "Bài tập")}</span>,
   ].filter(Boolean);
   const aside = (grade || st || linked) ? <>
     {grade && <span data-diem-le className="font-semibold text-[var(--kin-tt-chu-xong)]">Đã chấm {grade}</span>}
-    {st && !grade && <KinStatus tone={ST_TONE[st]}>{BAI_TRANG_THAI_LABEL[st]}</KinStatus>}
+    {st && !grade && (st === "dang-hoc"
+      // Hàng đang học có nền nhạt (current): chữ cam --kin-tt-chu-cho chỉ đạt 4,28:1 trên nền đó ⇒ chữ chính, hình nửa tô giữ nghĩa "đang dở".
+      ? <span data-kin-status="cho" className="inline-flex items-center gap-[var(--kin-kc-2)] min-h-5 leading-5 whitespace-nowrap text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]"><KinStatusIcon shape="nua" color={STATUS_DOT.cho} />{BAI_TRANG_THAI_LABEL[st]}</span>
+      : <KinStatus tone={ST_TONE[st]}>{BAI_TRANG_THAI_LABEL[st]}</KinStatus>)}
     {linked && <Chevron />}
   </> : undefined;
   return (
@@ -163,30 +167,34 @@ interface MucChuong { id: string; title: string; lessons: Lesson[]; done: number
 
 /** Mục lục chương › bài (SCL5, phương án C): mỗi chương một mục gập, đầu mục có vòng x/y bài đã học (tiến độ thật). Chương đang học mở sẵn; chương khác
  *  mở được trong MỘT lần chạm. Trong chương: các bài đã học gom thành "N bài đã học · xem lại" (điểm vẫn hiện ở lề khi mở), rồi các bài còn lại. */
-function MucLuc({ chapters, openId, completed, watching, grades, linked }: {
-  chapters: MucChuong[]; openId: string | null; completed: Set<string>; watching: Record<string, number>; grades: Map<string, string>; linked: boolean;
+/** `tien` null = tiến độ chưa tải xong / tải lỗi: KHÔNG vẽ vòng, trạng thái từng bài hay nhóm "đã học" (không trình bày 0/N như số thật). */
+function MucLuc({ chapters, openId, tien, grades, linked, now }: {
+  chapters: MucChuong[]; openId: string | null; tien: { completed: Set<string>; watching: Record<string, number> } | null; grades: Map<string, string>; linked: boolean; now: Date;
 }) {
+  const completed = tien?.completed ?? new Set<string>();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [xemLai, setXemLai] = useState<Record<string, boolean>>({});
   return (
     <div className="rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] overflow-hidden">
       {chapters.map((c, i) => {
         const isOpen = open[c.id] ?? c.id === openId;
-        const daHoc = c.lessons.filter(l => completed.has(l.id));
-        const conLai = c.lessons.filter(l => !completed.has(l.id));
+        const daHoc = tien ? c.lessons.filter(l => completed.has(l.id)) : [];
+        const conLai = c.lessons.filter(l => !daHoc.includes(l));
+        const firstAt = c.lessons.map(l => (l.scheduledAt ? new Date(l.scheduledAt) : null)).filter((x): x is Date => !!x).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+        const mo = c.lessons.every(l => opensLine(l.scheduledAt ? new Date(l.scheduledAt) : null, now)) ? opensLine(firstAt, now) : "";
         const daCham = daHoc.filter(l => grades.has(l.id)).length;
         const showOld = xemLai[c.id] ?? false;
-        const row = (l: Lesson) => <LessonRow key={l.id} l={l} grade={grades.get(l.id)} linked={linked && !l.isLocked} st={baiTrangThai(l.id, completed, watching)} />;
+        const row = (l: Lesson) => <LessonRow key={l.id} l={l} grade={grades.get(l.id)} linked={linked && !l.isLocked} st={tien ? baiTrangThai(l.id, tien.completed, tien.watching) : undefined} now={now} />;
         return (
           <section key={c.id} data-chuong-muc={c.id} aria-label={c.title} className={i > 0 ? "border-t border-[var(--kin-vien-thuong)]" : ""}>
             <h3>
               <button type="button" aria-expanded={isOpen} aria-controls={`muc-${c.id}`} onClick={() => setOpen(o => ({ ...o, [c.id]: !isOpen }))}
                 className="w-full flex items-center gap-3 min-h-14 px-[var(--kin-kc-6)] py-3 text-left hover:bg-[var(--kin-nen-re-chuot)] transition-colors">
                 <span className="min-w-0 flex-1">
-                  <span className={`block ${GOC} text-[var(--kin-chu-phu)]`}>{c.done >= c.lessons.length ? "Đã học xong" : c.id === openId ? "Đang học" : `${c.lessons.length} bài`}</span>
+                  <span data-chuong-trang-thai className={`block ${GOC} text-[var(--kin-chu-phu)]`}>{mo ? <><span className="font-medium text-[var(--kin-chu-chinh)]">{mo}</span> · {c.lessons.length} bài</> : !tien ? `${c.lessons.length} bài` : c.done >= c.lessons.length ? "Đã học xong" : c.id === openId ? "Đang học" : `${c.lessons.length} bài`}</span>
                   <span className="block text-[length:var(--kin-co-body)] leading-6 font-semibold text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{c.title}</span>
                 </span>
-                <KinProgressRing done={c.done} total={c.lessons.length} size={40} label={`Đã học ở ${c.title}`} />
+                {tien && <KinProgressRing done={c.done} total={c.lessons.length} size={40} label={`Đã học ở ${c.title}`} />}
                 <KinChevron open={isOpen} />
               </button>
             </h3>
@@ -289,7 +297,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
       <div className="pt-4"><ErrorStrip message={error || "Không tìm thấy khóa học — có thể bạn đã rời lớp hoặc lớp đã đóng."} onRetry={() => setTick(t => t + 1)} /></div>
       <div className="pt-4"><Link href="/student/hoc-tap" data-all-classes className="inline-flex items-center min-h-11 text-[var(--kin-nhan-link)] underline">Về Lớp của tôi</Link></div></>);
   }
-  if (course.trialExpired) return wrap(<>{title(course.name)}<HocThuKhoa courseId={course.id} courseName={course.name} /></>);
+  if (course.trialExpired) return wrap(<>{title(course.name)}<HocThuKhoa courseId={course.id} courseName={course.name} trialDays={course.trialDays} /></>);
   if (course.suspended) return wrap(<>{title(course.name)}<SuspendedNotice contactHref={course.suspended.contactHref} /></>);
 
   const color = classAccentFor(course.id, course.calendarColor);
@@ -320,7 +328,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
               <h2 id={`chuong-${c.id}`} className={`${H2} [overflow-wrap:anywhere]`}>{c.isImplicit || !c.title.trim() ? "Bài học" : c.title}</h2>
               <span className={`${GOC} text-[var(--kin-chu-phu)] flex-shrink-0`}>{c.lessons.length} bài</span>
             </div>
-            <ul className="border-t border-[var(--kin-vien-nhat)]">{c.lessons.map(l => <LessonRow key={l.id} l={l} grade={grades.get(l.id)} linked={!l.isLocked} />)}</ul>
+            <ul className="border-t border-[var(--kin-vien-nhat)]">{c.lessons.map(l => <LessonRow key={l.id} l={l} grade={grades.get(l.id)} linked={!l.isLocked} now={new Date()} />)}</ul>
           </section>
         ))}
       {enrolledHere && (
@@ -360,13 +368,14 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
   const nc = nextClass(events, now, courseId);
   const zalo = course.zaloGroupUrl || course.zaloGroupLink || "";
   const hasPrimary = !!cards?.some(c => c.primary);
+  const tienOk = !progress.loading && !progress.error;
 
   return wrap(<>
     <header data-dau-lop>
       <div aria-hidden data-vach-lop className="h-1 w-16 rounded-[var(--kin-bo-tron)] mb-3" style={{ background: color }} />
       {title(course.name)}
       {(teacher || sched) && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>{[teacher, sched].filter(Boolean).join(" · ")}</p>}
-      {course.trial && <HocThuBang t={course.trial} trongLop className="mt-4" />}
+      {course.trial && <HocThuBang t={course.trial} trongLop chinh={!hasPrimary && !(enrolledHere && htLesson)} className="mt-4" />}
       {/* Lối phụ của lớp gom lên đầu trang (không còn khối link lẻ cuối trang). LOI-01: hỏi gia sư TRONG lớp khi bảng tin chung ẩn; DG: Phiếu học phí theo cờ HOC_PHI (chỉ chữ, KHÔNG số tiền). */}
       {enrolledHere && (!featureOn("CONG_DONG") || !isLinkHidden("/student/hoc-phi")) && (
         <p data-lop-thong-tin className={`flex flex-wrap gap-x-4 ${GOC}`}>
@@ -401,7 +410,7 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
           </section>
         )}
 
-        {enrolledHere && htLesson && !progress.loading && (
+        {enrolledHere && htLesson && tienOk && (
           <KinPanel variant="nhan" data-hoc-tiep-lop={htLesson.id} className="mt-6">
             <p className={`${GOC} text-[var(--kin-chu-phu)]`}>{ht.reason === "on-lai" ? "Bạn đã học hết các bài đã đăng" : "Việc tiếp theo trong lớp"}</p>
             <p className="mt-1 text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{htLesson.title}</p>
@@ -414,10 +423,11 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
         <section aria-labelledby="lop-chuong" data-lop-chuong className="mt-8">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 pb-2">
             <h2 id="lop-chuong" className={H2}>Các chương</h2>
-            {order.length > 0 && <span className={`${GOC} text-[var(--kin-chu-phu)] tabular-nums`}>Đã học {doneAll}/{order.length} bài</span>}
+            {order.length > 0 && tienOk && <span data-da-hoc-tong className={`${GOC} text-[var(--kin-chu-phu)] tabular-nums`}>Đã học {doneAll}/{order.length} bài</span>}
           </div>
+          {progress.error && <div className="mb-3" data-tien-do-loi><ErrorStrip message="Chưa tải được tiến độ học của bạn. Danh sách bài vẫn mở được." onRetry={progress.reload} /></div>}
           {muc.length === 0 ? <KinEmptyState title="Lớp chưa có bài học nào">Khi gia sư đăng bài học, danh sách sẽ hiện ở đây.</KinEmptyState>
-            : <MucLuc chapters={muc} openId={openChuong} completed={progress.completedIds} watching={progress.watching} grades={grades} linked={enrolledHere} />}
+            : <MucLuc chapters={muc} openId={tienOk ? openChuong : null} tien={tienOk ? { completed: progress.completedIds, watching: progress.watching } : null} grades={grades} linked={enrolledHere} now={now} />}
           {recs === "loi" && <div className="mt-3"><ErrorStrip message="Chưa tải được bản ghi của lớp." onRetry={() => { setRecs(null); setRecTick(t => t + 1); }} /></div>}
           <p className={`mt-2 flex flex-wrap gap-x-5 ${GOC}`}>
             {lessons.length > 0 && <Link href={allHref} data-tat-ca-bai className="inline-flex items-center gap-1 min-h-11 font-medium text-[var(--kin-nhan-link)] underline">Tìm bài · Tất cả bài học ({lessons.length})<Chevron /></Link>}
@@ -436,8 +446,8 @@ function Content({ courseId, view, focusThongBao, nop, bt }: { courseId: string;
               </p>
               {nc.event.mode === "offline" && nc.event.location && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>Học tại {nc.event.location}</p>}
               {nc.today && nc.event.joinUrl
-                ? <a href={nc.event.joinUrl} target="_blank" rel="noopener noreferrer" data-vao-phong className={`${kinButtonClass("secondary", "lg")} mt-3 w-full`}>Vào phòng học online</a>
-                : nc.event.joinUrl ? <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>Nút vào phòng học hiện ở đây vào ngày có buổi.</p> : null}
+                ? <a href={nc.event.joinUrl} target="_blank" rel="noopener noreferrer" data-vao-phong className={`${kinButtonClass(hasPrimary ? "secondary" : "primary", "lg")} mt-3 w-full`}>{joinLabel(nc.event.joinUrl, nc.event.time)}</a>
+                : nc.event.joinUrl ? <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>Học online. Ngày có buổi, nút {joinLabel(nc.event.joinUrl, nc.event.time).split(" · ")[0]} hiện ở đây.</p> : null}
             </KinPanel>
           )}
           {zalo && (

@@ -36,10 +36,11 @@ export function trialState(e: TrialFields, now: Date = new Date()): TrialState {
 export const isTrialExpired = (e: TrialFields, now: Date = new Date()): boolean => trialState(e, now).kind === "het_han";
 
 /** SCL5: hình dạng gửi cho giao diện học sinh — còn hạn (kèm mốc hết hạn ISO, để ghi giờ tuyệt đối) hoặc chưa bắt đầu. Hết hạn / chính thức ⇒ null. */
-export function trialView(e: TrialFields, now: Date = new Date()): { kind: "dang_thu"; daysLeft: number; endsAt: string } | { kind: "chua_bat_dau" } | null {
+/** `trialDays` = số ngày học thử THẬT của ghi danh này (Enrollment.trialDays), để chữ trên màn không ghi cứng 14. */
+export function trialView(e: TrialFields, now: Date = new Date()): { kind: "dang_thu"; daysLeft: number; endsAt: string; trialDays: number } | { kind: "chua_bat_dau"; trialDays: number } | null {
   const s = trialState(e, now);
-  if (s.kind === "chua_bat_dau") return s;
-  if (s.kind === "dang_thu") return { ...s, endsAt: trialEndsAt(e)!.toISOString() };
+  if (s.kind === "chua_bat_dau") return { ...s, trialDays: e.trialDays! };
+  if (s.kind === "dang_thu") return { ...s, endsAt: trialEndsAt(e)!.toISOString(), trialDays: e.trialDays! };
   return null;
 }
 

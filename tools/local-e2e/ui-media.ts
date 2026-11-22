@@ -57,6 +57,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     const p = await ctx.newPage(); watch(p);
 
     await open(p, lYt.id);
+    await p.locator("[data-video-cho]").first().click().catch(() => {}); // SCL5: iframe chỉ dựng sau khi bấm phát
     await p.locator(".plyr iframe").first().waitFor({ state: "attached", timeout: 60000 });
     check("YouTube: dựng player Plyr, khung nhúng youtube-nocookie dựng từ mã đã kiểm (không dùng link thô)", /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/.test((await p.locator(".plyr iframe").first().getAttribute("src")) ?? ""));
     check("không còn chữ giả 'Thiết bị 1/2' / 'lượt xem'", !/Thiết bị 1\/2|lượt xem/.test(await p.locator("body").innerText()));
@@ -97,6 +98,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     }
 
     // Vimeo: iframe sandbox
+    await p.locator("[data-video-cho]").first().click().catch(() => {}); // SCL5: iframe chỉ dựng sau khi bấm phát
     await p.locator("iframe[title='Video bài giảng']").waitFor({ timeout: 60000 });
     const vf = p.locator("iframe[title='Video bài giảng']");
     check("Vimeo: iframe có sandbox, địa chỉ do KiN dựng lại từ mã (player.vimeo.com)", ((await vf.getAttribute("sandbox")) ?? "").includes("allow-scripts") && !((await vf.getAttribute("sandbox")) ?? "").includes("allow-top-navigation") && ((await vf.getAttribute("src")) ?? "").startsWith("https://player.vimeo.com/video/76979871"), await vf.getAttribute("src"));
@@ -104,6 +106,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     await shot(p, `media-student-vimeo-${label}`);
 
     await open(p, lDrive.id);
+    await p.locator("[data-video-cho]").first().click().catch(() => {}); // SCL5: iframe chỉ dựng sau khi bấm phát
     await p.locator("iframe[title='Video bài giảng']").waitFor({ timeout: 60000 });
     check("Drive: iframe sandbox tới drive.google.com/file/d/<mã>/preview", ((await p.locator("iframe[title='Video bài giảng']").getAttribute("src")) ?? "").startsWith("https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/preview"));
 
@@ -118,6 +121,7 @@ const YT = "https://youtu.be/dQw4w9WgXcQ";
     await p.getByText("Video chưa được cập nhật").waitFor({ timeout: 30000 });
     check("chưa có video: trạng thái rỗng có lời giải thích", await p.getByText(/Gia sư chưa gắn video/).isVisible());
     await open(p, lMany.id);
+    await p.locator("[data-video-cho]").first().click().catch(() => {}); // SCL5: iframe chỉ dựng sau khi bấm phát
     await p.locator(".plyr iframe").first().waitFor({ state: "attached", timeout: 60000 });
     check("bài có 2 link (lưu dạng JSON mảng): phát video đầu, link thứ hai là nút 'Video khác' (không thành chuỗi JSON trong iframe)", (await p.getByRole("link", { name: /Video khác · Vimeo/ }).count()) === 1 && (await p.locator("iframe[src*='[']").count()) === 0);
     check(`không tràn ngang ở ${label}px (bài 2 link)`, (await overflow(p)) <= 1);

@@ -220,6 +220,10 @@ model Lesson {
   status         String           @default("published")
   // LOI-0111: ngày giờ học của bài (gia sư ghi ở màn sửa bài). Null = bài không gắn ngày. Dùng cho phiếu "Hôm nay có lớp" của học sinh.
   scheduledAt    DateTime?
+  // SCL5 (D15, ghép từ phương án B): "Mục tiêu bài" (1–3 dòng, đứng trên bậc thang) và "Tự kiểm tra" (mỗi dòng một câu tự hỏi, chỉ em thấy, không tính điểm)
+  // do gia sư ghi ở màn sửa bài. Null = không có ⇒ trang bài ẩn khối (không bịa). Chỉ THÊM cột.
+  objectives     String?          @db.Text
+  selfCheck      String?          @db.Text
 
   @@map("lessons")
 }

@@ -4,7 +4,8 @@ import { addDaysKey, dayOfWeekOfKey, hmOf, instantOf, parseHm, vnDateKeyOf, vnMi
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 
-const WEEKDAY = ["Chủ nhật", "thứ Hai", "thứ Ba", "thứ Tư", "thứ Năm", "thứ Sáu", "thứ Bảy"];
+// D18 (SCL5): ngày trong tuần viết ĐẦY ĐỦ và hoa chữ đầu ở mọi chỗ ("Thứ Ba", không "thứ Ba" / "T3").
+const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const H = 3_600_000, D = 24 * H;
 const dm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -166,10 +167,45 @@ export function vnWeekdayDate(at: Date): string {
   const k = vnDateKeyOf(at);
   return cap(`${WEEKDAY[dayOfWeekOfKey(k)]} ${dm(k)}`);
 }
-/** Mốc hết học thử tuyệt đối (P2-11): "21:40 Thứ Tư 25/11". Hỏng ⇒ "". */
+/** Mốc hết học thử tuyệt đối (P2-11): "21:40 Thứ Tư 25/11". Hỏng ⇒ "".
+ *  Hết hạn rơi vào 00:00–05:59 (vd 00:04 Thứ Năm) ⇒ ghi "23:59 Thứ Tư" của đêm trước: em đọc là "hết đêm Thứ Tư", và mốc ghi luôn SỚM hơn mốc thật
+ *  (máy chủ vẫn chặn đúng giây ở trial.ts), không bao giờ hứa thêm giờ. */
 export function trialEndLine(endsAt: string): string {
   const t = new Date(endsAt);
-  return valid(t) ? `${hmOf(vnMinutesOfDay(t))} ${vnWeekdayDate(t)}` : "";
+  if (!valid(t)) return "";
+  if (vnMinutesOfDay(t) < 6 * 60) return `23:59 ${vnWeekdayDate(new Date(t.getTime() - (vnMinutesOfDay(t) + 1) * 60_000))}`;
+  return `${hmOf(vnMinutesOfDay(t))} ${vnWeekdayDate(t)}`;
+}
+
+/** Nhãn nút vào phòng của một buổi: "Vào Google Meet · từ 21:45" (Meet) / "Vào phòng học online · từ 21:45". "từ" = JOIN_SOON_BEFORE_MIN phút trước giờ học,
+ *  cùng mốc studentTodo đưa nút lên làm nút chính. Giờ hỏng ⇒ không có phần "· từ". */
+export function joinLabel(url: string, time: string, beforeMin = 30): string {
+  let host = "";
+  try { host = new URL(url).hostname; } catch { /* link lạ: nhãn chung */ }
+  const name = host === "meet.google.com" ? "Vào Google Meet" : "Vào phòng học online";
+  const m = parseHm(time);
+  return m === null ? name : `${name} · từ ${hmOf((m - beforeMin + 1440) % 1440)}`;
+}
+
+/** "Mở từ 05/12" cho bài / chương có ngày học trong tương lai (theo ngày VN); đã tới ngày hoặc không ngày ⇒ "". */
+export function opensLine(at: Date | null, now: Date): string {
+  return at && valid(at) && daysUntil(at, now) > 0 ? `Mở từ ${dm(vnDateKeyOf(at))}` : "";
+}
+
+export type BuocBai = { key: "video" | "tai-lieu" | "bai-tap" | "azota" | "xong"; label: string; href: string; done: boolean };
+/** Bậc thang của trang bài (D15, phương án C): CHỈ các phần bài thật sự có, theo thứ tự học, bước cuối luôn là "Đánh dấu xong".
+ *  done chỉ từ dữ liệu thật: nộp tệp / Azota ⇒ có bài nộp; video / tài liệu / bước cuối ⇒ em đã đánh dấu xong bài (LessonProgress.completed). */
+export function lessonSteps(l: { video: boolean; docs: number; assignments: { submitted: boolean }[]; azota: { done: boolean } | null; completed: boolean }): { steps: BuocBai[]; done: number } {
+  const steps: BuocBai[] = [];
+  if (l.video) steps.push({ key: "video", label: "Xem video bài học", href: "#bai-video", done: l.completed });
+  if (l.docs > 0) steps.push({ key: "tai-lieu", label: l.docs === 1 ? "Đọc tài liệu kèm" : `Đọc ${l.docs} tài liệu kèm`, href: "#bai-tai-lieu", done: l.completed });
+  if (l.assignments.length > 0) {
+    const n = l.assignments.filter(a => a.submitted).length;
+    steps.push({ key: "bai-tap", label: l.assignments.length === 1 ? "Nộp bài tập" : `Nộp ${l.assignments.length} bài tập (${n}/${l.assignments.length})`, href: "#bai-tap", done: n === l.assignments.length });
+  }
+  if (l.azota) steps.push({ key: "azota", label: "Làm bài trên Azota", href: "#bai-tap", done: l.azota.done });
+  steps.push({ key: "xong", label: "Đánh dấu xong bài", href: "#bai-xong", done: l.completed });
+  return { steps, done: steps.filter(s => s.done).length };
 }
 
 export type NhatKyStatus = "co-mat" | "nghi-bao" | "vang";

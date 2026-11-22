@@ -96,7 +96,7 @@ import { addDaysKey, dayOfWeekOfKey, vnDateKeyOf } from "@/lib/classSessions";
     await p.goto(`${BASE}/student/viec-cua-toi`, { waitUntil: "domcontentloaded", timeout: 240000 });
     const row = p.locator("[data-buoi-sap-toi]:visible").filter({ hasText: "Toán 8 Online" });
     await row.first().waitFor({ timeout: 120000 });
-    const join = row.first().getByRole("link", { name: "Mở link học online" });
+    const join = row.first().getByRole("link", { name: /^Vào (Google Meet|phòng học online)/ });
     check("'Cần làm' → Buổi học sắp tới của lớp: 'Mở link học online' trỏ đúng link Meet gia sư vừa lưu, mở tab ngoài", (await join.count()) === 1 && (await join.getAttribute("href")) === lastLink && (await join.getAttribute("target")) === "_blank", await join.getAttribute("href").catch(() => null));
     check("390: trang Cần làm của học sinh không tràn ngang", await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
     await ctx.close();

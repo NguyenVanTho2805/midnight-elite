@@ -19,6 +19,7 @@ import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
 import { classAccentFor } from "@/lib/classColor";
 import { nextClass, vnWeekdayDate } from "@/lib/studentClassPage";
 import { featureOn } from "@/lib/features";
+import { splitCategory } from "@/lib/classSubject";
 
 const FREE_ON = featureOn("TIM_GIA_SU");
 import { demLoc, hocTiepLabel, locLop, LOP_LOC_KEYS, LOP_LOC_LABEL, LOP_TRANG_THAI_LABEL, type LopLoc, type ThuVienResp, type ThuVienRow } from "@/lib/studentLop";
@@ -93,7 +94,9 @@ function PctRing({ row, size, className }: { row: ThuVienRow; size: number; clas
 
 function ClassCard({ row, buoiToi }: { row: ThuVienRow; buoiToi?: string }) {
   const lopHref = `/student/hoc-tap?course=${encodeURIComponent(row.id)}`;
-  const sub = [row.giaSu, row.category.trim()].filter(Boolean).join(" · ");
+  // SCL5: môn hiện tên đầy đủ có dấu ("toan" ⇒ "Toán", splitCategory), không bao giờ chuỗi mã thô.
+  const cat = splitCategory(row.category);
+  const sub = [row.giaSu, [cat.subject, cat.grade].filter(Boolean).join(" · ")].filter(Boolean).join(" · ");
   const empty = row.total === 0;
   return (
     <li data-class-card={row.id} data-trial-het-han={row.trialExpired ? "1" : undefined} className={`relative overflow-hidden flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:gap-6 p-[var(--kin-kc-6)] pt-[calc(var(--kin-kc-6)+4px)] md:p-[var(--kin-kc-7)] md:pt-[calc(var(--kin-kc-7)+4px)] rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-trang)]`}>
@@ -105,7 +108,8 @@ function ClassCard({ row, buoiToi }: { row: ThuVienRow; buoiToi?: string }) {
       </div>
       <div className="min-w-0 flex-1">
         <span className="flex flex-wrap gap-2">
-          {row.trialExpired ? <KinStatus tone="qua-han">Hết thời gian học thử</KinStatus> : <KinStatus tone={row.trangThai === "hoan-thanh" ? "xong" : "cho"}>{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus>}
+          {/* SCL5: "Đang học" là trạng thái thường của mọi thẻ ⇒ không nhắc lại; chỉ ghi khi khác thường (Hoàn thành / hết học thử). */}
+          {row.trialExpired ? <KinStatus tone="qua-han">Hết thời gian học thử</KinStatus> : row.trangThai === "hoan-thanh" ? <KinStatus tone="xong">{LOP_TRANG_THAI_LABEL[row.trangThai]}</KinStatus> : null}
           {row.trial && <KinStatus tone="mo">{row.trial.kind === "dang_thu" ? `Học thử · còn ${row.trial.daysLeft} ngày` : "Học thử · chưa bắt đầu tính ngày"}</KinStatus>}
         </span>
         <h2 className="mt-1 text-[length:var(--kin-co-tieu-de)] font-semibold leading-6 text-[var(--kin-chu-chinh)]">
@@ -118,12 +122,8 @@ function ClassCard({ row, buoiToi }: { row: ThuVienRow; buoiToi?: string }) {
             {empty ? (
               <p className={`${GOC} text-[var(--kin-chu-mo)]`}>Lớp chưa có bài học</p>
             ) : (
-              <>
-                <div role="progressbar" aria-label={`Tiến độ lớp ${row.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={row.pct} className="h-1.5 rounded-full overflow-hidden bg-[var(--kin-vien-thuong)]">
-                  <div className="h-1.5 rounded-full bg-[var(--kin-nhan-nen)]" style={{ width: `${row.pct}%` }} />
-                </div>
-                <p className={`mt-2 ${GOC} tabular-nums text-[var(--kin-chu-chinh)]`}>Đã hoàn thành {row.done}/{row.total} bài</p>
-              </>
+              // SCL5: MỘT chỉ báo tiến độ (vòng %) + một dòng chữ, bỏ thanh lặp lại cùng con số.
+              <p className={`${GOC} tabular-nums text-[var(--kin-chu-chinh)]`}>Đã hoàn thành {row.done}/{row.total} bài</p>
             )}
           </div>
           {!empty && <PctRing row={row} size={56} className="md:hidden" />}
@@ -183,7 +183,7 @@ export default function ThuVienLop() {
       {/* SCL P2-13: lối "Nhập mã lớp" ở ĐẦU trang (trước đây ở mục "Tham gia lớp khác" dưới đáy, y≈2819px). Màn trống có nút riêng ngay dưới tiêu đề. */}
       {st.s === "ok" && rows.length > 0 && (
         <div className="flex flex-wrap gap-3 flex-shrink-0" data-nhap-ma-dau>
-          <Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>
+          <Link href="/student/nhap-ma-lop" className={kinButtonClass("secondary")}>Nhập mã lớp</Link>
           {FREE_ON && <Link href="/khoa-hoc?gia=free" className={kinButtonClass("ghost")}>Tìm lớp miễn phí</Link>}
         </div>
       )}
@@ -209,12 +209,12 @@ export default function ThuVienLop() {
     const shown = locLop(rows, loc);
     body = (
       <>
-        <div role="group" aria-label="Lọc lớp" className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto pb-1">
+        <div role="group" aria-label="Lọc lớp" className="flex flex-wrap gap-2">
           {LOP_LOC_KEYS.map(k => {
             const on = loc === k;
             return (
               <button key={k} type="button" data-loc-lop={k} aria-pressed={on} onClick={() => setLoc(k)}
-                className={`${kinButtonClass("secondary")} flex-shrink-0 rounded-[var(--kin-bo-tron)] ${on ? "border-[var(--kin-nhan-link)] bg-[var(--kin-nen-nhan)] text-[var(--kin-nhan-link)]" : ""}`}>
+                className={`${kinButtonClass("secondary")} !px-3 rounded-[var(--kin-bo-tron)] ${on ? "border-[var(--kin-nhan-link)] bg-[var(--kin-nen-nhan)] text-[var(--kin-nhan-link)]" : ""}`}>
                 {LOP_LOC_LABEL[k]} <span className="tabular-nums">({counts[k]})</span>
               </button>
             );

@@ -7,7 +7,7 @@
 // tự đánh dấu xong khi xem ≥ 80%, và mở ra `control` để ô Ghi chú ghim mốc / nhảy tới mốc.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { firstPlayableVideo, parseLinkList, classifyMediaLink, type MediaLinkInfo } from "@/lib/mediaLink";
+import { firstPlayableVideo, parseLinkList, classifyMediaLink, formatStamp, type MediaLinkInfo } from "@/lib/mediaLink";
 import "plyr/dist/plyr.css";
 
 export interface PlayerControl {
@@ -66,7 +66,25 @@ function Watermark({ email }: { email?: string }) {
   return <div className="absolute bottom-14 right-4 text-xs opacity-10 select-none pointer-events-none rotate-[-15deg] z-10" style={{ color: "var(--kin-chu-tren-nut-chinh)" }}>{email}</div>;
 }
 
-function YouTubePlayer({ info, lessonId, userEmail, startAt, onAutoComplete, onControl }: Props & { info: MediaLinkInfo }) {
+/** SCL5 (mục 15): khung chờ trước khi phát — KHÔNG tạo iframe / tải trình phát YouTube, Vimeo, Drive tới khi em bấm (máy Android tầm trung đỡ giật,
+ *  và không gọi máy chủ ngoài khi em chỉ vào xem tài liệu). Không ảnh bìa từ YouTube: không gửi gì ra ngoài trước lúc bấm. */
+function Poster({ label, startAt, onPlay }: { label: string; startAt?: number | null; onPlay: () => void }) {
+  const at = resumePoint(startAt);
+  return (
+    <Frame>
+      <button type="button" onClick={onPlay} data-video-cho="" aria-label={at > 0 ? `Phát video bài giảng, xem tiếp từ ${formatStamp(at)}` : "Phát video bài giảng"}
+        className="relative w-full flex flex-col items-center justify-center gap-3" style={{ aspectRatio: "16 / 9", background: "var(--kin-chu-chinh)", color: "var(--kin-nen-trang)" }}>
+        <span aria-hidden className="grid place-items-center w-16 h-16 rounded-full" style={{ background: "var(--kin-nen-trang)", color: "var(--kin-chu-chinh)" }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
+        </span>
+        <span className="text-[length:var(--kin-co-goc)] font-semibold">{at > 0 ? `Xem tiếp từ ${formatStamp(at)}` : "Bấm để phát video"}</span>
+        <span className="text-[length:var(--kin-co-goc)]">{label}</span>
+      </button>
+    </Frame>
+  );
+}
+
+function YouTubePlayer({ info, lessonId, userEmail, startAt, onAutoComplete, onControl, autoStart }: Props & { info: MediaLinkInfo; autoStart?: boolean }) {
   const elRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerRef = useRef<any>(null);
@@ -98,7 +116,7 @@ function YouTubePlayer({ info, lessonId, userEmail, startAt, onAutoComplete, onC
     let timer: ReturnType<typeof setInterval> | null = null;
     import("plyr").then(({ default: PlyrCtor }) => {
       if (destroyed || !elRef.current) return;
-      const player = new PlyrCtor(elRef.current, { controls: PLYR_CONTROLS, settings: ["speed"], iconUrl: "/plyr.svg", youtube: { rel: 0, modestbranding: 1, noCookie: true } });
+      const player = new PlyrCtor(elRef.current, { controls: PLYR_CONTROLS, settings: ["speed"], iconUrl: "/plyr.svg", autoplay: !!autoStart, youtube: { rel: 0, modestbranding: 1, noCookie: true } });
       playerRef.current = player;
       onControl?.({ getTime: () => (Number.isFinite(player.currentTime) ? player.currentTime : null), seek: (s: number) => { try { player.currentTime = s; player.play(); } catch { /* chưa sẵn sàng */ } } });
       let resumed = false;
@@ -186,6 +204,7 @@ function StoredVideo({ info, lessonId, userEmail, startAt, onAutoComplete, onCon
 
 export function LessonVideo(props: Props) {
   const { videoUrl, onControl } = props;
+  const [started, setStarted] = useState(false);
   const links = useMemo(() => parseLinkList(videoUrl), [videoUrl]);
   const main = useMemo(() => firstPlayableVideo(videoUrl), [videoUrl]);
   const others = useMemo(() => links.map(classifyMediaLink).filter(i => i.ok && i.url !== main?.url), [links, main]);
@@ -196,7 +215,8 @@ export function LessonVideo(props: Props) {
   if (!main) return <Empty title="Link video chưa đọc được" body="Link gia sư gắn chưa đúng hoặc không phải loại KiN phát được. Hãy nhắn gia sư kiểm tra lại link." />;
 
   let player: React.ReactNode;
-  if (main.kind === "youtube") player = <YouTubePlayer {...props} info={main} />;
+  if (!started && (main.kind === "youtube" || ((main.kind === "vimeo" || main.kind === "drive") && main.embedUrl))) player = <Poster label={`Video ${main.label}`} startAt={props.startAt} onPlay={() => setStarted(true)} />;
+  else if (main.kind === "youtube") player = <YouTubePlayer {...props} info={main} autoStart />;
   else if (main.kind === "upload") player = <StoredVideo {...props} info={main} />;
   else if ((main.kind === "vimeo" || main.kind === "drive") && main.embedUrl) {
     player = (

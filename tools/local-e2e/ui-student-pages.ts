@@ -112,7 +112,7 @@ const H = 3_600_000, D = 24 * H;
   const results = pG.locator("[data-ket-qua-hang='da-cham']");
   await results.first().waitFor({ timeout: 60000 });
   check("Điểm: đủ 7 bài đã chấm", await results.count() === 7, await results.count());
-  check("mỗi bài ghi 'Chấm <thứ dd/mm>' và là link tới bài", (await results.allInnerTexts()).every(t => /Chấm (thứ \S+|Chủ nhật) \d\d\/\d\d/.test(t)) && (await pG.locator("[data-ket-qua-hang='da-cham'] a").count()) === 7);
+  check("mỗi bài ghi 'Chấm <thứ dd/mm>' và là link tới bài", (await results.allInnerTexts()).every(t => /Chấm ([Tt]hứ \S+|Chủ nhật) \d\d\/\d\d/.test(t)) && (await pG.locator("[data-ket-qua-hang='da-cham'] a").count()) === 7);
   await cG.close();
 
   section("Trạng thái lỗi và rỗng");

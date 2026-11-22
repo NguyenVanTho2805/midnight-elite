@@ -78,7 +78,7 @@ async function layoutOk(p: Page, w: number) {
   check("chưa mở lớp ⇒ chưa tính ngày", (await prisma.enrollment.findMany({ where: { userId: u!.id } })).every(e => e.trialStartedAt === null));
   await p.goto(`${BASE}/student/hoc-tap?course=bca-toan`, { waitUntil: "networkidle", timeout: 120000 });
   await p.locator("[data-trial-bang]:visible").waitFor({ timeout: 60000 });
-  check("băng 'Bắt đầu tính 14 ngày học thử từ hôm nay'", (await p.locator("[data-trial-bang]:visible").innerText()).includes("Bắt đầu tính 14 ngày"));
+  check("băng 'Bắt đầu tính 14 ngày học thử từ hôm nay'", /bắt đầu tính 14 ngày/i.test(await p.locator("[data-trial-bang]:visible").innerText()));
   const es = await prisma.enrollment.findMany({ where: { userId: u!.id } });
   check("mở lớp ⇒ MỌI ghi danh thử bắt đầu cùng mốc", es.length === 2 && !!es[0].trialStartedAt && es.every(e => e.trialStartedAt?.getTime() === es[0].trialStartedAt?.getTime()), es);
   await layoutOk(p, 390);

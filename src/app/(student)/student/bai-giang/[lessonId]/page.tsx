@@ -24,6 +24,7 @@ import { KinLoader } from "@/components/kin/KinLoader";
 import { SuspendedNotice } from "@/components/student/SuspendedNotice";
 import CourseOutline from "@/components/student/CourseOutline";
 import { HocThuKhoa } from "@/components/student/HocThu";
+import { deadlineLine, lessonSteps, vnDayTime } from "@/lib/studentClassPage";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LessonType = "record" | "live" | "quiz" | "document";
@@ -67,6 +68,8 @@ interface DBLesson {
   documents?: string | null; adminNote?: string | null;
   isLocked: boolean; isFree: boolean;
   statsVideos: number; statsMaterials: number; statsViews: number;
+  /** SCL5: Mục tiêu bài / Tự kiểm tra (gia sư ghi, mỗi dòng một ý). */
+  objectives?: string | null; selfCheck?: string | null;
 }
 interface DBChapter { id: string; title: string; order: number; lessons: DBLesson[] }
 interface DBSection { id: string; title: string; order: number; chapters: DBChapter[] }
@@ -157,11 +160,9 @@ function LiveContent({ zoomUrl }: { zoomUrl?: string | null }) {
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
-function fmtDue(d: string | null): string {
-  if (!d) return "";
-  const dt = new Date(d);
-  return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${dt.getFullYear()}`;
-}
+// SCL5 (mục 9): hạn nộp dùng CHUNG hàm với Hôm nay / trang lớp: "Hạn Thứ Tư 25/11, 21:00 · còn 2 ngày" (giờ VN, không theo múi máy).
+const dueLine = (d: string | null) => (d ? deadlineLine(d, new Date()) : "");
+const overdue = (d: string | null) => !!d && Date.parse(d) < Date.now();
 
 // BU-HS-NOP-TEP: khối nộp bài là <NopTepBox> (kéo-thả Word/PDF, riêng tư, lưu 60 ngày). Thẻ này giữ tiêu đề, hướng dẫn, tệp đề bài, hạn và khối điểm/nhận xét.
 // LOI-03 mục 4.3 (chỉ thứ tự): tiêu đề + hạn → (đã chấm: khối điểm/nhận xét) → NopTepBox NGAY DƯỚI → hướng dẫn + tệp đề bài. Thẻ rộng hết khung (390: full-width).
@@ -173,8 +174,8 @@ function AssignmentCard({ assignment }: { assignment: AssignmentFull }) {
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 mb-3">
         <p className="min-w-0 font-semibold text-sm [overflow-wrap:anywhere]" style={{ color: "var(--kin-chu-chinh)" }}>{assignment.title}</p>
         {assignment.dueDate && (
-          <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: "var(--kin-tt-chu-loi)" }}>
-            <Alarm size={11} /> Hạn {fmtDue(assignment.dueDate)}
+          <p data-bai-tap-han className="text-[length:var(--kin-co-goc)] flex items-center gap-1" style={{ color: overdue(assignment.dueDate) ? "var(--kin-tt-chu-loi-dam)" : "var(--kin-chu-phu)" }}>
+            <Alarm size={14} /> {dueLine(assignment.dueDate)}
           </p>
         )}
       </div>
@@ -344,7 +345,7 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
         </div>
         {assignment.dueDate && (
           <p className="text-xs flex items-center gap-1 flex-shrink-0" style={{ color: locked ? "var(--kin-chu-mo)" : "var(--kin-tt-chu-loi)" }}>
-            <Alarm size={11} /> {locked ? `Đã hết hạn ${fmtDue(assignment.dueDate)}` : `Hạn ${fmtDue(assignment.dueDate)}`}
+            <Alarm size={14} /> {locked ? `Đã hết hạn ${vnDayTime(new Date(assignment.dueDate))}` : dueLine(assignment.dueDate)}
           </p>
         )}
       </div>
@@ -381,20 +382,9 @@ function InteractiveAssignmentCard({ assignment }: { assignment: AssignmentFull 
 }
 
 // LOI-03: thứ tự = [kết quả ?nop] → thẻ nộp tệp → thẻ làm trên web → AzotaPanel. `azotaAbove`: bài loại quiz đã vẽ Azota ở khung chính nên tab này không vẽ lại.
-function TabBaiTap({ lessonId, azotaUrl, deadline, nopCode, azotaAbove = false }: { lessonId: string; azotaUrl?: string; deadline?: string; nopCode?: string | null; azotaAbove?: boolean }) {
-  const [assignments, setAssignments] = useState<AssignmentFull[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    api.assignments.listByLesson(lessonId).then(setAssignments).catch(() => setAssignments([])).finally(() => setLoading(false));
-  }, [lessonId]);
-
+// SCL5: danh sách bài tập do trang tải (bậc thang đếm "đã nộp" từ cùng dữ liệu); khối chỉ vẽ khi bài có bài tập / Azota (mục 7).
+function TabBaiTap({ lessonId, azotaUrl, deadline, nopCode, assignments }: { lessonId: string; azotaUrl?: string; deadline?: string; nopCode?: string | null; assignments: AssignmentFull[] }) {
   const nopText = nopTepResultMessage(nopCode);
-
-  if (!azotaUrl && !loading && assignments.length === 0) {
-    return <p className="text-sm text-center py-6" style={{ color: "var(--kin-chu-mo)" }}>{azotaAbove ? "Bài học này không có bài nộp tệp. Bài Azota nằm ở phía trên." : "Bài học này không có bài kiểm tra."}</p>;
-  }
 
   return (
     <div className="space-y-3">
@@ -529,6 +519,22 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
   const [firstLessonId] = useState(params.lessonId);
   const { completedIds, watching, positions, markComplete, unmarkComplete } = useProgress();
   const [player, setPlayer] = useState<PlayerControl | null>(null);
+  // SCL5: bài tập + "đã làm Azota" của bài — tải ở trang để bậc thang đếm bước thật (null = đang tải / lỗi ⇒ bậc đó chưa tính).
+  const [asg, setAsg] = useState<AssignmentFull[] | null>(null);
+  const [azotaDone, setAzotaDone] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void Promise.resolve().then(() => { if (live) { setAsg(null); setAzotaDone(null); } });
+    api.assignments.listByLesson(params.lessonId).then(a => { if (live) setAsg(a); }).catch(() => { if (live) setAsg([]); });
+    fetch(`/api/lessons/${params.lessonId}/azota-done`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null))
+      .then((d: { done?: boolean } | null) => { if (live) setAzotaDone(!!d?.done); }).catch(() => { if (live) setAzotaDone(false); });
+    return () => { live = false; };
+  }, [params.lessonId]);
+  const [tuKiem, setTuKiem] = useState<Record<string, boolean>>({});
+  useEffect(() => { // Tự kiểm tra: chỉ em thấy, lưu trên máy em (không gửi máy chủ, không tính điểm)
+    try { const v = localStorage.getItem(`tu-kiem:${params.lessonId}`); void Promise.resolve().then(() => setTuKiem(v ? JSON.parse(v) : {})); } catch { /* bỏ qua */ }
+  }, [params.lessonId]);
+  const tickTuKiem = (k: string, on: boolean) => setTuKiem(o => { const n = { ...o, [k]: on }; try { localStorage.setItem(`tu-kiem:${params.lessonId}`, JSON.stringify(n)); } catch { /* bỏ qua */ } return n; });
   const [session, setSession] = useState<{ email?: string; role?: string } | null>(null);
 
   useEffect(() => {
@@ -702,13 +708,23 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
     router.push(`/student/bai-giang/${l.id}`);
   }
 
-  const completedCount = allLessons.filter(l => completedIds.has(l.id)).length;
   const isCompleted    = completedIds.has(params.lessonId);
   const watchedHere    = watching[params.lessonId] ?? 0;
 
-  const sectionHead = (id: string, icon: React.ReactNode, label: string) => (
-    <h2 id={id} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{icon}{label}</h2>
+  const sectionHead = (id: string, icon: React.ReactNode, label: string, n?: number) => (
+    <h2 id={id} className="flex items-center gap-1.5 text-[length:var(--kin-co-body)] font-bold" style={{ color: "var(--kin-chu-chinh)" }}>{n ? <span className="tabular-nums">{n}.</span> : icon}{label}</h2>
   );
+  // SCL5 (D15, phương án C): bậc thang chỉ gồm phần bài THẬT SỰ có; bài tập/Azota đang tải thì chưa vẽ thang (không đếm sai rồi nhảy số).
+  const azotaHere = lesson.type !== "quiz" && !!lesson.azotaUrl;
+  const hasVideo = lesson.type === "record" && !!videoUrl;
+  const thang = asg === null || (azotaHere && azotaDone === null) ? null : lessonSteps({
+    video: hasVideo, docs: lesson.materials.length, assignments: (asg ?? []).map(a => ({ submitted: !!a.mySubmission })),
+    azota: azotaHere ? { done: !!azotaDone } : null, completed: isCompleted,
+  });
+  const stepNo = (k: string) => (thang ? thang.steps.findIndex(s => s.key === k) + 1 : 0);
+  const mucTieu = (dbLesson.objectives ?? "").split("\n").map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const tuKiemList = (dbLesson.selfCheck ?? "").split("\n").map(s => s.trim()).filter(Boolean).slice(0, 8);
+  const coBaiTap = (asg?.length ?? 0) > 0 || azotaHere || !!nopCode;
 
   return (
     <div className="-mx-4 md:-mx-8 -my-6">
@@ -735,9 +751,46 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
           <nav aria-label="Vị trí bài" data-bai-vi-tri className="flex items-center gap-x-2 flex-wrap text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>
             <Link href={`/student/hoc-tap?course=${encodeURIComponent(dbCourse.id)}`} className="inline-flex items-center min-h-11 underline [overflow-wrap:anywhere]" style={{ color: "var(--kin-nhan-link)" }}>{dbCourse.name}</Link>
             {chapterTitle && <><span aria-hidden>›</span><span className="[overflow-wrap:anywhere]">{chapterTitle}</span></>}
+            {/* SCL5: lối "Danh sách bài" nằm trong dòng vị trí (điện thoại), không còn nút nổi đè lên khu nộp bài. */}
+            <button type="button" onClick={() => setOutlineOpen(v => !v)} aria-expanded={outlineOpen} aria-label="Danh sách bài học" data-mo-danh-sach-bai
+              className="xl:hidden ml-auto inline-flex items-center gap-1.5 min-h-11 px-2 font-medium underline" style={{ color: "var(--kin-nhan-link)" }}>
+              <ClipboardList size={16} /> Danh sách bài
+            </button>
           </nav>
 
+          {/* SCL5 (D15, phương án C): tên bài + "Xong x/y bước" → Mục tiêu (1–3 dòng, chỉ khi gia sư ghi) → bậc thang các bước THẬT của bài. Video ngay sau, vẫn trong màn đầu. */}
+          <div>
+            <h1 className="text-[length:var(--kin-co-h2)] leading-8 font-bold [overflow-wrap:anywhere]" style={{ color: "var(--kin-chu-chinh)" }}>{lesson.title}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>
+              {lesson.teacherName && <span>{lesson.teacherName}</span>}
+              {lesson.duration && <span>Video {lesson.duration}</span>}
+              {thang && <span data-thang-dem className="font-semibold" style={{ color: "var(--kin-chu-chinh)" }}>Xong {thang.done}/{thang.steps.length} bước</span>}
+              {!isCompleted && watchedHere > 0 && <span className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Đang xem dở · từ {formatStamp(watchedHere)}</span>}
+            </p>
+          </div>
+          {mucTieu.length > 0 && (
+            <section aria-labelledby="bai-muc-tieu" data-muc-tieu className="rounded-xl px-4 py-3" style={{ background: "var(--kin-nhan-nen-nhat)" }}>
+              <h2 id="bai-muc-tieu" className="text-[length:var(--kin-co-goc)] font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Mục tiêu bài</h2>
+              <ul className="mt-1 space-y-0.5 text-[length:var(--kin-co-goc)] list-disc pl-5" style={{ color: "var(--kin-chu-chinh)" }}>{mucTieu.map((m, i) => <li key={i} className="[overflow-wrap:anywhere]">{m}</li>)}</ul>
+            </section>
+          )}
+          {thang && (
+            <ol aria-label="Các bước của bài" data-thang className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--kin-vien-thuong)" }}>
+              {thang.steps.map((s, i) => (
+                <li key={s.key} data-buoc={s.key} data-xong={s.done ? "1" : undefined} style={i > 0 ? { borderTop: "1px solid var(--kin-vien-nhat)" } : undefined}>
+                  <a href={s.href} className="flex items-center gap-3 min-h-11 px-4 py-2 text-[length:var(--kin-co-goc)] hover:underline" style={{ color: "var(--kin-chu-chinh)" }}>
+                    <span aria-hidden className="grid place-items-center w-6 h-6 rounded-full text-[length:var(--kin-co-phu)] font-bold flex-shrink-0"
+                      style={s.done ? { background: "var(--kin-tt-cham-xong)", color: "var(--kin-nen-trang)" } : { border: "1.5px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-phu)" }}>{s.done ? "✓" : i + 1}</span>
+                    <span className="flex-1 min-w-0 [overflow-wrap:anywhere]">{s.label}</span>
+                    <span className="flex-shrink-0 font-medium" style={{ color: s.done ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-phu)" }}>{s.done ? "Xong" : "Chưa xong"}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+
           {/* Content by type */}
+          {lesson.type === "record" && <div id="bai-video" className="scroll-mt-4" />}
           {lesson.type === "record" && (
             <LessonVideo
               key={params.lessonId}
@@ -757,43 +810,45 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
             <p className="text-sm text-center py-8 rounded-xl" role="status" style={{ background: "var(--kin-nen-bang)", border: "1px solid var(--kin-vien-thuong)", color: "var(--kin-chu-mo)" }}>Bài này là tài liệu. Xem thử hoặc tải về ở mục Tài liệu bên dưới.</p>
           )}
 
-          {/* Lesson info — không đóng khung, chỉ là phần mở rộng tự nhiên của video */}
-          <div className="flex items-start justify-between gap-3 pt-1">
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <TypeBadge type={lesson.type} />
-              </div>
-              <h1 className="text-xl font-extrabold leading-snug" style={{ color: "var(--kin-chu-chinh)" }}>{lesson.title}</h1>
-              <div className="flex flex-wrap items-center gap-4 mt-2 text-xs" style={{ color: "var(--kin-chu-mo)" }}>
-                {lesson.teacherName && <span>{lesson.teacherName}</span>}
-                {lesson.duration && <span className="flex items-center gap-1"><Play size={11} />{lesson.duration}</span>}
-                {lesson.materials.length > 0 && <span className="flex items-center gap-1"><FileDownload size={11} />{lesson.materials.length} tài liệu</span>}
-                {!isCompleted && watchedHere > 0 && <span className="font-semibold" style={{ color: "var(--kin-nhan-link)" }}>Đang xem dở · từ {formatStamp(watchedHere)}</span>}
-              </div>
-            </div>
-            <button
-              onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
-              className="flex-shrink-0 flex min-h-11 items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
-              style={{
-                background: isCompleted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)",
-                border: `1px solid ${isCompleted ? "var(--kin-tt-vien-xong)" : "var(--kin-vien-thuong)"}`,
-                color: isCompleted ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-mo)",
-              }}>
-              <CheckCircle size={14} />
-              {isCompleted ? "Đã hoàn thành ✓" : "Đánh dấu xong"}
-            </button>
-          </div>
-
           {/* DG (14/11/2026, chủ: "trang bài một cột"): bỏ dải tab Tài liệu · Bài tập · Ghi chú — xếp dọc dưới video theo đúng thứ tự học: xem → đọc tài liệu → làm bài
               → ghi chú. Mỗi khối có tiêu đề chữ; nội dung từng khối giữ nguyên thành phần cũ (DocumentRows, TabBaiTap, StampedNotes). */}
-          <section aria-labelledby="bai-tai-lieu" data-lesson-section="tai-lieu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
-            {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu kèm")}
-            <DocumentRows materials={lesson.materials} />
-          </section>
-          <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
-            ref={el => { if (el && wantBaiTap && params.lessonId === firstLessonId) { setWantBaiTap(false); requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); } }}>
-            {sectionHead("bai-bai-tap", <Edit size={14} />, "Bài tập")}
-            <TabBaiTap lessonId={params.lessonId} azotaUrl={lesson.type === "quiz" ? undefined : lesson.azotaUrl ?? undefined} azotaAbove={lesson.type === "quiz" && !!lesson.azotaUrl} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} />
+          {/* SCL5 (mục 7): khối không có dữ liệu thì KHÔNG vẽ (không còn "Chưa có tài liệu" / "Bài học này không có bài kiểm tra" chiếm chỗ trước nút Nộp bài). */}
+          {lesson.materials.length > 0 && (
+            <section aria-labelledby="bai-tai-lieu" id="bai-tai-lieu-khoi" data-lesson-section="tai-lieu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+              {sectionHead("bai-tai-lieu", <FileDownload size={14} />, "Tài liệu kèm", stepNo("tai-lieu"))}
+              <DocumentRows materials={lesson.materials} />
+            </section>
+          )}
+          {asg === null ? <div aria-busy="true" aria-label="Đang tải bài tập" className="h-[120px] rounded-xl kin-skel kin-skel--soft" /> : coBaiTap && (
+            <section aria-labelledby="bai-bai-tap" id="bai-tap" data-lesson-section="bai-tap" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3 scroll-mt-4" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}
+              ref={el => { if (el && wantBaiTap && params.lessonId === firstLessonId) { setWantBaiTap(false); requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); } }}>
+              {sectionHead("bai-bai-tap", <Edit size={14} />, "Bài tập", stepNo("bai-tap") || stepNo("azota"))}
+              <TabBaiTap lessonId={params.lessonId} azotaUrl={azotaHere ? lesson.azotaUrl ?? undefined : undefined} deadline={lesson.azotaDeadline} nopCode={params.lessonId === firstLessonId ? nopCode : null} assignments={asg} />
+            </section>
+          )}
+          {tuKiemList.length > 0 && (
+            <section aria-labelledby="bai-tu-kiem" data-tu-kiem className="min-w-0 rounded-xl p-4 space-y-2" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
+              <h2 id="bai-tu-kiem" className="text-[length:var(--kin-co-body)] font-bold" style={{ color: "var(--kin-chu-chinh)" }}>Tự kiểm tra trước khi sang bài sau</h2>
+              <ul>{tuKiemList.map((q, i) => (
+                <li key={i}><label className="flex items-start gap-3 min-h-11 py-2 text-[length:var(--kin-co-goc)] cursor-pointer" style={{ color: "var(--kin-chu-chinh)" }}>
+                  <input type="checkbox" className="mt-0.5 w-5 h-5 flex-shrink-0" checked={!!tuKiem[String(i)]} onChange={e => tickTuKiem(String(i), e.target.checked)} />
+                  <span className="[overflow-wrap:anywhere]">{q}</span>
+                </label></li>
+              ))}</ul>
+              <p className="text-[length:var(--kin-co-goc)]" style={{ color: "var(--kin-chu-phu)" }}>Chỉ mình bạn thấy ô này. Không tính điểm.</p>
+            </section>
+          )}
+          {/* Bước cuối của thang: Đánh dấu xong (không còn nút xám cạnh tên bài). */}
+          <section id="bai-xong" aria-label="Đánh dấu xong bài" data-lesson-section="xong" className="scroll-mt-4 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3" style={{ background: isCompleted ? "var(--kin-tt-nen-xong)" : "var(--kin-nen-bang)", border: `1px solid ${isCompleted ? "var(--kin-tt-vien-xong)" : "var(--kin-vien-thuong)"}` }}>
+            <p className="text-[length:var(--kin-co-goc)] font-medium" style={{ color: isCompleted ? "var(--kin-tt-chu-xong)" : "var(--kin-chu-chinh)" }}>
+              {stepNo("xong") ? `${stepNo("xong")}. ` : ""}{isCompleted ? "Bạn đã đánh dấu xong bài này." : "Học xong các bước trên thì đánh dấu xong bài."}
+            </p>
+            <button type="button" data-danh-dau-xong onClick={() => isCompleted ? unmarkComplete(params.lessonId) : markComplete(params.lessonId)}
+              className="inline-flex min-h-11 items-center gap-1.5 px-4 rounded-xl text-[length:var(--kin-co-goc)] font-bold"
+              style={isCompleted ? { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-tt-vien-xong)", color: "var(--kin-tt-chu-xong)" } : { background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-o-nhap)", color: "var(--kin-chu-chinh)" }}>
+              <CheckCircle size={16} />
+              {isCompleted ? "Bỏ đánh dấu xong" : "Đánh dấu xong"}
+            </button>
           </section>
           <section aria-labelledby="bai-ghi-chu" data-lesson-section="ghi-chu" className="min-w-0 overflow-hidden rounded-xl p-4 space-y-3" style={{ background: "var(--kin-nen-trang)", border: "1px solid var(--kin-vien-thuong)" }}>
             {sectionHead("bai-ghi-chu", <StickyNote size={14} />, "Ghi chú")}
@@ -823,14 +878,6 @@ export default function LessonPage({ params: paramsPromise }: { params: Promise<
         </div>
       </div>
 
-      {/* Mobile outline toggle */}
-      <div className="xl:hidden fixed bottom-20 right-4 z-40">
-        <button onClick={() => setOutlineOpen(v => !v)} aria-label="Danh sách bài học" aria-expanded={outlineOpen}
-          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg"
-          style={{ background: "var(--kin-nhan-nen)" }}>
-          <StickyNote size={22} />
-        </button>
-      </div>
 
       {/* SCL-D (P2-34): tờ "Nội dung khóa học" là hộp thoại thật — Escape đóng, Tab không lọt ra ngoài, trả tiêu điểm về nút mở. */}
       {outlineOpen && (

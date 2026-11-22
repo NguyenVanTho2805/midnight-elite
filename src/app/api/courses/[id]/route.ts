@@ -70,7 +70,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     // SCL đợt 5 (D7, tình huống 13): học thử hết hạn ⇒ chỉ trả tên lớp + cờ khoá (không cây bài, không link). Trang lớp hiện thẻ "Hết thời gian học thử".
     if (enrolled && !hasAccess && (enrolled.status === ENROLLMENT_STATUS.TRIAL_EXPIRED || (enrolled.status === ENROLLMENT_STATUS.ACTIVE && isTrialExpired(enrolled)))) {
-      return NextResponse.json({ id: course.id, name: course.name, instructor: course.instructor, category: course.category, sections: [], trialExpired: true }, { headers: { "Cache-Control": "private, no-store" } });
+      return NextResponse.json({ id: course.id, name: course.name, instructor: course.instructor, category: course.category, sections: [], trialExpired: true, trialDays: enrolled.trialDays ?? null }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     // Hidden courses: only the class manager (admin / owner tutor) or enrolled students can access

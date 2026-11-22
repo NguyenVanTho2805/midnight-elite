@@ -212,7 +212,8 @@ export function ModuleRail({ roleLabel, modules, groups, ariaLabel, children, on
   return (
     <>
       {/* Máy tính. Khung ngoài đổi bề rộng 272px (rộng, mặc định) ⇄ 79px (hẹp) ⇄ 0 (thu) — CSS .kin-rail-wrap ở kin-tokens.css / kin-motion.css, theo data-kin-rail trên <html>. */}
-      <div id="kin-rail" className="kin-rail-wrap hidden md:block flex-shrink-0">
+      {/* SCL5 (mục 16): nền + viền phải ở CẢ khung bọc (cao bằng trang), không chỉ thanh sticky cao 100vh ⇒ trang dài không lộ khoảng trắng dưới thanh. */}
+      <div id="kin-rail" className="kin-rail-wrap hidden md:block flex-shrink-0 bg-[var(--kin-nen-bang)] border-r border-[var(--kin-vien-thuong)]">
         <nav aria-label={ariaLabel}
           className="kin-rail-nav kin-m flex flex-col items-center gap-[2px] w-[79px] px-[6px] py-[10px] sticky top-0 h-screen overflow-y-auto bg-[var(--kin-nen-bang)] border-r border-[var(--kin-vien-thuong)]">
           {home && (

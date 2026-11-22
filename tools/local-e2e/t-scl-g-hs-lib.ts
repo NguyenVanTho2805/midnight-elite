@@ -11,28 +11,28 @@ const NOW = new Date("2026-11-21T13:00:00Z");
 const vn = (key: string, hm: string) => new Date(`${key}T${hm}:00+07:00`);
 
 section("Nhãn hạn và mốc nộp (giờ Việt Nam)");
-check("Hạn thứ Ba 24/11, 21:00 · còn 3 ngày", deadlineLine(vn("2026-11-24", "21:00").toISOString(), NOW) === "Hạn thứ Ba 24/11, 21:00 · còn 3 ngày", deadlineLine(vn("2026-11-24", "21:00").toISOString(), NOW));
+check("Hạn Thứ Ba 24/11, 21:00 · còn 3 ngày", deadlineLine(vn("2026-11-24", "21:00").toISOString(), NOW) === "Hạn Thứ Ba 24/11, 21:00 · còn 3 ngày", deadlineLine(vn("2026-11-24", "21:00").toISOString(), NOW));
 check("hôm nay / ngày mai", deadlineLine(vn("2026-11-21", "23:00").toISOString(), NOW).endsWith("· hôm nay") && deadlineLine(vn("2026-11-22", "07:00").toISOString(), NOW).endsWith("· ngày mai"));
-check("đã qua giờ ⇒ 'Quá hạn từ thứ Năm 19/11, 21:00'", deadlineLine(vn("2026-11-19", "21:00").toISOString(), NOW) === "Quá hạn từ thứ Năm 19/11, 21:00");
-check("kiểm tra: 'Mở lúc 19:00 thứ Năm 26/11 · còn 5 ngày'", deadlineLine(vn("2026-11-26", "19:00").toISOString(), NOW, true) === "Mở lúc 19:00 thứ Năm 26/11 · còn 5 ngày");
+check("đã qua giờ ⇒ 'Quá hạn từ Thứ Năm 19/11, 21:00'", deadlineLine(vn("2026-11-19", "21:00").toISOString(), NOW) === "Quá hạn từ Thứ Năm 19/11, 21:00");
+check("kiểm tra: 'Mở lúc 19:00 Thứ Năm 26/11 · còn 5 ngày'", deadlineLine(vn("2026-11-26", "19:00").toISOString(), NOW, true) === "Mở lúc 19:00 Thứ Năm 26/11 · còn 5 ngày");
 check("01:00 sáng VN của ngày 22 (= 18:00Z ngày 21) vẫn là 'ngày mai'", daysUntil(vn("2026-11-22", "01:00"), NOW) === 1);
-check("Đã nộp lúc 20:41 thứ Sáu 20/11", submittedLine(vn("2026-11-20", "20:41").toISOString()) === "Đã nộp lúc 20:41 thứ Sáu 20/11");
+check("Đã nộp lúc 20:41 Thứ Sáu 20/11", submittedLine(vn("2026-11-20", "20:41").toISOString()) === "Đã nộp lúc 20:41 Thứ Sáu 20/11");
 check("ngày của bài: 'Thứ Ba 17/11'", vnDayLabel(vn("2026-11-17", "19:00")) === "Thứ Ba 17/11");
 check("chuỗi ngày hỏng ⇒ chữ rỗng, không 'NaN'", deadlineLine("x", NOW) === "");
-check("Điểm: đã chấm ⇒ 'Chấm thứ Bảy 14/11'", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-12", "20:00").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Chấm thứ Bảy 14/11");
-check("Điểm: chờ chấm ⇒ 'Nộp thứ Sáu 20/11' (ngày chấm cũ không dùng)", resultDateLine({ state: "cho-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Nộp thứ Sáu 20/11");
-check("Điểm: đã chấm nhưng thiếu ngày chấm ⇒ ngày nộp; thiếu cả hai ⇒ ''", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: null }) === "Nộp thứ Sáu 20/11" && resultDateLine({ state: "cho-duyet" }) === "");
+check("Điểm: đã chấm ⇒ 'Chấm Thứ Bảy 14/11'", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-12", "20:00").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Chấm Thứ Bảy 14/11");
+check("Điểm: chờ chấm ⇒ 'Nộp Thứ Sáu 20/11' (ngày chấm cũ không dùng)", resultDateLine({ state: "cho-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: vn("2026-11-14", "09:00").toISOString() }) === "Nộp Thứ Sáu 20/11");
+check("Điểm: đã chấm nhưng thiếu ngày chấm ⇒ ngày nộp; thiếu cả hai ⇒ ''", resultDateLine({ state: "da-cham", submittedAt: vn("2026-11-20", "20:41").toISOString(), gradedAt: null }) === "Nộp Thứ Sáu 20/11" && resultDateLine({ state: "cho-duyet" }) === "");
 
 section("Nhóm Quá hạn / Tuần này / Tuần sau / Sau đó (tuần thứ Hai → Chủ nhật)");
 check("quá hạn theo GIỜ (hôm nay 19:00 khi đã 20:00)", todoBucket(vn("2026-11-21", "19:00").toISOString(), NOW) === "qua-han");
 check("Chủ nhật 22/11 vẫn là tuần này", todoBucket(vn("2026-11-22", "23:59").toISOString(), NOW) === "tuan-nay");
-check("thứ Hai 23/11 sang tuần sau; Chủ nhật 29/11 vẫn tuần sau", todoBucket(vn("2026-11-23", "08:00").toISOString(), NOW) === "tuan-sau" && todoBucket(vn("2026-11-29", "08:00").toISOString(), NOW) === "tuan-sau");
-check("thứ Hai 30/11 là 'Sau đó'", todoBucket(vn("2026-11-30", "08:00").toISOString(), NOW) === "sau");
+check("Thứ Hai 23/11 sang tuần sau; Chủ nhật 29/11 vẫn tuần sau", todoBucket(vn("2026-11-23", "08:00").toISOString(), NOW) === "tuan-sau" && todoBucket(vn("2026-11-29", "08:00").toISOString(), NOW) === "tuan-sau");
+check("Thứ Hai 30/11 là 'Sau đó'", todoBucket(vn("2026-11-30", "08:00").toISOString(), NOW) === "sau");
 
 section("Dòng lịch đầu trang lớp");
 const ev = (isoDate: string, time: string) => ({ isoDate, time });
-check("cùng giờ: 'Thứ Ba, thứ Năm, 19:00' (thứ Hai đứng đầu, không lặp)", scheduleLine([ev("2026-11-26", "19:00"), ev("2026-11-24", "19:00"), ev("2026-12-01", "19:00")]) === "Thứ Ba, thứ Năm, 19:00");
-check("khác giờ: 'Thứ Ba 19:00, thứ Năm 17:30'", scheduleLine([ev("2026-11-24", "19:00"), ev("2026-11-26", "17:30")]) === "Thứ Ba 19:00, thứ Năm 17:30");
+check("cùng giờ: 'Thứ Ba, Thứ Năm, 19:00' (Thứ Hai đứng đầu, không lặp)", scheduleLine([ev("2026-11-26", "19:00"), ev("2026-11-24", "19:00"), ev("2026-12-01", "19:00")]) === "Thứ Ba, Thứ Năm, 19:00");
+check("khác giờ: 'Thứ Ba 19:00, Thứ Năm 17:30'", scheduleLine([ev("2026-11-24", "19:00"), ev("2026-11-26", "17:30")]) === "Thứ Ba 19:00, Thứ Năm 17:30");
 check("Chủ nhật xếp cuối", scheduleLine([ev("2026-11-22", "08:00"), ev("2026-11-23", "08:00")]) === "Thứ Hai, Chủ nhật, 08:00");
 check("không có buổi ⇒ rỗng", scheduleLine([]) === "");
 

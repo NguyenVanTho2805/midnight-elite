@@ -297,7 +297,7 @@ export interface ThuVienRow {
   /** SCL5: học thử còn hạn (mốc hết hạn ISO) / chưa bắt đầu tính ngày. Không có ⇒ ghi danh chính thức hoặc đã hết hạn. */
   trial?: TrialView;
 }
-export type TrialView = { kind: "dang_thu"; daysLeft: number; endsAt: string } | { kind: "chua_bat_dau" };
+export type TrialView = { kind: "dang_thu"; daysLeft: number; endsAt: string; trialDays: number } | { kind: "chua_bat_dau"; trialDays: number };
 export interface ThuVienResp { classes: ThuVienRow[] }
 
 /** GET /api/student/hom-nay — một bài sắp tới (gọn). */

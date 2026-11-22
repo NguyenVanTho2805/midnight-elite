@@ -6,7 +6,7 @@ import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { ThongBaoTin, type ThongBaoItem } from "@/components/lop/ThongBaoTin";
 
-/** `heading` (SCL-G-HS): tiêu đề mục do trang lớp truyền; lớp chưa có tin thì bỏ cả tiêu đề, chỉ còn MỘT dòng chữ mờ (không khối trống ~200px cuối trang). */
+/** `heading` (SCL-G-HS): tiêu đề mục do trang lớp truyền; lớp chưa có tin thì bỏ cả tiêu đề và không hiện gì (SCL5: chỉ một câu sr-only cho trình đọc màn hình). */
 export default function ThongBaoHocSinh({ courseId, enrolled, heading }: { courseId: string; enrolled: boolean; heading?: ReactNode }) {
   const [items, setItems] = useState<ThongBaoItem[] | "loi" | null>(null);
   const [tick, setTick] = useState(0);
@@ -21,7 +21,7 @@ export default function ThongBaoHocSinh({ courseId, enrolled, heading }: { cours
     return () => { live = false; };
   }, [courseId, enrolled, tick]);
 
-  if (heading && Array.isArray(items) && items.length === 0) return <p data-tb-trong className="text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Lớp chưa có thông báo nào.</p>;
+  if (heading && Array.isArray(items) && items.length === 0) return <p data-tb-trong className="sr-only">Lớp chưa có thông báo nào.</p>; // SCL5: không còn dòng chữ lẻ cuối trang lớp; chỉ trình đọc màn hình nghe
   return <>{heading}<ThongBaoBody items={items} enrolled={enrolled} retry={() => setTick(t => t + 1)} /></>;
 }
 

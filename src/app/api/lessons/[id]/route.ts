@@ -89,6 +89,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
     }
+    // SCL5: Mục tiêu / Tự kiểm tra — chuỗi (cắt 1000 ký tự) hoặc null; kiểu khác bỏ qua (không ghi).
+    for (const key of ["objectives", "selfCheck"] as const) {
+      if (key in body) { const v = body[key]; if (v === null || typeof v === "string") data[key] = typeof v === "string" && v.trim() ? v.trim().slice(0, 1000) : null; }
+    }
     // LOI-02: ngày giờ học. Vắng khoá ⇒ không đổi cột; null ⇒ xoá; chuỗi ISO đầy đủ có múi giờ ⇒ ghi; còn lại ⇒ 400 (không ghi gì).
     if ("scheduledAt" in body) {
       const sa = parseScheduledAtInput(body.scheduledAt);

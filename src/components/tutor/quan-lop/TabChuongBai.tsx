@@ -291,7 +291,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
           videoUrl: l.videoUrl, zoomUrl: l.zoomUrl, azotaUrl: l.azotaUrl,
           azotaDeadline: l.azotaDeadline, duration: l.duration,
           isLocked: l.isLocked, isFree: l.isFree,
-          documents: l.documents, adminNote: l.adminNote,
+          documents: l.documents, adminNote: l.adminNote, objectives: l.objectives, selfCheck: l.selfCheck,
           ...copyStatus(l),
         });
         newLessons.push(nl);
@@ -318,7 +318,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
         videoUrl: l.videoUrl, zoomUrl: l.zoomUrl, azotaUrl: l.azotaUrl,
         azotaDeadline: l.azotaDeadline, duration: l.duration,
         isLocked: l.isLocked, isFree: l.isFree,
-        documents: l.documents, adminNote: l.adminNote,
+        documents: l.documents, adminNote: l.adminNote, objectives: l.objectives, selfCheck: l.selfCheck,
         ...copyStatus(l),
       });
       setSections(p => p.map(s => s.id === sectionId
@@ -375,6 +375,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
       duration: l.duration ?? "", isLocked: l.isLocked, isFree: l.isFree,
       documentsRaw: l.documents ?? "[]",
       adminNote: l.adminNote ?? "",
+      objectives: l.objectives ?? "", selfCheck: l.selfCheck ?? "",
       scheduledDate: when.date, scheduledTime: when.time, status: st,
     };
     setLs(form);
@@ -454,6 +455,7 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
     const common = {
       title: f.title.trim(), type, videoUrl: serializeUrls(f.videoUrls), azotaUrl: serializeUrls(f.azotaUrls), azotaDeadline: f.azotaDeadline || null,
       duration: f.duration || null, isLocked: f.isLocked, isFree: f.isFree, documents: documentsJson(f), adminNote: f.adminNote || null,
+      objectives: f.objectives.trim() || null, selfCheck: f.selfCheck.trim() || null,
       scheduledAt: when.iso,
     };
     return { ok: true as const, common, type, when };
@@ -942,6 +944,19 @@ export function TabChuongBai({ courseSlug, initialSections, canUpload = false, s
                       value={ls.adminNote}
                       onChange={e => setLs(f => ({ ...f, adminNote: e.target.value }))}
                     />
+                  </div>
+                  {/* SCL5 (D15): Mục tiêu bài + Tự kiểm tra — hiện ở trang bài của học sinh khi có chữ; để trống thì trang bài ẩn khối. */}
+                  <div>
+                    <label htmlFor="ls-muc-tieu" className="block text-sm font-semibold text-[var(--kin-chu-chinh)] mb-2 pb-1 border-b border-[var(--kin-vien-nhat)]">Mục tiêu bài</label>
+                    <p className="text-xs text-[var(--kin-chu-mo)] mb-2">1–3 dòng, mỗi dòng một ý. Học sinh thấy ngay trên các bước của bài.</p>
+                    <textarea id="ls-muc-tieu" className={FIELD + " resize-none py-2.5"} rows={3} maxLength={600} value={ls.objectives}
+                      onChange={e => setLs(f => ({ ...f, objectives: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label htmlFor="ls-tu-kiem-tra" className="block text-sm font-semibold text-[var(--kin-chu-chinh)] mb-2 pb-1 border-b border-[var(--kin-vien-nhat)]">Tự kiểm tra</label>
+                    <p className="text-xs text-[var(--kin-chu-mo)] mb-2">Mỗi dòng một câu học sinh tự đánh dấu sau bài. Chỉ học sinh thấy, không tính điểm.</p>
+                    <textarea id="ls-tu-kiem-tra" className={FIELD + " resize-none py-2.5"} rows={3} maxLength={1000} value={ls.selfCheck}
+                      onChange={e => setLs(f => ({ ...f, selfCheck: e.target.value }))} />
                   </div>
                   {panel.type === "edit-lesson" && (
                     <Link href={`${baiHocHref(courseSlug)}/giao-trinh/xem/${encodeURIComponent(panel.lessonId)}`} target="_blank" rel="noopener noreferrer" data-xem-nhu-hoc-sinh
