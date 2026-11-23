@@ -165,7 +165,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await p.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 120000 });
     const navText = (await nav.allInnerTexts()).join("\n");
     for (const gone of ["Nhắc học", "Lớp miễn phí", "Lịch học", "Tiếng Anh tự học"]) check(`thanh học sinh KHÔNG có '${gone}'`, !navText.includes(gone), navText);
-    for (const keep of ["Cần làm", "Lớp của tôi"]) check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
+    for (const keep of ["Hôm nay", "Lớp"]) /* SCL5: cùng tên ở 390 và 1280 */ check(`thanh học sinh CÓ '${keep}'`, navText.includes(keep));
     check("Cần làm: không nút 'Xem lịch tuần', không lối 'Đề thi thử' (danh sách công khai)", await p.getByRole("link", { name: "Xem lịch tuần" }).count() === 0 && await p.getByRole("link", { name: "Đề thi thử", exact: true }).count() === 0);
     await p.getByRole("button", { name: /Minh Anh|Tài khoản/ }).first().click();
     const menu = p.getByRole("menu").first();
@@ -219,7 +219,7 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     await p.getByRole("heading", { level: 1, name: /Bài một/ }).waitFor({ timeout: 120000 });
     await p.locator('[data-lesson-section="bai-tap"]').waitFor({ timeout: 60000 });
     const ys = await p.evaluate(`(() => {
-      const v = document.querySelector('.plyr, [data-plyr-provider], iframe[title="Video bài giảng"], video');
+      const v = document.querySelector('[data-video-cho], .plyr, [data-plyr-provider], iframe[title="Video bài giảng"], video');
       const y = el => el ? el.getBoundingClientRect().top + scrollY : null;
       return { video: y(v), tl: y(document.querySelector('[data-lesson-section="tai-lieu"]')), bt: y(document.querySelector('[data-lesson-section="bai-tap"]')), gc: y(document.querySelector('[data-lesson-section="ghi-chu"]')) };
     })()`) as Record<string, number | null>;

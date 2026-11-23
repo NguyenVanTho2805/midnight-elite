@@ -295,7 +295,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
   {
     const { c, p: s } = await open(S, 390, `/student/bai-giang/${L["A2-1"]}`, 844);
     await s.getByRole("button", { name: "Danh sách bài học" }).waitFor({ timeout: 90000 });
-    check("không có thanh bên (rail) NHÌN THẤY ở 390px (DOM có nhưng ẩn bằng CSS); nút nổi 'Danh sách bài học' ≥ 44px", !(await s.locator(`[data-outline-variant="rail"]`).first().isVisible()) && ((await s.getByRole("button", { name: "Danh sách bài học" }).boundingBox())?.height ?? 0) >= 44);
+    check("không có thanh bên (rail) NHÌN THẤY ở 390px (DOM có nhưng ẩn bằng CSS); nút 'Danh sách bài học' (SCL5: trong dòng vị trí, không nổi) ≥ 44px", !(await s.locator(`[data-outline-variant="rail"]`).first().isVisible()) && ((await s.getByRole("button", { name: "Danh sách bài học" }).boundingBox())?.height ?? 0) >= 44);
     await s.getByRole("button", { name: "Danh sách bài học" }).click();
     await waitTree(s, "sheet");
     check("tờ trượt hiện cây (variant=sheet), tiền tố id bg-to, chương chứa bài đang xem mở sẵn", sameSet(await openIds(s, "sheet"), [CH("A2")]) && /^bg-to-ch-/.test((await s.locator(`[data-outline-variant="sheet"] [data-outline-chapter]`).first().getAttribute("aria-controls")) ?? ""));
@@ -339,7 +339,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("sau 'Thử lại' trong lúc chờ: có khung xương (aria-busy), chưa hiện bài", busy >= 1 && (await e.locator("[data-lesson-row]").count()) === 0, busy);
     await e.locator("[data-tat-ca-bai]:visible").waitFor({ timeout: 90000 });
     await e.waitForTimeout(500);
-    check("tải xong: 'Buổi gần đây' có bài + lối 'Tất cả bài học (24)', khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-lop-gan-day] [data-lesson-row]:visible").count()) > 0 && /\(24\)/.test(await e.locator("[data-tat-ca-bai]:visible").innerText()));
+    check("tải xong: 'Các chương' (SCL5) có bài + lối 'Tất cả bài học (24)', khung xương biến mất", (await e.locator("[aria-busy=true]").count()) === 0 && (await e.locator("[data-lop-chuong] [data-lesson-row]:visible").count()) > 0 && /\(24\)/.test(await e.locator("[data-tat-ca-bai]:visible").innerText()));
     await c.close();
   }
 

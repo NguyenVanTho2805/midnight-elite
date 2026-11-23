@@ -330,6 +330,7 @@
 }
 html[data-kin-rail="thu"] .kin-rail-wrap {
   width: 0;
+  border-right-width: 0; /* viền nằm trên khung bọc (ModuleRail): thu về 0 thì bỏ viền, không để lại vệt 1px */
   visibility: hidden; /* gỡ khỏi thứ tự Tab và cây trợ năng: không ai Tab vào chỗ đang ẩn; đặt trễ để chạy xong chuyển động mới ẩn */
   transition: width 180ms ease-out, visibility 0s linear 180ms;
 }

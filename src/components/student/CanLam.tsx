@@ -140,7 +140,7 @@ export function NopNhanh({ assignmentId, title, primary, ve = "lop" }: { assignm
   const id = nopInputId(assignmentId);
   return (
     <div data-nop-nhanh={assignmentId}>
-      <p className="mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Chụp ảnh vở hoặc chọn tệp PDF</p>
+      <p className="mb-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Ảnh chụp vở hoặc tệp PDF</p>
       <input id={id} type="file" accept="image/*,application/pdf" multiple className="sr-only" tabIndex={-1} aria-hidden onChange={pick} data-nop-nhanh-input="" />
       <button type="button" disabled={!!busy} aria-label={`Nộp bài: ${title}`} onClick={() => document.getElementById(id)?.click()}
         className={`${kinButtonClass(primary ? "primary" : "secondary", "lg")} w-full min-h-12 font-semibold`}>

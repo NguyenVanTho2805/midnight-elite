@@ -50,8 +50,8 @@ import { prisma } from "@/lib/prisma";
   await pg.reload({ waitUntil: "networkidle" });
   check("/api/student/viec-cua-toi đúng 1 lần (vỏ + trang dùng chung)", count["/api/student/viec-cua-toi"] === 1, count);
   check("không gọi /api/schedule", !count["/api/schedule"], count);
-  await pg.getByRole("heading", { level: 1, name: "Cần làm" }).waitFor({ timeout: 30000 });
-  check("số việc trên thanh module vẫn hiện từ phản hồi chung", await pg.getByRole("navigation", { name: "Module của học sinh" }).getByRole("link", { name: /^Việc của tôi/ }).count() > 0);
+  await pg.getByRole("heading", { level: 1, name: /^Hôm nay/ }).waitFor({ timeout: 30000 });
+  check("số việc trên thanh module vẫn hiện từ phản hồi chung", await pg.getByRole("navigation", { name: "Module của học sinh" }).getByRole("link", { name: /^Hôm nay/ }).count() > 0);
 
   section("Thông báo không hỏi khi tab ẩn");
   const np = await ctx.newPage();

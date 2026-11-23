@@ -4,7 +4,8 @@ import { addDaysKey, dayOfWeekOfKey, hmOf, instantOf, parseHm, vnDateKeyOf, vnMi
 import type { StudentTodoItem } from "@/lib/studentTodo";
 import type { ScheduleEvent } from "@/lib/studentSchedule";
 
-const WEEKDAY = ["Chủ nhật", "thứ Hai", "thứ Ba", "thứ Tư", "thứ Năm", "thứ Sáu", "thứ Bảy"];
+// D18 (SCL5): ngày trong tuần viết ĐẦY ĐỦ và hoa chữ đầu ở mọi chỗ ("Thứ Ba", không "thứ Ba" / "T3").
+const WEEKDAY = ["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 const H = 3_600_000, D = 24 * H;
 const dm = (k: string) => `${k.slice(8, 10)}/${k.slice(5, 7)}`;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -158,3 +159,87 @@ export function buildTodoCards(items: StudentTodoItem[], events: ScheduleEvent[]
   if (first) first.primary = true;
   return out;
 }
+
+// ── SCL5 (phương án C + ghép B): Hôm nay, trang lớp theo chương, học thử ─────────────────────────────────────────────────────────
+
+/** Ngày trong tuần ĐẦY ĐỦ, viết hoa đầu (D18): "Thứ Ba 24/11". */
+export function vnWeekdayDate(at: Date): string {
+  const k = vnDateKeyOf(at);
+  return cap(`${WEEKDAY[dayOfWeekOfKey(k)]} ${dm(k)}`);
+}
+/** Mốc hết học thử tuyệt đối (P2-11): "21:40 Thứ Tư 25/11". Hỏng ⇒ "".
+ *  Hết hạn rơi vào 00:00–05:59 (vd 00:04 Thứ Năm) ⇒ ghi "23:59 Thứ Tư" của đêm trước: em đọc là "hết đêm Thứ Tư", và mốc ghi luôn SỚM hơn mốc thật
+ *  (máy chủ vẫn chặn đúng giây ở trial.ts), không bao giờ hứa thêm giờ. */
+export function trialEndLine(endsAt: string): string {
+  const t = new Date(endsAt);
+  if (!valid(t)) return "";
+  if (vnMinutesOfDay(t) < 6 * 60) return `23:59 ${vnWeekdayDate(new Date(t.getTime() - (vnMinutesOfDay(t) + 1) * 60_000))}`;
+  return `${hmOf(vnMinutesOfDay(t))} ${vnWeekdayDate(t)}`;
+}
+
+/** Nhãn nút vào phòng của một buổi: "Vào Google Meet · từ 21:45" (Meet) / "Vào phòng học online · từ 21:45". "từ" = JOIN_SOON_BEFORE_MIN phút trước giờ học,
+ *  cùng mốc studentTodo đưa nút lên làm nút chính. Giờ hỏng ⇒ không có phần "· từ". */
+export function joinLabel(url: string, time: string, beforeMin = 30): string {
+  let host = "";
+  try { host = new URL(url).hostname; } catch { /* link lạ: nhãn chung */ }
+  const name = host === "meet.google.com" ? "Vào Google Meet" : "Vào phòng học online";
+  const m = parseHm(time);
+  return m === null ? name : `${name} · từ ${hmOf((m - beforeMin + 1440) % 1440)}`;
+}
+
+/** "Mở từ 05/12" cho bài / chương có ngày học trong tương lai (theo ngày VN); đã tới ngày hoặc không ngày ⇒ "". */
+export function opensLine(at: Date | null, now: Date): string {
+  return at && valid(at) && daysUntil(at, now) > 0 ? `Mở từ ${dm(vnDateKeyOf(at))}` : "";
+}
+
+export type BuocBai = { key: "video" | "tai-lieu" | "bai-tap" | "azota" | "xong"; label: string; href: string; done: boolean };
+/** Bậc thang của trang bài (D15, phương án C): CHỈ các phần bài thật sự có, theo thứ tự học, bước cuối luôn là "Đánh dấu xong".
+ *  done chỉ từ dữ liệu thật: nộp tệp / Azota ⇒ có bài nộp; video / tài liệu / bước cuối ⇒ em đã đánh dấu xong bài (LessonProgress.completed). */
+export function lessonSteps(l: { video: boolean; docs: number; assignments: { submitted: boolean }[]; azota: { done: boolean } | null; completed: boolean }): { steps: BuocBai[]; done: number } {
+  const steps: BuocBai[] = [];
+  if (l.video) steps.push({ key: "video", label: "Xem video bài học", href: "#bai-video", done: l.completed });
+  if (l.docs > 0) steps.push({ key: "tai-lieu", label: l.docs === 1 ? "Đọc tài liệu kèm" : `Đọc ${l.docs} tài liệu kèm`, href: "#bai-tai-lieu", done: l.completed });
+  if (l.assignments.length > 0) {
+    const n = l.assignments.filter(a => a.submitted).length;
+    steps.push({ key: "bai-tap", label: l.assignments.length === 1 ? "Nộp bài tập" : `Nộp ${l.assignments.length} bài tập (${n}/${l.assignments.length})`, href: "#bai-tap", done: n === l.assignments.length });
+  }
+  if (l.azota) steps.push({ key: "azota", label: "Làm bài trên Azota", href: "#bai-tap", done: l.azota.done });
+  steps.push({ key: "xong", label: "Đánh dấu xong bài", href: "#bai-xong", done: l.completed });
+  return { steps, done: steps.filter(s => s.done).length };
+}
+
+export type NhatKyStatus = "co-mat" | "nghi-bao" | "vang";
+/** AttendanceRecord.status ⇒ ba ô của nhật ký đêm học. Đi muộn vẫn là có mặt; giá trị lạ ⇒ null (bỏ, không đoán). */
+export function nhatKyStatus(raw: string): NhatKyStatus | null {
+  return raw === "present" || raw === "late" ? "co-mat" : raw === "excused" ? "nghi-bao" : raw === "absent" ? "vang" : null;
+}
+export const NHAT_KY_LABEL: Record<NhatKyStatus, string> = { "co-mat": "Có mặt", "nghi-bao": "Nghỉ có báo", vang: "Vắng" };
+/** Số buổi giữ nhịp liền, tính lùi từ buổi gần nhất: có mặt HOẶC nghỉ có báo đều giữ nhịp (P2-16); gặp buổi vắng thì dừng. Mảng cũ → mới. */
+export function nhipLien(items: { status: NhatKyStatus }[]): number {
+  let n = 0;
+  for (let i = items.length - 1; i >= 0 && items[i].status !== "vang"; i--) n++;
+  return n;
+}
+
+/** Buổi học kế tiếp (chưa kết thúc, chưa huỷ) trong lịch, của một lớp nếu có `courseId`. Buổi đang diễn ra vẫn tính (để còn nút vào phòng). */
+export function nextClass(events: ScheduleEvent[], now: Date, courseId?: string): { event: ScheduleEvent; start: Date; today: boolean } | null {
+  let best: { event: ScheduleEvent; start: Date; today: boolean } | null = null;
+  for (const e of events) {
+    if (e.type !== "class" || e.topic.startsWith("[ĐÃ HUỶ]") || (courseId && e.courseId !== courseId)) continue;
+    const sm = parseHm(e.time);
+    if (sm === null) continue;
+    const start = instantOf(e.isoDate, sm);
+    const em = parseHm(e.endTime ?? "");
+    const end = em !== null && em > sm ? instantOf(e.isoDate, em) : new Date(start.getTime() + 2 * H);
+    if (end.getTime() <= now.getTime()) continue;
+    if (!best || start.getTime() < best.start.getTime()) best = { event: e, start, today: e.isoDate === vnDateKeyOf(now) };
+  }
+  return best;
+}
+
+export type BaiTrangThai = "da-hoc" | "dang-hoc" | "chua-hoc";
+/** Trạng thái một bài cho riêng em, chỉ từ tiến độ thật (LessonProgress): xong ⇒ đã học; đã xem một đoạn ⇒ đang học; còn lại chưa học. */
+export function baiTrangThai(id: string, completed: Set<string>, watching: Record<string, number>): BaiTrangThai {
+  return completed.has(id) ? "da-hoc" : (watching[id] ?? 0) > 0 ? "dang-hoc" : "chua-hoc";
+}
+export const BAI_TRANG_THAI_LABEL: Record<BaiTrangThai, string> = { "da-hoc": "Đã học", "dang-hoc": "Đang học", "chua-hoc": "Chưa học" };

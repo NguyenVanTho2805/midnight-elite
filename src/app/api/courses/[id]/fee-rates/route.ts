@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (r.res) return r.res;
   const [overview, students] = await Promise.all([
     feeOverview(id),
-    prisma.enrollment.findMany({ where: { courseId: id, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { user: { name: "asc" } } }),
+    prisma.enrollment.findMany({ where: { courseId: id, status: "active", trialDays: null }, select: { userId: true, user: { select: { name: true } } }, orderBy: { user: { name: "asc" } } }),
   ]);
   return NextResponse.json({
     ...overview,
@@ -89,8 +89,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const v = validateFeeSetup({ mode, rate: body?.rate, sessionMinutes: mode === "per_hour" ? 60 : undefined }); // thời lượng không dùng ở đây, chỉ để dùng chung kiểm đơn giá
       if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
       rate = v.value.rate;
-      const enr = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: studentId, courseId: id } }, select: { status: true } });
-      if (!enr || enr.status !== "active") return NextResponse.json({ error: "Học sinh này không học lớp này" }, { status: 400 });
+      const enr = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: studentId, courseId: id } }, select: { status: true, trialDays: true } });
+      if (!enr || enr.status !== "active" || enr.trialDays !== null) return NextResponse.json({ error: "Học sinh này không học lớp này" }, { status: 400 });
     }
     change = { type: "student", studentId, rate, effectiveFrom: eff.dateKey };
   }

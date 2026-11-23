@@ -43,6 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       where:  {
         userId,
         status: ENROLLMENT_STATUS.ACTIVE,
+        trialDays: null,
         course: { ownerId: auth.userId },
       },
       select: { id: true },
@@ -52,8 +53,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!allowed) return NextResponse.json({ error: "Không có quyền xem" }, { status: 403 });
 
   // ── Lấy dữ liệu ──────────────────────────────────────────────────────────
+  // SCL đợt 5: em học thử (trialDays khác null) không thuộc đường tiền — học thử miễn phí 14 ngày, không vào bậc thang/phiếu.
   let enrollments = await prisma.enrollment.findMany({
-    where:   { userId, status: ENROLLMENT_STATUS.ACTIVE },
+    where:   { userId, status: ENROLLMENT_STATUS.ACTIVE, trialDays: null },
     include: { course: { select: { id: true, name: true, feeMode: true } } },
   });
   // HP-14: lớp tính phí kiểu mới (theo buổi/giờ/khoá) không có MonthlyCourseFee và không tính vào bậc thang theo số môn của cách cũ.

@@ -314,6 +314,7 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
   const uploads = useUploads(scope, limits, async (_id, key, drop) => { await load(true); drop(key); }, () => setForcedOff(true));
   // SCL-D (Q3): ảnh bài làm chờ gộp. Ảnh ở lại trong trình duyệt; bấm "Gộp" ⇒ một tệp PDF đi đường tải lên PDF sẵn có.
   const [photos, setPhotos] = useState<File[]>([]);
+  const [quyDinh, setQuyDinh] = useState(false); // SCL5 (mục 6): quy định nộp tệp gập sau một nút, để Nộp bài không bị đẩy xuống
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoErr, setPhotoErr] = useState<string | null>(null);
 
@@ -412,7 +413,14 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
         <div>
           <Zone onFiles={addPicked} describedBy={capId} />
           <PhotoPicker onFiles={addPicked} disabled={photoBusy} />
-          <Caption id={capId} limits={limits} photos />
+          {/* SCL5 (mục 9): MỘT dòng loại tệp, cùng chữ ở thẻ Cần làm và trang bài. Chi tiết (giới hạn, lưu bao lâu, cảnh báo thông tin cá nhân) gập lại. */}
+          <p data-nop-tep-loai="" className={`mt-2 ${SMALL} ${T_MO}`}>Ảnh chụp vở, tệp Word hoặc PDF · dưới {Math.round(limits.maxBytes / 1048576)} MB · tối đa {limits.maxFiles} tệp</p>
+          <button type="button" aria-expanded={quyDinh} aria-controls={`${capId}-qd`} onClick={() => setQuyDinh(v => !v)} data-nop-tep-quy-dinh=""
+            className={`inline-flex items-center min-h-11 ${SMALL} font-medium text-[var(--kin-nhan-link)] underline`}>{quyDinh ? "Ẩn quy định nộp tệp" : "Xem quy định nộp tệp"}</button>
+          <div id={`${capId}-qd`} hidden={!quyDinh}>
+            <Caption id={capId} limits={limits} photos />
+            <KinCallout className="mt-3"><span data-nop-tep-canh-bao="">Đừng ghi thông tin cá nhân không cần thiết vào bài (số điện thoại, địa chỉ nhà, ảnh có mặt người).</span></KinCallout>
+          </div>
           {(photos.length > 0 || photoErr) && (
             <div data-nop-anh="" className="mt-3 rounded-[var(--kin-bo-md)] border border-[var(--kin-vien-thuong)] bg-[var(--kin-nen-bang)] px-3 py-3">
               {photos.length > 0 && <p data-nop-anh-dem="" className={`${GOC} ${T_CHINH}`}>{photos.length} ảnh đã chọn · gộp thành một tệp PDF, mỗi ảnh một trang.</p>}
@@ -425,7 +433,6 @@ function StudentBox({ assignmentId, submission }: { assignmentId: string; submis
               )}
             </div>
           )}
-          <KinCallout className="mt-3"><span data-nop-tep-canh-bao="">Đừng ghi thông tin cá nhân không cần thiết vào bài (số điện thoại, địa chỉ nhà, ảnh có mặt người).</span></KinCallout>
         </div>
         <div>
           {(draftRows.length > 0 || localRows.length > 0) && <ul aria-label="Tệp đã chọn" className="space-y-2 mb-3">{draftRows}{localRows}</ul>}

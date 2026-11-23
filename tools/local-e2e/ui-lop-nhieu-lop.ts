@@ -105,7 +105,7 @@ const H = 3_600_000;
   await h1(pg, "Địa 12").waitFor({ timeout: 90000 });
   check("bấm 'Địa 12' → vào đúng lớp Địa 12 (không phải lớp đầu tiên khác)", await h1(pg, "Địa 12").isVisible() && courseParam(pg) === B.id);
   // SCL-G-HS: trang lớp theo bản chốt không còn khối "Các lớp của bạn" / "← Lớp của tôi"; đổi lớp = mục "Lớp của tôi" trên thanh module → thư viện → chọn lớp.
-  const railLop = () => pg.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ });
+  const railLop = () => pg.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp(\s|$)/ }) /* SCL5: mục rail đổi tên "Lớp" */;
   check("trong lớp: mục 'Lớp của tôi' trên thanh module sáng (aria-current=page)", (await railLop().getAttribute("aria-current")) === "page");
   await railLop().click();
   await pg.locator("[data-class-catalog]").waitFor({ timeout: 90000 });
@@ -159,7 +159,7 @@ const H = 3_600_000;
   await p1.locator(`[data-class-card="${A.id}"]`).getByRole("link", { name: "Sử 12", exact: true }).click();
   await p1.waitForURL(u => u.searchParams.get("course") === A.id, { timeout: 90000 });
   await p1.getByRole("heading", { level: 1, name: "Sử 12", exact: true }).waitFor({ timeout: 90000 });
-  check("trong lớp: lối về danh mục là mục 'Lớp của tôi' của thanh module (luôn có), không khối đổi lớp thừa", (await p1.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ }).count()) === 1 && (await p1.locator("[data-my-classes]").count()) === 0);
+  check("trong lớp: lối về danh mục là mục 'Lớp của tôi' của thanh module (luôn có), không khối đổi lớp thừa", (await p1.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp(\s|$)/ }) /* SCL5: mục rail đổi tên "Lớp" */.count()) === 1 && (await p1.locator("[data-my-classes]").count()) === 0);
   await c1.close();
   const cl = await ctxFor(LONE, { width: 1280, height: 900 });
   const pl = await cl.newPage(); watch(pl);
@@ -248,7 +248,7 @@ const H = 3_600_000;
   // Bản ghi trễ LÂU HƠN trang lớp (12 giây so với 4,5 giây): hero hiện ra khi bản ghi còn đang tải — đúng khoảng mà lỗi cũ để lộ bản ghi của lớp trước.
   await pr.route(`**/api/courses/${B.id}/recordings`, async r => { await new Promise(res => setTimeout(res, 12000)); await r.continue().catch(() => {}); });
   // SCL-G-HS: đổi lớp đi qua danh mục (không còn "Các lớp của bạn" trong lớp) — điều hướng phía trình duyệt, nên phản hồi muộn vẫn có thể về tới trang đang mở.
-  const railR = () => pr.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp của tôi/ });
+  const railR = () => pr.getByRole("navigation", { name: "Module của học sinh" }).first().getByRole("link", { name: /^Lớp(\s|$)/ }) /* SCL5: mục rail đổi tên "Lớp" */;
   const toB = async () => {
     await railR().click();
     await pr.locator(`[data-class-card="${B.id}"]`).getByRole("link", { name: "Địa 12", exact: true }).click({ timeout: 120000 });

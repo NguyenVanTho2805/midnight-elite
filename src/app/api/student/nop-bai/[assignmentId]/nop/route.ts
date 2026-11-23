@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ass
       : ve === "can-lam" ? `/student/viec-cua-toi?${q(code)}`
       : `/student/bai-giang/${encodeURIComponent(scope.lessonId)}?nop=${code}`, req.url), 303);
 
-  const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true } });
+  const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true, trialDays: true, trialStartedAt: true } });
   if (!isEnrollmentActive(enrolled)) return back(NOP_TEP_RESULT.classDenied);
   if (!nopTepRuntimeConfig().enabled) return back(NOP_TEP_RESULT.off);
 

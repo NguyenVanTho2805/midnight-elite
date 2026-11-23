@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
-import { ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { ENROLLMENT_ACCESS_SELECT, ENROLLMENT_STATUS, isEnrollmentActive } from "@/lib/enrollment";
 import { activeHelperCourseIds } from "@/lib/classThreadAccess";
 
 export async function GET() {
@@ -36,11 +36,11 @@ export async function GET() {
     }
   } else {
     // H4: chỉ học sinh THẬT mới có phạm vi "lớp tôi học" (ghi danh cũ của tài khoản đã đổi vai không tính).
-    const enrolled = await prisma.enrollment.findMany({
+    const enrolled = (await prisma.enrollment.findMany({
       where:   { userId: session.userId, status: ENROLLMENT_STATUS.ACTIVE, user: { role: "student" } },
-      select:  { course: { select: { id: true, name: true } } },
+      select:  { ...ENROLLMENT_ACCESS_SELECT, course: { select: { id: true, name: true } } },
       orderBy: { course: { name: "asc" } },
-    });
+    })).filter(e => isEnrollmentActive(e));
     for (const e of enrolled) scopes.push({ ...e.course, role: "student" });
   }
 

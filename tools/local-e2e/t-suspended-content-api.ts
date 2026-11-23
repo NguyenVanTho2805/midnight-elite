@@ -38,7 +38,7 @@ async function page(path: string, as: Awaited<ReturnType<typeof mkUser>> | null)
     enrollmentDeniedBody({ status: "suspended" }, "x").code === "enrollment_suspended" && enrollmentDeniedBody({ status: "suspended" }, "x").error === MSG
     && JSON.stringify(enrollmentDeniedBody(null, "Chưa ghi danh")) === JSON.stringify({ error: "Chưa ghi danh" }) && enrollmentDeniedBody({ status: "pending_consent" }, "y").code === undefined);
   check("thông điệp redeem cho suspended: giọng KiN, không số/tên", /Liên hệ gia sư/.test(SUSPENDED_REDEEM_MESSAGE) && !/\d/.test(SUSPENDED_REDEEM_MESSAGE));
-  const v = { userId: "u", role: "student", adminRole: null, courseOwnerId: "t", enrollmentStatus: null as string | null, lessonIsFree: false };
+  const v = { userId: "u", role: "student", adminRole: null, courseOwnerId: "t", enrollmentStatus: null as string | null, trialDays: null, trialStartedAt: null, lessonIsFree: false };
   check("canWatchStoredMedia: suspended không xem video trả phí, bài miễn phí vẫn được", !canWatchStoredMedia({ ...v, enrollmentStatus: "suspended" }) && canWatchStoredMedia({ ...v, enrollmentStatus: "suspended", lessonIsFree: true }) && canWatchStoredMedia({ ...v, enrollmentStatus: "active" }));
 
   await wipe();

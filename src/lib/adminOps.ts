@@ -54,7 +54,7 @@ export function cronSecretMissingIsFatal(env: Env = process.env): boolean {
 
 // ── QT-03: lần gọi tác vụ định kỳ gần nhất ───────────────────────────────────────────────────────
 export interface CronJobDef { key: string; label: string; path: string; schedule: string; maxGapHours: number }
-/** Khớp vercel.json: năm tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
+/** Khớp vercel.json: sáu tác vụ, MỖI NGÀY MỘT LẦN (quy ước của kho, t-adm-003-lib chỉ chấp nhận lịch dạng "phút giờ * * *"; gói Vercel Hobby cũng chỉ cho cron hằng ngày). Quá `maxGapHours` mà chưa thấy gọi thì báo "chậm". */
 export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "remind-exam", label: "Nhắc kỳ thi ngày mai", path: "/api/cron/remind-exam", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
   { key: "remind-class", label: "Nhắc lịch học và tin buổi chưa điểm danh", path: "/api/cron/remind-class", schedule: "Mỗi ngày 07:00 giờ VN", maxGapHours: 36 },
@@ -65,6 +65,7 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   // BU-HS-NOP-TEP: dọn tệp nộp bài hết hạn 60 ngày. Mặc định CHẠY KHÔ (đường dẫn không có ?xoa=1); chuyển sang xoá thật là commit riêng, kèm đổi `path` ở đây và ở vercel.json.
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
+  { key: "het-han-hoc-thu", label: "Khoá ghi danh học thử đã hết hạn", path: "/api/cron/het-han-hoc-thu", schedule: "Mỗi ngày 00:10 giờ VN", maxGapHours: 36 }, // SCL đợt 5 (D7)
 ];
 /** DG-HOC-ONLINE: tác vụ gọi TỪ NGOÀI (cron-job.org, mỗi 15 phút) — không nằm trong vercel.json nên tách khỏi CRON_JOBS (t-adm-003-lib so CRON_JOBS ↔ vercel.json hai chiều).
  *  Trang Triển khai vẫn theo dõi: quá 1 giờ chưa thấy gọi ⇒ "Chậm so với lịch". Hướng dẫn đăng ký: docs/kin/van-hanh/cron-nhac-buoi-hoc.md. */

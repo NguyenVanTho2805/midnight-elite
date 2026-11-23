@@ -105,7 +105,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
                 videoUrl: l.videoUrl, zoomUrl: l.zoomUrl, azotaUrl: l.azotaUrl,
                 azotaDeadline: l.azotaDeadline, duration: l.duration,
                 isLocked: l.isLocked, isFree: l.isFree,
-                documents: l.documents, adminNote: l.adminNote,
+                documents: l.documents, adminNote: l.adminNote, objectives: l.objectives, selfCheck: l.selfCheck,
                 statsVideos: l.statsVideos, statsMaterials: l.statsMaterials, statsViews: 0,
                 chapterId: newCh.id,
                 status: l.status,   // BU-02-PHẲNG (R19): bản sao giữ nguyên Nháp/Đã đăng/Ẩn

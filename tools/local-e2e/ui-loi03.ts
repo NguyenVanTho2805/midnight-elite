@@ -110,10 +110,10 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     check("2 thẻ theo thứ tự vào lớp: Toán rồi Văn", (await cards.evaluateAll(els => els.map(e => e.getAttribute("data-class-card")))).join() === [X.id, Y.id].join());
     const cx = p.locator(`[data-class-card="${X.id}"]`), cy = p.locator(`[data-class-card="${Y.id}"]`);
     const tx = (await cx.innerText()).replace(/\s+/g, " "), ty = (await cy.innerText()).replace(/\s+/g, " ");
-    check("Toán: ảnh bìa <img> https (alt rỗng), nhãn chữ 'Đang học', 'Gia sư: Cô Lan · Toán', 'Đã hoàn thành 1/6 bài' (bài nháp KHÔNG đếm)",
-      (await cx.locator(`img[src="${COVER}"][alt=""]`).count()) === 1 && /Đang học/.test(tx) && /Gia sư: Cô Lan · Toán/.test(tx) && /Đã hoàn thành 1\/6 bài/.test(tx), tx);
-    check("Toán: thanh tiến độ role=progressbar aria-valuenow=16; vòng % có nhãn 'Hoàn thành 16%' và chữ '16%'",
-      (await cx.getByRole("progressbar").getAttribute("aria-valuenow")) === "16" && (await cx.getByRole("img", { name: /Hoàn thành 16%/ }).count()) === 1 && /16%/.test(tx));
+    check("Toán: ảnh bìa <img> https (alt rỗng), SCL5: không lặp nhãn 'Đang học', 'Gia sư: Cô Lan · Toán', 'Đã hoàn thành 1/6 bài' (bài nháp KHÔNG đếm)",
+      (await cx.locator(`img[src="${COVER}"][alt=""]`).count()) === 1 && !/Đang học/.test(tx) && /Gia sư: Cô Lan · Toán/.test(tx) && /Đã hoàn thành 1\/6 bài/.test(tx), tx);
+    check("Toán: SCL5 bỏ thanh tiến độ (một chỉ báo); vòng % có nhãn 'Hoàn thành 16%' và chữ '16%'",
+      (await cx.getByRole("progressbar").count()) === 0 && (await cx.getByRole("img", { name: /Hoàn thành 16%/ }).count()) === 1 && /16%/.test(tx));
     const ht = cx.locator("[data-hoc-tiep]");
     check("Toán: nút 'Học tiếp →' trỏ đúng bài ĐANG XEM DỞ (bài 2), không phải bài chưa học đầu tiên", (await ht.innerText()).trim() === "Học tiếp →" && (await ht.getAttribute("href")) === `/student/bai-giang/${L(2)}`, await ht.getAttribute("href"));
     check("Văn: không ảnh bìa ⇒ ô chữ tên lớp [data-lop-bia-chu]; nhãn 'Hoàn thành'; nút 'Xem lại →' về bài đầu", (await cy.locator("img").count()) === 0 && (await cy.locator("[data-lop-bia-chu]").count()) === 1 && /Hoàn thành/.test(ty) && (await cy.locator("[data-hoc-tiep]").innerText()).trim() === "Xem lại →" && (await cy.locator("[data-hoc-tiep]").getAttribute("href")) === `/student/bai-giang/ly1-${Y.id}`, ty);
@@ -146,8 +146,9 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     await p.locator("[data-lop-can-lam] [data-can-lam-the]").first().waitFor({ timeout: 120000 });
     check("h1 = tên lớp; đầu trang có tên cô; không tab, không thẻ tiến độ cũ", await p.getByRole("heading", { level: 1, name: "Toán 9 (LOI-03)" }).isVisible() && /Cô Lan/.test(await p.locator("[data-dau-lop]").innerText()) && (await p.getByRole("tab").count()) === 0 && (await p.locator("[data-course-hero]").count()) === 0);
     check("Cần làm: thẻ 'Bài tập Vi-ét' có nút 'Nộp bài'", await p.locator("[data-lop-can-lam] [data-can-lam-the]").filter({ hasText: "Bài tập Vi-ét" }).getByRole("button", { name: /^Nộp bài/ }).count() === 1);
-    const recentIds = await p.locator("[data-lop-gan-day] [data-lesson-row]").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
-    check("Buổi gần đây: mới nhất trước (bài 6 hẹn +3 ngày đứng đầu), tối đa 5 hàng; tên bài nháp không lộ", recentIds[0] === L(6) && recentIds.length === 5 && !(await p.content()).includes("NHAP-BI-MAT"), recentIds);
+    // SCL5 (D15): "Buổi gần đây" thay bằng mục lục "Các chương" [data-lop-chuong]
+    const rowIds = await p.locator("[data-lop-chuong] [data-lesson-row]").evaluateAll(els => els.map(e => e.getAttribute("data-lesson-row")));
+    check("Các chương: có hàng bài, chỉ bài của lớp này; tên bài nháp không lộ", rowIds.length > 0 && rowIds.every(id => (id ?? "").endsWith(`-${X.id}`)) && !(await p.content()).includes("NHAP-BI-MAT"), rowIds);
     check("'Tất cả bài học (6)' (bài nháp không đếm)", (await p.locator("[data-tat-ca-bai]").innerText()).includes("Tất cả bài học (6)"));
     const hoi = p.locator("[data-hoi-trong-lop]");
     if (!featureOn("CONG_DONG")) {
@@ -193,6 +194,7 @@ const NOT_OVERFLOW = `document.documentElement.scrollWidth <= window.innerWidth`
     const zb = await zone.boundingBox(), cardB = await card.boundingBox();
     // SCL-D (P2-1): dưới 768px ô thả gọn (≥ 96px, chữ "Tệp Word hoặc PDF"), từ 768px mới là vùng thả lớn.
     const phone = w < 768;
+    await card.locator("[data-nop-tep-quy-dinh]").click(); // SCL5: quy định nộp tệp + cảnh báo gập sau nút (vẫn nằm TRÊN Nộp bài khi mở)
     check(`vùng thả là <button>, cao ${phone ? "96–211px (gọn trên điện thoại)" : "≥ 200px"}, rộng gần hết thẻ`, (await zone.evaluate(e => e.tagName)) === "BUTTON" && !!zb && (phone ? zb.height >= 96 && zb.height <= 211 : zb.height >= 200) && !!cardB && zb.width >= cardB.width - 2 * 24, { zb, cardB });
     check("chữ ô thả (máy tính: 'Kéo thả… vào đây' + 'hoặc'; điện thoại: 'Tệp Word hoặc PDF') + nút 'Chọn tệp' ≥ 44px; chú thích giới hạn giữ nguyên số (10 MB, 60 ngày, 3 tệp)",
       (phone ? /Tệp Word hoặc PDF/.test(await zone.innerText()) : /Kéo thả tệp Word hoặc PDF vào đây/.test(await zone.innerText()) && /hoặc/.test(await zone.innerText())) && ((await card.locator("[data-nop-tep-chon]").boundingBox())?.height ?? 0) >= 44

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENROLLMENT_ACCESS_SELECT, isEnrollmentActive } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ownerScopeWhere } from "@/lib/auth-guard";
@@ -18,10 +19,10 @@ export async function GET() {
       const visibleCourses = await prisma.course.findMany({ where: ownerScopeWhere(session), select: { id: true } });
       courseIds = visibleCourses.map(c => c.id);
     } else {
-      const enrollments = await prisma.enrollment.findMany({
+      const enrollments = (await prisma.enrollment.findMany({
         where: { userId: session.userId, status: "active" },
-        select: { courseId: true },
-      });
+        select: { courseId: true, ...ENROLLMENT_ACCESS_SELECT },
+      })).filter(e => isEnrollmentActive(e)); // SCL5: học thử quá hạn chưa lật không còn hạn nộp
       if (!enrollments.length) return NextResponse.json([]);
       courseIds = enrollments.map(e => e.courseId);
     }

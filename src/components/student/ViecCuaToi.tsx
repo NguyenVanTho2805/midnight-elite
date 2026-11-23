@@ -8,14 +8,19 @@
 "use client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { ErrorStrip } from "@/components/kin/shell/Outlook";
 import { kinButtonClass } from "@/components/kin/Button";
 import { KinPanel } from "@/components/kin/Panel";
 import { KinEmptyState } from "@/components/kin/EmptyState";
 import { KinListRow } from "@/components/kin/ListRow";
 import { KinGradeStatus, KinStatus } from "@/components/kin/Status";
-import { useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { todayLine, useStudentWork, WorkSkeleton } from "@/components/student/shared";
+import { HocThuBang, HocThuKhoa } from "@/components/student/HocThu";
+import { useProgress } from "@/hooks/useProgress";
+import { formatStamp } from "@/lib/mediaLink";
+import { LopCuaBan, NhatKyDemHoc } from "@/components/student/HomNayPhu";
+import type { ThuVienResp, ThuVienRow } from "@/lib/studentLop";
 import { DaNopCard, TodoCardView } from "@/components/student/CanLam";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyClasses } from "@/hooks/useMyClasses";
@@ -25,7 +30,7 @@ import { daysLeftLabel } from "@/lib/examRoomLib";
 import type { AssignmentState } from "@/lib/examRoomApi";
 import { classAccent } from "@/lib/classColor";
 import { nopTepResultMessage } from "@/lib/nopTep";
-import { BUCKET_TITLE, buildTodoCards, todoBucket, type TodoBucket } from "@/lib/studentClassPage";
+import { BUCKET_TITLE, buildTodoCards, joinLabel, nextClass, todoBucket, vnWeekdayDate, type TodoBucket } from "@/lib/studentClassPage";
 
 const H2 = "text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)]";
 const GOC = "text-[length:var(--kin-co-goc)]";
@@ -45,10 +50,36 @@ function CanLamPage() {
   const nameOf = (id: string) => classes.find(c => c.id === id)?.name ?? "";
   const cards = items ? buildTodoCards(items, events ?? [], now, nameOf) : null;
   const waiting = (items ?? []).filter(i => i.task?.phase === "cho-cham");
-  const sessions = (items ?? []).filter(i => i.kind === "buoi-hoc" && !i.done && i.session).slice(0, 3);
+  // SCL5 (P2-8): buổi học HÔM NAY lên đầu màn kèm nút vào phòng; "Buổi học sắp tới" bên dưới chỉ còn các ngày sau (không lặp).
+  const allSessions = (items ?? []).filter(i => i.kind === "buoi-hoc" && !i.done && i.session);
+  const tonight = allSessions.filter(i => i.session!.dayText === "Hôm nay");
+  const sessions = allSessions.filter(i => i.session!.dayText !== "Hôm nay").slice(0, 3);
+  // SCL5: lớp của em (tiến độ thật, học thử) — /api/student/lop. Lỗi ⇒ MỘT dòng "Chưa tải được thông tin lớp" + Thử lại (băng học thử nằm ở đây,
+  // mất băng thì em không biết hạn), hai khối phụ ẩn; màn chính (thẻ việc) vẫn đủ.
+  const [lopRaw, setLop] = useState<ThuVienRow[] | "loi" | null>(null);
+  const [lopTick, setLopTick] = useState(0);
+  useEffect(() => {
+    let live = true;
+    fetch("/api/student/lop", { credentials: "same-origin", cache: "no-store" }).then(r => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((d: ThuVienResp) => { if (live) setLop(Array.isArray(d?.classes) ? d.classes : []); }).catch(() => { if (live) setLop("loi"); });
+    return () => { live = false; };
+  }, [lopTick]);
+  const lop = Array.isArray(lopRaw) ? lopRaw : null;
+  const progress = useProgress();
+  const thu = (lop ?? []).filter(r => r.trial);
+  const hetHan = (lop ?? []).filter(r => r.trialExpired);
+  // Bài đang xem dở (tiến độ thật: hocTiep "dang-xem" của máy chủ + giây xem gần nhất của /api/progress). KHÔNG tính vào N việc.
+  const dangXem = (lop ?? []).filter(r => r.hocTiep?.reason === "dang-xem");
+  const daCham = (items ?? []).filter(i => i.task?.phase === "da-cham" && i.task.scoreText);
+  const thuBang = thu.find(r => r.trial?.kind === "dang_thu")?.trial ?? thu[0]?.trial;
+  const hocTiepRow = (lop ?? []).find(r => r.hocTiep && r.hocTiep.reason !== "on-lai") ?? null;
+  const nc = events ? nextClass(events, now) : null;
   const sent = nop === "ok" && bt ? waiting.find(i => i.id === `bai-tap:${bt}`) ?? null : null;
   const nopErr = nop && nop !== "ok" ? nopTepResultMessage(nop) : null;
   const nothing = items !== null && items.length === 0 && (as.data?.items.length ?? 0) === 0;
+  const coLop = (lop?.length ?? 0) > 0;
+  // Đúng MỘT nút đặc mỗi màn: thẻ việc hạn gần nhất > vào phòng hôm nay > học tiếp (màn rỗng) > đăng ký chính thức.
+  const chinhKhac = !!cards?.some(c => c.primary) || tonight.some(i => i.session?.joinUrl) || (cards?.length === 0 && !!hocTiepRow?.hocTiep);
   const lopCount = new Set((cards ?? []).map(c => c.courseId ?? c.courseName)).size;
 
   // "Đề thi được giao" (§3.2, §3.3): hàng mảnh, cả hàng là link, KHÔNG nút — và bỏ đề đã có thẻ kiểm tra ở trên (không lặp một đề hai lần).
@@ -78,19 +109,28 @@ function CanLamPage() {
   );
 
   return (
-    <div className="px-4 md:px-10 pt-5 md:pt-8 pb-10 max-w-[800px] bg-[var(--kin-nen-trang)]">
+    <div className="px-4 md:px-10 pt-5 md:pt-8 pb-10 max-w-[1120px] bg-[var(--kin-nen-trang)]">
+     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start">
+     <div className="min-w-0">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Cần làm</h1>
+          <p data-hn-ngay className={`${GOC} font-semibold text-[var(--kin-nhan-link)]`}>{todayLine(now)}</p>
+          {/* P1-2: số ở tiêu đề = số thẻ việc = số trên thanh dưới (cùng buildTodoCards). Buổi học không tính là việc. */}
+          <h1 className="text-[length:var(--kin-co-h2)] leading-9 font-bold tracking-[-0.01em] text-[var(--kin-chu-chinh)]">
+            {!cards ? "Việc cần làm hôm nay" : cards.length > 0 ? <>Hôm nay còn <span data-hn-so-viec className="tabular-nums">{cards.length}</span> việc cần làm</> : "Hôm nay không còn việc cần làm"}
+          </h1>
           {cards && (
-            <p data-can-lam-tom-tat className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>
-              {cards.length > 0 ? `${cards.length} việc${lopCount > 1 ? ` ở ${lopCount} lớp` : ""}, xếp theo hạn` : "Không còn việc nào cần làm"}
+            cards.length > 0 && <p data-can-lam-tom-tat className={`mt-1 ${GOC} text-[var(--kin-chu-phu)]`}>
+              {`${cards.length} việc${lopCount > 1 ? ` ở ${lopCount} lớp` : ""}, xếp theo hạn. Bài đang xem dở và bài đã nộp không tính vào số này.`}
             </p>
           )}
         </div>
-        {!nothing && <Link href="/student/nhap-ma-lop" data-nhap-ma-dau className={kinButtonClass("secondary")}>Nhập mã lớp</Link>}
+        {(!nothing || coLop) && <Link href="/student/nhap-ma-lop" data-nhap-ma-dau className={kinButtonClass("secondary")}>Nhập mã lớp</Link>}
       </header>
 
+      {thuBang && <HocThuBang t={thuBang} mon={thu.map(r => r.name)} chinh={!chinhKhac} className="mt-4" />}
+      {hetHan.map((r, i) => <div key={r.id} className="mt-4" data-hn-het-han={r.id}><HocThuKhoa gon courseId={r.id} courseName={r.name} hocSan={{ done: r.done, total: r.total }} chinh={!chinhKhac && i === 0} /></div>)}
+      {lopRaw === "loi" && <div className="mt-4" data-hn-lop-loi><ErrorStrip message="Chưa tải được thông tin lớp (học thử, tiến độ)." onRetry={() => { setLop(null); setLopTick(t => t + 1); }} /></div>}
       {tutorPending && (
         <div role="status" data-tutor-pending className="mt-6">
           <KinPanel variant="canh-bao"><p className={`${GOC} font-medium text-[var(--kin-chu-chinh)]`}>Hồ sơ gia sư của bạn đang chờ quản trị duyệt.</p><p className={`mt-1.5 ${GOC} text-[var(--kin-chu-phu)]`}>KiN sẽ báo khi xong.</p></KinPanel>
@@ -102,15 +142,35 @@ function CanLamPage() {
 
       {items === null ? (!error ? <WorkSkeleton label="Đang tải việc cần làm" /> : null) : nothing ? (
         <div className="mt-6">
-          <KinEmptyState title="Chưa có việc nào cho bạn" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
-            Khi bạn vào lớp và thầy cô giao bài, bài phải nộp, hạn nộp và buổi học sắp tới sẽ hiện ở đây.
-          </KinEmptyState>
+          {coLop || lop === null
+            // Em ĐÃ có lớp (hoặc chưa rõ): không nói "khi bạn vào lớp", không đẩy Nhập mã lớp làm nút chính (mục 4, 6).
+            ? <KinEmptyState title="Chưa có việc nào cần làm">Bài thầy cô giao, hạn nộp và buổi học sắp tới sẽ hiện ở đây.</KinEmptyState>
+            : <KinEmptyState title="Chưa có việc nào cho bạn" action={<Link href="/student/nhap-ma-lop" className={kinButtonClass("primary")}>Nhập mã lớp</Link>}>
+                Khi bạn vào lớp và thầy cô giao bài, bài phải nộp, hạn nộp và buổi học sắp tới sẽ hiện ở đây.
+              </KinEmptyState>}
         </div>
       ) : (
         <>
           {sent?.task && <div className="mt-4"><DaNopCard title={sent.task.name} line={(sent.task.sentText ?? "Đã nộp").replace(/^Nộp /, "Đã nộp ")} href={sent.task.href} /></div>}
+          {tonight.map(i => { const s = i.session!; return (
+            <KinPanel key={i.id} variant="nhan" data-buoi-toi-nay className="mt-6">
+              <p className={`${GOC} text-[var(--kin-chu-phu)]`}>Buổi học hôm nay · <span className="tabular-nums">{s.range}</span></p>
+              <p className="mt-1 text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{s.courseLine}{s.topic ? `: ${s.topic}` : ""}</p>
+              {s.place && <p className={`mt-1 ${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>{s.place}</p>}
+              {s.joinUrl
+                ? <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" data-vao-phong className={`${kinButtonClass(cards && cards.some(c => c.primary) ? "secondary" : "primary", "lg")} mt-3 w-full font-semibold`}>{joinLabel(s.joinUrl, s.range.split("–")[0])}</a>
+                : <Link href={s.href} className={`${kinButtonClass("secondary", "lg")} mt-3 w-full`}>Xem lớp</Link>}
+            </KinPanel>
+          ); })}
           {cards && cards.length === 0 && (
-            <div className="mt-6"><KinEmptyState title="Bạn không còn bài nào cần làm">Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.</KinEmptyState></div>
+            // P1-4: không để trắng — một câu ghi nhận, buổi kế tiếp, và lối học tiếp (bài thật từ tiến độ của em).
+            <div className="mt-6" data-hn-rong>
+              <KinEmptyState title="Bạn đã xong mọi việc hôm nay"
+                action={hocTiepRow?.hocTiep ? <Link href={`/student/bai-giang/${encodeURIComponent(hocTiepRow.hocTiep.lessonId)}`} data-hn-hoc-tiep className={kinButtonClass(tonight.some(i => i.session?.joinUrl) ? "secondary" : "primary")}>Học tiếp: {hocTiepRow.hocTiep.title}</Link> : undefined}>
+                {nc ? <>Buổi học kế tiếp: <b data-hn-buoi-ke className="tabular-nums">{nc.today ? "Hôm nay" : vnWeekdayDate(nc.start)} {nc.event.time}</b>. </> : null}
+                Bài mới thầy cô giao và hạn nộp sắp tới sẽ hiện ở đây.
+              </KinEmptyState>
+            </div>
           )}
           {BUCKETS.map(b => {
             const group = (cards ?? []).filter(c => todoBucket(c.dueIso, now) === b);
@@ -126,6 +186,27 @@ function CanLamPage() {
               </section>
             );
           })}
+
+          {progress.loading || progress.error ? null : dangXem.map(r => { const h = r.hocTiep!; const at = progress.positions[h.lessonId] ?? 0; return (
+            <KinPanel key={r.id} data-hn-dang-xem={h.lessonId} className="mt-6">
+              <p className={`${GOC} text-[var(--kin-chu-phu)] [overflow-wrap:anywhere]`}>Đang học dở · {r.name}</p>
+              <p className="mt-1 text-[length:var(--kin-co-tieu-de)] leading-6 font-semibold text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{h.title}</p>
+              <Link href={`/student/bai-giang/${encodeURIComponent(h.lessonId)}`} className={`${kinButtonClass("secondary")} mt-3`}>{at > 0 ? `Xem tiếp từ ${formatStamp(at)}` : "Học tiếp"}</Link>
+            </KinPanel>
+          ); })}
+
+          {daCham.length > 0 && (
+            <details data-hn-da-cham className="mt-6 rounded-[var(--kin-bo-the)] border border-[var(--kin-vien-nhat)]">
+              <summary className={`flex items-center min-h-11 px-[var(--kin-kc-6)] cursor-pointer ${GOC} font-medium text-[var(--kin-nhan-link)]`}>Đã chấm {daCham.length} bài gần đây · xem điểm</summary>
+              <ul aria-label="Bài đã chấm gần đây" className="border-t border-[var(--kin-vien-nhat)]">
+                {daCham.map(i => i.task && (
+                  <li key={i.id} data-da-cham={i.id}>
+                    <KinListRow size="lg" href={i.task.href} title={`${i.task.name} · ${i.task.courseLine.split(" · ")[0]}`} aside={<KinGradeStatus state="da-cham">Đã chấm {i.task.scoreText}</KinGradeStatus>} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
 
           {waiting.length > 0 && (
             <section aria-labelledby="vc-wait" className="mt-10">
@@ -152,9 +233,10 @@ function CanLamPage() {
                       <p className={`mt-0.5 ${GOC} text-[var(--kin-chu-phu)] tabular-nums`}>{s.dayText} · {s.range}{s.place ? ` · ${s.place}` : ""}</p>
                       {s.cancelled && <p className="mt-1"><KinStatus tone="loi">Buổi học đã huỷ</KinStatus></p>}
                     </div>
+                    {/* SCL5 (mục 8): hai nút nói rõ hai việc khác nhau — vào phòng Meet (kèm giờ nên vào) / xem trang lớp (chữ link, không giả nút thứ hai). */}
                     {!s.cancelled && s.joinUrl
-                      ? <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" data-join-soon={s.joinSoon ? "" : undefined} className={kinButtonClass("secondary")}>Mở link học online</a>
-                      : <Link href={s.href} className={kinButtonClass("secondary")}>Vào lớp</Link>}
+                      ? <a href={s.joinUrl} target="_blank" rel="noopener noreferrer" data-join-soon={s.joinSoon ? "" : undefined} className={kinButtonClass("secondary")}>{joinLabel(s.joinUrl, s.range.split("–")[0])}</a>
+                      : <Link href={s.href} className={`inline-flex items-center min-h-11 ${GOC} font-medium text-[var(--kin-nhan-link)] underline`}>Xem lớp</Link>}
                   </li>
                 ); })}
               </ul>
@@ -163,6 +245,14 @@ function CanLamPage() {
         </>
       )}
       {assignBlock}
+     </div>
+     {coLop && lop && (
+       <aside className="mt-10 lg:mt-0 space-y-6" aria-label="Lớp và nhật ký học">
+         <LopCuaBan rows={lop} />
+         <NhatKyDemHoc />
+       </aside>
+     )}
+     </div>
     </div>
   );
 }

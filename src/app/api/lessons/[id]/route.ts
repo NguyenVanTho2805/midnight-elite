@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { requireCourseAccessBy, isActiveHelperOfCourse, roleForbidden } from "@/lib/courseAccessServer";
@@ -52,6 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (isSuspended(enrolled)) return NextResponse.json(suspendedBody(contactTutorHref({ id: courseId, ownerId: lesson.chapter.section.course.ownerId })), { status: 403, headers: { "Cache-Control": "private, no-store" } });
   if (!isEnrollmentActive(enrolled)) return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+  await openTrialClockFor(session.userId, enrolled); // SCL đợt 5 (D5): đường nào trả học liệu cũng bắt đầu đếm
 
   const ctx: MediaContext = { viewer: { userId: session.userId, role: "student" }, courseOwnerId: lesson.chapter.section.course.ownerId, enrollment: enrolled };
   return NextResponse.json(lessonFor(ctx, publicLesson(lesson)));
@@ -86,6 +88,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ];
     for (const key of allowed) {
       if (key in body) data[key] = body[key];
+    }
+    // SCL5: Mục tiêu / Tự kiểm tra — chuỗi (cắt 1000 ký tự) hoặc null; kiểu khác bỏ qua (không ghi).
+    for (const key of ["objectives", "selfCheck"] as const) {
+      if (key in body) { const v = body[key]; if (v === null || typeof v === "string") data[key] = typeof v === "string" && v.trim() ? v.trim().slice(0, 1000) : null; }
     }
     // LOI-02: ngày giờ học. Vắng khoá ⇒ không đổi cột; null ⇒ xoá; chuỗi ISO đầy đủ có múi giờ ⇒ ghi; còn lại ⇒ 400 (không ghi gì).
     if ("scheduledAt" in body) {

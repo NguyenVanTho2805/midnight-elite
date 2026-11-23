@@ -122,7 +122,7 @@ export async function studentGate(assignmentId: string): Promise<StudentGate> {
   if (auth.role !== "student") return { ok: false, res: nopTepErr("Chỉ học sinh mới nộp được bài tập", 403) };
   const scope = await loadAssignmentScope(assignmentId);
   if (!scope || !isLearnerVisible(scope.lessonStatus) || scope.mode === "azota" || assignmentId.startsWith("azota-")) return { ok: false, res: nopTepErr("Không tìm thấy bài tập", 404) };
-  const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true } });
+  const enrolled = await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: auth.userId, courseId: scope.courseId } }, select: { status: true, trialDays: true, trialStartedAt: true } });
   if (!isEnrollmentActive(enrolled)) return { ok: false, res: nopTepJson(enrollmentDeniedBody(enrolled, "Bạn chưa ghi danh khoá học này"), 403) };
   return { ok: true, session: auth, scope };
 }

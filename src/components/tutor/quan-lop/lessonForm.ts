@@ -16,6 +16,9 @@ export interface LessonDB {
   duration?: string | null;
   documents?: string | null;
   adminNote?: string | null;
+  /** SCL5: Mục tiêu bài / Tự kiểm tra (mỗi dòng một ý). */
+  objectives?: string | null;
+  selfCheck?: string | null;
   isLocked: boolean;
   isFree: boolean;
   statsVideos: number;
@@ -66,6 +69,8 @@ export interface LsForm {
   isLocked: boolean; isFree: boolean;
   documentsRaw: string;
   adminNote: string;
+  objectives: string;
+  selfCheck: string;
   /** LOI-02: "YYYY-MM-DD" và "HH:mm" theo giờ VN; cả hai rỗng = không gắn ngày. */
   scheduledDate: string;
   scheduledTime: string;
@@ -90,7 +95,7 @@ export const INIT_LS: LsForm = {
   title: "",
   videoUrls: [""], zoomUrls: [""], azotaUrls: [""],
   azotaDeadline: "", duration: "", isLocked: true, isFree: false,
-  documentsRaw: "[]", adminNote: "",
+  documentsRaw: "[]", adminNote: "", objectives: "", selfCheck: "",
   scheduledDate: "", scheduledTime: "", status: "published",
 };
 

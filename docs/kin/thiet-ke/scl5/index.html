@@ -1,0 +1,194 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCL5 · So sánh 3 phương án</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* --- Màu nền, viền, chữ (chế độ sáng) --- */
+  --kin-nen-trang: #ffffff;
+  --kin-nen-bang: #f7f8fa;
+  --kin-nen-re-chuot: #f1f3f6;
+  --kin-nen-dang-chon: #e8edf7;
+  --kin-nen-nhan: #eff4ff;
+  --kin-vien-thuong: #e6e9ef;
+  --kin-vien-nhat: #eef0f4;
+  --kin-vien-o-nhap: #8b95a5;
+  --kin-chu-chinh: #111827;
+  --kin-chu-phu: #374151;
+  --kin-chu-mo: #6b7280;
+  --kin-chu-mo-tren-nen-nhan: #5b6675;
+  --kin-chu-tren-nut-chinh: #ffffff;
+  --kin-th-navy: #1e3a8a;
+  --kin-th-navy-re: #172554;
+  --kin-th-xanh-link: #2563eb;
+  --kin-tt-chu-xong: #047857;
+  --kin-tt-chu-cho: #b45309;
+  --kin-tt-chu-loi: #dc2626;
+  /* SCL-G-0 (21/11/2026, ngoài bản xuất Figma — QUYET-DINH-GIAO-DIEN §3.7; sinh lại từ Figma phải giữ): chữ "Quá hạn".
+     #dc2626 chỉ 4,19:1 trên --kin-tt-nen-loi (trượt 4,5). #b91c1c: 6,47:1 trên trắng, 5,61:1 trên --kin-tt-nen-loi (tính WCAG). */
+  --kin-tt-chu-loi-dam: #b91c1c;
+  --kin-tt-cham-xong: #059669;
+  --kin-tt-cham-cho: #d97706;
+  --kin-tt-cham-trung-tinh: #767f8e;
+  --kin-th-xanh-troi: #38bdf8;
+  --kin-th-vang-nang: #f59e0b;
+  --kin-th-bac-ha: #10b981;
+  --kin-th-vang-doanh-nghiep: #d97706;
+  --kin-th-xam-da: #0f172a;
+  --kin-ph-lms: #1e3a8a;
+  --kin-ph-exam: #2563eb;
+  --kin-ph-class: #10b981;
+  --kin-ph-hub: #f59e0b;
+  --kin-ph-enterprise: #0f172a;
+
+  /* --- Số đo --- */
+  --kin-kc-1: 4px;
+  --kin-kc-2: 6px;
+  --kin-kc-3: 8px;
+  --kin-kc-4: 10px;
+  --kin-kc-5: 12px;
+  --kin-kc-6: 14px;
+  --kin-kc-7: 18px;
+  --kin-kc-8: 24px;
+  --kin-kc-9: 32px;
+  --kin-bo-sm: 8px;
+  --kin-bo-md: 9px;
+  --kin-bo-lg: 10px;
+  --kin-bo-xl: 12px;
+  --kin-bo-the: 14px;
+  --kin-bo-tron: 999px;
+  --kin-cham-toi-thieu: 44px;
+  --kin-cham-dong: 50px;
+  --kin-cham-dap-an: 52px;
+  /* SCL-G-0 (§3.7): chiều cao thanh dưới điện thoại; dùng chung cho thanh dưới, dock nộp bài và padding-bottom thân trang (dock không che hàng cuối). */
+  --kin-cao-thanh-duoi: 64px;
+
+  /* --- Chủ đề mặc định: Navy, chế độ sáng --- */
+  --kin-nhan-nen: #1e3a8a;
+  --kin-nhan-nen-re: #172554;
+  --kin-nhan-chu-tren-nen: #ffffff;
+  --kin-nhan-link: #2563eb;
+  --kin-nhan-nen-nhat: #eff4ff;
+  --kin-nhan-chu-tren-nhat: #1e3a8a;
+}
+
+/* ---------- Chế độ tối ---------- */
+:root[data-che-do="toi"] {
+  --kin-nen-trang: #0b0e14;
+  --kin-nen-bang: #10141c;
+  --kin-nen-re-chuot: #171c26;
+  --kin-nen-dang-chon: #1b2534;
+  --kin-nen-nhan: #101a2c;
+  --kin-vien-thuong: #232a36;
+  --kin-vien-nhat: #1b212c;
+  --kin-vien-o-nhap: #565f70;
+  --kin-chu-chinh: #f3f4f6;
+  --kin-chu-phu: #d1d5db;
+  --kin-chu-mo: #9ca3af;
+  --kin-chu-mo-tren-nen-nhan: #9ca3af;
+  --kin-chu-tren-nut-chinh: #0b0e14;
+  --kin-th-navy: #3b82f6;
+  --kin-th-navy-re: #60a5fa;
+  --kin-th-xanh-link: #60a5fa;
+  --kin-tt-chu-xong: #34d399;
+  --kin-tt-chu-cho: #fbbf24;
+  --kin-tt-chu-loi: #f87171;
+  --kin-tt-chu-loi-dam: #fca5a5; /* tối: "đậm" = tương phản cao hơn → sáng hơn; 10,18:1 trên #0b0e14, 9,21:1 trên --kin-tt-nen-loi tối */
+  --kin-tt-cham-xong: #34d399;
+  --kin-tt-cham-cho: #fbbf24;
+  --kin-tt-cham-trung-tinh: #8a93a3;
+  --kin-th-xanh-troi: #38bdf8;
+  --kin-th-vang-nang: #fbbf24;
+  --kin-th-bac-ha: #34d399;
+  --kin-th-vang-doanh-nghiep: #d97706;
+  --kin-th-xam-da: #0f172a;
+  --kin-ph-lms: #38bdf8;
+  --kin-ph-exam: #60a5fa;
+  --kin-ph-class: #34d399;
+  --kin-ph-hub: #fbbf24;
+  --kin-ph-enterprise: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-che-do="sang"]) {
+    --kin-nen-trang: #0b0e14;
+    --kin-nen-bang: #10141c;
+    --kin-nen-re-chuot: #171c26;
+    --kin-nen-dang-chon: #1b2534;
+    --kin-nen-nhan: #101a2c;
+    --kin-vien-thuong: #232a36;
+    --kin-vien-nhat: #1b212c;
+    --kin-vien-o-nhap: #565f70;
+    --kin-chu-chinh: #f3f4f6;
+    --kin-chu-phu: #d1d5db;
+    --kin-chu-mo: #9ca3af;
+    --kin-chu-mo-tren-nen-nhan: #9ca3af;
+    --kin-chu-tren-nut-chinh: #0b0e14;
+    --kin-th-navy: #3b82f6;
+    --kin-th-navy-re: #60a5fa;
+    --kin-th-xanh-link: #60a5fa;
+    --kin-tt-chu-xong: #34d399;
+    --kin-tt-chu-cho: #fbbf24;
+    --kin-tt-chu-loi: #f87171;
+    --kin-tt-chu-loi-dam: #fca5a5;
+    --kin-tt-cham-xong: #34d399;
+    --kin-tt-cham-cho: #fbbf24;
+    --kin-tt-cham-trung-tinh: #8a93a3;
+    --kin-th-xanh-troi: #38bdf8;
+    --kin-th-vang-nang: #fbbf24;
+    --kin-th-bac-ha: #34d399;
+    --kin-th-vang-doanh-nghiep: #d97706;
+    --kin-th-xam-da: #0f172a;
+    --kin-ph-lms: #38bdf8;
+    --kin-ph-exam: #60a5fa;
+    --kin-ph-class: #34d399;
+    --kin-ph-hub: #fbbf24;
+    --kin-ph-enterprise: #d97706;
+  }
+}
+
+
+/* het-token */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:23px;color:var(--kin-chu-chinh);background:var(--kin-nen-bang);padding:32px 16px}
+main{max-width:1200px;margin:0 auto}
+h1,h2{font-family:"Be Vietnam Pro",Inter,sans-serif}
+h1{font-size:27.6px;line-height:36px}
+.dan{color:var(--kin-chu-phu);margin-top:8px;max-width:860px}
+a{color:var(--kin-nhan-link)}
+.ds{display:grid;gap:20px;margin-top:28px}
+.pa{display:grid;grid-template-columns:minmax(0,1fr);background:var(--kin-nen-trang);border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-the);overflow:hidden}
+.pa .anh{display:block;height:320px;overflow:hidden;background:var(--kin-nen-re-chuot);border-bottom:1px solid var(--kin-vien-thuong)}
+.pa img{width:100%;height:100%;object-fit:cover;object-position:left top}
+.pa .noi{padding:18px 20px 20px}
+.pa h2{font-size:20px;line-height:28px}.pa h2 a{color:inherit;text-decoration:none}
+.pa h3{font-size:14px;margin-top:14px;color:var(--kin-chu-phu)}
+.pa ul{margin:4px 0 0 18px}
+.lk{margin-top:14px;font-weight:500}
+table{width:100%;border-collapse:collapse;margin-top:12px;background:var(--kin-nen-trang);font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--kin-vien-nhat);vertical-align:top}
+th{color:var(--kin-chu-phu);font-weight:600}
+.cuon{overflow-x:auto;border:1px solid var(--kin-vien-thuong);border-radius:var(--kin-bo-the);margin-top:28px}
+.chung{margin-top:28px}.chung li{margin:4px 0 0 18px}
+@media (min-width:900px){.pa{grid-template-columns:420px minmax(0,1fr)}.pa .anh{height:auto;max-height:520px;border-bottom:0;border-right:1px solid var(--kin-vien-thuong)}}
+</style></head><body><main>
+<h1>SCL5 · Màn học sinh BCA Midnight Class: 3 phương án</h1>
+<p class="dan">Theo D12 (HOC-THU-VA-DANG-KY.md). Mỗi phương án có 4 màn × 2 cỡ: danh sách lớp, trang lớp chương › bài, trang bài học, lớp học thử (còn 3 ngày và đã hết hạn). Màu chỉ lấy từ token <code>--kin-*</code>; dữ liệu mẫu theo lộ trình Toán 12 thật của BCA. Nguồn và nguyên tắc: <a href="NGHIEN-CUU.md">NGHIEN-CUU.md</a>. Bước kế tiếp theo D13: hội đồng agent chấm độc lập, rồi chủ chọn.</p>
+<section class="ds"><article class="pa"><a href="phuong-an-a.html" class="anh"><img src="phuong-an-a-390.png" alt="Ảnh chụp 5 màn điện thoại của A · Bảng điều khiển đầy đặn"></a>
+<div class="noi"><h2><a href="phuong-an-a.html">A · Bảng điều khiển đầy đặn</a></h2><p>Mở ra là thấy đủ: dải 4 con số (chuỗi đêm học, điểm chăm, cần làm, điểm trung bình), khối “Học tiếp”, lưới thẻ lớp có ảnh bìa + tiến độ + việc gần nhất. Trang lớp 2 cột trên máy tính (chương dạng gập bên trái; tiếp tục, cần làm, lịch, nhóm Zalo bên phải). Trang bài 3 cột: mục lục chương, nội dung, thẻ bài tập.</p>
+<h3>Điểm mạnh</h3><ul><li>Đúng nhất với chữ “đầy đặn” của D12: mọi thứ chủ yêu cầu đều hiện trên màn đầu.</li><li>Thẻ lớp kiểu Classroom, gần với phương án học sinh đã thắng 8,9 điểm ở SCL-G.</li><li>Máy tính tận dụng hết chiều ngang; điện thoại sắp lại để Tiếp tục và Cần làm lên trước danh sách chương.</li></ul><h3>Rủi ro</h3><ul><li>Nhiều khối nhất: tải nhận thức cao, 4 con số tranh nhau sự chú ý (Hick).</li><li>Ảnh bìa trang lớp cao 92–120px, đi ngược quyết định cũ “bỏ dải màu cao” (QUYET-DINH §2.4).</li><li>Dễ trượt thành thẻ lồng thẻ khi thêm tính năng.</li></ul>
+<p class="lk"><a href="phuong-an-a.html">Mở bản đầy đủ</a> · <a href="phuong-an-a-390.png">Ảnh 390</a> · <a href="phuong-an-a-1280.png">Ảnh 1280</a></p></div></article><article class="pa"><a href="phuong-an-b.html" class="anh"><img src="phuong-an-b-390.png" alt="Ảnh chụp 5 màn điện thoại của B · Lộ trình học như sách"></a>
+<div class="noi"><h2><a href="phuong-an-b.html">B · Lộ trình học như sách</a></h2><p>Mỗi lớp là một cuốn sách. Danh sách lớp là kệ sách (bìa đứng + “đang đọc tới đâu” + vạch tiến độ của chương hiện tại). Trang lớp là mục lục Giai đoạn › Chương › Bài có dấu chấm dẫn, điểm và trạng thái ở lề phải, đánh dấu “Bạn đang ở đây”. Trang bài đọc như một trang sách 5 mục đánh số, cuối trang lật sang bài trước/sau.</p>
+<h3>Điểm mạnh</h3><ul><li>Giữ nguyên mô hình Phần › Chương › Bài, giải luôn rủi ro R1 của SCL-G.</li><li>Ít màu, ít khối: dễ đọc lúc 23 giờ, tải nhận thức thấp nhất.</li><li>Chương chưa mở vẫn hiện tên bài: học thử thấy rõ “khoá học có gì” (minh bạch, không dụ).</li></ul><h3>Rủi ro</h3><ul><li>Kém “đầy đặn” nhất; động lực chỉ là dấu trang và nhật ký đêm học.</li><li>Mục lục dài trên điện thoại (25 bài + 4 chương sắp mở) phải cuộn nhiều.</li><li>Việc cần làm xếp sau bìa và nút Đọc tiếp, cần giữ hàng “Cần làm” ở đầu như đã vẽ.</li></ul>
+<p class="lk"><a href="phuong-an-b.html">Mở bản đầy đủ</a> · <a href="phuong-an-b-390.png">Ảnh 390</a> · <a href="phuong-an-b-1280.png">Ảnh 1280</a></p></div></article><article class="pa"><a href="phuong-an-c.html" class="anh"><img src="phuong-an-c-390.png" alt="Ảnh chụp 5 màn điện thoại của C · Thẻ việc hôm nay"></a>
+<div class="noi"><h2><a href="phuong-an-c.html">C · Thẻ việc hôm nay</a></h2><p>Màn đầu trả lời “tối nay mình làm gì”: chồng thẻ việc của mọi lớp (bài cần nộp, buổi 22:15, bản ghi xem dở, việc đã xong), lớp xếp ô nhỏ phía dưới, cột phải là 7 ngày tới và chuỗi buổi. Trang lớp dẫn bằng “Việc tiếp theo” với 4 bước; chương đang học thu gọn quanh bài hiện tại. Trang bài là bậc thang 4 bước có số thứ tự.</p>
+<h3>Điểm mạnh</h3><ul><li>Gần thói quen thật của lớp đêm: mở máy lúc 22:00, cần biết ngay việc gì.</li><li>Mục tiêu gần (4 bước của một bài) và một nút chính rõ ràng mỗi màn (Fitts, hiệu ứng tiến độ).</li><li>Học thử có lịch 14 ô, ngày cuối viền đứt: người dùng tự đếm, không đồng hồ đếm giây.</li></ul><h3>Rủi ro</h3><ul><li>“Hôm nay” trống vào ngày không có việc, cần vẽ trạng thái rỗng tốt.</li><li>Thẻ lớp nhỏ, ảnh bìa ít đất nhất trong 3 phương án.</li><li>Bậc 4 bước giả định mỗi bài đủ 4 khối; bài thiếu video hay thiếu bài tập phải tự rút bước.</li></ul>
+<p class="lk"><a href="phuong-an-c.html">Mở bản đầy đủ</a> · <a href="phuong-an-c-390.png">Ảnh 390</a> · <a href="phuong-an-c-1280.png">Ảnh 1280</a></p></div></article></section>
+<div class="cuon" role="region" aria-label="Bảng so sánh, cuộn ngang"><table><thead><tr><th scope="col">Tiêu chí</th><th scope="col">A · Bảng điều khiển</th><th scope="col">B · Như sách</th><th scope="col">C · Việc hôm nay</th></tr></thead>
+<tbody><tr><th scope=row>Trả lời “hôm nay làm gì” ngay màn đầu</th><td>Có (khối Học tiếp + Cần làm 2)</td><td>Một phần (dấu trang)</td><td>Mạnh nhất (chồng thẻ việc)</td></tr><tr><th scope=row>Ảnh bìa + màu môn + tiến độ</th><td>Mạnh nhất</td><td>Bìa đứng nhỏ</td><td>Ô nhỏ</td></tr><tr><th scope=row>Chương › bài có trạng thái</th><td>Gập theo chương</td><td>Mục lục đầy đủ, mạnh nhất</td><td>Thu gọn quanh bài hiện tại</td></tr><tr><th scope=row>Trang bài đủ khối</th><td>3 cột, đủ</td><td>Đọc tuyến tính, đủ + tự kiểm tra</td><td>4 bước, đủ</td></tr><tr><th scope=row>Động lực nhẹ</th><td>Chuỗi, điểm, vinh danh (theo tên, không hạng)</td><td>Nhật ký đêm học</td><td>Chuỗi + điểm ở cột phải</td></tr><tr><th scope=row>Tải nhận thức trên 390px</th><td>Cao</td><td>Thấp</td><td>Trung bình</td></tr><tr><th scope=row>Công sức dựng (ước)</th><td>M–L</td><td>M</td><td>M</td></tr></tbody></table></div>
+<section class="chung"><h2 style="font-size:20px">Chung cho cả 3</h2><ul>
+<li>Thanh dưới 4 mục (Cần làm, Lớp, Lịch, Điểm) trên điện thoại; thanh bên trên máy tính. Đúng một nút chính mỗi màn.</li>
+<li>Trạng thái luôn có hình + chữ (Đã học / Đang học / Chưa học / Sắp mở / Đã khoá); đỏ chỉ dành cho lỗi và quá hạn.</li>
+<li>Học thử: một hạn chung cho mọi môn, ghi ngày giờ cụ thể, không đồng hồ đếm giây, không màu đỏ. Hết hạn: vẫn thấy tên bài, nói rõ bài đã nộp và điểm được giữ, nút Đăng ký chính thức + Zalo anh Thanh.</li>
+<li>Vinh danh chỉ ghi tên các em đã tick “Đồng ý vinh danh” trên phiếu, xếp theo tên, không bảng xếp hạng.</li>
+<li>Ảnh bìa dựng bằng SVG theo môn (không tải ảnh, nhẹ trên 4G); chủ tải ảnh thật thì thay.</li></ul></section>
+</main></body></html>

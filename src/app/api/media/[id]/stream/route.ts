@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ENROLLMENT_ACCESS_SELECT } from "@/lib/enrollment";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { canWatchStoredMedia } from "@/lib/lessonGuard";
@@ -36,9 +38,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       const helper = await isActiveHelperOfCourse(session, course.id, course.ownerId); // TUT-dong-giang
       if (!isLearnerVisible(l.status) && !managerOf(session, course.ownerId) && !helper) continue;
       const enr = session.role === "student"
-        ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: { status: true } })
+        ? await prisma.enrollment.findUnique({ where: { userId_courseId: { userId: session.userId, courseId: course.id } }, select: ENROLLMENT_ACCESS_SELECT })
         : null;
-      if (canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, lessonIsFree: l.isFree, coTeacher: helper })) { allowed = true; break; }
+      if (canWatchStoredMedia({ userId: session.userId, role: session.role, adminRole: session.adminRole ?? null, courseOwnerId: course.ownerId, enrollmentStatus: enr?.status ?? null, trialDays: enr?.trialDays ?? null, trialStartedAt: enr?.trialStartedAt ?? null, lessonIsFree: l.isFree, coTeacher: helper })) { await openTrialClockFor(session.userId, enr); allowed = true; break; }
     }
   }
   if (!allowed) return NextResponse.json({ error: "Video này dành cho học sinh của lớp" }, { status: 403 });

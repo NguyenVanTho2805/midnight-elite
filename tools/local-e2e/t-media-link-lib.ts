@@ -218,8 +218,10 @@ const JSON_OUT = JSON.stringify(red);
 check("chuỗi JSON trả cho khách của bài trả phí KHÔNG còn chứa link YouTube/Zoom/Azota/tên tài liệu", (JSON.stringify([paid])).indexOf("youtu.be") < 0 && JSON.stringify([paid]).indexOf("zoom.us") < 0 && JSON.stringify([paid]).indexOf("azota.vn") < 0 && JSON.stringify([paid]).indexOf("a.pdf") < 0 && JSON.stringify([paid]).indexOf("chỉ gia sư") < 0 && JSON_OUT.length > 0);
 
 section("Ai được xem video lưu trên KiN");
-const base = { userId: "u1", role: "student", adminRole: null, courseOwnerId: "gs1", enrollmentStatus: null as string | null, lessonIsFree: false };
+const base = { userId: "u1", role: "student", adminRole: null, courseOwnerId: "gs1", enrollmentStatus: null as string | null, trialDays: null as number | null, trialStartedAt: null as Date | null, lessonIsFree: false };
 check("học viên ghi danh active → xem được", canWatchStoredMedia({ ...base, enrollmentStatus: "active" }));
+check("SCL5: học thử active nhưng đã quá hạn (cron chưa lật) → KHÔNG xem video trả phí", !canWatchStoredMedia({ ...base, enrollmentStatus: "active", trialDays: 14, trialStartedAt: new Date(Date.now() - 15 * 86_400_000) }));
+check("SCL5: học thử còn hạn / chưa bắt đầu → xem được", canWatchStoredMedia({ ...base, enrollmentStatus: "active", trialDays: 14, trialStartedAt: new Date(Date.now() - 3 * 86_400_000) }) && canWatchStoredMedia({ ...base, enrollmentStatus: "active", trialDays: 14 }));
 check("học viên suspended (đã nghỉ lớp) → KHÔNG xem video trả phí (06/11/2026, thay R01); bài miễn phí vẫn được", !canWatchStoredMedia({ ...base, enrollmentStatus: "suspended" }) && canWatchStoredMedia({ ...base, enrollmentStatus: "suspended", lessonIsFree: true }));
 check("chưa ghi danh, bài trả phí → KHÔNG", !canWatchStoredMedia({ ...base }));
 check("pending_consent, bài trả phí → KHÔNG", !canWatchStoredMedia({ ...base, enrollmentStatus: "pending_consent" }));

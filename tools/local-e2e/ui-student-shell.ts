@@ -63,14 +63,13 @@ const H = 3_600_000, D = 24 * H;
   // LOI-07: "HỌC SINH" có 2 bản trong thanh — <span aria-hidden> cạnh logo (chỉ thanh RỘNG 272px, display:none ở thanh hẹp) và <p sr-only> cho trình đọc màn hình
   // (ModuleRail.tsx:201, :205). Bài chạy thanh hẹp 79px ⇒ `.first()` rơi vào bản ẩn. Kiểm như ui-tutor-shell: có ít nhất một bản đang dựng (sr-only vẫn có hộp 1px).
   check("nhãn vai trò 'HỌC SINH'", await rail().getByText("HỌC SINH").evaluateAll(els => els.some(e => !!(e as HTMLElement).offsetParent || e.getClientRects().length > 0)));
-  for (const m of ["Cần làm", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp của tôi"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
+  for (const m of ["Hôm nay", ...(NHAC ? ["Nhắc học"] : []), ...(LICH ? ["Lịch học"] : []), "Lớp"]) check(`module '${m}' là liên kết`, await mod(m).count() === 1);
   if (!NHAC) check("DG: Nhắc học đang ẩn → không có module 'Nhắc học' trên thanh", await mod("Nhắc học").count() === 0 && await rail().locator(":scope a[href='/student/nhac-hoc']").count() === 0);
   if (NHAC) check("LOI-04: module 'Nhắc học' → /student/nhac-hoc, đứng ngay sau 'Việc của tôi'", (await mod("Nhắc học").getAttribute("href")) === "/student/nhac-hoc"
     && (await rail().evaluate(`(() => { const t = [...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent).map(e => e.getAttribute("href")); const i = t.indexOf("/student/viec-cua-toi"); return i >= 0 && t[i + 1] === "/student/nhac-hoc"; })()`)) === true);
   if (!LICH) check("LOI-01: Lịch đang ẩn → không có module 'Lịch học' trên thanh", await mod("Lịch học").count() === 0 && await rail().locator(":scope a[href='/student/lich-hoc']").count() === 0);
-  check("BU-HS-TRANG-CHU: module 'Trang chủ' là liên kết tới '/', đứng ĐẦU thanh, KHÔNG có aria-current (vỏ không bao giờ hiện ở '/')",
-    await mod("Trang chủ").count() === 1 && (await mod("Trang chủ").getAttribute("href")) === "/" && (await mod("Trang chủ").getAttribute("aria-current")) === null
-    && (await rail().evaluate(`[...document.querySelectorAll('nav[aria-label="${railName}"] a')].filter(e => e.offsetParent && e.getAttribute("data-rail-home") === null)[0].textContent.trim().startsWith("Trang chủ")`)) === true);
+  // SCL5 (mục 16): bỏ module "Trang chủ" (trùng "Hôm nay"); lối về "/" còn ở logo thanh bên (data-rail-home) và menu tên.
+  check("SCL5: KHÔNG còn module 'Trang chủ'; logo thanh bên vẫn dẫn '/'", await mod("Trang chủ").count() === 0 && (await rail().locator("[data-rail-home]").first().getAttribute("href")) === "/");
   check("B1: module 'Bài tập' đã bỏ khỏi thanh (LOI-04 thêm 'Nhắc học', không đưa lại mục cũ)", await mod("Bài tập").count() === 0 && await rail().locator(":scope a[href='/student/bai-tap']").count() === 0);
   if (HAS_MORE) check("nút 'Khác' có aria-haspopup + aria-expanded=false", await mod("Khác").getAttribute("aria-haspopup") === "dialog" && await mod("Khác").getAttribute("aria-expanded") === "false");
   else check("DG: bảng Khác hết mục ⇒ KHÔNG có nút 'Khác' trên thanh (Trang chủ / Đăng xuất đã có ở thanh và menu tên)", await mod("Khác").count() === 0);
@@ -78,7 +77,7 @@ const H = 3_600_000, D = 24 * H;
   // bản ẩn cũng mang aria-current nhưng không vào cây trợ năng. Đếm mục ĐANG HIỆN (như ui-tutor-shell :55), và đếm riêng bản ẩn để thấy rõ đó là bản thanh rộng.
   const currentVisible = await rail().locator("[aria-current=page]:visible").count();
   const currentHiddenWide = await rail().locator(".kin-rail-groups [aria-current=page]").evaluateAll(els => els.filter(e => !(e as HTMLElement).offsetParent && e.getClientRects().length === 0).length);
-  check("module đang ở có aria-current=page (đúng một mục ĐANG HIỆN; bản thanh rộng đang ẩn không tính)", await mod("Cần làm").getAttribute("aria-current") === "page" && currentVisible === 1, { currentVisible, currentHiddenWide });
+  check("module đang ở có aria-current=page (đúng một mục ĐANG HIỆN; bản thanh rộng đang ẩn không tính)", await mod("Hôm nay").getAttribute("aria-current") === "page" && currentVisible === 1, { currentVisible, currentHiddenWide });
   {
     // Đối chứng ở thanh RỘNG 272px (bản hẹp ẩn, bản có nhóm hiện): vẫn đúng MỘT mục đang hiện mang aria-current và nhãn "HỌC SINH" cạnh logo hiện thật.
     const wp = await (await ctxFor(S, { width: 1280, height: 800, rail: "rong" })).newPage(); watch(wp);
@@ -167,7 +166,7 @@ const H = 3_600_000, D = 24 * H;
   }
   await pg.goto(`${BASE}/student/bai-tap`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await pg.waitForURL(/\/student\/viec-cua-toi/, { timeout: 60000 });
-  check("B1: /student/bai-tap (thông báo cũ) chuyển về 'Việc của tôi', module đó sáng", await mod("Cần làm").getAttribute("aria-current") === "page" && (!LICH || await mod("Lịch học").getAttribute("aria-current") === null));
+  check("B1: /student/bai-tap (thông báo cũ) chuyển về 'Việc của tôi', module đó sáng", await mod("Hôm nay").getAttribute("aria-current") === "page" && (!LICH || await mod("Lịch học").getAttribute("aria-current") === null));
 
   section("Phòng thi không có vỏ");
   await pg.goto(`${BASE}/student/thi-thu`, { waitUntil: "domcontentloaded", timeout: 120000 });

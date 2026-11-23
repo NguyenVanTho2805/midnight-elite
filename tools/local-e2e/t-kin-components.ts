@@ -20,7 +20,7 @@ const src = walk("src").filter(p => /\.(tsx?|css)$/.test(p));
   for (const v of ["primary", "secondary", "ghost", "danger", "danger-solid"]) check(`KinButton có kiểu "${v}"`, new RegExp(`["']?${v}["']?\\s*[:|,]|"${v}"`).test(btn));
   check("KinButton không còn vòng xoay (Figma: dùng chữ, không spinner)", !/animate-spin/.test(btn));
   const site0 = read("src/app/kin-site.css");
-  check("KinButton: chạm tối thiểu 44px, vòng focus 2px; Tắt mờ 45% / focus offset 0 / con trỏ chờ đặt trong kin-site.css (thắng quy tắc chung không-layer)", /--kin-cham-toi-thieu/.test(btn) && /focus-visible:outline-2/.test(btn) && /\[data-kin-nut\]:disabled\s*\{\s*opacity:\s*0\.45/.test(site0) && /\[data-kin-nut\]:focus-visible\s*\{\s*outline-offset:\s*0/.test(site0) && /\[data-kin-nut\]\[aria-busy="true"\]:disabled\s*\{\s*cursor:\s*progress/.test(site0));
+  check("KinButton: chạm tối thiểu 44px, vòng focus 2px; Tắt màu đặc (SCL5, không mờ opacity) / focus offset 0 / con trỏ chờ đặt trong kin-site.css (thắng quy tắc chung không-layer)", /--kin-cham-toi-thieu/.test(btn) && /focus-visible:outline-2/.test(btn) && /\[data-kin-nut\]:disabled:not\(\[aria-busy="true"\]\)\s*\{\s*opacity:\s*1;\s*background:\s*var\(--kin-nen-bang\);\s*color:\s*var\(--kin-chu-phu\)/.test(site0) && /\[data-kin-nut\]:focus-visible\s*\{\s*outline-offset:\s*0/.test(site0) && /\[data-kin-nut\]\[aria-busy="true"\]:disabled\s*\{\s*cursor:\s*progress/.test(site0));
   check("globals.css: vòng focus chung không còn ép border-radius 4px", !/:focus-visible\s*\{[^}]*border-radius/.test(read("src/app/globals.css")));
   check("KinButton không đặt type mặc định (giữ hành vi cũ trong <form>)", !/type\s*=\s*"button"/.test(btn.split("forwardRef")[1] ?? ""));
 

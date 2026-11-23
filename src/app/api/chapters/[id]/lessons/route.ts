@@ -54,6 +54,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       // Trước đây POST bỏ rơi documents và adminNote: tài liệu / ghi chú nhập lúc THÊM bài mới mất sạch, chỉ lúc SỬA mới lưu được.
       documents:     typeof body.documents === "string" ? body.documents : "[]",
       adminNote:     typeof body.adminNote === "string" && body.adminNote.trim() ? body.adminNote : null,
+      objectives:    typeof body.objectives === "string" && body.objectives.trim() ? body.objectives.trim().slice(0, 1000) : null,
+      selfCheck:     typeof body.selfCheck === "string" && body.selfCheck.trim() ? body.selfCheck.trim().slice(0, 1000) : null,
       isLocked:      body.isLocked ?? true,
       isFree:        body.isFree ?? false,
       statsVideos:   body.statsVideos ?? 0,

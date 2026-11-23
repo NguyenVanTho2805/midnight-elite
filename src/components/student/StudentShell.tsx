@@ -87,16 +87,15 @@ export default function StudentShell({ children, preview }: { children: ReactNod
 
   const moreActive = moreOpen || MORE_HREFS.some(h => isUnder(pathname, h));
   const modules: ModuleItem[] = [
-    // Lối về mặt tiền. `desktopOnly` và không `onClick` nên không lên thanh dưới điện thoại; href "/" chỉ khớp đúng "/" nên không sáng ở /student/*.
-    { key: "trang-chu", label: "Trang chủ", href: "/", icon: "nha", desktopOnly: true },
+    // SCL5 (mục 16): bỏ mục "Trang chủ" (trùng nghĩa với "Hôm nay"; lối về "/" vẫn ở logo thanh bên, logo điện thoại và menu tên "Trang chủ KiN").
     // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
     // SCL-G-HS (QUYET-DINH §3.4): "Việc của tôi" thành "Cần làm" (mọi việc của mọi lớp, xếp theo hạn). Thanh dưới điện thoại: Cần làm · Lớp · Lịch · Điểm, cao 64px.
-    { key: "viec", label: "Cần làm", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
+    { key: "viec", label: "Hôm nay", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
     // LOI-04 (11/11/2026): "Nhắc học" — việc học sinh tự ghi + buổi học có hẹn ngày. Không theo cờ LICH; không desktopOnly ⇒ lên thanh dưới điện thoại.
     // DG (14/11/2026): theo cờ NHAC_HOC (mặc định ẩn); route /student/nhac-hoc chặn 307 ở proxy.
     ...(isLinkHidden("/student/nhac-hoc") ? [] : [{ key: "nhac", label: "Nhắc học", href: "/student/nhac-hoc", icon: "bai-kt" } satisfies ModuleItem]),
     // LOI-01: "Lịch học" rời thanh khi phần Lịch đang ẩn; /student/lich-hoc vẫn chạy (Việc của tôi có "Xem lịch tuần", thông báo đổi lịch trỏ vào).
-    { key: "lop", label: "Lớp của tôi", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop", mobileLabel: "Lớp" },
+    { key: "lop", label: "Lớp", href: "/student/hoc-tap", also: LOP_ALSO, icon: "lop" }, // SCL5: cùng tên ở thanh bên và thanh dưới
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich", mobileLabel: "Lịch" } satisfies ModuleItem]),
     // SCL-C (P1-1, HS4): điểm / trạng thái từng bài của các lớp đang học. Lên thanh dưới điện thoại.
     { key: "diem", label: "Điểm", href: "/student/diem", icon: "bai-kt" },

@@ -3,6 +3,8 @@
 // Lỗi gốc (HIEN-CO-VA-DINH-VI.md mục 6.4): GET /api/courses/[id] và /api/lessons/[id]/context chỉ đổi cờ isLocked cho khách,
 // còn videoUrl, documents, azotaUrl, zoomUrl, adminNote của MỌI bài (kể cả bài trả phí) vẫn nằm trong JSON trả về.
 
+import { isTrialExpired } from "@/lib/trial";
+
 /** Mọi trường mang nội dung học liệu của một bài: khách / người chưa vào lớp không bao giờ được nhận các trường này của bài trả phí. */
 export const LESSON_CONTENT_FIELDS = ["videoUrl", "zoomUrl", "azotaUrl", "azotaDeadline", "documents", "adminNote"] as const;
 
@@ -37,6 +39,9 @@ export interface MediaViewer {
   courseOwnerId: string | null;
   /** Trạng thái ghi danh của người xem trong lớp đó, null nếu chưa ghi danh. */
   enrollmentStatus: string | null;
+  /** SCL đợt 5: hai cột học thử của CHÍNH ghi danh đó (null khi chưa ghi danh / chính thức). Bắt buộc: thiếu thì em quá hạn chưa lật vẫn xem được. */
+  trialDays: number | null;
+  trialStartedAt: Date | string | null;
   lessonIsFree: boolean;
   /** TUT-dong-giang: người xem là đồng giảng / bộ môn ĐANG HIỆU LỰC của lớp (route đã kiểm qua isActiveHelperOfCourse): được xem như chủ lớp (chỉ xem). */
   coTeacher?: boolean;
@@ -54,6 +59,6 @@ export function canWatchStoredMedia(v: MediaViewer): boolean {
     if (v.adminRole === "admin_super" || v.adminRole === "admin_content") return true;
     return v.adminRole === "teacher" && (v.coTeacher === true || (v.courseOwnerId !== null && v.courseOwnerId === v.userId));
   }
-  if (v.enrollmentStatus === "active") return true;
+  if (v.enrollmentStatus === "active" && !isTrialExpired(v)) return true;
   return v.lessonIsFree;
 }

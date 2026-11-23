@@ -107,6 +107,7 @@ const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
   const cs = await ctxFor(S, { width: 390, height: 844 });
   const ps = await cs.newPage(); watch(ps);
   await ps.goto(`${BASE}/student/bai-giang/${saved!.id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
+  await ps.locator("[data-video-cho]").first().click({ timeout: 120000 }).catch(() => {}); // SCL5: iframe chỉ dựng sau khi bấm phát
   await ps.locator('[data-plyr-provider="youtube"], iframe[src*="youtube"]').first().waitFor({ timeout: 120000 });
   const ytSrc = await ps.waitForFunction(() => document.querySelector<HTMLIFrameElement>('iframe[src*="youtube"]')?.src ?? null, undefined, { timeout: 30000 }).then(h => h.jsonValue()).catch(() => null) as string | null;
   check("video phát bằng youtube-nocookie.com (không youtube.com thường)", !!ytSrc && /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ/.test(ytSrc), ytSrc ?? "(chưa dựng iframe — mạng tới YouTube?)");

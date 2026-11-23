@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, isNextResponse, ownsResource } from "@/lib/auth-guard";
 import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
 import { getSession } from "@/lib/session";
+import { isTrialExpired, trialView } from "@/lib/trial";
 import { isSuspended, contactTutorHref } from "@/lib/suspendedContent";
 import { PERMISSIONS } from "@/lib/permissions";
 import { validateTutorCourseFields } from "@/lib/courseValidation";
@@ -40,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const session = await getSession();
     let hasAccess = false;
-    let enrolled: { status: string } | null = null;
+    let enrolled: { status: string; trialDays: number | null; trialStartedAt: Date | null } | null = null;
     // TUT-dong-giang: đồng giảng / bộ môn ĐANG HIỆU LỰC (đọc lại User từ DB) xem lớp như quản lý, nhưng KHÔNG thấy tiền / link nhóm phụ huynh.
     let coRole: CourseRole | null = null;
 
@@ -61,7 +63,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         // "pending_consent" chưa được học, "suspended" (đã nghỉ lớp) cũng không xem được nữa (quyết định 06/11/2026) — hasAccess ở route này
         // quyết định mở khoá toàn bộ lessons, nên dùng active làm chuẩn.
         hasAccess = isEnrollmentActive(enrolled);
+        // SCL đợt 5 (D5): trang lớp tải cây bài + link qua đây (fetch sau khi trang dựng, không prefetch) ⇒ đây là chỗ mở đồng hồ, không phải lúc dựng trang GET.
+        if (hasAccess) await openTrialClockFor(session.userId, enrolled);
       }
+    }
+
+    // SCL đợt 5 (D7, tình huống 13): học thử hết hạn ⇒ chỉ trả tên lớp + cờ khoá (không cây bài, không link). Trang lớp hiện thẻ "Hết thời gian học thử".
+    if (enrolled && !hasAccess && (enrolled.status === ENROLLMENT_STATUS.TRIAL_EXPIRED || (enrolled.status === ENROLLMENT_STATUS.ACTIVE && isTrialExpired(enrolled)))) {
+      return NextResponse.json({ id: course.id, name: course.name, instructor: course.instructor, category: course.category, sections: [], trialExpired: true, trialDays: enrolled.trialDays ?? null }, { headers: { "Cache-Control": "private, no-store" } });
     }
 
     // Hidden courses: only the class manager (admin / owner tutor) or enrolled students can access
@@ -102,7 +111,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       const view = redactCourseForRole(coRole, tree as unknown as Record<string, unknown>);
       return NextResponse.json({ ...view, role: coRole, canSeeMoney: canSeeMoney(coRole) }, { headers: { "Cache-Control": "private, no-store" } });
     }
-    const out: Record<string, unknown> = { ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}) };
+    // SCL đợt 5: băng "Học thử · còn N ngày" / "Bắt đầu tính 14 ngày từ hôm nay" — chỉ cho CHÍNH em có ghi danh thử.
+    const trial = enrolled && hasAccess ? trialView(enrolled) ?? undefined : undefined;
+    const out: Record<string, unknown> = { ...(canViewAllMaterials(ctx) ? tree : redactCourseLinks(tree)), isFree, ...(suspended ? { suspended } : {}), ...(trial ? { trial } : {}) };
     // SCL-J: mã tài khoản chủ lớp và tên nội bộ trong trang quản trị chỉ cho quản lý lớp; khách / học sinh không cần (không màn nào của họ đọc hai trường này).
     if (!isManager) { delete out.ownerId; delete out.adminName; }
     return NextResponse.json(out);

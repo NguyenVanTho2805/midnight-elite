@@ -193,7 +193,9 @@
 
 /* Component KiN (src/components/kin): các giá trị Figma khác quy tắc chung của globals.css (button:disabled, :focus-visible)
    được đặt ở đây với độ ưu tiên cao hơn, vì quy tắc chung không nằm trong @layer nên thắng cả lớp tiện ích của Tailwind. */
-[data-kin-nut]:disabled { opacity: 0.45; }
+/* SCL5 (mục 5): nút TẮT dùng màu đặc, không làm mờ bằng opacity (mờ 45% chỉ đạt 3,39:1). Nền bảng + chữ phụ ≥ 4,5:1 ở cả hai chế độ màu.
+   Đang gửi (aria-busy) giữ màu của kiểu nút: đó là nút đang chạy, không phải nút không bấm được. */
+[data-kin-nut]:disabled:not([aria-busy="true"]) { opacity: 1; background: var(--kin-nen-bang); color: var(--kin-chu-phu); border-color: var(--kin-vien-thuong); cursor: not-allowed; }
 [data-kin-nut][aria-busy="true"]:disabled { cursor: progress; }
 [data-kin-nut]:focus-visible { outline-offset: 0; }   /* Figma: vòng focus đặt NGOÀI viền, sát nút */
 .kin-tab:focus-visible { outline-offset: -2px; }       /* tab nằm trong khung cuộn ngang: vòng ở TRONG để khỏi bị cắt */
@@ -251,3 +253,6 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
 @keyframes kin-hop-vao { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .kin-hop-vao { animation: kin-hop-vao 180ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .kin-hop-vao { animation: none; } }
+
+/* SCL5 (P2-14): nút của trình phát video (Plyr, mặc định 32px) đạt vùng chạm 44×44; icon giữ nguyên cỡ, chỉ nới vùng bấm. */
+.plyr .plyr__controls .plyr__control { min-width: 44px; min-height: 44px; justify-content: center; }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { isEnrollmentActive, ENROLLMENT_STATUS } from "@/lib/enrollment";
+import { isTrialExpired } from "@/lib/trial";
+import { openTrialClockFor } from "@/lib/trialServer";
 import { isActiveHelperOfCourse } from "@/lib/courseAccessServer";
 import { suspendedBlocksLesson, suspendedBody, contactTutorHref } from "@/lib/suspendedContent";
 import { isCourseManager, lessonFor, type MediaContext, canViewAllMaterials, redactCourseLinks } from "@/lib/mediaAccess";
@@ -53,7 +56,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const isManager = fullAccess;
   // BU-02-PHẲNG (R3a): bài chính Nháp/Ẩn và người xem không phải quản lý lớp ⇒ 404 TRƯỚC nhánh isFree / 403.
   if (!isManager && !isLearnerVisible(lesson.status)) return NextResponse.json({ error: "Không tìm thấy bài học" }, { status: 404 });
-  let enrolled: { status: string } | null = null;
+  let enrolled: { status: string; trialDays: number | null; trialStartedAt: Date | null } | null = null;
 
   if (!fullAccess) {
     enrolled = session.role === "student"
@@ -64,11 +67,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (suspendedBlocksLesson(enrolled, lesson)) {
       return NextResponse.json(suspendedBody(contactTutorHref({ id: courseId, ownerId: course.ownerId })), { status: 403, headers: { "Cache-Control": "private, no-store" } });
     }
-    if (enrolled && enrolled.status === "active") {
+    if (isEnrollmentActive(enrolled)) {
       fullAccess = true;
+      await openTrialClockFor(session.userId, enrolled); // SCL đợt 5 (D5): mở bài lần đầu ⇒ bắt đầu tính 14 ngày
     } else if (!lesson.isFree) {
-      // Chưa enroll và bài này không phải học thử miễn phí
-      return NextResponse.json({ error: "Không có quyền truy cập" }, { status: 403 });
+      // Chưa enroll và bài này không phải học thử miễn phí. SCL5: học thử hết hạn ⇒ VẪN 403 (không mở gì), chỉ kèm mã để trang bài hiện thẻ khoá thay lỗi chung.
+      const trialOver = !!enrolled && (enrolled.status === ENROLLMENT_STATUS.TRIAL_EXPIRED || (enrolled.status === ENROLLMENT_STATUS.ACTIVE && isTrialExpired(enrolled)));
+      return NextResponse.json(trialOver ? { error: "Hết thời gian học thử", code: "trial_expired", courseId } : { error: "Không có quyền truy cập" }, { status: 403, headers: { "Cache-Control": "private, no-store" } });
     }
     // Chưa enroll nhưng bài này isFree → cho xem riêng bài này, không mở khoá cả khoá học
   }
@@ -79,7 +84,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // This prevents admins forgetting to set isLocked=true from leaking paid content.
   // MD-03: ngoài isLocked, mọi bài trong cây mà người xem chưa được mở thì bị bỏ link (trước đây người xem MỘT bài miễn phí nhận
   // luôn videoUrl/documents/azotaUrl của cả khoá). "suspended" không còn quyền (xem trên); chỉ còn bài miễn phí.
-  const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active" } : enrolled };
+  const ctx: MediaContext = { viewer, courseOwnerId: course.ownerId, enrollment: fullAccess ? { status: "active", trialDays: null, trialStartedAt: null } : enrolled };
   // Link nhóm Zalo (zaloGroupLink, zaloGroupUrl) và link học online (classJoinUrl) của lớp chỉ dành cho quản lý lớp và học viên ĐANG HỌC (kể cả khi xem lại bài ở trạng thái
   // tạm ngưng: được xem nội dung đã mở nhưng không cần link nhóm). `course` cũng chính là lesson.chapter.section.course (cùng một đối tượng) nên sửa tại chỗ.
   if (!canViewAllMaterials({ viewer, courseOwnerId: course.ownerId, enrollment: enrolled })) Object.assign(course, redactCourseLinks(course));

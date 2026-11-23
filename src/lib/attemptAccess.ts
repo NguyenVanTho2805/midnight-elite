@@ -5,6 +5,7 @@
 // (bị xoá hẳn) mà đề gắn lớp. Ngoại lệ: đề không gắn lớp, đề thu phí có ExamGuestAccess. Điểm của lượt ĐÃ NỘP (GET /attempts/[id]) vẫn trả — lịch sử điểm của chính em.
 import { prisma } from "@/lib/prisma";
 import { isEnrollmentActive } from "@/lib/enrollment";
+import type { TrialFields } from "@/lib/trial";
 import {
   ATTEMPT_SUSPENDED_MESSAGE, ENROLLMENT_SUSPENDED_CODE, ATTEMPT_LEFT_CLASS_MESSAGE, ENROLLMENT_REMOVED_CODE,
   ATTEMPT_BLOCKED_MESSAGE, ATTEMPT_LEFT_CLASS_BLOCKED_MESSAGE,
@@ -13,7 +14,7 @@ import {
 // Giữ đường import cũ (t-attempt-suspended-api, route cũ).
 export { ATTEMPT_BLOCKED_MESSAGE, ATTEMPT_SUSPENDED_MESSAGE, ENROLLMENT_SUSPENDED_CODE, ATTEMPT_LEFT_CLASS_MESSAGE, ENROLLMENT_REMOVED_CODE, ATTEMPT_LEFT_CLASS_BLOCKED_MESSAGE };
 
-type AccessInput = { courseId: string | null; price: number | null; enrollment: { status: string } | null; hasGuestAccess: boolean };
+type AccessInput = { courseId: string | null; price: number | null; enrollment: ({ status: string } & Required<TrialFields>) | null; hasGuestAccess: boolean };
 /** Lý do bị chặn: "suspended" = đã nghỉ lớp; "left" = không còn bản ghi ghi danh. */
 export type AccessBlockKind = "suspended" | "left";
 export type AccessBlock = { error: string; code: string };
@@ -64,7 +65,7 @@ async function accessInputOf(userId: string, examId: string): Promise<AccessInpu
   const exam = await rootExamOf(examId);
   if (!exam?.courseId) return null;
   const [enrollment, guest] = await Promise.all([
-    prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exam.courseId } }, select: { status: true } }),
+    prisma.enrollment.findUnique({ where: { userId_courseId: { userId, courseId: exam.courseId } }, select: { status: true, trialDays: true, trialStartedAt: true } }),
     prisma.examGuestAccess.findUnique({ where: { userId_examId: { userId, examId: exam.id } }, select: { userId: true } }),
   ]);
   return { courseId: exam.courseId, price: exam.price, enrollment, hasGuestAccess: !!guest };

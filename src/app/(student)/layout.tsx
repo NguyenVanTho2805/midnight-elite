@@ -3,10 +3,13 @@
 // → dữ liệu trang, 3 vòng mạng). Lỗi DB → undefined: vỏ tự hỏi /api/auth/me như cũ, không chặn nhầm.
 import { getSession } from "@/lib/session";
 import { loadAuthUser } from "@/lib/authUserServer";
+import { expireTrials } from "@/lib/trialServer";
 import StudentLayoutClient from "./StudentLayoutClient";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession().catch(() => undefined);
+  // SCL đợt 5 (D7): học thử của em đã quá hạn ⇒ lật trial_expired ngay khi em mở vỏ (không chờ cron đêm). Lỗi không chặn vỏ.
+  if (session?.role === "student") await expireTrials({ userId: session.userId }).catch(() => undefined);
   const initialUser = session === undefined ? undefined : session ? await loadAuthUser(session.userId).catch(() => undefined) : null;
   return <StudentLayoutClient initialUser={initialUser}>{children}</StudentLayoutClient>;
 }

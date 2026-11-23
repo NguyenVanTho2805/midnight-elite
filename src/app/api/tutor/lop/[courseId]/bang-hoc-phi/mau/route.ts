@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ cour
   if (!g.config) return sheetFail(409, "Lớp chưa đặt bảng bậc. Đặt bảng bậc trước khi tải mẫu.", "NO_TABLE");
   const r = resolveYm(req.nextUrl.searchParams.get("ym"), g.config.periodStartDay);
   if (!r.ok) return sheetFail(400, r.error);
-  const enr = await prisma.enrollment.findMany({ where: { courseId: g.acc.course.id, status: "active" }, select: { userId: true, user: { select: { name: true } } }, orderBy: { user: { name: "asc" } } });
+  const enr = await prisma.enrollment.findMany({ where: { courseId: g.acc.course.id, status: "active", trialDays: null }, select: { userId: true, user: { select: { name: true } } }, orderBy: { user: { name: "asc" } } });
   const bytes = await hocPhiSheetTemplate({
     config: g.config, ym: r.ym, periodLabel: periodRange(r.ym, g.config.periodStartDay).label,
     roster: enr.map(e => ({ studentId: e.userId, name: e.user.name ?? "Học sinh" })),

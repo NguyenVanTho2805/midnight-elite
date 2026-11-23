@@ -2,6 +2,7 @@
 // + đề gắn lớp (quiz có câu hỏi, đề Azota không câu hỏi). Ô = điểm hoặc chữ trạng thái (src/lib/soDiem.ts). Điểm quiz tự luận đang giữ (examHold) ⇒ "Chờ chấm".
 // Ai thấy lớp nào: Chủ nhiệm (quản trị trung tâm) mọi lớp; gia sư chỉ lớp mình làm chủ (Course.ownerId); học sinh chỉ dòng của mình (loadStudentResults).
 import { prisma } from "@/lib/prisma";
+import { isEnrollmentActive } from "@/lib/enrollment";
 import { dropHeldResults } from "@/lib/examHold";
 import { PUBLISHED_ONLY } from "@/lib/lessonStatus";
 import { isCenterAdmin, type GateSession } from "@/lib/tutorGate";
@@ -78,10 +79,13 @@ export async function loadClassGradebook(courseId: string): Promise<{ columns: C
 /** SCL-G-HS (R4): điểm "Chờ duyệt" KHÔNG rời máy chủ tới học sinh (score = null) — chỉ chủ nhiệm xác nhận xong mới thấy số. */
 export async function loadStudentResults(userId: string, courseId: string | null) {
   const enr = await prisma.enrollment.findMany({
-    where: { userId, status: "active", ...(courseId ? { courseId } : {}) }, select: { course: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 30,
+    // SCL5 D16: hỏi riêng một lớp thì gồm cả lớp học thử đã hết hạn — màn khoá hiện điểm em đã có (chỉ chữ: link tới bài bỏ trống bên dưới).
+    where: { userId, status: courseId ? { in: ["active", "trial_expired"] } : "active", ...(courseId ? { courseId } : {}) },
+    select: { status: true, trialDays: true, trialStartedAt: true, course: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 30,
   });
   const out: { courseId: string; courseName: string; items: (Column & Omit<Cell, "max"> & { submittedAt: string | null; gradedAt: string | null; href: string | null })[] }[] = [];
-  for (const { course } of enr) {
+  for (const { course, ...e } of enr) {
+    const open = isEnrollmentActive(e);
     const { columns, cells } = await loadGrid(course.id, [userId], true);
     const mine = cells.get(userId) ?? {};
     // SCL-G-HS (§4.1 #5): điểm kèm NGÀY (nộp / chấm) và đường tới bài — hỏi riêng cho đúng học sinh này, không đụng loadGrid dùng chung với sổ điểm gia sư.
@@ -98,7 +102,7 @@ export async function loadStudentResults(userId: string, courseId: string | null
       const submittedAt = sb?.submittedAt ?? doneAt.get(c.id) ?? null;
       const lessonId = lessonOf.get(c.id);
       return { ...c, state: x.state, label: x.label, score: x.state === "cho-duyet" ? null : x.score,
-        submittedAt: submittedAt?.toISOString() ?? null, gradedAt: gradedAt?.toISOString() ?? null, href: lessonId ? `/student/bai-giang/${lessonId}` : null };
+        submittedAt: submittedAt?.toISOString() ?? null, gradedAt: gradedAt?.toISOString() ?? null, href: lessonId && open ? `/student/bai-giang/${lessonId}` : null };
     }) });
   }
   return out;

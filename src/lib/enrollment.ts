@@ -6,6 +6,8 @@ export const ENROLLMENT_STATUS = {
   PENDING_CONSENT: "pending_consent",
   ACTIVE:          "active",
   SUSPENDED:       "suspended",
+  // SCL đợt 5 (D7): học thử hết hạn mà chưa lên chính thức. Mọi truy vấn lọc "active" tự khoá em này.
+  TRIAL_EXPIRED:   "trial_expired",
 } as const;
 
 // Thông điệp + mã nghỉ lớp nằm ở tệp thuần enrollmentMessages.ts (tệp trình duyệt import từ đó, KHÔNG từ đây — tệp này có nạp muộn prisma). Re-export cho mã máy chủ cũ.
@@ -15,9 +17,14 @@ export type EnrollmentStatus = (typeof ENROLLMENT_STATUS)[keyof typeof ENROLLMEN
 
 // true khi học viên có quyền hoạt động (xem bài, nộp bài, đánh giá) — hiện
 // chỉ "active" được, nhưng tách ra 1 chỗ để đổi quy tắc không phải sửa 10 route.
-export function isEnrollmentActive(e: { status: string } | null | undefined): boolean {
-  return !!e && e.status === ENROLLMENT_STATUS.ACTIVE;
+// SCL đợt 5: ghi danh thử đã quá hạn ⇒ false NGAY cả khi status chưa được cron lật (người gọi phải đọc cả trialDays/trialStartedAt — ENROLLMENT_ACCESS_SELECT).
+// Hai cột học thử BẮT BUỘC có trong kiểu (Required): route nào chỉ select `status` sẽ đỏ tsc thay vì lặng lẽ coi em học thử quá hạn là chính thức.
+export function isEnrollmentActive(e: ({ status: string } & Required<TrialFields>) | null | undefined): boolean {
+  return !!e && e.status === ENROLLMENT_STATUS.ACTIVE && !isTrialExpired(e);
 }
+
+/** Cột tối thiểu để isEnrollmentActive quyết định đúng (status + hạn học thử). */
+export const ENROLLMENT_ACCESS_SELECT = { status: true, trialDays: true, trialStartedAt: true } as const;
 
 /**
  * GET /api/enrollments (2A, quyết định của Thọ 04/11/2026): tách hồ sơ của MỘT học sinh thành lớp ĐANG HỌC (`courseIds`, như cũ) và lớp CHỜ PHỤ HUYNH ĐỒNG Ý
@@ -43,6 +50,7 @@ export function splitEnrollmentIds(rows: { courseId: string; status: string }[])
 // khi bật, học sinh có ngày sinh trong tài khoản cho thấy dưới 16 tuổi, chưa có ParentConsent "approved" nào,
 // vào lớp mới sẽ ở "pending_consent" (không có quyền học tới khi phụ huynh duyệt qua /api/parent-consents).
 // Học sinh KHÔNG có ngày sinh vẫn "active": tài khoản tự khai, KiN không đoán tuổi. Phần đồng ý của CHÍNH em (từ 7 tuổi) chưa chặn ở đây.
+import { isTrialExpired, type TrialFields } from "@/lib/trial";
 import { CONSENT_ADULT_AGE, ageOnKey } from "@/lib/consentPolicy";
 import { vnDateKeyOf } from "@/lib/classSessions";
 

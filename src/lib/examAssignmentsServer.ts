@@ -16,7 +16,7 @@ const MAX_ITEMS = 200;
 
 export async function listStudentAssignments(userId: string, now: Date): Promise<AssignmentItem[]> {
   const [enrollments, myAttempts] = await Promise.all([
-    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true } }),
+    prisma.enrollment.findMany({ where: { userId }, select: { courseId: true, status: true, trialDays: true, trialStartedAt: true } }),
     prisma.examAttempt.findMany({ where: { userId }, select: { id: true, examId: true, status: true, expiresAt: true } }),
   ]);
   const courseIds = enrollments.filter(e => isEnrollmentActive(e)).map(e => e.courseId);
@@ -40,7 +40,7 @@ export async function listStudentAssignments(userId: string, now: Date): Promise
   });
   // Đã nghỉ lớp (suspended) HOẶC không còn bản ghi ghi danh nào: đề của lớp đó không còn trong danh sách — kể cả đề em từng làm (cùng luật isSuspendedForView
   // với xem lượt/review). Đề thu phí có quyền khách gia sư duyệt tay thì giữ; lớp "chờ phụ huynh" không bị chặn ở đây.
-  const enrollmentOf = new Map(enrollments.map(e => [e.courseId, { status: e.status }]));
+  const enrollmentOf = new Map(enrollments.map(e => [e.courseId, e]));
   const gated = exams.filter(e => e.courseId && !isEnrollmentActive(enrollmentOf.get(e.courseId)));
   if (gated.length) {
     const paidIds = gated.filter(e => e.price && e.price > 0).map(e => e.id);

@@ -1,6 +1,7 @@
 // SCL-A (P1-2, P2-7) — luật THUẦN cho điểm đề: ai xem được bảng điểm / chi tiết đề gắn lớp, điểm tự khai hợp lệ, dòng bảng điểm trả cho người xem.
 // Không DB. Phần đọc DB ở src/lib/examResultAccessServer.ts. Test: tools/local-e2e/t-scl-a-lib.ts.
 import { viewBlockKind } from "@/lib/attemptAccess";
+import type { TrialFields } from "@/lib/trial";
 
 export interface ClassExamViewer {
   userId: string;
@@ -14,7 +15,7 @@ export interface ClassExamFacts {
   price: number | null;
   /** đồng giảng / bộ môn đang hiệu lực của lớp (đọc lại DB) */
   isHelper: boolean;
-  enrollment: { status: string } | null;
+  enrollment: ({ status: string } & Required<TrialFields>) | null;
   hasGuestAccess: boolean;
 }
 
