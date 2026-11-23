@@ -1,5 +1,5 @@
 // Đăng nhập xong thì đi đâu (khi người dùng KHÔNG đang định vào một trang cụ thể — nếu có ?redirect= thì luôn ưu tiên trang đó).
-//   Học sinh : "Việc của tôi"
+//   Học sinh : "Lớp" /student/hoc-tap (23/11/2026, chủ: "vào web phát là vào lớp"; trước đây "Việc của tôi")
 //   Gia sư   : Hộp việc ở /lop-cua-toi (nhà của gia sư, Figma "Vỏ — Gia sư"). Gia sư cũng là role "admin" (adminRole "teacher") nên
 //              trước đây bị đưa nhầm vào bảng quản trị /admin.
 //   Gia sư CHỜ DUYỆT (BU-00 bước 5, 31/10/2026): vẫn là role "student" (không cột mới, không đổi JWT) nhưng có đơn đang chờ / bị từ chối → trang chờ duyệt
@@ -12,8 +12,11 @@ import { featureOn } from "@/lib/features";
 /** DG (14/11/2026): Hộp việc đang ẩn (cờ HOP_VIEC, mặc định) ⇒ trang đầu của gia sư là thư viện Lớp /lop-cua-toi/lop. */
 export const TUTOR_HOME_NO_INBOX = "/lop-cua-toi/lop";
 
+/** Trang đầu của học sinh: danh sách lớp. */
+export const STUDENT_HOME = "/student/hoc-tap";
+
 export function landingPath(role: string, adminRole?: string | null, tutorPending?: boolean): string {
   if (role === "admin") return adminRole === "teacher" ? (featureOn("HOP_VIEC") ? "/lop-cua-toi" : TUTOR_HOME_NO_INBOX) : "/admin";
   if (role === "student" && tutorPending) return "/lop-cua-toi/cho-duyet";
-  return "/student/viec-cua-toi";
+  return STUDENT_HOME;
 }

@@ -66,11 +66,11 @@ async function raw(path: string, o: { as?: Parameters<typeof cookieFor>[0]; host
     ["/lop-cua-toi/tong-quan", T, "/lop-cua-toi/lop", "HOP_VIEC"],
     ["/lop-cua-toi/bai-dang", T, "/lop-cua-toi/lop", "TIM_GIA_SU"],
     ["/lop-cua-toi/yeu-cau", T, "/lop-cua-toi/lop", "TIM_GIA_SU"],
-    ["/student/hoc-phi", S, "/student/viec-cua-toi", "HOC_PHI"],
-    ["/student/nhac-hoc", S, "/student/viec-cua-toi", "NHAC_HOC"],
-    ["/student/thi-thu", S, "/student/viec-cua-toi", "THI_THU_CONG_KHAI"],
-    ["/thi-thu", S, "/student/viec-cua-toi", "THI_THU_CONG_KHAI"],
-    ["/thi-thu?mon=toan", null, "/", "THI_THU_CONG_KHAI"],
+    ["/student/hoc-phi", S, "/student/hoc-tap", "HOC_PHI"],
+    ["/student/nhac-hoc", S, "/student/hoc-tap", "NHAC_HOC"],
+    ["/student/thi-thu", S, "/student/hoc-tap", "THI_THU_CONG_KHAI"],
+    ["/thi-thu", S, "/student/hoc-tap", "THI_THU_CONG_KHAI"],
+    ["/thi-thu?mon=toan", null, "/dang-nhap", "THI_THU_CONG_KHAI"],
   ];
   for (const [p, who, to, k] of MAIN_BLOCK) {
     const r = await raw(p, { as: who ?? undefined });

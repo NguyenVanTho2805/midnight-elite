@@ -60,9 +60,9 @@ const mask = (n: number) => `${phoneOf(n).slice(0, 3)} ••• ${phoneOf(n).sl
   await eventually("nhập sai → 'Mã không đúng — còn 4 lần thử' + giải thích khoá 'số điện thoại này'", async () => { const t = await p0.getByRole("alert").filter({ hasText: "Mã không đúng" }).innerText().catch(() => ""); return t.includes("Mã không đúng — còn 4 lần thử") && t.includes("khoá đăng nhập số điện thoại này trong 15 phút"); });
   await p0.locator("input").first().click();
   await p0.keyboard.type(real);
-  await p0.waitForURL(/\/student\/viec-cua-toi/, { timeout: 60000 });
+  await p0.waitForURL(/\/student\/hoc-tap/, { timeout: 60000 });
   const me = await (await p0.request.get(`${BASE}/api/auth/me`)).json();
-  check("nhập mã đúng → vào /student/viec-cua-toi, phiên đúng người", me.id === V.id && me.phoneVerified === true, me);
+  check("nhập mã đúng → vào Lớp /student/hoc-tap, phiên đúng người", me.id === V.id && me.phoneVerified === true, me);
   await g.close();
 
   section("Gia sư đăng nhập bằng số → vào Hộp việc (không phải bảng quản trị)");

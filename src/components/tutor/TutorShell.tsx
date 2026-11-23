@@ -194,8 +194,8 @@ export default function TutorShell({
             </Link>}
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
               links={head
-                ? [{ label: "Trang quản trị", href: `https://${ADMIN_HOST}/admin` }, { label: "Trang chủ KiN", href: "/" }]
-                : [{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }, { label: "Trang chủ KiN", href: "/" }]} />}
+                ? [{ label: "Trang quản trị", href: `https://${ADMIN_HOST}/admin` }]
+                : [{ label: "Cài đặt", href: "/lop-cua-toi/cai-dat" }, { label: "Hồ sơ gia sư", href: "/lop-cua-toi/ho-so" }]} />}
           </div>
         </div>
         <KinSkipTarget />
