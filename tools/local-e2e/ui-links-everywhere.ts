@@ -49,13 +49,13 @@ const STUDENT_ALIASES: Record<string, string> = {
 };
 // Trang CHỈ để chuyển hướng (page.tsx gọi redirect()): không phải liên kết sai mà là cửa vào cũ / ngắn gọn.
 // BU-00 bước 3: gia sư dùng bí danh /lop-cua-toi/quan-lop*, /lop-cua-toi/de-thi*; trang tao-moi của quản lớp chỉ chuyển tiếp; /lop-cua-toi/de-thi/tao-moi (BU-03) là trang thật (bốn lối tạo đề), không chuyển tiếp nữa.
-const PAGE_REDIRECTS: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/student": "/student/viec-cua-toi", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop" };
+const PAGE_REDIRECTS: Record<string, string> = { "/lop-cua-toi/tong-quan": "/lop-cua-toi", "/student": "/student/hoc-tap", "/admin/khoa-hoc/tao-moi": "/admin/khoa-hoc", "/admin/thi-thu/tao-moi": "/admin/thi-thu", "/lop-cua-toi/quan-lop/tao-moi": "/lop-cua-toi/lop/tao", "/lop-cua-toi/quan-lop": "/lop-cua-toi/lop" };
 // LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai — có chủ đích. Cờ đọc ở tiến trình bài: chạy với CÙNG biến
 // NEXT_PUBLIC_KIN_MO_* như máy chủ dev. Quản trị: tên miền admin "/admin"; đi qua tên miền chính không có phiên thì là khách → "/".
 const LOI_VIEWER: Record<Scenario["role"], FeatureViewer> = { guest: "guest", student: "student", tutor: "tutor", super: "admin", content: "admin" };
 // DG (14/11/2026): trang đầu gia sư theo cờ HOP_VIEC (landingPath: tắt ⇒ /lop-cua-toi/lop).
 const TUTOR_HOME = landingPath("admin", "teacher");
-const LOI_HOME: Record<FeatureViewer, string[]> = { guest: ["/"], student: ["/student/viec-cua-toi"], tutor: [TUTOR_HOME], admin: ["/admin", "/"] };
+const LOI_HOME: Record<FeatureViewer, string[]> = { guest: ["/dang-nhap"], student: [landingPath("student")], tutor: [TUTOR_HOME], admin: ["/admin", "/dang-nhap"] };   // 23/11/2026: không còn trang chủ
 function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boolean {
   const viewer = LOI_VIEWER[sc.role];
   if (blockedRouteFeature(reqPath, viewer)) return LOI_HOME[viewer].includes(finPath);
@@ -78,7 +78,7 @@ function expectedRedirect(sc: Scenario, reqPath: string, finPath: string): boole
   // /ban-do là bản đồ cho MỌI người, có mục "Gia sư" (Lịch / Lớp / Học phí): quản trị không có vỏ gia sư nên các trang này đưa họ về danh sách lớp /lop-cua-toi.
   if ((sc.role === "super" || sc.role === "content") && /^\/lop-cua-toi\/(lich|lop|hoc-phi)$/.test(reqPath)) return finPath === "/lop-cua-toi";
   if ((sc.role === "student" || sc.role === "tutor") && ["/", "/dang-nhap", "/dang-ky"].includes(reqPath)) {
-    return finPath === (sc.role === "student" ? "/student/viec-cua-toi" : TUTOR_HOME);
+    return finPath === (sc.role === "student" ? landingPath("student") : TUTOR_HOME);
   }
   // DG: gia sư mở gốc /lop-cua-toi khi Hộp việc ẩn → 307 sang thư viện Lớp (hostRouting, TUTOR_ROOT).
   if (sc.role === "tutor" && reqPath === "/lop-cua-toi" && TUTOR_HOME !== "/lop-cua-toi") return finPath === TUTOR_HOME;
@@ -153,6 +153,9 @@ function judge(sc: Scenario, requested: URL, r: { status: number | null; final: 
   if (/Trang không tồn tại|This page could not be found|Đường dẫn bạn truy cập không tồn tại/i.test(r.text)) return "giao diện 404";
   const reqP = norm(requested.pathname), finP = norm(r.final.pathname);
   if (finP === "/dang-nhap" && reqP !== "/dang-nhap") {
+    // 23/11/2026: không còn trang chủ — khách mở "/" hoặc phần đang ẩn về thẳng /dang-nhap; quản trị mở "/" ở tên miền chính sang cửa admin (cookie riêng) — có chủ đích.
+    if (!sc.user && (reqP === "/" || blockedRouteFeature(reqP, "guest"))) return null;
+    if (sc.user && reqP === "/" && r.final.host === new URL(ADMIN).host && r.final.searchParams.get("redirect") === "/admin") return HOSTGATE;
     const gated = isProtected(reqP) || (requested.host === new URL(ADMIN).host && reqP === "/"); // '/' của tên miền admin = dashboard quản trị
     const crossHost = sc.user && requested.host !== r.final.host && r.final.host === new URL(ADMIN).host && /^\/admin(\/|$)/.test(reqP);
     if (crossHost && r.final.searchParams.get("redirect") === requested.pathname + requested.search) return HOSTGATE;

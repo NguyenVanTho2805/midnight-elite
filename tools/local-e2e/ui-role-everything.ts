@@ -16,6 +16,7 @@ import { wipe, check, section, done, cookieFor, BASE } from "./h";
 import { seedStudentWorld, OTHER_S, TOKENS } from "./student-world";
 import { prisma } from "@/lib/prisma";
 import { blockedRouteFeature, featureOn } from "@/lib/features";
+import { landingPath } from "@/lib/landing";
 import type { BrowserContext, Page } from "playwright";
 
 const ROLE = (process.env.ROLE ?? "student") as "student" | "guest";
@@ -132,7 +133,7 @@ async function collect(p: Page, from: string, openMenus: boolean): Promise<Rec[]
 // Chuyển hướng CÓ CHỦ ĐÍCH. Học sinh: trang chủ / đăng nhập / đăng ký / cửa /student → "Việc của tôi"; bí danh cũ của vỏ học sinh trỏ sang trang công khai tương ứng
 // (mở TRONG khung thanh bên). Khách: không có chuyển hướng nào ngoài cổng đăng nhập (xử lý riêng ở `judge`).
 const STUDENT_ALIASES: Record<string, string> = { "/student/thi-thu": "/thi-thu", "/student/cong-dong": "/cong-dong", "/student/hoi-dap": "/cong-dong", "/student/tra-cuu": "/tra-cuu" };
-const HOME = "/student/viec-cua-toi";
+const HOME = landingPath("student");   // 23/11/2026: Lớp /student/hoc-tap
 const TUTOR_PAGES = /^\/lop-cua-toi\/(lich|lop|tong-quan|ho-so|cai-dat|kiem-duyet|bao-cao-thang|ke-hoach-buoi|bai-dang)(\/|$)/;   // trang của gia sư: học sinh được đưa về "Lớp của tôi"
 const TUTOR_MONEY = /^\/lop-cua-toi\/(hoc-phi|doanh-thu)$/;                                                                             // học phí / doanh thu của gia sư: học sinh được đưa sang Học phí của mình
 // BU-00 (31/10/2026): bí danh NỘI DUNG của gia sư (/lop-cua-toi/de-thi*, /lop-cua-toi/quan-lop* — thay /admin/thi-thu*, /admin/khoa-hoc*). Học sinh mở thẳng,
@@ -143,7 +144,7 @@ const notes = new Map<string, string>();   // đổi đích CÓ CHỦ ĐÍCH đ�
 // Trả về lý do nếu việc đổi đích reqPath → finPath là CÓ CHỦ ĐÍCH, ngược lại null.
 // LOI-01 (11/11/2026): route của phần đang ẨN (src/lib/features.ts) 307 về trang đầu theo vai (khách "/", học sinh "Việc của tôi"); bài cộng đồng CHUNG /cong-dong/<id>
 // khi bảng tin ẩn cũng vậy (trang tự kiểm courseId). Cờ đọc ở tiến trình bài: chạy với CÙNG biến NEXT_PUBLIC_KIN_MO_* như máy chủ dev.
-const LOI_HOME = ROLE === "guest" ? "/" : "/student/viec-cua-toi";
+const LOI_HOME = ROLE === "guest" ? "/dang-nhap" : HOME;   // 23/11/2026: không còn trang chủ — khách về /dang-nhap
 // Rà soát COO: CHỈ bài mà người xem KHÔNG được xem (bài chung, bài lớp khác, mã không có) mới được phép chuyển về; bài trong lớp của học sinh này (memberThreads,
 // điền sau khi dựng thế giới) mà bị chuyển về là ĐỎ ("đổi đích").
 const memberThreads = new Set<string>();
@@ -162,7 +163,7 @@ function expected(reqPath: string, finPath: string, redir = ""): string | null {
   if (m && finPath === `/cong-dong/${m[1]}`) return "bí danh chi tiết bài viết của vỏ học sinh";
   m = reqPath.match(/^\/student\/hoi-dap\/([^/]+)$/);
   if (m && finPath === `/cong-dong/hoi-dap/${m[1]}`) return "bí danh chi tiết câu hỏi của vỏ học sinh";
-  if (["/", "/dang-nhap", "/dang-ky", "/student"].includes(reqPath) && finPath === HOME) return "người đã đăng nhập đi thẳng vào 'Việc của tôi'";
+  if (["/", "/dang-nhap", "/dang-ky", "/student"].includes(reqPath) && finPath === HOME) return "người đã đăng nhập đi thẳng vào trang đầu (Lớp)";
   if (TUTOR_PAGES.test(reqPath) && finPath === "/lop-cua-toi") return "trang của GIA SƯ: học sinh được đưa về danh sách lớp của mình";
   if (TUTOR_MONEY.test(reqPath) && finPath === "/student/hoc-phi") return "trang tiền của GIA SƯ: học sinh được đưa sang Học phí của mình";
   return null;
@@ -182,6 +183,8 @@ function judge(requested: URL, r: { status: number | null; final: URL; text: str
     return `sang tên miền khác: ${r.final.host}${finP}`;
   }
   if (finP === "/dang-nhap" && reqP !== "/dang-nhap") {
+    // 23/11/2026: không còn trang chủ — khách mở "/" hoặc phần đang ẩn được đưa thẳng tới đăng nhập (có chủ đích).
+    if (ROLE === "guest" && (reqP === "/" || loiHidden(reqP))) { notes.set(reqP, "không còn trang chủ: khách về /dang-nhap"); return null; }
     if (ROLE === "student") return "bị đẩy về trang đăng nhập dù đã đăng nhập";
     if (!isProtected(reqP)) return "bị đẩy về trang đăng nhập";
     return redirectOk(requested, r.final) ? GATE : "về trang đăng nhập nhưng KHÔNG giữ ?redirect= đúng trang đang định vào";
@@ -428,7 +431,7 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       const toMoney = TUTOR_MONEY.test(path);
       // DG (14/11/2026): trang thuộc phần đang ẩn (học phí, doanh thu, tổng quan, báo cáo tháng, bài đăng…) bị proxy 307 với MỌI vai về trang đầu học sinh, kèm ?tam-dong=.
       const dgBlocked = blockedRouteFeature(path, "student") !== null;
-      const want = dgBlocked ? "/student/viec-cua-toi" : toMoney ? "/student/hoc-phi" : "/lop-cua-toi";
+      const want = dgBlocked ? HOME : toMoney ? "/student/hoc-phi" : "/lop-cua-toi";
       check(`học sinh mở trang của gia sư ${path} → về ${want} (${toMoney ? "Học phí của chính mình" : "danh sách lớp của mình"}), trong khung học sinh`, r.final.origin === MAIN_ORIGIN && norm(r.final.pathname) === want && r.shell === SHELL_STUDENT, [abs(r.final), r.shell]);
     }
   } else {
@@ -436,7 +439,9 @@ async function clickAudit(ctx: BrowserContext, p: Page, url: string, out: Click[
       `/student/bai-giang/${w.lessons.rec.id}`, `/student/thi-thu/${w.E1.id}`, "/lop-cua-toi", "/lop-cua-toi/lich", "/cai-dat/chu-de"];
     for (const path of GATED) {
       const r = await open(p, MAIN + path);
-      check(`khách mở ${path} → /dang-nhap kèm ?redirect= đúng trang`, r.final.origin === MAIN_ORIGIN && norm(r.final.pathname) === "/dang-nhap" && redirectOk(new URL(MAIN + path), r.final), abs(r.final));
+      // 23/11/2026: trang thuộc phần đang ẩn (vd Học phí) → /dang-nhap?tam-dong=<CỜ> (không kèm redirect: quay lại cũng bị chặn).
+      const hidden = blockedRouteFeature(path.split("?")[0], "guest");
+      check(`khách mở ${path} → /dang-nhap ${hidden ? "kèm ?tam-dong=" : "kèm ?redirect= đúng trang"}`, r.final.origin === MAIN_ORIGIN && norm(r.final.pathname) === "/dang-nhap" && (hidden ? r.final.searchParams.has("tam-dong") : redirectOk(new URL(MAIN + path), r.final)), abs(r.final));
     }
     const ra = await open(p, MAIN + "/admin");
     check("khách mở /admin ở tên miền chính → cửa đăng nhập quản trị (tên miền admin), giữ ?redirect=%2Fadmin", ra.final.origin === ADMIN && norm(ra.final.pathname) === "/dang-nhap" && ra.final.searchParams.get("redirect") === "/admin", abs(ra.final));

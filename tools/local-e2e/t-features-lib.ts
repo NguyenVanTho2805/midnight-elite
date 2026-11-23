@@ -13,7 +13,7 @@
 //  - Rà soát COO: thêm lại quy tắc "/mentor" → ca "hồ sơ từng gia sư /mentor/<id> vẫn mở" đỏ; bỏ dòng ngoại lệ classScopeOf trong blockedRouteFeature → ca "hỏi trong lớp" đỏ;
 //    cho classScopeOf nhận "common" → ca "scope=common vẫn chặn" đỏ; đổi COIN_LOGIC_ON thành featureOn("COIN") → ca "logic Coin là hằng tắt" đỏ khi chạy với cờ COIN=1.
 //  - LOI-07 (dấu ?tam-dong=, đã chạy 11/11/2026): pausedNoticeFrom bỏ kiểm `FEATURES.includes` (nhận mọi giá trị) → 2 đỏ ("rác / chữ thường / tên lạ → null", "nhiều giá trị");
-//    bỏ kiểm `!featureOn(k, env)` → 1 đỏ ("phần đã mở lại thì không nhắc"); decideRoute bỏ `search: paused` ở nhánh khách → 4 đỏ ("307 về '/?tam-dong=…'");
+//    bỏ kiểm `!featureOn(k, env)` → 1 đỏ ("phần đã mở lại thì không nhắc"); decideRoute bỏ `search: paused` ở nhánh khách → 4 đỏ ("307 về '/dang-nhap?tam-dong=…'");
 //    decideRoute dùng `search || pausedSearch(...)` (mang tham số cũ theo) → 4 đỏ, có ca "tham số cũ / rác bị bỏ".
 //  - DG (14/11/2026, đã chạy, 202 ca): bỏ nhánh `r.re` trong `matches` → 9 đỏ (bảng học phí lớp, điểm danh lớp: liên kết + chốt chặn); regex điểm danh không neo cuối
 //    (`diem-danh/`) → 1 đỏ; "/student/thi-thu" thêm `sub: true` → 4 đỏ (phòng thi đề được giao bị chặn); /admin/doanh-thu `route: true` thay vì ["admin"] → 1 đỏ;
@@ -144,8 +144,8 @@ const d = (pathname: string, s: RouteSession | null, search = ""): RouteDecision
 check("featureViewerOf: khách / học sinh / gia sư / quản trị; vai lạ → khách", featureViewerOf(null) === "guest" && featureViewerOf(student) === "student" && featureViewerOf(tutor) === "tutor" && featureViewerOf(sup) === "admin" && featureViewerOf({ role: "x" }) === "guest");
 if (!featureOn("TIM_GIA_SU")) {
   // LOI-07: ĐỔI CÓ CHỦ ĐÍCH — bỏ tham số cũ, chỉ gắn dấu ?tam-dong=<CỜ> cho dòng nhắc "Phần này đang tạm đóng." ở trang đích.
-  check("khách mở /giang-vien?mon=toan → 307 về '/?tam-dong=TIM_GIA_SU' (bỏ tham số cũ)", eq(d("/giang-vien", null, "?mon=toan"), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=TIM_GIA_SU" }), d("/giang-vien", null, "?mon=toan"));
-  check("học sinh mở /giang-vien → 307 về Việc của tôi ?tam-dong=TIM_GIA_SU", eq(d("/giang-vien", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=TIM_GIA_SU" }), d("/giang-vien", student));
+  check("khách mở /giang-vien?mon=toan → 307 về '/dang-nhap?tam-dong=TIM_GIA_SU' (bỏ tham số cũ)", eq(d("/giang-vien", null, "?mon=toan"), { kind: "redirect", status: 307, pathname: "/dang-nhap", search: "?tam-dong=TIM_GIA_SU" }), d("/giang-vien", null, "?mon=toan"));
+  check("học sinh mở /giang-vien → 307 về Lớp ?tam-dong=TIM_GIA_SU", eq(d("/giang-vien", student), { kind: "redirect", status: 307, pathname: "/student/hoc-tap", search: "?tam-dong=TIM_GIA_SU" }), d("/giang-vien", student));
   check("mọi vai mở /mentor/abc → next (hồ sơ từng gia sư vẫn mở)", [null, student, tutor].every(s => eq(d("/mentor/abc", s), { kind: "next" })));
   // DG: đích của gia sư theo landingPath — Hộp việc ẩn (HOP_VIEC tắt) thì thư viện Lớp.
   const tutorHome = featureOn("HOP_VIEC") ? "/lop-cua-toi" : "/lop-cua-toi/lop";
@@ -154,12 +154,12 @@ if (!featureOn("TIM_GIA_SU")) {
   check("cần giải mã phiên ở đường bị chặn (đích theo vai); /mentor/x không tốn giải mã", needsSession(MAIN, "/giang-vien") && !needsSession(MAIN, "/mentor/x"));
 } else console.log("  (máy đang bật TIM_GIA_SU: bỏ qua ca chặn /giang-vien)");
 if (!featureOn("CONG_DONG")) {
-  check("khách mở /cong-dong?tab=hoi-dap-qa → 307 về '/?tam-dong=CONG_DONG'", eq(d("/cong-dong", null, "?tab=hoi-dap-qa"), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=CONG_DONG" }));
+  check("khách mở /cong-dong?tab=hoi-dap-qa → 307 về '/dang-nhap?tam-dong=CONG_DONG'", eq(d("/cong-dong", null, "?tab=hoi-dap-qa"), { kind: "redirect", status: 307, pathname: "/dang-nhap", search: "?tam-dong=CONG_DONG" }));
   check("/cong-dong/<id> cho qua (trang tự xử lý bài lớp / bài chung)", VIEWERS.length === 4 && [null, student, tutor].every(s => eq(d("/cong-dong/t1", s), { kind: "next" })));
   check("decideRoute: học sinh / gia sư mở /cong-dong?scope=lop-1 → next; khách → '/'; học sinh mở /cong-dong?scope=common → Việc của tôi",
     eq(d("/cong-dong", student, "?scope=lop-1"), { kind: "next" }) && eq(d("/cong-dong", tutor, "?tab=hoi-dap&scope=lop-1"), { kind: "next" })
-    && eq(d("/cong-dong", null, "?scope=lop-1"), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=CONG_DONG" }) && eq(d("/cong-dong", student, "?scope=common"), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=CONG_DONG" }));
-  check("câu hỏi cũ /student/hoi-dap/<id> (thông báo cũ) → Việc của tôi ?tam-dong=CONG_DONG", eq(d("/student/hoi-dap/q1", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=CONG_DONG" }), d("/student/hoi-dap/q1", student));
+    && eq(d("/cong-dong", null, "?scope=lop-1"), { kind: "redirect", status: 307, pathname: "/dang-nhap", search: "?tam-dong=CONG_DONG" }) && eq(d("/cong-dong", student, "?scope=common"), { kind: "redirect", status: 307, pathname: "/student/hoc-tap", search: "?tam-dong=CONG_DONG" }));
+  check("câu hỏi cũ /student/hoi-dap/<id> (thông báo cũ) → Lớp ?tam-dong=CONG_DONG", eq(d("/student/hoi-dap/q1", student), { kind: "redirect", status: 307, pathname: "/student/hoc-tap", search: "?tam-dong=CONG_DONG" }), d("/student/hoi-dap/q1", student));
 }
 // SCL F1: /tin-tuc đã xoá hẳn (trang 404) ⇒ không còn chốt 307 + dấu ?tam-dong=TIN_TUC. Dấu tham số rác kiểm lại bằng /tra-cuu (cờ TRA_CUU).
 if (!featureOn("TRA_CUU")) {
@@ -217,14 +217,14 @@ if (!featureOn("KINH_DOANH") && !featureOn("VAN_HANH_PHU")) {
   check("tên miền admin: CHƯA đăng nhập mở /admin/doanh-thu → next (trang tự đưa tới cửa đăng nhập, giữ ?redirect= như cũ)", eq(AD("/admin/doanh-thu", null), { kind: "next" }));
 } else console.log("  (máy đang bật KINH_DOANH/VAN_HANH_PHU: bỏ qua ca tên miền admin)");
 if (!featureOn("HOP_VIEC")) {
-  check("landingPath gia sư = thư viện Lớp /lop-cua-toi/lop khi Hộp việc ẩn; quản trị /admin; học sinh Việc của tôi", landingPath("admin", "teacher") === "/lop-cua-toi/lop" && landingPath("admin", "admin_super") === "/admin" && landingPath("student") === "/student/viec-cua-toi");
+  check("landingPath gia sư = thư viện Lớp /lop-cua-toi/lop khi Hộp việc ẩn; quản trị /admin; học sinh Lớp", landingPath("admin", "teacher") === "/lop-cua-toi/lop" && landingPath("admin", "admin_super") === "/admin" && landingPath("student") === "/student/hoc-tap");
   check("gia sư mở gốc /lop-cua-toi → 307 sang /lop-cua-toi/lop (bỏ tham số); học sinh / khách / quản trị không đổi", eq(d("/lop-cua-toi", tutor, "?x=1"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/lop" })
     && eq(d("/lop-cua-toi", student), { kind: "next" }) && eq(d("/lop-cua-toi", null), { kind: "next" }));
   check("gốc /lop-cua-toi cần giải mã phiên (để biết gia sư); /lop-cua-toi/lop thì không", needsSession(MAIN, "/lop-cua-toi") && !needsSession(MAIN, "/lop-cua-toi/lop"));
   check("gia sư mở /admin (không bí danh) ở tên miền chính → 307 về trang đầu gia sư /lop-cua-toi/lop", eq(d("/admin", tutor), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/lop" }), d("/admin", tutor));
-  check("gia sư mở /lop-cua-toi/hoc-phi → 307 về /lop-cua-toi/lop?tam-dong=HOC_PHI; học sinh mở /student/hoc-phi → Việc của tôi", eq(d("/lop-cua-toi/hoc-phi", tutor, "?tab=doi-soat"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/lop", search: "?tam-dong=HOC_PHI" })
-    && eq(d("/student/hoc-phi", student), { kind: "redirect", status: 307, pathname: "/student/viec-cua-toi", search: "?tam-dong=HOC_PHI" }));
-  check("khách mở /thi-thu → 307 về '/?tam-dong=THI_THU_CONG_KHAI'; học sinh mở /student/thi-thu/de-1 → next", eq(d("/thi-thu", null), { kind: "redirect", status: 307, pathname: "/", search: "?tam-dong=THI_THU_CONG_KHAI" }) && eq(d("/student/thi-thu/de-1", student), { kind: "next" }));
+  check("gia sư mở /lop-cua-toi/hoc-phi → 307 về /lop-cua-toi/lop?tam-dong=HOC_PHI; học sinh mở /student/hoc-phi → Lớp", eq(d("/lop-cua-toi/hoc-phi", tutor, "?tab=doi-soat"), { kind: "redirect", status: 307, pathname: "/lop-cua-toi/lop", search: "?tam-dong=HOC_PHI" })
+    && eq(d("/student/hoc-phi", student), { kind: "redirect", status: 307, pathname: "/student/hoc-tap", search: "?tam-dong=HOC_PHI" }));
+  check("khách mở /thi-thu → 307 về '/dang-nhap?tam-dong=THI_THU_CONG_KHAI'; học sinh mở /student/thi-thu/de-1 → next", eq(d("/thi-thu", null), { kind: "redirect", status: 307, pathname: "/dang-nhap", search: "?tam-dong=THI_THU_CONG_KHAI" }) && eq(d("/student/thi-thu/de-1", student), { kind: "next" }));
 } else console.log("  (máy đang bật HOP_VIEC: bỏ qua ca trang đầu gia sư)");
 
 section("HP-BO (17/11/2026): API GHI của học phí đóng khi HOC_PHI tắt");

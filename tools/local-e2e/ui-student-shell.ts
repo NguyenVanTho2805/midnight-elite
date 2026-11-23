@@ -172,7 +172,7 @@ const H = 3_600_000, D = 24 * H;
   await pg.goto(`${BASE}/student/thi-thu`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await rail().waitFor({ timeout: 90000 });
   if (THI_THU) check("danh sách thi thử CÓ vỏ", await rail().isVisible());
-  else check("DG: danh sách thi thử công khai ẩn → /student/thi-thu về Việc của tôi (?tam-dong=THI_THU_CONG_KHAI), trong vỏ", /\/student\/viec-cua-toi\?tam-dong=THI_THU_CONG_KHAI/.test(pg.url()) && await rail().isVisible(), pg.url());
+  else check("DG: danh sách thi thử công khai ẩn → /student/thi-thu về Lớp (?tam-dong=THI_THU_CONG_KHAI), trong vỏ", /\/student\/hoc-tap\?tam-dong=THI_THU_CONG_KHAI/.test(pg.url()) && await rail().isVisible(), pg.url());
   await pg.goto(`${BASE}/student/thi-thu/${exam.id}`, { waitUntil: "networkidle", timeout: 120000 });
   check("phòng thi KHÔNG có thanh module (toàn màn hình)", await pg.getByRole("navigation", { name: railName }).count() === 0);
 

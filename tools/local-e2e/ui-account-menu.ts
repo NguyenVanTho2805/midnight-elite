@@ -1,6 +1,7 @@
 // Menu tài khoản ở dải trên của vỏ (14/10/2026): hồ sơ / cài đặt / đăng xuất, dùng được cả khi đã THU thanh bên. Trình duyệt thật.
 import { BASE, mkTutor, mkUser, wipe, check, eventually, section, done } from "./h";
 import { launch, ctxFor, shot, closeAll } from "./ui";
+import { featureOn } from "@/lib/features";
 
 (async () => {
   await wipe();
@@ -27,13 +28,15 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   check("menu chưa mở", await menu(pg).count() === 0);
 
   section("Mở menu, bàn phím, đóng");
+  // Học phí chỉ hiện khi cờ HOC_PHI bật (đang tạm hoãn, 23/11/2026).
+  const ITEMS = ["Hồ sơ", ...(featureOn("HOC_PHI") ? ["Học phí"] : []), "Chủ đề màu", "Đăng xuất"];
   await b.click();
   await menu(pg).waitFor({ timeout: 10000 });
-  check("mở: aria-expanded=true, có đúng 5 mục: Hồ sơ, Học phí, Chủ đề màu, Trang chủ KiN, Đăng xuất", await b.getAttribute("aria-expanded") === "true" && (await menu(pg).getByRole("menuitem").allInnerTexts()).join("|") === "Hồ sơ|Học phí|Chủ đề màu|Trang chủ KiN|Đăng xuất");
+  check(`mở: aria-expanded=true, có đúng ${ITEMS.join(", ")} (23/11: bỏ Trang chủ KiN)`, await b.getAttribute("aria-expanded") === "true" && (await menu(pg).getByRole("menuitem").allInnerTexts()).join("|") === ITEMS.join("|"));
   check("đầu menu hiện tên + email", await menu(pg).getByText("Minh Anh").isVisible() && await menu(pg).getByText(S.email).isVisible());
   await eventually("tiêu điểm vào mục đầu 'Hồ sơ'", async () => (await active(pg)) === "Hồ sơ");
   await pg.keyboard.press("ArrowDown");
-  check("↓ → 'Học phí'", (await active(pg)) === "Học phí");
+  check(`↓ → '${ITEMS[1]}'`, (await active(pg)) === ITEMS[1]);
   await pg.keyboard.press("End");
   check("End → 'Đăng xuất'", (await active(pg)) === "Đăng xuất");
   await pg.keyboard.press("ArrowDown");
@@ -45,7 +48,7 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   const heights = await menu(pg).getByRole("menuitem").evaluateAll((els: any[]) => els.map(e => Math.round(e.getBoundingClientRect().height)));
   check("mọi mục cao ≥44px (chạm được)", heights.every((h: number) => h >= 44), heights);
   const roving = await menu(pg).getByRole("menuitem").evaluateAll((els: any[]) => els.map(e => e.tabIndex).join(","));
-  check("các mục không nằm trong thứ tự Tab (tiêu điểm chỉ di chuyển bằng mũi tên)", roving === "-1,-1,-1,-1,-1", roving);
+  check("các mục không nằm trong thứ tự Tab (tiêu điểm chỉ di chuyển bằng mũi tên)", roving === ITEMS.map(() => "-1").join(","), roving);
   await shot(pg, "account-menu-1-open");
   await pg.keyboard.press("Escape");
   await eventually("Esc → đóng và trả tiêu điểm về nút avatar", async () => (await menu(pg).count()) === 0 && await pg.evaluate(`document.activeElement?.hasAttribute("data-account-menu") ?? false`));
@@ -68,9 +71,9 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   await pg.getByRole("button", { name: "Thu gọn thanh bên" }).click();
   await eventually("thanh bên đã thu", async () => (await pg.evaluate(`document.documentElement.getAttribute("data-kin-rail")`)) === "thu");
   await btn(pg, "Minh Anh").click();
-  await menu(pg).getByRole("menuitem", { name: "Học phí" }).click();
-  await pg.waitForURL(/\/student\/hoc-phi/, { timeout: 90000 });
-  check("thanh bên đang thu mà vẫn vào được 'Học phí' qua menu tài khoản", /\/student\/hoc-phi/.test(pg.url()) && (await pg.evaluate(`document.documentElement.getAttribute("data-kin-rail")`)) === "thu");
+  await menu(pg).getByRole("menuitem", { name: "Chủ đề màu" }).click();
+  await pg.waitForURL(/\/cai-dat\/chu-de/, { timeout: 90000 });
+  check("thanh bên đang thu mà vẫn vào được 'Chủ đề màu' qua menu tài khoản", /\/cai-dat\/chu-de/.test(pg.url()) && (await pg.evaluate(`document.documentElement.getAttribute("data-kin-rail")`)) === "thu");
   await pg.goto(`${BASE}/thu-vien`, { waitUntil: "networkidle", timeout: 120000 });
   await btn(pg, "Minh Anh").waitFor({ timeout: 60000 });
   check("menu cũng có ở trang khách (/thu-vien) khi nằm trong vỏ", await btn(pg, "Minh Anh").isVisible());
@@ -80,7 +83,7 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   section("Đăng xuất");
   await btn(pg, "Minh Anh").click();
   await menu(pg).getByRole("menuitem", { name: "Đăng xuất" }).click();
-  await eventually("đăng xuất → về trang chủ của khách (Navbar khách), phiên đã mất", async () => new URL(pg.url()).pathname === "/" && await pg.getByRole("navigation", { name: "Điều hướng chính" }).isVisible());
+  await eventually("đăng xuất → về /dang-nhap (23/11: không còn trang chủ), phiên đã mất", async () => new URL(pg.url()).pathname === "/dang-nhap");
   check("/api/auth/me không còn trả người dùng", !((await pg.evaluate(async () => (await fetch("/api/auth/me")).json())) as any)?.id);
   await ctx.close();
 
@@ -91,7 +94,7 @@ import { launch, ctxFor, shot, closeAll } from "./ui";
   await pt.goto(`${BASE}/lop-cua-toi/lich`, { waitUntil: "networkidle", timeout: 120000 });
   await btn(pt, "Cô Lan").waitFor({ timeout: 90000 });
   await btn(pt, "Cô Lan").click();
-  check("menu gia sư: Cài đặt, Hồ sơ gia sư, Trang chủ KiN, Đăng xuất", (await menu(pt).getByRole("menuitem").allInnerTexts()).join("|") === "Cài đặt|Hồ sơ gia sư|Trang chủ KiN|Đăng xuất");
+  check("menu gia sư: Cài đặt, Hồ sơ gia sư, Đăng xuất (23/11: bỏ Trang chủ KiN)", (await menu(pt).getByRole("menuitem").allInnerTexts()).join("|") === "Cài đặt|Hồ sơ gia sư|Đăng xuất");
   await menu(pt).getByRole("menuitem", { name: "Cài đặt" }).click();
   await pt.waitForURL(/\/lop-cua-toi\/cai-dat/, { timeout: 90000 });
   check("'Cài đặt' → /lop-cua-toi/cai-dat", /\/lop-cua-toi\/cai-dat/.test(pt.url()));

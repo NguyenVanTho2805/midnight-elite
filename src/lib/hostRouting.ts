@@ -21,6 +21,8 @@
 // 01/11/2026 (HOME-01: người đã đăng nhập không xem lại được trang chủ, không gửi được đường dẫn gốc cho người khác):
 //   - Tên miền chính, "/" luôn `next` cho mọi vai và cho khách (trước đây học viên / gia sư bị 307 sang dashboard). Navbar có nút "Vào trang của tôi" thay cho lối đó.
 //   - Vì thế "/" không còn cần giải mã phiên ở tên miền chính (needsSession). Giữ nguyên: /dang-ky và /dang-nhap của người đã đăng nhập vẫn 307 vào dashboard; tên miền admin không đổi.
+// 23/11/2026 (chủ: "bỏ trang chủ, vào web phát là vào lớp"): đảo HOME-01. Tên miền chính, "/" không còn trang chủ: học sinh / gia sư → trang đầu theo vai
+//   (landingPath: học sinh → Lớp, gia sư → thư viện Lớp), quản trị trung tâm → /admin ở tên miền admin, khách → /dang-nhap. Trang src/app/page.tsx giữ mã nhưng không ai tới.
 // 11/11/2026 (LOI-01, chủ: "xây web dùng trước mắt đáp ứng nhu cầu dạy học"): route của các phần đang ẨN (src/lib/features.ts — tìm gia sư, bảng tin cộng đồng, tin tức,
 //   thư viện chung, Tiếng Anh tự học, xếp hạng, điểm chuẩn) → 307 về trang đầu theo vai (khách → "/", học sinh → Việc của tôi, gia sư → Hộp việc, quản trị → /admin ở
 //   tên miền admin). Bỏ tham số (LOI-07: chỉ gắn dấu ?tam-dong=<CỜ> cho dòng nhắc ở trang đích). Bật lại một phần bằng NEXT_PUBLIC_KIN_MO_<TÊN>=1. Các đường đó cần giải mã phiên (đích theo vai) — needsSession trả true.
@@ -58,7 +60,7 @@ export const isPwaFile = (p: string) => p === "/sw.js" || p === "/manifest.webma
 /** Có cần giải mã phiên để quyết định không? Chỉ vài đường dẫn cần, các đường còn lại (trang khách, API, tệp tĩnh) không tốn gì. */
 export function needsSession(host: string, pathname: string): boolean {
   if (isAdminHost(host)) return !(pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.startsWith("/dang-nhap") || isStaticFile(pathname) || isPwaFile(pathname));
-  return isAdminPath(pathname) || AUTH_PAGES.includes(pathname) || mayBlockRoute(pathname) || (pathname === TUTOR_ROOT && !featureOn("HOP_VIEC"));
+  return pathname === "/" || isAdminPath(pathname) || AUTH_PAGES.includes(pathname) || mayBlockRoute(pathname) || (pathname === TUTOR_ROOT && !featureOn("HOP_VIEC"));
 }
 
 /** Vai theo nghĩa của chốt chặn tính năng (src/lib/features.ts). Phiên lạ (role khác) → khách: đóng khi lạ. */
@@ -107,7 +109,13 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
     return { kind: "redirect", status: 307, host: "admin", pathname, search };
   }
 
-  // "/" không nằm ở đây từ 01/11/2026: trang chủ mở được cho mọi người (xem đầu tệp).
+  // 23/11/2026: không còn trang chủ (xem đầu tệp).
+  if (pathname === "/") {
+    if (isLearnerOrTeacher(session)) return { kind: "redirect", status: 307, pathname: landingPath(session!.role, session!.adminRole), search };
+    if (isCenter(session)) return { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: "" };
+    return { kind: "redirect", status: 307, pathname: "/dang-nhap", search: "" };
+  }
+
   if (isLearnerOrTeacher(session) && AUTH_PAGES.includes(pathname)) {
     const home = landingPath(session!.role, session!.adminRole);
     if (pathname === "/dang-nhap") return { kind: "redirect", status: 307, pathname: safeRedirect(new URLSearchParams(search).get("redirect")) ?? home };
@@ -126,7 +134,7 @@ export function decideRoute({ host, pathname, search, session }: RouteInput): Ro
   const blocked = blockedRouteFeature(pathname, viewer, undefined, search);
   if (blocked) {
     const paused = pausedSearch(blocked);
-    if (viewer === "guest") return { kind: "redirect", status: 307, pathname: "/", search: paused };
+    if (viewer === "guest") return { kind: "redirect", status: 307, pathname: "/dang-nhap", search: paused };
     if (viewer === "admin") return { kind: "redirect", status: 307, host: "admin", pathname: "/admin", search: paused };
     return { kind: "redirect", status: 307, pathname: landingPath(session!.role, session!.adminRole), search: paused };
   }

@@ -52,7 +52,7 @@ const pathOf = (url: string) => { const u = new URL(url); return u.pathname + u.
   await p.getByPlaceholder("Tối thiểu 8 ký tự").fill("Passw0rd!");
   await p.locator('form input[type="checkbox"]').check();   // "form": thanh công cụ dev (agentation) cũng có ô tích, bộ chọn trần khớp 6 phần tử
   await p.getByRole("button", { name: "Tạo tài khoản miễn phí" }).click();
-  await eventually("vào thẳng /student/viec-cua-toi trong khung học sinh", async () => at().pathname === "/student/viec-cua-toi" && (await p.locator('nav[aria-label="Module của học sinh"]').count()) > 0, 40000);
+  await eventually("vào thẳng Lớp /student/hoc-tap trong khung học sinh (23/11)", async () => at().pathname === "/student/hoc-tap" && (await p.locator('nav[aria-label="Module của học sinh"]').count()) > 0, 40000);
   const u = await prisma.user.findUnique({ where: { email }, select: { role: true, emailVerified: true } });
   check("tài khoản đúng email vừa nhập, vai học sinh, email CHƯA xác thực", u?.role === "student" && !u.emailVerified, u);
 
@@ -63,7 +63,7 @@ const pathOf = (url: string) => { const u = new URL(url); return u.pathname + u.
   check("thư có liên kết xác thực", !!link, (mail.html ?? mail.text ?? "").slice(0, 200));
   await p.goto(`${BASE}${pathOf(link!)}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await eventually("trang báo 'Xác thực thành công'", async () => (await p.locator("body").innerText()).includes("Xác thực thành công"), 40000);
-  await eventually("tự chuyển tới 'Việc của tôi' (trang đầu của học sinh), không phải /student/hoc-tap", () => at().pathname === "/student/viec-cua-toi", 20000);
+  await eventually("tự chuyển tới Lớp /student/hoc-tap (trang đầu của học sinh từ 23/11)", () => at().pathname === "/student/hoc-tap", 20000);
   await eventually("trong khung học sinh (thanh module HỌC SINH hiện ra)", async () => (await p.locator('nav[aria-label="Module của học sinh"]').count()) > 0, 30000);
 
   section("J4. Nhập mã mời → 'Vào lớp này' → vào thẳng lớp");
@@ -77,7 +77,7 @@ const pathOf = (url: string) => { const u = new URL(url); return u.pathname + u.
   section("J5. Đăng xuất → trang chủ khách; mở lại trang học sinh → sang đăng nhập, giữ ?redirect=");
   await p.getByRole("button", { name: /^Tài khoản của/ }).click();
   await p.getByRole("menuitem", { name: "Đăng xuất" }).click();
-  await eventually("về trang chủ của khách (không phải trang đăng nhập kèm ?redirect=: đăng xuất là tải cứng về '/')", () => at().pathname === "/", 30000);
+  await eventually("về /dang-nhap không kèm ?redirect= (23/11: đăng xuất tải cứng về trang đăng nhập)", () => at().pathname === "/dang-nhap" && !at().search.includes("redirect"), 30000);
   await settle();
   check("trang chủ hiện thanh trên của khách (không còn khung học sinh)", (await p.locator('header nav[aria-label="Điều hướng chính"]').count()) > 0 && (await p.locator('nav[aria-label="Module của học sinh"]').count()) === 0);
   await p.goto(`${BASE}/student/lich-hoc`, { waitUntil: "domcontentloaded", timeout: 120000 });

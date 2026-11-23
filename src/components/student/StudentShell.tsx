@@ -5,6 +5,7 @@
 // "Khác" chỉ còn Khám phá (Gia sư, Cộng đồng, Tin tức) + Tự học; các lối vào khác bị ẩn, route vẫn chạy. (Nhóm Tài khoản ở đây đã rút ngày 08/11/2026, xem trên.)
 // BU-HS-TRANG-CHU (09/11/2026): lối về Trang chủ "/" ở mọi màn có vỏ — module `trang-chu` đầu thanh (chỉ máy tính, không lên thanh dưới nên điện thoại vẫn 4 ô), logo thanh bên và logo điện thoại
 // dẫn "/", hàng "Trang chủ KiN" đầu bảng "Khác" (điện thoại), liên kết chữ ở dải trên khi thanh bên THU. "/" không có vỏ nên mục Trang chủ không bao giờ sáng ở đây (navActive khớp chính xác).
+// 23/11/2026: bỏ trang chủ — "/" chuyển thẳng vào Lớp (src/lib/hostRouting.ts); gỡ chữ "Trang chủ KiN" ở dải trên, menu tài khoản và bảng "Khác"; logo vẫn dẫn "/".
 // Phòng thi (/student/thi-thu/<mã đề>) KHÔNG có vỏ: toàn màn hình, khoá cứng.
 "use client";
 import Link from "next/link";
@@ -20,7 +21,6 @@ import { TopDate } from "@/components/kin/shell/TopDate";
 import { RailOpenButton } from "@/components/kin/shell/RailOpenButton";
 import { KinSkipLink, KinSkipTarget } from "@/components/kin/shell/SkipLink";
 import { AccountMenu } from "@/components/kin/shell/AccountMenu";
-import { useRail } from "@/components/kin/shell/railStore";
 import { MorePanel, isUnder, moreToNavGroup, type MoreGroup } from "@/components/kin/shell/MorePanel";
 import { featureOn, isLinkHidden, visibleLinks } from "@/lib/features";
 import { fetchStudentWork } from "@/lib/studentWorkClient";
@@ -65,7 +65,6 @@ export default function StudentShell({ children, preview }: { children: ReactNod
   const [badge, setBadge] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const exam = isExamRoom(pathname);
-  const [rail] = useRail();
 
   // SCL-H: dùng chung phản hồi với trang (fetchStudentWork) — mở "Việc của tôi" chỉ một lần tính lịch, không phải ba.
   // SCL-G-HS (§3.4, §3.9): số trên "Cần làm" đếm ĐÚNG các thẻ của màn Cần làm (cùng hàm buildTodoCards), không chỉ việc hạn trong 3 ngày (`badge` của máy chủ).
@@ -87,7 +86,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
 
   const moreActive = moreOpen || MORE_HREFS.some(h => isUnder(pathname, h));
   const modules: ModuleItem[] = [
-    // SCL5 (mục 16): bỏ mục "Trang chủ" (trùng nghĩa với "Hôm nay"; lối về "/" vẫn ở logo thanh bên, logo điện thoại và menu tên "Trang chủ KiN").
+    // SCL5 (mục 16): bỏ mục "Trang chủ" (trùng nghĩa với "Hôm nay"; 23/11: không còn trang chủ; logo dẫn "/" = về trang đầu Lớp).
     // `also` có /student/thi-thu, /thi-thu: đề thi được giao và thi thử sắp tới nay thuộc "Việc của tôi" (B1); phòng thi (/student/thi-thu/<mã đề>) không có vỏ.
     // SCL-G-HS (QUYET-DINH §3.4): "Việc của tôi" thành "Cần làm" (mọi việc của mọi lớp, xếp theo hạn). Thanh dưới điện thoại: Cần làm · Lớp · Lịch · Điểm, cao 64px.
     { key: "viec", label: "Hôm nay", href: "/student/viec-cua-toi", also: ["/student/bai-tap", "/student/thi-thu", "/thi-thu"], icon: "viec", badge },
@@ -130,9 +129,6 @@ export default function StudentShell({ children, preview }: { children: ReactNod
           <div className="flex items-center gap-1 min-w-0">
             <RailOpenButton pending={badge} />
             <Link href="/" aria-label="KiN — Trang chủ" data-mobile-home className="inline-flex md:hidden items-center min-h-11 min-w-11"><KinLogo size={24} textSize="var(--kin-co-body)" /></Link>
-            {rail === "thu" && (
-              <Link href="/" data-top-home className="hidden md:inline-flex items-center min-h-11 px-3 rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-small)] font-semibold text-[var(--kin-nhan-link)] hover:bg-[var(--kin-nen-re-chuot)] transition-colors">Trang chủ KiN</Link>
-            )}
             <p data-top-title className="hidden md:block text-[length:var(--kin-co-goc)] text-[var(--kin-chu-mo)]">Không gian học tập</p>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
@@ -140,14 +136,14 @@ export default function StudentShell({ children, preview }: { children: ReactNod
             <CoinBalance />
             <NotificationBell />
             {user && <AccountMenu name={user.name} email={user.email} onLogout={() => void logout()}
-              links={visibleLinks([{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }, { label: "Trang chủ KiN", href: "/" }])} />}
+              links={visibleLinks([{ label: "Hồ sơ", href: "/student/ho-so" }, { label: "Học phí", href: "/student/hoc-phi" }, { label: "Chủ đề màu", href: "/cai-dat/chu-de" }])} />}
           </div>
         </div>
         <KinSkipTarget />
         {children}
       </div>
 
-      {moreOpen && MORE_GROUPS.length > 0 && <MorePanel id="khac-bang" groups={MORE_GROUPS} homeLink={{ label: "Trang chủ KiN", href: "/" }} onClose={closeMore} user={user} onLogout={() => void logout()} />}
+      {moreOpen && MORE_GROUPS.length > 0 && <MorePanel id="khac-bang" groups={MORE_GROUPS} onClose={closeMore} user={user} onLogout={() => void logout()} />}
     </div>
   );
 }

@@ -136,7 +136,8 @@ export function AuthProvider({ children, initialUser }: { children: ReactNode; i
     // Tải cứng về trang chủ chứ không router.push("/"): các trang có AuthGuard (cả khu học viên) thấy user = null sẽ tự router.replace("/dang-nhap?redirect=<trang đang xem>"),
     // thắng lần push("/") — đăng xuất ở /student/* xong thì rơi vào trang đăng nhập kèm trang cũ (dựng lại ở 16/10/2026: viec-cua-toi, hoc-tap, lich-hoc đều vậy; chỉ trang công khai
     // mới về "/"). Tải cứng bỏ cuộc đua đó và xoá luôn mọi trạng thái còn lại của người vừa đăng xuất (xu, thông báo, bộ nhớ đệm máy khách).
-    window.location.assign("/");
+    // 23/11/2026: không còn trang chủ ("/" chuyển khách sang /dang-nhap) ⇒ về thẳng trang đăng nhập, bớt một vòng chuyển hướng.
+    window.location.assign("/dang-nhap");
   }
 
   return (
