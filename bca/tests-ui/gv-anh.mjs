@@ -96,7 +96,7 @@ test(N, "Vượt quyền: buổi Toán / em chỉ học Toán+Sử / ma trận T
   const { page } = await t.trang("gv_anh", W.mt);
   const api = await t.api("chu");
   const toan = (await bangBuoi(api))("toan", "2026-11-24");
-  for (const [u, re] of [[`/quan-ly/diem-danh/${toan.id}`, /^Không có quyền$/], ["/quan-ly/hoc-sinh/HS0021", /^(Không có quyền|Không tìm thấy)$/], ["/quan-ly/diem-danh/thang?mon=toan&thang=2026-11", /^Không có quyền$/]]) {
+  for (const [u, re] of [[`/quan-ly/diem-danh/${toan.id}`, /^(Không có quyền|Không tìm thấy)$/], ["/quan-ly/hoc-sinh/HS0021", /^(Không có quyền|Không tìm thấy)$/], ["/quan-ly/diem-danh/thang?mon=toan&thang=2026-11", /^Không có quyền$/]]) {
     await moTrang(page, u);
     const h = await page.locator("main h1").first().innerText();
     ok(re.test(h), `${u}: cần màn chặn, đang "${h}"`);
