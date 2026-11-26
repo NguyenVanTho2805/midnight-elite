@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate deploy",
     "seed:gia": "tsx scripts/seed-gia.ts",
     "chuyen": "tsx scripts/chuyen-tu-sheet.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ui": "node tests-ui/chay.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
