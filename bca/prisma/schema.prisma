@@ -1,0 +1,251 @@
+// BCA Midnight — schema Đợt 1. Nguồn: docs/bca/nghiep-vu/chuyen-du-lieu.md mục 3.
+// Ràng buộc Prisma không tả được (CHECK, EXCLUDE chống chồng ngày) nằm trong migration SQL.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum vai_tro {
+  chu
+  giao_vien
+}
+
+enum loai_ghi_danh {
+  thu
+  chinh_thuc
+}
+
+enum loai_buoi {
+  theo_lich
+  hoc_bu
+}
+
+enum trang_thai_buoi {
+  binh_thuong
+  huy
+}
+
+enum trang_thai_dd {
+  co
+  phep
+  vang
+}
+
+enum nguon_dd {
+  sheet
+  web
+}
+
+enum trang_thai_don {
+  moi
+  cho_duyet
+  da_nhan
+  trung
+  bo_qua
+  lead_cu
+}
+
+model lua {
+  id           Int        @id @default(autoincrement())
+  ma           String     @unique
+  ten          String
+  tu_ngay      DateTime   @db.Date
+  den_ngay     DateTime?  @db.Date
+  ghi_chu      String?
+  tao_luc      DateTime   @default(now()) @db.Timestamptz
+  cap_nhat_luc DateTime   @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh     hoc_sinh[]
+}
+
+model mon {
+  id            Int         @id @db.SmallInt
+  ma            String      @unique
+  ten_ngan      String
+  ten_day_du    String
+  thu           Int[]       @db.SmallInt // ISO 1 = T2 … 7 = CN
+  gio_bat_dau   String      @default("22:15") // "HH:MM" giờ Việt Nam
+  so_phut       Int         @default(90) @db.SmallInt
+  thu_tu        Int         @db.SmallInt
+  link_zalo     String?
+  ten_lop_azota String?
+  link_meet     String?
+  si_so_toi_da  Int         @default(0)
+  tao_luc       DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
+  phan_cong     phan_cong[]
+  ghi_danh      ghi_danh[]
+  buoi_hoc      buoi_hoc[]
+}
+
+model cai_dat {
+  khoa         String   @id
+  gia_tri      Json
+  ghi_chu      String?
+  tao_luc      DateTime @default(now()) @db.Timestamptz
+  cap_nhat_luc DateTime @default(now()) @updatedAt @db.Timestamptz
+}
+
+model nguoi_dung {
+  id            String      @id @default(uuid()) @db.Uuid
+  gmail         String      @unique // luôn lưu chữ thường
+  ten_hien_thi  String
+  vai_tro       vai_tro
+  khoa_luc      DateTime?   @db.Timestamptz
+  phien_huy_luc DateTime?   @db.Timestamptz // T23: phiên cấp trước mốc này hết hiệu lực
+  tao_luc       DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
+  phan_cong     phan_cong[]
+}
+
+model phan_cong {
+  nguoi_dung_id String     @db.Uuid
+  mon_id        Int        @db.SmallInt
+  tao_luc       DateTime   @default(now()) @db.Timestamptz
+  nguoi_dung    nguoi_dung @relation(fields: [nguoi_dung_id], references: [id], onDelete: Cascade)
+  mon           mon        @relation(fields: [mon_id], references: [id])
+
+  @@id([nguoi_dung_id, mon_id])
+}
+
+model hoc_sinh {
+  id               Int         @id @default(autoincrement())
+  ma_hs            String      @unique
+  ho_ten           String
+  lua_id           Int?
+  sdt_hs           String?
+  sdt_ph           String?
+  gmail            String?     @unique
+  truong           String?
+  khoi             String?
+  ho_ten_ph        String?
+  muc_tieu         String?
+  nguon            String?
+  username_azota   String?     @unique
+  dong_y_vinh_danh Boolean     @default(false)
+  da_nhan_chao     Boolean     @default(false)
+  ghi_chu          String?
+  ghi_chu_rieng    String?
+  ngay_tao         DateTime    @db.Date
+  so_du_dau_ky     Int         @default(0) // đồng
+  an_luc           DateTime?   @db.Timestamptz
+  tao_luc          DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime    @default(now()) @updatedAt @db.Timestamptz
+  lua              lua?        @relation(fields: [lua_id], references: [id])
+  ghi_danh         ghi_danh[]
+  diem_danh        diem_danh[]
+  don_dang_ky      don_dang_ky[]
+}
+
+model ghi_danh {
+  id            Int           @id @default(autoincrement())
+  ma_gd         String        @unique
+  hoc_sinh_id   Int
+  mon_id        Int           @db.SmallInt
+  loai          loai_ghi_danh
+  tu_ngay       DateTime      @db.Date
+  den_ngay      DateTime?     @db.Date
+  huy_luc       DateTime?     @db.Timestamptz
+  mien_phi      Boolean       @default(false)
+  don_gia_rieng Int?
+  ghi_chu       String?
+  tao_boi       String?       @db.Uuid
+  tao_luc       DateTime      @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime      @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh      hoc_sinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
+  mon           mon           @relation(fields: [mon_id], references: [id])
+
+  @@index([hoc_sinh_id, mon_id])
+}
+
+model buoi_hoc {
+  id               Int             @id @default(autoincrement())
+  mon_id           Int             @db.SmallInt
+  ngay             DateTime        @db.Date
+  bat_dau_luc      DateTime        @db.Timestamptz
+  so_phut          Int             @db.SmallInt
+  loai             loai_buoi       @default(theo_lich)
+  trang_thai       trang_thai_buoi @default(binh_thuong)
+  ly_do_huy        String?
+  bu_cho_buoi_id   Int?
+  noi_dung         String?
+  link_record      String?
+  ghi_chu          String?
+  da_diem_danh_luc DateTime?       @db.Timestamptz
+  tao_luc          DateTime        @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime        @default(now()) @updatedAt @db.Timestamptz
+  mon              mon             @relation(fields: [mon_id], references: [id])
+  bu_cho_buoi      buoi_hoc?       @relation("hoc_bu", fields: [bu_cho_buoi_id], references: [id])
+  buoi_bu          buoi_hoc[]      @relation("hoc_bu")
+  diem_danh        diem_danh[]
+
+  @@unique([mon_id, bat_dau_luc])
+  @@index([ngay])
+}
+
+model diem_danh {
+  buoi_id     Int
+  hoc_sinh_id Int
+  trang_thai  trang_thai_dd
+  ghi_chu     String? // T25: GV môn và chủ ghi; học sinh không thấy
+  ghi_luc     DateTime      @db.Timestamptz
+  ghi_boi     String?       @db.Uuid
+  nguon       nguon_dd      @default(web)
+  buoi        buoi_hoc      @relation(fields: [buoi_id], references: [id], onDelete: Restrict)
+  hoc_sinh    hoc_sinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
+
+  @@id([buoi_id, hoc_sinh_id])
+  @@index([hoc_sinh_id])
+}
+
+model don_dang_ky {
+  id               Int            @id @default(autoincrement())
+  thoi_gian        DateTime       @db.Timestamptz
+  nguon            String?
+  loai             String?
+  ho_ten           String
+  sdt_hs           String?
+  gmail            String?
+  truong           String?
+  khoi             String?
+  ho_ten_ph        String?
+  sdt_ph           String?
+  mon_ids          Int[]          @db.SmallInt
+  muc_tieu         String?
+  biet_qua         String?
+  da_hoc_thu       String?
+  dong_y           String? // vd "Đồng ý v1-2026-11 · 15/11/2026 10:20" hoặc "Form cũ"
+  dong_y_vinh_danh Boolean        @default(false)
+  ma_yeu_cau       String         @unique
+  trang_thai       trang_thai_don
+  hoc_sinh_id      Int?
+  ma_hs_cu         String?
+  ghi_chu_xu_ly    String?
+  loi_du_lieu      String[]
+  tao_luc          DateTime       @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime       @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh         hoc_sinh?      @relation(fields: [hoc_sinh_id], references: [id])
+}
+
+model bo_dem {
+  khoa    String @id
+  gia_tri Int
+}
+
+model nhat_ky {
+  id            Int      @id @default(autoincrement())
+  luc           DateTime @default(now()) @db.Timestamptz
+  nguoi_dung_id String?  @db.Uuid
+  vai_tro       String?
+  hanh_dong     String
+  doi_tuong     String
+  doi_tuong_id  String?
+  truoc         Json?
+  sau           Json?
+
+  @@index([doi_tuong, doi_tuong_id])
+  @@index([nguoi_dung_id])
+}
