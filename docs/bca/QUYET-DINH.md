@@ -79,6 +79,8 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T39. T13 chỉ áp cho màn Hôm nay: danh sách điểm danh và hồ sơ em vẫn hiện nhãn "Thử · còn N ngày" cho giáo viên.
 - T40. Đăng nhập thử trên địa chỉ xem thử Vercel chỉ bật khi DB là dữ liệu giả (có dấu `DU_LIEU_GIA`) và kèm Deployment Protection của Vercel; với DB thật chỉ dùng đăng nhập Google.
 - T41. Học sinh cũng có "khoá phiên ngay" như giáo viên (cột thu hồi phiên + kiểm hồ sơ bị ẩn) — làm cùng đăng nhập Google ở Đợt 2.
+- T42. Chỉ xoá được buổi TƯƠNG LAI chưa có dữ liệu (kèm hỏi xác nhận + Hoàn tác 5 giây); buổi đã qua chỉ được huỷ. Có nút "Sinh buổi còn thiếu" cho tháng đã có buổi.
+- T43. Đợt 1 xử lý đơn chờ duyệt trên web: "Tạo hồ sơ từ đơn" (điền sẵn từ đơn, ghi danh thử theo T1–T3) và "Bỏ qua" (kèm lý do); đơn đã xử lý hết khỏi việc ở Hôm nay.
 - T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
 ## Câu hỏi đang mở

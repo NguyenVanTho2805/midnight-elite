@@ -28,6 +28,14 @@ Từ BCA-D1-VAI-GV (vai giáo viên, ĐẠT — 7 chạm, ~10 s máy đo / ~25 s
 18. Bỏ chữ "GV" lặp trước tên hiển thị.
 19. Chặn đồng nhất: buổi môn khác cũng hiện "Không tìm thấy" như hồ sơ (không lộ việc buổi tồn tại).
 
+Từ BCA-D1-VAI-CL (vai chủ lớp, KHÔNG ĐẠT — 2 P2):
+20. **P2** Xoá buổi: theo T42 (chỉ buổi tương lai, xác nhận + Hoàn tác, nút "Sinh buổi còn thiếu") — components/quan-ly/buoi-hoc.tsx:163-176, server/buoi-hoc.ts.
+21. **P2** Đơn đăng ký: theo T43 ("Tạo hồ sơ từ đơn", "Bỏ qua") — app/(quan-ly)/quan-ly/don/page.tsx, server/don.ts.
+22. Nút "Xem 4 em ›" mở đúng nhóm ngày (lọc theo ngày hết), số trên nút khớp số em hiện.
+23. Ghi chú hồ sơ: báo "Đã lưu HH:MM"; mục Ghi chú không gập khi trống; báo khi chạm giới hạn 2000 ký tự (components/quan-ly/ghi-chu-hs.tsx).
+24. Tờ "Gia hạn cả nhóm" liệt kê tên các em trước khi bấm.
+25. /api/gia-han: số ngày sai (−5, 9999) trả 400 thay vì 409; trang "Không tìm thấy" trả HTTP 404 nếu làm được.
+
 ## Đợt 2 — ghi chú đầu vào
 - Khu học sinh thay trang /hoc tạm: chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
 - T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.
