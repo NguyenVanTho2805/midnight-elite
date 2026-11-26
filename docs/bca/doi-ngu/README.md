@@ -4,7 +4,7 @@
 
 Quyết định của chủ: [`../QUYET-DINH.md`](../QUYET-DINH.md). Mọi agent đọc tệp đó trước.
 
-## 5 phòng, 8 agent
+## 6 phòng, 11 agent
 
 | Phòng | Agent | Việc |
 |---|---|---|
@@ -16,6 +16,9 @@ Quyết định của chủ: [`../QUYET-DINH.md`](../QUYET-DINH.md). Mọi agent
 | Kỹ thuật | `bca-giao-dien` | Trang và linh kiện Next.js, chuyển động GSAP/Lenis/React Bits. |
 | Chất lượng | `bca-kiem-thu` | Viết và chạy test trình duyệt bằng Playwright CLI, trả bảng số thật. |
 | Chất lượng | `bca-ra-soat` | Rà mã độc lập: quyền, dữ liệu học sinh, tiền, khớp quy tắc nghiệp vụ. |
+| Người dùng thử | `bca-vai-chu-lop` | Đóng vai chủ lớp, dùng bản dựng như người thật (đơn mới, gia hạn, điểm danh, ma trận tháng). |
+| Người dùng thử | `bca-vai-giao-vien` | Đóng vai giáo viên một môn, điểm danh trên điện thoại trong buổi Meet, thử vượt quyền. |
+| Người dùng thử | `bca-vai-hoc-sinh` | Đóng vai học sinh chính thức / học thử / hết hạn trên điện thoại, thử xem dữ liệu em khác. |
 
 ## Vòng lặp hoàn thiện
 
@@ -31,8 +34,10 @@ Chủ ──mục tiêu──▶ Điều hành
      Kỹ thuật: Máy chủ ∥ Giao diện                      │
                    │                                   │
                    ▼                                   │
-     Chất lượng: Kiểm thử ─▶ Rà soát ─▶ Giám khảo ─────┘
-                   │   (đỏ / P1-P2 / điểm < 8 ⇒ quay lại, tối đa 3 vòng)
+     Chất lượng: Kiểm thử ─▶ Rà soát ─▶ Giám khảo ─────┤
+                   │                                   │
+     Người dùng thử: Chủ lớp ∥ Giáo viên ∥ Học sinh ───┘
+                   │   (đỏ / P1-P2 / điểm < 8 ở bất kỳ vai nào ⇒ quay lại, tối đa 3 vòng)
                    ▼
      Điều hành gom kết quả + CÂU HỎI CHO CHỦ ─▶ Chủ quyết ─▶ vòng sau
 ```

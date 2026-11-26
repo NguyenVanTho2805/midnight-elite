@@ -71,7 +71,7 @@ Cột biểu tượng + nhãn ngắn dưới biểu tượng, đủ 7 mục (Hô
 ```
 - Nền `sidebar` #0D1324, viền phải `border`. Mục cao 44, bo 10, chữ 14 `text-2`; đang mở: nền `nav-active`, chữ `text` 600, vạch vàng 3px bên trái.
 - Số đếm bên phải mục (Học sinh 70) dùng `text-3` + `tabular-nums`; số cần xử lý (Đơn 1) là huy hiệu `gold`/`on-gold`.
-- Mục Đợt 3 chưa có thì **không hiện** (không để mục xám "sắp có").
+- Hình trên là bản đủ. Mục chưa tới đợt (Sổ điểm, Học phí — Đợt 3) thì **không hiện** ở Đợt 1 (không để mục xám "sắp có"); tương tự ở thanh bên 72px và tờ "Thêm".
 - Giáo viên: chỉ Hôm nay, Điểm danh, Học sinh, Buổi học (+ Sổ điểm từ Đợt 3). Dưới tên hiện môn: "Chị Hoa · Toán".
 
 ### Đầu trang

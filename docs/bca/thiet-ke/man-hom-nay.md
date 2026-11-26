@@ -21,6 +21,8 @@ Trả lời trong 3 giây: **tối nay có buổi gì, đã điểm danh chưa, 
 - Tối nay: **Tiếng Anh 22:15**, chị Thu Hương · anh Quang Minh, 51 em (8 chính thức, 43 học thử).
 - Hết thử trong 3 ngày (ngày cuối thử từ 26/11 tới 29/11, cùng quy tắc `today + 3` của sheet): **33 em** — 16 em hết 28/11, 17 em hết 29/11. Ngày 30/11 thêm 13 em (ngoài khung 3 ngày).
 - Đơn chờ duyệt: 1.
+- Buổi đã qua chưa điểm danh: **5** (Địa 20/11, Toán 21/11 và 24/11, Anh 23/11, Sử 25/11 — sheet chỉ mới tick 5/10 buổi từ 16/11). Giáo viên Toán thấy 2.
+- Buổi đã học trong 7 ngày chưa có link record: **7** (sheet chưa có link record nào).
 → Khối "hết thử" phải chịu được **hàng chục em cùng lúc**: gom theo ngày hết, không liệt kê dài 33 hàng trên Hôm nay.
 
 ## 4. Nội dung theo thứ tự ưu tiên
@@ -28,8 +30,8 @@ Trả lời trong 3 giây: **tối nay có buổi gì, đã điểm danh chưa, 
 2. **Thẻ số liệu bấm được** — mỗi thẻ là `<a>` tới danh sách đã lọc:
    - Đơn mới `1` → `/quan-ly/don?trang-thai=moi`
    - Hết thử ≤ 3 ngày `33` → `/quan-ly/hoc-sinh?het=3`
-   - Buổi chưa điểm `0` → `/quan-ly/diem-danh#chua-diem`
-   - Chưa có record `4` → `/quan-ly/buoi-hoc?record=thieu` (chỉ tính buổi đã học trong 7 ngày qua, để con số còn làm được)
+   - Buổi chưa điểm `5` → `/quan-ly/diem-danh#chua-diem`
+   - Chưa có record `7` → `/quan-ly/buoi-hoc?record=thieu` (chỉ tính buổi đã học trong 7 ngày qua, để con số còn làm được)
 3. **Em hết thử trong 3 ngày** (chủ lớp): nhóm theo ngày hết.
 4. **Đơn mới** (chủ lớp): 3 đơn mới nhất.
 5. **Việc dở**: lấy từ danh sách việc của sheet (`kin_viecList`), bỏ học phí (Đợt 3):
@@ -97,7 +99,7 @@ Hết thử trong 3 ngày · 33 em                    Xem tất cả ›
 │ │ Đơn mới       ││ Hết thử ≤ 3 ng│   │
 │ └───────────────┘└───────────────┘   │
 │ ┌───────────────┐┌───────────────┐   │
-│ │ 0             ││ 4             │   │
+│ │ 5             ││ 7             │   │
 │ │ Buổi chưa điểm││ Chưa có record│   │
 │ └───────────────┘└───────────────┘   │
 │ Hết thử trong 3 ngày · 33 em   ›     │
@@ -122,7 +124,7 @@ Hết thử trong 3 ngày · 33 em                    Xem tất cả ›
 │           │ │ Chị Thu Hương · 51 em · còn 3 giờ │ │ Đơn mới  ││ Hết thử  │ │
 │           │ │ [   Điểm danh   ] [Mở Meet ↗]     │ └──────────┘└──────────┘ │
 │           │ │                                   │ ┌──────────┐┌──────────┐ │
-│           │ │                                   │ │ 0 Buổi   ││ 4 Chưa   │ │
+│           │ │                                   │ │ 5 Buổi   ││ 7 Chưa   │ │
 │           │ └───────────────────────────────────┘ └──────────┘└──────────┘ │
 │           │ ┌ Hết thử trong 3 ngày · 33 em ─────┐ ┌ Đơn mới · 1 ──────────┐ │
 │           │ │ (bảng nhóm theo ngày, hàng 48)    │ │                       │ │
