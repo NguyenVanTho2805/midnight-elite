@@ -27,8 +27,8 @@ type XemTruoc = {
 };
 type KetQua =
   | { ket_qua: "trung_ho_so"; goi_y: Trung[] }
-  | { ket_qua: "can_chu_quyet"; ly_do: "het_thu_dang_ky_lai" | "don_qua_han"; ma_hs: string | null }
-  | { ket_qua: "da_tao" | "da_gan"; nhatKyId: number; ma_hs: string; muon_chinh_thuc: boolean; thu: { tu: string; den: string } | null; mon: string[]; bo_qua: { mon?: string; ly_do: string }[]; trung_sdt?: string[] };
+  | { ket_qua: "can_chu_quyet"; ly_do: "het_thu_dang_ky_lai" | "da_nghi_dang_ky_lai" | "don_qua_han"; ma_hs: string | null }
+  | { ket_qua: "da_tao" | "da_gan"; nhatKyId: number; ma_hs: string; muon_chinh_thuc: boolean; thu: { tu: string; den: string } | null; mon: string[]; bo_qua: { mon?: string; ly_do: string }[]; trung_sdt?: string[]; trung_gmail?: string };
 
 const TEN_MON: Record<string, string> = { toan: "Toán", su: "Sử", dia: "Địa", anh: "Anh" };
 const tenMon = (ds: (string | undefined)[]) => ds.map((m) => TEN_MON[m ?? ""] ?? m ?? "").filter(Boolean).join(", ");
@@ -109,7 +109,7 @@ function TaoHoSo({ id, ten, dong }: { id: number; ten: string; dong: () => void 
       dong();
       const thu = kq.thu ? ` · thử ${tenMon(kq.mon)} tới ${ddmm(kq.thu.den)}` : "";
       const boQua = kq.bo_qua.length ? ` · ${tenMon(kq.bo_qua.map((b) => b.mon))} đang học sẵn` : "";
-      xong(`${kq.ket_qua === "da_tao" ? "Đã tạo" : "Đã gắn vào"} ${kq.ma_hs}${thu}${boQua}${kq.muon_chinh_thuc ? " · muốn chính thức" : ""}`, kq.nhatKyId);
+      xong(`${kq.ket_qua === "da_tao" ? "Đã tạo" : "Đã gắn vào"} ${kq.ma_hs}${thu}${boQua}${kq.muon_chinh_thuc ? " · muốn chính thức" : ""}${kq.trung_gmail ? ` · Gmail thuộc ${kq.trung_gmail}, không điền` : ""}`, kq.nhatKyId);
     } catch (e) { setLoi((e as Error).message); } finally { setDang(false); }
   }
 
@@ -143,7 +143,7 @@ function TaoHoSo({ id, ten, dong }: { id: number; ten: string; dong: () => void 
           {xem.da_xu_ly ? <p className="rounded-[14px] bg-raised px-3 py-2">Đơn này đã được xử lý.</p> : null}
           {hoi ? (
             <div role="alert" className="rounded-[14px] bg-warn-bg px-3 py-3">
-              <p className="font-semibold">{hoi.ly_do === "het_thu_dang_ky_lai" ? `Em đã hết thử trước đây${hoi.ma_hs ? ` (${hoi.ma_hs})` : ""} và đăng ký lại.` : "Đơn đã quá 14 ngày học thử."}</p>
+              <p className="font-semibold">{hoi.ly_do === "het_thu_dang_ky_lai" ? `Em đã hết thử trước đây${hoi.ma_hs ? ` (${hoi.ma_hs})` : ""} và đăng ký lại.` : hoi.ly_do === "da_nghi_dang_ky_lai" ? `Em đã nghỉ hết các môn${hoi.ma_hs ? ` (${hoi.ma_hs})` : ""} và đăng ký lại.` : "Đơn đã quá 14 ngày học thử."}</p>
               <p className="mt-1 text-text-2">Không tự cấp thử lại. Chủ quyết: cấp thử 14 ngày tính từ hôm nay, hoặc để đơn chờ.</p>
             </div>
           ) : null}
