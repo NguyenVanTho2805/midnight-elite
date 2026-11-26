@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { danhSachBuoi } from "@/server/buoi-hoc";
 import { napMon } from "@/server/du-lieu";
-import { congNgay, ngayVN, thuISO } from "@/lib/ngay";
+import { congNgay, gioVN, ngayVN, thuISO } from "@/lib/ngay";
 import { conGioBuoiToiQua, moDiemDanh } from "@/lib/quy-tac";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
@@ -103,13 +103,14 @@ export default async function TrangBuoiHoc({ searchParams }: { searchParams: Pro
 
 const nho = (b: B) => ({ id: b.id, ngay: b.ngay, gio: b.gio, mon: b.mon, trang_thai: b.trang_thai, loai: b.loai });
 
-function trangThaiDD(b: B, h: string) {
+function trangThaiDD(b: B, h: string, luc: Date) {
   const t = b.tien_do;
   if (b.trang_thai === "huy" || !t) return null;
   if (b.ngay > h) return <span className="text-text-2 so">{t.si_so} em</span>;
   if (t.da_diem >= t.si_so && t.si_so > 0) return <span className="text-text-2 so">Đã điểm {t.da_diem}/{t.si_so}</span>;
   if (t.da_diem > 0) return <span className="text-warn so">Đã điểm {t.da_diem}/{t.si_so}</span>;
-  return <span className={b.ngay < h ? "text-warn" : "text-text-2"}>{b.ngay < h ? "Chưa điểm" : `${t.si_so} em · chưa tới giờ`}</span>;
+  const daBatDau = b.ngay < h || (b.ngay === h && gioVN(luc) >= b.gio);
+  return <span className={daBatDau ? "text-warn" : "text-text-2"}>{daBatDau ? "Chưa điểm" : `${t.si_so} em · chưa tới giờ`}</span>;
 }
 
 function HangBuoi({ b, h, luc, chon, href, danHref }: { b: B; h: string; luc: Date; chon: boolean; href: string; danHref: string }) {
@@ -136,7 +137,7 @@ function HangBuoi({ b, h, luc, chon, href, danHref }: { b: B; h: string; luc: Da
         <p className="text-[14px]">
           {huy ? <span className="text-text-3">Lớp nghỉ{b.ly_do_huy ? ` · Lý do: ${b.ly_do_huy}` : ""}</span> : (
             <>
-              {trangThaiDD(b, h)}
+              {trangThaiDD(b, h, luc)}
               {b.ngay < h ? (b.link_record ? <span className="text-ok"> · Có record</span> : <span className="text-warn"> · Thiếu record</span>) : null}
               {b.noi_dung ? <span className="hidden truncate text-text-3 lg:inline"> · {b.noi_dung}</span> : null}
             </>

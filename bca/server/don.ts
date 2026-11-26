@@ -142,6 +142,9 @@ export async function taoHoSoTuDon(
       for (const c of COT_DIEN) if (tuDon[c] && !cu[c]) dien[c] = tuDon[c]!;
       const chuGmail = dien.gmail ? await tx.hoc_sinh.findUnique({ where: { gmail: dien.gmail }, select: { ma_hs: true } }) : null;
       if (chuGmail) { delete dien.gmail; canh_bao = { trung_gmail: chuGmail.ma_hs }; } // Gmail là duy nhất: không điền, báo mã hồ sơ đang giữ
+      // T47: ô đã có giá trị khác với đơn (vd SĐT phụ huynh) ⇒ giữ số cũ, báo cho chủ biết để xác minh.
+      const khac = COT_DIEN.filter((c) => tuDon[c] && cu[c] && tuDon[c] !== cu[c] && (c === "sdt_ph" || c === "sdt_hs"));
+      if (khac.length) canh_bao = { ...(canh_bao ?? {}), khac_ho_so: khac };
       if (Object.keys(dien).length) await tx.hoc_sinh.update({ where: { id: cu.id }, data: dien });
       hs = cu;
     } else {

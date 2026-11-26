@@ -15,20 +15,21 @@ import { nhan, nutChinh, nutPhu, oNhap } from "../ui/nut";
 import { useHoanTac } from "../khung/hoan-tac";
 import { useHangDoi } from "../khung/hang-doi";
 
-type Trung = { ma_hs: string; ho_ten: string; an: boolean; ten_giong: boolean; khop: string[] };
+type Khoang = { tu: string; den: string; ly_do?: string };
+type Trung = { ma_hs: string; ho_ten: string; an: boolean; ten_giong: boolean; khop: string[]; thu_du_kien?: Khoang };
 type XemTruoc = {
   ho_so: { hoTen: string; sdtHs?: string; sdtPh?: string; gmail?: string; hoTenPh?: string; truong?: string; khoi?: string; mucTieu?: string; nguon?: string };
   mon: (string | undefined)[];
   muon_chinh_thuc: boolean;
   ngay_dang_ky: string;
-  thu_du_kien: { tu: string; den: string };
+  thu_du_kien: Khoang;
   trung: Trung[];
   da_xu_ly: boolean;
 };
 type KetQua =
   | { ket_qua: "trung_ho_so"; goi_y: Trung[] }
   | { ket_qua: "can_chu_quyet"; ly_do: "het_thu_dang_ky_lai" | "da_nghi_dang_ky_lai" | "don_qua_han"; ma_hs: string | null }
-  | { ket_qua: "da_tao" | "da_gan"; nhatKyId: number; ma_hs: string; muon_chinh_thuc: boolean; thu: { tu: string; den: string } | null; mon: string[]; bo_qua: { mon?: string; ly_do: string }[]; trung_sdt?: string[]; trung_gmail?: string };
+  | { ket_qua: "da_tao" | "da_gan"; nhatKyId: number; ma_hs: string; muon_chinh_thuc: boolean; thu: { tu: string; den: string } | null; mon: string[]; bo_qua: { mon?: string; ly_do: string }[]; trung_sdt?: string[]; trung_gmail?: string; khac_ho_so?: string[] };
 
 const TEN_MON: Record<string, string> = { toan: "Toán", su: "Sử", dia: "Địa", anh: "Anh" };
 const tenMon = (ds: (string | undefined)[]) => ds.map((m) => TEN_MON[m ?? ""] ?? m ?? "").filter(Boolean).join(", ");
@@ -96,6 +97,7 @@ function TaoHoSo({ id, ten, dong }: { id: number; ten: string; dong: () => void 
   }, [id]);
   const trung = xem?.trung ?? [];
   const canChon = trung.length > 0 && !chon;
+  const khoang: Khoang = (chon && chon !== "moi" ? trung.find((t) => t.ma_hs === chon)?.thu_du_kien : undefined) ?? (xem?.thu_du_kien ?? { tu: "", den: "" });
 
   async function gui(capThuMoi = false) {
     if (canChon) return setLoi("Chọn gắn vào hồ sơ cũ hay tạo hồ sơ mới.");
@@ -109,12 +111,12 @@ function TaoHoSo({ id, ten, dong }: { id: number; ten: string; dong: () => void 
       dong();
       const thu = kq.thu ? ` · thử ${tenMon(kq.mon)} tới ${ddmm(kq.thu.den)}` : "";
       const boQua = kq.bo_qua.length ? ` · ${tenMon(kq.bo_qua.map((b) => b.mon))} đang học sẵn` : "";
-      xong(`${kq.ket_qua === "da_tao" ? "Đã tạo" : "Đã gắn vào"} ${kq.ma_hs}${thu}${boQua}${kq.muon_chinh_thuc ? " · muốn chính thức" : ""}${kq.trung_gmail ? ` · Gmail thuộc ${kq.trung_gmail}, không điền` : ""}`, kq.nhatKyId);
+      xong(`${kq.ket_qua === "da_tao" ? "Đã tạo" : "Đã gắn vào"} ${kq.ma_hs}${thu}${boQua}${kq.muon_chinh_thuc ? " · muốn chính thức" : ""}${kq.trung_gmail ? ` · Gmail thuộc ${kq.trung_gmail}, không điền` : ""}${kq.khac_ho_so?.length ? ` · ${kq.khac_ho_so.map((c) => (c === "sdt_ph" ? "SĐT PH" : "SĐT HS")).join(", ")} trong đơn khác hồ sơ (giữ số cũ)` : ""}`, kq.nhatKyId);
     } catch (e) { setLoi((e as Error).message); } finally { setDang(false); }
   }
 
   const h = xem?.ho_so;
-  const quaHan = xem ? xem.thu_du_kien.den < xem.thu_du_kien.tu : false;
+  const quaHan = !!khoang.ly_do; // đơn quá hạn / em cũ đăng ký lại ⇒ chủ được hỏi trước khi cấp
   return (
     <ToTruot
       mo
@@ -163,8 +165,8 @@ function TaoHoSo({ id, ten, dong }: { id: number; ten: string; dong: () => void 
             ))}
           </dl>
           <div className="rounded-[14px] bg-raised px-3 py-2 text-[14px]">
-            <p><span className="font-semibold">Ghi danh thử:</span> {tenMon(xem.mon) || "—"} · <span className="so">{ddmm(xem.thu_du_kien.tu)} → {ddmm(xem.thu_du_kien.den)}</span></p>
-            <p className="text-text-3">Đăng ký {ddmm(xem.ngay_dang_ky)} · 14 ngày tính từ ngày đăng ký.{quaHan ? " Đơn đã quá hạn thử — chủ sẽ được hỏi trước khi cấp." : ""}</p>
+            <p><span className="font-semibold">Ghi danh thử:</span> {tenMon(xem.mon) || "—"} · <span className="so">{ddmm(khoang.tu)} → {ddmm(khoang.den)}</span>{chon && chon !== "moi" ? <span className="text-text-3"> (nếu gắn vào {chon}; môn em đang học sẽ bỏ qua)</span> : null}</p>
+            <p className="text-text-3">Đăng ký {ddmm(xem.ngay_dang_ky)} · 14 ngày tính từ ngày đăng ký.{quaHan ? " Chủ sẽ được hỏi trước khi cấp thử (đơn quá hạn hoặc em đăng ký lại)." : ""}</p>
             {xem.muon_chinh_thuc ? <p className="mt-1"><Chip mau="ok">Muốn chính thức</Chip> <span className="text-text-2">vẫn học thử trước; chủ bấm “Lên chính thức” ở hồ sơ.</span></p> : null}
           </div>
           {trung.length ? (

@@ -84,6 +84,7 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T44. Nhận đơn muộn: thử bắt đầu từ hôm nay (không phủ ngược buổi đã qua), ngày hết vẫn theo T1 (ngày đăng ký + 13).
 - T45. Hoàn tác "Tạo hồ sơ từ đơn" xoá hẳn hồ sơ vừa tạo (chưa có dữ liệu; mã không cấp lại). Quy ước chung cho mọi Hoàn tác: thanh Hoàn tác hiện 5 giây, máy chủ chấp nhận tới 10 giây (bù mạng chậm).
 - T46. Em đã từng có ghi danh (thử hoặc chính thức) nay không còn môn nào mở, gửi đơn học thử ⇒ vào hàng chờ chủ như T2 (không tự cấp). Em đang học (còn môn mở) đăng ký thêm môn mới ⇒ ghi danh thử môn mới bình thường theo T44.
+- T47. Gắn đơn vào hồ sơ cũ mà SĐT (phụ huynh / học sinh) trong đơn khác số đang lưu ⇒ giữ số cũ, báo cho chủ để gọi xác minh.
 - T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
 ## Câu hỏi đang mở

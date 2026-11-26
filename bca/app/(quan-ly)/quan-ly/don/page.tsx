@@ -47,7 +47,7 @@ export default async function TrangDon({ searchParams }: { searchParams: Promise
                 <li key={d.id} id={`don-${d.id}`} aria-current={d.id === donChon ? "true" : undefined} className={`hang-dai flex scroll-mt-24 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${d.id === donChon ? "bg-nav-active" : ""}`}>
                   <div className="min-w-0 flex-1 basis-60">
                     <p className="font-semibold" translate="no">{d.ho_ten}</p>
-                    <p className="so text-[13px] text-text-3">{ddmm(ngay)} {gio(d.thoi_gian)} · {d.loai ?? "—"} · {d.nguon ?? "—"}{d.sdt_hs ? <> · <a href={`tel:${d.sdt_hs}`} className="hover:underline" translate="no">{sdt(d.sdt_hs)}</a></> : null}</p>
+                    <p className="so text-[13px] text-text-3">{ddmm(ngay)} {gio(d.thoi_gian)} · {d.loai ?? "—"} · {d.nguon ?? "—"}{d.sdt_hs ? <> · <a href={`tel:${d.sdt_hs}`} className="whitespace-nowrap hover:underline" translate="no">{sdt(d.sdt_hs)}</a></> : null}</p>
                   </div>
                   <span className="flex flex-wrap gap-1.5">{d.mon.map((m) => <Chip key={m}>{TEN_MON[m ?? ""] ?? m}</Chip>)}</span>
                   <Chip mau={tt.mau}>{tt.nhan}</Chip>
