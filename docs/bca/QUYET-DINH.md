@@ -37,5 +37,29 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 23. **Thứ tự đợt:** Đợt 1 quản lý lớp (học sinh + ghi danh, buổi học + điểm danh, màn Hôm nay, chuyển dữ liệu từ sheet) → Đợt 2 khu học sinh + đăng nhập Google → Đợt 3 sổ điểm, học phí → Đợt 4 trang giới thiệu + form, email, Meet.
 24. **Chủ duyệt cuối mỗi đợt.** Trong đợt đội tự làm, tự kiểm, tự rà; câu hỏi nghiệp vụ gửi chủ ngay khi gặp.
 
+## Tạm chọn, chờ chủ duyệt (26/11, chủ vắng 5 giờ — đội chọn phương án khuyên dùng; chủ đổi được)
+Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "Câu hỏi cho chủ".
+- T1. Đăng ký sau 22:15 vẫn tính hôm đó là ngày 1 của 14 ngày thử (đúng chữ quyết định 8); chủ gia hạn nếu cần.
+- T2. Em hết hạn thử đăng ký thử lại: không tự cấp, vào hàng chờ chủ.
+- T3. Đơn "Chính thức" của em chưa từng thử: thử 14 ngày kèm cờ "muốn chính thức"; chủ bấm chuyển (quyết định 16).
+- T4. Gia hạn thử áp cho mọi môn em đang thử.
+- T5. Đơn giá theo kỳ: số môn có buổi > 0 trong kỳ quyết định 65.000đ hay 55.000đ (quyết định 13).
+- T6. 5 em đăng ký web 15/11 giữ nguyên hạn thử 29/11.
+- T7. Học sinh nghỉ chỉ ẩn, không xoá cứng.
+- T8. Đổi lịch môn: sinh lại buổi tương lai chưa có dữ liệu; buổi đã có dữ liệu giữ nguyên và báo chủ.
+- T9. Chỉ chủ huỷ buổi và thêm học bù.
+- T10. Đợt 1 chỉ hiện số đếm Có/Phép/Vắng; công thức chuyên cần chốt ở Đợt 3.
+- T11. Giáo viên sửa điểm danh cũ mọi lúc; quá 48 giờ phải xác nhận; có nhật ký.
+- T12. Buổi tối qua chưa điểm danh hiện ở Hôm nay đến 05:59 sáng.
+- T13. Giáo viên không thấy em thử sắp hết hạn.
+- T14. Giáo viên không thấy SĐT và Gmail học sinh.
+- T15. Giáo viên thấy em đã nghỉ môn mình, chỉ xem.
+- T16. Học sinh nghỉ/hết thử xem được điểm và điểm danh của chính mình, không xem tài liệu/record.
+- T17. Chủ và giáo viên đăng nhập Google bằng Gmail do chủ nhập (máy dev dùng đăng nhập thử theo vai).
+- T18. Em mất hồ sơ có 4 ghi danh thử: dựng lại từ đơn, giữ mã cũ.
+- T19. 12 em đã xoá (__DaXoa) không chuyển.
+- T20. Buổi Sử 25/11: coi là đã điểm danh; 39 dấu theo ma trận, 15 em còn lại là Có.
+- T21. Chuyển dữ liệu: chạy thử nhiều lần trên DB thử; chuyển thật một lần khi chủ quyết.
+
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).

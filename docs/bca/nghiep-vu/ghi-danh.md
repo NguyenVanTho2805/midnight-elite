@@ -23,7 +23,7 @@ Các ô trên sheet sau đây là **cột tính**, không lưu trên hồ sơ: T
 
 1.3. Chuẩn hoá khi nhập:
 - **SĐT:** bỏ mọi ký tự không phải số. Đầu `84` kèm 9 số thì đổi thành `0`. Đủ 9 số mà không có số 0 đầu thì thêm `0`. Số hợp lệ phải khớp `^0[35789]\d{8}$`.
-  - Ví dụ: `+84 912 345 678` → `0912345678`, hợp lệ. `912345678` → `0912345678`. `0212345678` không hợp lệ: vẫn lưu nhưng báo "Sửa dữ liệu".
+  - Ví dụ: `+84 900 000 001` → `0900000001`, hợp lệ. `900000001` → `0900000001`. `0200000001` không hợp lệ: vẫn lưu nhưng báo "Sửa dữ liệu".
 - **Gmail:** bỏ khoảng trắng, đổi hết sang chữ thường. Đuôi gõ nhầm (`gamil.com`, `gmai.com`, `gmail.con`, …) thì gợi ý địa chỉ đúng nhưng **không tự sửa**.
 - **Họ tên:** chỉ cắt khoảng trắng thừa, không tự viết hoa. Sheet có 2 hồ sơ mà tên bắt đầu bằng chữ thường: để chủ sửa tay.
 

@@ -1,6 +1,7 @@
 # Màn Điểm danh — BCA-D1-TK (26/11/2026)
 
 Ưu tiên số 1 của Đợt 1 (`QUYET-DINH.md` mục 21): **giáo viên điểm danh trên điện thoại ngay trong buổi Meet**.
+**Quy tắc** (ai trong danh sách, khi nào được điểm, "đánh tất cả", sau nửa đêm, chuyên cần, chuyển ký hiệu cũ): [`../nghiep-vu/diem-danh.md`](../nghiep-vu/diem-danh.md); hai giáo viên cùng môn: [`../nghiep-vu/phan-quyen.md`](../nghiep-vu/phan-quyen.md) 2.3. Tệp này chỉ nói giao diện.
 Khung chung, chỉ báo lưu, hàng đợi khi mất mạng: [khung-quan-ly.md](khung-quan-ly.md). Token: `token.md` (phần bổ sung khu quản lý).
 
 ## 1. Mục đích và ai dùng
@@ -14,7 +15,7 @@ Khung chung, chỉ báo lưu, hàng đợi khi mất mạng: [khung-quan-ly.md](
 ## 2. Số liệu thật để thiết kế (sheet ngày 26/11)
 - Toán: 63 em có ghi danh (14 chính thức + 49 học thử); Anh 51; Sử 54; Địa 20. → danh sách một buổi **dài tới ~65 hàng**.
 - Sheet hiện chỉ lưu ngoại lệ: `__DiemDanh` có 51 dòng `V` (vắng) + 4 dòng `P` (phép); em không có dòng nào trong buổi "Đã điểm danh" được coi là có mặt. Web mới phải **tách "Chưa điểm" khỏi "Có"** — đó là lý do có nút "Đánh tất cả có mặt" thay vì mặc định ngầm.
-- Ký hiệu cũ `V` = vắng; bộ ký hiệu mới của ma trận: ✓ có · P phép · K vắng (không phép). Chuyển dữ liệu: `V` → K, `P` → P, trống trong buổi đã điểm → ✓ (bàn giao cho `bca-nghiep-vu`).
+- Ký hiệu cũ `V` = vắng; bộ ký hiệu mới của ma trận: ✓ có · P phép · K vắng (không phép). Chuyển dữ liệu theo `nghiep-vu/diem-danh.md` Điều 7 (`V`/`v` → vắng, `P`/`p` → phép, ô trống của buổi đã tick → có, ký tự lạ → danh sách lỗi cho chủ xem).
 
 ## 3. Điểm danh một buổi — điện thoại 390px (bản chính)
 
@@ -104,11 +105,12 @@ Khung chung, chỉ báo lưu, hàng đợi khi mất mạng: [khung-quan-ly.md](
 | Mất mạng | Dải `warn-bg` dưới đầu trang. Mọi chạm vẫn đổi màu ngay; hàng chưa gửi có chấm rỗng 8px cạnh tên (`aria-label="Chưa gửi"`); đầu trang "3 thay đổi chưa gửi". Có mạng lại → tự gửi, chấm biến mất, "Đã lưu 22:34". | |
 | Lưu lỗi một hàng (máy chủ từ chối, ví dụ hết quyền) | Hàng có viền trái 3px `danger` + chữ "Không lưu được · Thử lại" dưới tên | |
 | Mở khi đang mất mạng mà chưa từng tải | "Không mở được danh sách vì đang mất mạng. Mở lại khi có mạng; lần sau mở trang này trước giờ học." | |
-| Buổi chưa tới giờ (cùng ngày) | Dải `raised` nhỏ "Buổi bắt đầu lúc 22:15" — **vẫn cho điểm** | |
+| Trước 21:45 (sớm hơn 30 phút trước giờ bắt đầu) | Danh sách **chỉ đọc** để xem trước; dải `raised` "Điểm danh mở lúc 21:45"; không có nút "Đánh tất cả có mặt" (nghiệp vụ Điều 3.4) | |
+| Sau nửa đêm (00:00–05:59) | Vẫn điểm buổi tối qua bình thường; tiêu đề ghi rõ ngày của buổi "Anh · T5 26/11" (điểm danh gắn với buổi, không với "hôm nay" — nghiệp vụ Điều 4) | |
 | Buổi ngày mai trở đi | Không có nút điểm danh; chỉ "Buổi chưa diễn ra" | |
 | Buổi trạng thái Nghỉ | "Buổi này nghỉ — không điểm danh." + (chủ lớp) "Đổi thành Có học" | |
 | **Khoá 48 giờ** | Quá 48 giờ từ giờ bắt đầu buổi: nút chỉ đọc (mờ 60 %, vẫn đọc được trạng thái), dải trên cùng "Buổi đã qua 3 ngày. Sửa điểm danh sẽ đổi chuyên cần và học phí." + nút "Mở sửa". Bấm → hộp thoại xác nhận một lần cho cả buổi (không hỏi lại từng chạm). | |
-| Giáo viên khác cùng môn vừa sửa | Hàng nhấp nền `raised` 1 lần (không động nếu giảm chuyển động) + chữ nhỏ "Chị Hoa đổi lúc 22:33". Dữ liệu làm mới mỗi 15 giây khi trang đang hiện. Cùng một ô: bản ghi sau thắng. | |
+| Giáo viên khác cùng môn vừa sửa | Hàng nhấp nền `raised` 1 lần (không động nếu giảm chuyển động) + chữ nhỏ "Lần sửa cuối: chị Hoa lúc 22:41". Dữ liệu làm mới mỗi 15 giây khi trang đang hiện. Cùng một ô: bản ghi sau thắng, nhật ký giữ cả hai (`phan-quyen.md` 2.3). | |
 | Học thử / khoá học thử | Xem §3: chip thử; em hết thử không có trong danh sách + dòng cuối. | |
 
 ## 6. Thanh Hoàn tác 5 giây (`UndoBar`)
@@ -142,7 +144,7 @@ Lấy bảng dày của mẫu B, tô theo token A, sửa ký hiệu.
 - Màu ký hiệu trên `surface`: ✓ `ok` (9.67) · P `excused` (10.14) · K `danger` (7.58) · "·" và "–" `text-3` (7.02). Ký hiệu khác nhau về **hình**, màu chỉ bổ trợ.
 - Cột hôm nay (hoặc buổi gần nhất đã qua) nền `today-col`, chữ đầu cột `gold`; khi mở, bảng **tự cuộn ngang** để cột này nằm trong tầm nhìn (cuộn tức thì, không trượt).
 - Buổi "Nghỉ": cột hẹp 28px, đầu cột "Nghỉ", ô gạch chéo `border`, không bấm được. Buổi "Học bù": đầu cột thêm "· bù".
-- "Có mặt" = số ✓ / số buổi em thuộc lớp (đã điểm). "Chuỗi" = số buổi có mặt liên tiếp gần nhất; **P không làm đứt chuỗi và không cộng vào chuỗi**, ô "·" chưa điểm bị bỏ qua (`huong-chon.md` sửa 5). Cả hai `tabular-nums`.
+- "Có mặt" = số ✓ / (✓ + P + K) của em trong tháng (nghiệp vụ Điều 6.1). "Chuỗi" theo nghiệp vụ Điều 6.3: Có +1, **P giữ nguyên**, K về 0, buổi huỷ và ô chưa điểm bỏ qua (`huong-chon.md` sửa 5). Cả hai `tabular-nums`.
 - Bấm ô (chủ lớp, giáo viên môn đó) → menu nhỏ cạnh ô: Có · Phép · Vắng · Về chưa điểm (mỗi mục cao 44). **Không bấm đổi vòng** như mẫu B. Ô quá 48 giờ: menu có thêm dòng "Buổi đã qua 48 giờ" và hỏi xác nhận một lần cho cả cột.
 - Bàn phím: bảng là lưới (`role="grid"`), mũi tên đi giữa ô, Enter mở menu, phím 1/2/3 đặt thẳng, Delete về chưa điểm.
 - Mỗi ô có `aria-label` đầy đủ: "Nguyễn Minh Anh, Thứ Bảy 28/11: có mặt".
@@ -156,7 +158,7 @@ Lấy bảng dày của mẫu B, tô theo token A, sửa ký hiệu.
 - Ghi chú cạnh bảng: "Vuốt ngang để xem các buổi khác" chỉ hiện lần đầu.
 
 ## 8. Danh mục `/quan-ly/diem-danh`
-1. **Hôm nay**: thẻ buổi hôm nay của môn mình (0–2 thẻ; có thể 2 nếu có buổi học bù): môn, giờ, "Đã điểm 61/63" hoặc "Chưa điểm", nút "Điểm danh" vàng 48px.
+1. **Hôm nay**: thẻ buổi hôm nay của môn mình (0–2 thẻ; có thể 2 nếu có buổi học bù): môn, giờ, "Đã điểm 61/63" hoặc "Chưa điểm", nút "Điểm danh" vàng 48px (từ 21:45). Từ 00:00 đến 05:59 thêm thẻ "Buổi tối qua" nếu buổi hôm qua chưa điểm đủ, đặt trên cùng.
 2. **Chưa điểm danh** (14 ngày qua, giống việc ✅ của sheet): mỗi hàng một buổi, "Toán · T3 24/11 · chưa điểm 63 em" → mở buổi.
 3. **Ma trận tháng**: nút "Xem ma trận tháng 11".
 4. Trống: "Không còn buổi nào chưa điểm. Buổi kế: Chủ nhật 29/11 · Sử 22:15."
@@ -198,16 +200,13 @@ Không GSAP, không Lenis (cần cuộn gốc cho đầu bảng dính và cột 
 - Mẫu gốc đã chấm: `A-QuanLy` (bảng, nền), `B-QuanLy` (ma trận), `C-QuanLy` (ô to điện thoại) trong thư mục mẫu của đợt chấm 26/11; dữ liệu thật: sheet lớp 26/11 (`__DiemDanh`, `📝 Ghi danh`).
 
 ## Câu hỏi cho chủ
+Hai giáo viên cùng môn: đã có quy tắc "bản ghi sau thắng" ở `phan-quyen.md` 2.3; giới hạn sửa điểm danh cũ: `nghiep-vu/diem-danh.md` Câu hỏi 2 (thiết kế theo phương án A — mọi lúc, quá 48 giờ phải xác nhận). Câu hỏi giao diện:
 1. **Bấm "Điểm danh" ở thanh dưới trong giờ học thì mở thẳng buổi tối nay?**
-   - A. Có: từ 21:45 tới 02:00, nếu hôm đó môn của người dùng có đúng 1 buổi thì mở thẳng buổi đó; ngoài giờ mở danh mục — **khuyên dùng** (bớt 1 chạm trong Meet, vẫn quay ra danh mục bằng ‹).
+   - A. Có: từ 21:45 tới 05:59 sáng hôm sau (cùng khung "Buổi tối qua" của nghiệp vụ), nếu chỉ có đúng 1 buổi của môn người dùng còn mở thì mở thẳng buổi đó; ngoài giờ mở danh mục — **khuyên dùng** (bớt 1 chạm trong Meet, vẫn quay ra danh mục bằng ‹).
    - B. Luôn mở danh mục, người dùng chạm thẻ buổi tối nay.
-2. **Toán và Anh có 2 giáo viên. Ai điểm danh một buổi?**
-   - A. Cả hai đều điểm được; ai sửa sau thì thắng, màn hiện "Chị Hoa đổi lúc 22:33" — **khuyên dùng** (không cần phân công từng buổi).
-   - B. Mỗi buổi gán một giáo viên phụ trách (ở màn Buổi học); người kia chỉ xem.
-   - C. Chỉ chủ lớp sửa được sau khi giáo viên phụ trách đã điểm xong.
-3. **Có thêm ô "Ghi chú" cho từng em trong từng buổi không?** (Sheet hiện không có; mẫu A có "Ốm, đã báo Zalo".)
+2. **Có thêm ô "Ghi chú" cho từng em trong từng buổi không?** (Sheet hiện không có; mẫu A có "Ốm, đã báo Zalo".)
    - A. Có, tuỳ chọn, chỉ chủ lớp và giáo viên thấy — **khuyên dùng**.
    - B. Không, chỉ Có/Phép/Vắng như sheet.
-4. **Có cần mở được màn điểm danh khi đã mất mạng từ trước (cài như ứng dụng, có service worker)?**
+3. **Có cần mở được màn điểm danh khi đã mất mạng từ trước (cài như ứng dụng, có service worker)?**
    - A. Chưa cần ở Đợt 1: tải sẵn danh sách khi mở Hôm nay, thay đổi giữ trong hàng đợi khi rớt mạng giữa buổi — **khuyên dùng** (đủ cho trường hợp mạng chập chờn khi đang Meet, ít rủi ro).
    - B. Có: làm PWA "Thêm vào màn hình chính", mở được cả khi không có mạng (tốn thêm công và phải kiểm kỹ bộ nhớ đệm).
