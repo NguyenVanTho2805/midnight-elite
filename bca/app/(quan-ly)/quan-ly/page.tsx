@@ -1,50 +1,277 @@
-// Trang CHẨN ĐOÁN tạm (phòng Giao diện sẽ dựng màn thật theo docs/bca/thiet-ke).
-import { redirect } from "next/navigation";
-import { nguoiHienTai } from "@/server/phien";
+// Màn Hôm nay (man-hom-nay.md) — chủ lớp và giáo viên; lọc theo vai làm ở máy chủ (server/hom-nay.ts).
+import Link from "next/link";
 import { homNay } from "@/server/hom-nay";
-import { DangXuat } from "@/app/dang-nhap/dang-xuat";
+import { layNguoiQuanLy } from "@/components/khung/nguoi";
+import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
+import { ddmm, gio, lucVN, thuNgay, thuNganNgay, tenMonDayDu } from "@/components/dinh-dang";
+import { nutChinhTo, nutPhu } from "@/components/ui/nut";
+import { DemNguoc } from "@/components/quan-ly/dem-nguoc";
+import { NhomThu, type EmThu } from "@/components/quan-ly/nhom-thu";
 
-const API = ["/api/toi", "/api/hom-nay", "/api/hoc-sinh", "/api/buoi-hoc", "/api/diem-danh/thang?mon=toan", "/api/don", "/api/nhat-ky"];
+export const metadata = { title: "Hôm nay" };
 
-export default async function QuanLy() {
-  const u = await nguoiHienTai();
-  if (!u) redirect("/dang-nhap");
-  if (u.vai === "hoc_sinh") redirect("/hoc");
-  const d = await homNay(u);
+type D = Awaited<ReturnType<typeof homNay>>;
+type Buoi = D["lop_toi_nay"][number];
+type Mon = { ma: string; ten: string } | undefined;
+type Viec = D["viec"][number];
+
+export default async function HomNay() {
+  const u = await layNguoiQuanLy();
+  const luc = new Date();
+  const d = await homNay(u, luc);
+  const chu = u.vai === "chu";
   return (
-    <main className="mx-auto max-w-[1120px] p-4 sm:p-8">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold">Chẩn đoán · Hôm nay {d.hom_nay}</h1>
-          <p className="text-text-2">{u.ten} · {u.vai === "chu" ? "Chủ lớp" : "Giáo viên"}</p>
+    <>
+      <DauTrang tieuDe="Hôm nay" phu={thuNgay(d.hom_nay)} />
+      <NoiDung>
+        <h1 className="sr-only">Hôm nay · {thuNgay(d.hom_nay)}</h1>
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="grid content-start gap-6 lg:col-span-7">
+            <section aria-label="Lớp tối nay" className="grid gap-3">
+              {d.lop_toi_nay.length ? (
+                d.lop_toi_nay.map((b) => <TheToiNay key={b.id} b={b} luc={luc.getTime()} />)
+              ) : (
+                <TheKhongBuoi d={d} monGv={chu ? null : d.the_so.si_so.map((s) => s.mon?.ten).join(", ")} />
+              )}
+            </section>
+            <ViecCanLam d={d} chu={chu} />
+          </div>
+          <div className="grid content-start gap-6 lg:col-span-5">
+            <SoLieu d={d} chu={chu} />
+            <Lich7 d={d} />
+          </div>
         </div>
-        <DangXuat />
-      </header>
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold">Lớp tối nay</h2>
-        <ul className="mt-2 grid gap-2">
-          {d.lop_toi_nay.map((b) => (
-            <li key={b.id} className="rounded-[14px] border border-border bg-surface p-3 so">
-              {b.toi_qua ? "Buổi tối qua · " : ""}{b.mon?.ten} {b.ngay} {b.gio} · {b.chinh_thuc} chính thức · {b.thu} thử · đã điểm {b.da_diem}/{b.si_so}
-              {b.trang_thai === "huy" ? ` · Lớp nghỉ (${b.ly_do_huy})` : ""} · <a className="text-gold underline" href={`/api/diem-danh/${b.id}`}>điểm danh (JSON)</a>
+      </NoiDung>
+    </>
+  );
+}
+
+const theLon = "rounded-[20px] bg-raised p-4 sm:p-6";
+
+function TheToiNay({ b, luc }: { b: Buoi; luc: number }) {
+  const mon = tenMonDayDu(b.mon?.ma, b.mon?.ten);
+  const batDau = lucVN(b.ngay, b.gio.slice(0, 5)).getTime();
+  const ketThuc = lucVN(b.ngay, b.gio.slice(6, 11)).getTime() + (b.gio.slice(6, 11) < b.gio.slice(0, 5) ? 86400_000 : 0);
+  const moLuc = batDau - 30 * 60_000;
+  const conThieu = b.si_so - b.da_diem;
+  const ddHref = `/quan-ly/diem-danh/${b.id}`;
+  const ndHref = `/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}&buoi=${b.id}`;
+  const gioBd = b.gio.slice(0, 5);
+  let h1: React.ReactNode, phu: React.ReactNode, chinh: React.ReactNode = null, phuNut: React.ReactNode = null, mauH1 = "";
+
+  if (b.trang_thai === "huy") {
+    h1 = `${mon} tối nay: lớp nghỉ`;
+    phu = b.ly_do_huy ? `Lý do: ${b.ly_do_huy}` : "Lớp nghỉ";
+    phuNut = <Link href={ndHref} className={nutPhu}>Xem buổi</Link>;
+  } else if (b.toi_qua) {
+    h1 = `Buổi tối qua — ${b.mon?.ten} ${ddmm(b.ngay)}`;
+    phu = `Còn thiếu ${conThieu} em`;
+    chinh = <Link href={ddHref} prefetch className={`${nutChinhTo} w-full sm:w-auto sm:min-w-56`}>Điểm danh</Link>;
+  } else if (luc < moLuc) {
+    h1 = `Tối nay học ${mon} lúc ${gioBd}`;
+    phu = <>{b.chinh_thuc} chính thức · {b.thu} thử · còn <DemNguoc den={batDau} luc={luc} /></>;
+    chinh = <Link href={ddHref} prefetch className={`${nutPhu} min-h-14 w-full sm:w-auto`}>Điểm danh mở lúc {gio(moLuc)}</Link>;
+    phuNut = <Link href={ndHref} className={nutPhu}>Thêm nội dung / record</Link>;
+  } else if (luc <= ketThuc) {
+    h1 = luc < batDau ? `Tối nay học ${mon} lúc ${gioBd}` : `Đang học ${mon}`;
+    phu = `Đã điểm ${b.da_diem}/${b.si_so}`;
+    chinh = <Link href={ddHref} prefetch className={`${nutChinhTo} w-full sm:w-auto sm:min-w-56`}>Điểm danh</Link>;
+  } else if (conThieu > 0) {
+    h1 = `${mon} tối nay chưa điểm xong`;
+    mauH1 = "text-warn";
+    phu = `Còn ${conThieu} em chưa điểm`;
+    chinh = <Link href={ddHref} prefetch className={`${nutChinhTo} w-full sm:w-auto sm:min-w-56`}>Điểm danh tiếp</Link>;
+    phuNut = <Link href={ndHref} className={nutPhu}>Thêm nội dung / record</Link>;
+  } else {
+    h1 = `${mon} tối nay đã điểm đủ`;
+    phu = `Đã điểm ${b.da_diem}/${b.si_so}`;
+    chinh = <Link href={ndHref} className={b.co_record ? `${nutPhu} min-h-12` : `${nutChinhTo} w-full sm:w-auto`}>Thêm nội dung / record</Link>;
+    phuNut = <Link href={ddHref} className={nutPhu}>Xem điểm danh</Link>;
+  }
+  return (
+    <article className={theLon}>
+      <h2 className={`text-[22px] font-extrabold leading-tight text-balance lg:text-[28px] ${mauH1}`}>{h1}</h2>
+      <p className="so mt-1 text-text-2">{phu}</p>
+      {chinh || phuNut ? <div className="mt-4 flex flex-wrap items-center gap-3">{chinh}{phuNut}</div> : null}
+    </article>
+  );
+}
+
+function TheKhongBuoi({ d, monGv }: { d: D; monGv: string | null }) {
+  const ke = d.lich_7_ngay.flatMap((x) => x.buoi).find((b) => b.ngay > d.hom_nay && b.trang_thai !== "huy");
+  return (
+    <article className={theLon}>
+      <h2 className="text-[22px] font-extrabold leading-tight text-balance lg:text-[28px]">Tối nay không có buổi{monGv ? ` ${monGv}` : ""}</h2>
+      <p className="so mt-1 text-text-2">{ke ? `Buổi kế: ${thuNgay(ke.ngay)} · ${tenMonDayDu(ke.mon?.ma, ke.mon?.ten)} ${ke.gio.slice(0, 5)}` : "Chưa có lịch buổi học trong 7 ngày tới."}</p>
+      <div className="mt-4"><Link href="/quan-ly/buoi-hoc" className={nutPhu}>Xem lịch</Link></div>
+    </article>
+  );
+}
+
+const hangViec = "flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-2 last:border-b-0";
+const nutNho = "nhan inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-input px-3 text-[14px] font-semibold hover:bg-row-hover";
+
+function ViecCanLam({ d, chu }: { d: D; chu: boolean }) {
+  const theo = <L extends string>(loai: L) => d.viec.filter((v) => v.loai === loai);
+  const don = theo("don_cho_duyet");
+  const sap = theo("thu_sap_het");
+  const het = theo("het_thu");
+  const chua = theo("buoi_chua_diem_danh");
+  const thieu = theo("buoi_thieu_record");
+  const vang = theo("em_vang_nhieu");
+  const sua = theo("sua_du_lieu");
+  const dem = (vs: Viec[]) => vs.reduce((s, v) => s + ((v.buoi as unknown[] | undefined)?.length ?? 0), 0);
+  const chips = [
+    ...(chu ? [{ nhan: "Đơn", so: don.length, href: "/quan-ly/don" }, { nhan: "Thử sắp hết", so: sap.length, href: "/quan-ly/hoc-sinh?het=3" }] : []),
+    { nhan: "Chưa điểm", so: dem(chua), href: "/quan-ly/diem-danh#chua-diem" },
+    { nhan: "Thiếu record", so: dem(thieu), href: "/quan-ly/buoi-hoc?record=thieu" },
+  ];
+  const emThu = (v: Viec): EmThu => ({ ma_hs: String(v.ma_hs), ho_ten: String(v.ho_ten), mon: ((v.mon as Mon[]) ?? []).map((m) => m?.ten ?? ""), den: v.loai === "thu_sap_het" ? v.ngay : null, het: v.loai === "het_thu" && v.ngay ? ddmm(v.ngay) : null, con_ngay: (v.con_ngay as number) ?? null });
+  const nhomTheoNgay = (vs: Viec[]) => [...Map.groupBy(vs, (v) => v.ngay ?? "").entries()].sort(([a], [b]) => a.localeCompare(b));
+  const coViec = don.length + sap.length + het.length + chua.length + thieu.length + vang.length + sua.length > 0;
+
+  return (
+    <section aria-labelledby="viec" className="grid gap-3">
+      <h2 id="viec" className="text-lg font-semibold">Việc cần làm</h2>
+      <ul className="flex flex-wrap gap-2">
+        {chips.map((c) => (
+          <li key={c.nhan}>
+            <Link href={c.href} className="nhan inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 font-semibold hover:bg-row-hover">
+              {c.nhan} <span className={`so ${c.so > 0 ? "text-warn" : "text-text-3"}`}>{c.so}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {!coViec ? <p className="rounded-[14px] border border-border bg-surface px-4 py-4 text-text-2">Không còn việc gì cần làm hôm nay.</p> : null}
+      {don.length ? (
+        <ul className="rounded-[14px] border border-border bg-surface">
+          {don.map((v) => (
+            <li key={String(v.don_id)} className={hangViec}>
+              <span aria-hidden="true" className="size-2 rounded-full bg-gold" />
+              <p className="min-w-0 flex-1"><span className="font-semibold">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span>{v.ngay ? <span className="so text-text-3"> · {ddmm(v.ngay)}</span> : null}</p>
+              <Link href="/quan-ly/don" className={nutNho}>Mở</Link>
             </li>
           ))}
-          {!d.lop_toi_nay.length && <li className="text-text-3">Không có buổi.</li>}
         </ul>
-      </section>
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold">Việc cần làm ({d.viec.length})</h2>
-        <ul className="mt-2 grid gap-1 text-sm">
-          {d.viec.slice(0, 40).map((v, i) => (
-            <li key={i} className="text-text-2">Mức {v.muc} · {v.loai} · {String(v.ho_ten ?? (v.mon as { ten?: string } | undefined)?.ten ?? "")} {v.ngay ?? ""}</li>
+      ) : null}
+      {het.length ? <NhomThu loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={d.hom_nay} /> : null}
+      {nhomTheoNgay(sap).map(([ngay, vs]) => (
+        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=3" homNay={d.hom_nay} />
+      ))}
+      {chua.length || thieu.length || vang.length ? (
+        <ul className="rounded-[14px] border border-border bg-surface">
+          {chua.map((v) => {
+            const bs = v.buoi as { id: number; ngay: string; thieu: number }[];
+            return (
+              <li key={`chua-${(v.mon as Mon)?.ma}`} className={hangViec}>
+                <p className="min-w-0 flex-1"><span className="font-semibold">Buổi chưa điểm danh</span> · {(v.mon as Mon)?.ten} · {bs.length} buổi</p>
+                <span className="flex flex-wrap gap-2">
+                  {bs.map((b) => <Link key={b.id} href={`/quan-ly/diem-danh/${b.id}`} className={`${nutNho} so`} aria-label={`Điểm danh ${(v.mon as Mon)?.ten} ${thuNgay(b.ngay)}, còn ${b.thieu} em`}>{thuNganNgay(b.ngay)}</Link>)}
+                </span>
+              </li>
+            );
+          })}
+          {vang.map((v) => {
+            const em = v.em as { ma_hs: string; ho_ten: string; so_vang: number }[];
+            return (
+              <li key={`vang-${(v.mon as Mon)?.ma}`} className={hangViec}>
+                <p className="min-w-0 flex-1"><span className="font-semibold">Em vắng nhiều</span> · {(v.mon as Mon)?.ten} · {em.length} em vắng từ 2 buổi</p>
+                <span className="flex flex-wrap gap-2">
+                  {em.slice(0, 3).map((e) => <Link key={e.ma_hs} href={`/quan-ly/hoc-sinh/${e.ma_hs}`} className={nutNho} translate="no">{e.ho_ten} <span className="so ml-1 text-danger">{e.so_vang}</span></Link>)}
+                  <Link href={`/quan-ly/diem-danh/thang?mon=${(v.mon as Mon)?.ma}`} className={nutNho}>Ma trận ›</Link>
+                </span>
+              </li>
+            );
+          })}
+          {thieu.map((v) => (
+            <li key={`thieu-${(v.mon as Mon)?.ma}`} className={hangViec}>
+              <p className="min-w-0 flex-1"><span className="font-semibold">Buổi thiếu record</span> · {(v.mon as Mon)?.ten} · <span className="so">{(v.buoi as unknown[]).length}</span></p>
+              <Link href={`/quan-ly/buoi-hoc?record=thieu&mon=${(v.mon as Mon)?.ma}`} className={nutNho}>Mở</Link>
+            </li>
           ))}
         </ul>
-      </section>
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold">API (JSON)</h2>
-        <ul className="mt-2 flex flex-wrap gap-3">{API.map((a) => <li key={a}><a className="text-gold underline" href={a}>{a}</a></li>)}</ul>
-        <pre className="mt-4 overflow-x-auto rounded-[14px] bg-surface p-3 text-xs">{JSON.stringify(d.the_so, null, 2)}</pre>
-      </section>
-    </main>
+      ) : null}
+      {sua.length ? (
+        <ul className="rounded-[14px] border border-border bg-surface">
+          {sua.map((v) => (
+            <li key={`sua-${v.ma_hs}`} className={hangViec}>
+              <p className="min-w-0 flex-1"><span className="font-semibold">Sửa dữ liệu</span> · <span translate="no">{String(v.ho_ten)}</span> · <span className="text-text-3">{(v.loi as string[]).map((x) => ({ gmail: "Gmail", sdt: "SĐT", lua: "lứa" })[x] ?? x).join(", ")}</span></p>
+              <Link href={`/quan-ly/hoc-sinh/${v.ma_hs}`} className={nutNho}>Mở</Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+function SoLieu({ d, chu }: { d: D; chu: boolean }) {
+  const t = d.the_so as D["the_so"] & Partial<{ dang_hoc_chinh_thuc: number; dang_thu: number; thu_het_3_ngay: number; len_chinh_thuc_thang_nay: number }>;
+  const the = "nhan flex min-h-20 flex-col justify-center rounded-[14px] border border-border bg-surface px-4 py-3 hover:bg-row-hover";
+  return (
+    <section aria-labelledby="so-lieu" className="grid gap-3">
+      <h2 id="so-lieu" className="text-lg font-semibold">Số liệu lớp</h2>
+      {chu ? (
+        <ul className="grid grid-cols-2 gap-2">
+          {[
+            { so: t.dang_hoc_chinh_thuc ?? 0, nhan: "Chính thức", href: "/quan-ly/hoc-sinh?loai=chinh-thuc" },
+            { so: t.dang_thu ?? 0, nhan: "Đang thử", href: "/quan-ly/hoc-sinh?loai=thu" },
+            { so: t.thu_het_3_ngay ?? 0, nhan: "Thử hết trong 3 ngày", href: "/quan-ly/hoc-sinh?het=3" },
+            { so: t.len_chinh_thuc_thang_nay ?? 0, nhan: "Lên chính thức tháng này", href: "/quan-ly/hoc-sinh?loai=chinh-thuc" },
+          ].map((x) => (
+            <li key={x.nhan}><Link href={x.href} className={the}><span className="so text-2xl font-extrabold">{x.so}</span><span className="text-[13px] text-text-2">{x.nhan}</span></Link></li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="rounded-[14px] border border-border bg-surface">
+        <h3 className="px-4 pt-3 text-[13px] font-semibold text-text-2">Sĩ số theo môn</h3>
+        <ul className="py-1">
+          {d.the_so.si_so.map((s) => (
+            <li key={s.mon?.ma}>
+              <Link href={`/quan-ly/hoc-sinh?mon=${s.mon?.ma}`} className="flex min-h-11 items-center justify-between gap-3 px-4 hover:bg-row-hover">
+                <span className="font-semibold">{s.mon?.ten}</span>
+                <span className="so text-text-2">{s.chinh_thuc} chính thức · {s.thu} thử</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <h3 className="border-t border-border px-4 pt-3 text-[13px] font-semibold text-text-2">Có mặt tháng này</h3>
+        <ul className="py-1">
+          {d.the_so.co_mat_thang.map((s) => (
+            <li key={s.mon?.ma}>
+              <Link href={`/quan-ly/diem-danh/thang?mon=${s.mon?.ma}`} className="flex min-h-11 items-center justify-between gap-3 px-4 hover:bg-row-hover">
+                <span className="font-semibold">{s.mon?.ten}</span>
+                <span className="so text-text-2">{s.co}/{s.tong}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function Lich7({ d }: { d: D }) {
+  return (
+    <section aria-labelledby="lich7" className="grid gap-3">
+      <h2 id="lich7" className="text-lg font-semibold">7 ngày tới</h2>
+      <ul className="rounded-[14px] border border-border bg-surface py-1">
+        {d.lich_7_ngay.map((x) => (
+          <li key={x.ngay} className={`flex min-h-11 flex-wrap items-center gap-x-3 px-4 py-1 ${x.ngay === d.hom_nay ? "bg-today-col" : ""}`}>
+            <span className={`so w-20 shrink-0 font-semibold ${x.ngay === d.hom_nay ? "text-gold" : "text-text-2"}`}>{thuNganNgay(x.ngay)}</span>
+            {x.buoi.length ? (
+              x.buoi.map((b) => (
+                <Link key={b.id} href={`/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}&buoi=${b.id}`} className="inline-flex min-h-11 items-center hover:underline">
+                  {b.mon?.ten} <span className="so ml-1 text-text-3">{b.gio.slice(0, 5)}</span>
+                  {b.trang_thai === "huy" ? <span className="ml-1 text-text-3">· Lớp nghỉ</span> : b.loai === "hoc_bu" ? <span className="ml-1 text-text-3">· bù</span> : null}
+                </Link>
+              ))
+            ) : (
+              <span className="text-text-3">Không có buổi</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
