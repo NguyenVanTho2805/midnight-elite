@@ -7,10 +7,10 @@ Căn cứ: `QUYET-DINH.md` mục 2, 14, 16, 20–24; `huong-chon.md` (nền A, b
 | Vai | Thấy gì | Không thấy |
 |---|---|---|
 | Chủ lớp (anh Thanh) | Mọi môn, mọi em, đơn đăng ký, gia hạn thử, chuyển chính thức, (Đợt 3: học phí) | — |
-| Giáo viên cộng tác (chị Hoa, chị Thu Hương, anh Quang Minh) | Chỉ môn mình dạy: danh sách em của môn, điểm danh, record, (Đợt 3: nhập điểm) | Học phí, SĐT phụ huynh, đơn đăng ký, gia hạn/chuyển chính thức |
+| Giáo viên cộng tác (chị Hoa, chị Thu Hương, anh Quang Minh) | Chỉ môn mình dạy: danh sách em của môn, điểm danh, nội dung buổi, record, (Đợt 3: nhập điểm) | Học phí, thông tin phụ huynh, ghi chú riêng của chủ, đơn đăng ký, cài đặt, gia hạn/chuyển chính thức. SĐT/Gmail học sinh: theo `phan-quyen.md` Câu hỏi 1 (thiết kế đang theo phương án khuyên dùng: không thấy) |
 
 Anh Thanh vừa là chủ lớp vừa dạy Toán, Sử, Địa → dùng một tài khoản vai chủ lớp; không cần đổi vai.
-Lọc theo vai làm **ở máy chủ** (không chỉ ẩn nút): mục nào không có quyền thì không có trong dữ liệu trả về và không có trên thanh điều hướng.
+Bảng quyền đầy đủ: [`../nghiep-vu/phan-quyen.md`](../nghiep-vu/phan-quyen.md). Lọc theo vai làm **ở máy chủ** (không chỉ ẩn nút): mục nào không có quyền thì không có trong dữ liệu trả về và không có trên thanh điều hướng.
 
 ## 2. Đường dẫn
 | Mục | Đường dẫn | Đợt |
@@ -158,7 +158,9 @@ Biểu tượng: **Phosphor Icons** (`@phosphor-icons/react`, kiểu Bold, 24px;
    - A. "Thêm" (gom Đơn, Sổ điểm, Học phí, Cài đặt) — **khuyên dùng**: giữ đủ 4 việc hằng ngày ở ngoài, đơn mới vẫn có chấm báo và đã có trên Hôm nay.
    - B. "Đơn" (đơn đăng ký) thay cho "Thêm"; Sổ điểm/Học phí vào menu tài khoản.
    - C. "Học phí" (từ Đợt 3) thay cho "Buổi học"; Buổi học vào "Thêm".
-2. **Giáo viên cộng tác có thấy SĐT và Gmail của học sinh không?** (Quyết định 14 mới nói không thấy SĐT phụ huynh.)
-   - A. Thấy Gmail + Zalo/SĐT học sinh của môn mình (để nhắc vào lớp) — **khuyên dùng**.
-   - B. Chỉ thấy Gmail (để đối chiếu lớp Meet), không thấy SĐT.
-   - C. Không thấy liên hệ nào, chỉ tên.
+2. **Giữ đăng nhập trên điện thoại bao lâu?** (giáo viên điểm danh giữa buổi Meet; phiên hết giữa chừng là mất thời gian)
+   - A. 30 ngày trên máy đã đăng nhập, tự gia hạn mỗi lần dùng; chủ khoá tài khoản thì mất hiệu lực ngay (`phan-quyen.md` 5.2) — **khuyên dùng**.
+   - B. 7 ngày.
+   - C. Mỗi lần mở trình duyệt phải đăng nhập lại.
+
+Câu hỏi về việc giáo viên có thấy SĐT/Gmail học sinh: đã ở `phan-quyen.md` Câu hỏi 1, không hỏi lại ở đây.

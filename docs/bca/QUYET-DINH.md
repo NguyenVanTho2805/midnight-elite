@@ -60,6 +60,17 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T19. 12 em đã xoá (__DaXoa) không chuyển.
 - T20. Buổi Sử 25/11: coi là đã điểm danh; 39 dấu theo ma trận, 15 em còn lại là Có.
 - T21. Chuyển dữ liệu: chạy thử nhiều lần trên DB thử; chuyển thật một lần khi chủ quyết.
+- T22. Thanh dưới điện thoại (khu quản lý), mục thứ 5 là "Thêm".
+- T23. Giữ đăng nhập 30 ngày, tự gia hạn; chủ khoá phiên được ngay.
+- T24. Mục "Điểm danh" ở thanh dưới mở thẳng buổi tối nay từ 21:45 tới 05:59.
+- T25. Có ô ghi chú tuỳ chọn cho từng em trong từng buổi.
+- T26. Chưa làm chạy khi mất mạng từ trước (PWA) ở Đợt 1; chỉ hàng đợi lưu khi rớt mạng giữa chừng.
+- T27. Hôm nay (điện thoại): mỗi em sắp hết thử một nút "Xử lý" mở tờ trượt.
+- T28. Mỗi nhóm sắp hết thử hiện 3 em + "Xem tất cả" + "Gia hạn cả nhóm".
+- T29. Gia hạn thử nhiều em một lần, kèm Hoàn tác 5 giây.
+- T30. Trang một em: mục Ghi danh luôn hiện đủ 4 môn.
+- T31. Buổi học: chỉ danh sách theo tuần, không lưới lịch tháng.
+- T32. Học sinh thấy "Nội dung buổi" ngay khi giáo viên ghi.
 
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).

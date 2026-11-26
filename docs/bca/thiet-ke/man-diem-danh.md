@@ -83,9 +83,9 @@ Khung chung, chỉ báo lưu, hàng đợi khi mất mạng: [khung-quan-ly.md](
 │           │ ┌──┬──────────────────────┬──────────────┬────────────────────┬───────────────┐ │
 │           │ │# │Học sinh              │Loại          │Điểm danh           │Ghi chú        │ │
 │           │ ├──┼──────────────────────┼──────────────┼────────────────────┼───────────────┤ │
-│           │ │1 │Nguyễn Minh Anh  HS012│Chính thức    │[✓Có] [Phép] [Vắng] │—              │ │ 48
-│           │ │2 │Trần Gia Bảo     HS041│Thử·còn 2 ngày│[✓Có] [Phép] [Vắng] │               │ │
-│           │ │3 │Lê Thu Hà        HS007│Chính thức    │[Có] [✓Phép] [Vắng] │Ốm, đã báo Zalo│ │
+│           │ │1 │Nguyễn Minh Anh HS0012│Chính thức    │[✓Có] [Phép] [Vắng] │—              │ │ 48
+│           │ │2 │Trần Gia Bảo    HS0041│Thử·còn 2 ngày│[✓Có] [Phép] [Vắng] │               │ │
+│           │ │3 │Lê Thu Hà       HS0007│Chính thức    │[Có] [✓Phép] [Vắng] │Ốm, đã báo Zalo│ │
 │           │ └──┴──────────────────────┴──────────────┴────────────────────┴───────────────┘ │
 │           │ Phím tắt: ↑↓ chọn em · 1 Có · 2 Phép · 3 Vắng · N ghi chú   │
 └───────────┴──────────────────────────────────────────────────────────────┘
@@ -108,7 +108,7 @@ Khung chung, chỉ báo lưu, hàng đợi khi mất mạng: [khung-quan-ly.md](
 | Trước 21:45 (sớm hơn 30 phút trước giờ bắt đầu) | Danh sách **chỉ đọc** để xem trước; dải `raised` "Điểm danh mở lúc 21:45"; không có nút "Đánh tất cả có mặt" (nghiệp vụ Điều 3.4) | |
 | Sau nửa đêm (00:00–05:59) | Vẫn điểm buổi tối qua bình thường; tiêu đề ghi rõ ngày của buổi "Anh · T5 26/11" (điểm danh gắn với buổi, không với "hôm nay" — nghiệp vụ Điều 4) | |
 | Buổi ngày mai trở đi | Không có nút điểm danh; chỉ "Buổi chưa diễn ra" | |
-| Buổi trạng thái Nghỉ | "Buổi này nghỉ — không điểm danh." + (chủ lớp) "Đổi thành Có học" | |
+| Buổi đã huỷ (Lớp nghỉ) | "Buổi này lớp nghỉ (GV ốm) — không điểm danh." + (chủ lớp) "Bỏ huỷ" | |
 | **Khoá 48 giờ** | Quá 48 giờ từ giờ bắt đầu buổi: nút chỉ đọc (mờ 60 %, vẫn đọc được trạng thái), dải trên cùng "Buổi đã qua 3 ngày. Sửa điểm danh sẽ đổi chuyên cần và học phí." + nút "Mở sửa". Bấm → hộp thoại xác nhận một lần cho cả buổi (không hỏi lại từng chạm). | |
 | Giáo viên khác cùng môn vừa sửa | Hàng nhấp nền `raised` 1 lần (không động nếu giảm chuyển động) + chữ nhỏ "Lần sửa cuối: chị Hoa lúc 22:41". Dữ liệu làm mới mỗi 15 giây khi trang đang hiện. Cùng một ô: bản ghi sau thắng, nhật ký giữ cả hai (`phan-quyen.md` 2.3). | |
 | Học thử / khoá học thử | Xem §3: chip thử; em hết thử không có trong danh sách + dòng cuối. | |
@@ -143,7 +143,7 @@ Lấy bảng dày của mẫu B, tô theo token A, sửa ký hiệu.
 - Cột tên dính trái (220px, tên + "· thử" `trial-fg`), đầu bảng dính trên, ô 44 × 40, ký hiệu 15/600 giữa ô.
 - Màu ký hiệu trên `surface`: ✓ `ok` (9.67) · P `excused` (10.14) · K `danger` (7.58) · "·" và "–" `text-3` (7.02). Ký hiệu khác nhau về **hình**, màu chỉ bổ trợ.
 - Cột hôm nay (hoặc buổi gần nhất đã qua) nền `today-col`, chữ đầu cột `gold`; khi mở, bảng **tự cuộn ngang** để cột này nằm trong tầm nhìn (cuộn tức thì, không trượt).
-- Buổi "Nghỉ": cột hẹp 28px, đầu cột "Nghỉ", ô gạch chéo `border`, không bấm được. Buổi "Học bù": đầu cột thêm "· bù".
+- Buổi đã huỷ: cột hẹp 28px, đầu cột "Nghỉ" (`aria-label="Lớp nghỉ"`), ô gạch chéo `border`, không bấm được. Buổi "Học bù": đầu cột thêm "· bù".
 - "Có mặt" = số ✓ / (✓ + P + K) của em trong tháng (nghiệp vụ Điều 6.1). "Chuỗi" theo nghiệp vụ Điều 6.3: Có +1, **P giữ nguyên**, K về 0, buổi huỷ và ô chưa điểm bỏ qua (`huong-chon.md` sửa 5). Cả hai `tabular-nums`.
 - Bấm ô (chủ lớp, giáo viên môn đó) → menu nhỏ cạnh ô: Có · Phép · Vắng · Về chưa điểm (mỗi mục cao 44). **Không bấm đổi vòng** như mẫu B. Ô quá 48 giờ: menu có thêm dòng "Buổi đã qua 48 giờ" và hỏi xác nhận một lần cho cả cột.
 - Bàn phím: bảng là lưới (`role="grid"`), mũi tên đi giữa ô, Enter mở menu, phím 1/2/3 đặt thẳng, Delete về chưa điểm.
@@ -172,7 +172,7 @@ Lấy bảng dày của mẫu B, tô theo token A, sửa ký hiệu.
 | Chọn Có/Phép/Vắng | Đổi màu tức thì; `scale(.97)` 80ms khi nhấn | bỏ scale |
 | Thanh Hoàn tác | vào: opacity 0→1 + translateY 8→0, 150ms `ease-out`; vạch scaleX 5s `linear` | hiện tức thì; vạch → chữ đếm lùi |
 | Tờ trượt đáy (chạm tên, chạm ô ma trận) | translateY 100 %→0, 240ms `ease-out`; ra 180ms `ease-in` | tức thì |
-| Hàng do người khác sửa | nền `raised` 600ms rồi về | không đổi nền, chỉ chữ "Chị Hoa đổi lúc…" |
+| Hàng do người khác sửa | nền `raised` 600ms rồi về | không đổi nền, chỉ chữ "Lần sửa cuối: chị Hoa lúc…" |
 
 Không GSAP, không Lenis (cần cuộn gốc cho đầu bảng dính và cột tên dính), không chuyển cảnh trang.
 
