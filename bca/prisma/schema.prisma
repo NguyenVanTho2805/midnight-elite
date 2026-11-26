@@ -99,6 +99,7 @@ model nguoi_dung {
   tao_luc       DateTime    @default(now()) @db.Timestamptz
   cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
   phan_cong     phan_cong[]
+  viec_xong     viec_xong[]
 }
 
 model phan_cong {
@@ -233,6 +234,17 @@ model don_dang_ky {
 model bo_dem {
   khoa    String @id
   gia_tri Int
+}
+
+/// T33: việc ở màn Hôm nay đã được chủ đánh dấu xong. Ẩn theo hom-nay.md 3.3 (học thử 3 ngày, việc khác hết hôm nay).
+model viec_xong {
+  loai          String // het_thu, thu_sap_het, buoi_chua_diem_danh, …
+  khoa          String // ma_hs, mã môn hoặc mã đơn — xem server/hom-nay.ts
+  nguoi_dung_id String   @db.Uuid
+  luc           DateTime @default(now()) @db.Timestamptz
+  nguoi_dung    nguoi_dung @relation(fields: [nguoi_dung_id], references: [id], onDelete: Cascade)
+
+  @@id([loai, khoa])
 }
 
 model nhat_ky {

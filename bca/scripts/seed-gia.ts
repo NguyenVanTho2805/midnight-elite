@@ -27,7 +27,7 @@ const bam = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>
 
 export async function xoaHet(db: PrismaClient) {
   await db.$executeRawUnsafe(
-    `TRUNCATE nhat_ky, diem_danh, buoi_hoc, ghi_danh, don_dang_ky, hoc_sinh, phan_cong, nguoi_dung, mon, lua, cai_dat, bo_dem RESTART IDENTITY CASCADE`,
+    `TRUNCATE viec_xong, nhat_ky, diem_danh, buoi_hoc, ghi_danh, don_dang_ky, hoc_sinh, phan_cong, nguoi_dung, mon, lua, cai_dat, bo_dem RESTART IDENTITY CASCADE`,
   );
 }
 

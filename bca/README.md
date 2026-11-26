@@ -44,6 +44,14 @@ npx tsx scripts/chuyen-tu-sheet.ts /đường/dẫn/ban-xuat.xlsx --ngay-chot=20
 ```
 Không commit tệp `.xlsx` hay bất kỳ dữ liệu thật nào.
 
+## Route và hàm thêm ở vòng 2 (BCA-D1-MC2)
+Mọi route kiểm quyền ở máy chủ; "chỉ chủ" = GV/học sinh nhận 403 và có dòng nhật ký `tu_choi`.
+
+| Route | Hàm (`server/`) | Ai | Việc |
+|---|---|---|---|
+| `POST /api/hom-nay/xong` `{loai, khoa}` | `hom-nay.danhDauXong` | chủ | T33: đánh dấu xong; ẩn 3 ngày (`het_thu`, `thu_sap_het`) hoặc hết hôm nay (việc khác). Mỗi việc trong `GET /api/hom-nay` có `khoa`; thẻ số không trừ việc đã ẩn; `so_viec_da_an` |
+| `DELETE /api/hom-nay/xong?loai=&khoa=` | `hom-nay.boDanhDauXong` | chủ | T33: bỏ đánh dấu (Hoàn tác) |
+
 ## Cấu trúc
 ```
 app/(quan-ly)/quan-ly/   trang chẩn đoán khu quản lý
