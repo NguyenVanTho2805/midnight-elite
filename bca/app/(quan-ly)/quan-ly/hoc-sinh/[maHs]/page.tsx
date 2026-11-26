@@ -120,7 +120,7 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
               {"don" in d && Array.isArray(d.don) && d.don.length ? <Dong nhan="Đơn đăng ký">{d.don.map((x) => `${ddmm(new Date(x.thoi_gian.getTime() + 7 * 3600_000).toISOString().slice(0, 10))} ${x.loai ?? ""}`).join(" · ")}</Dong> : null}
             </Khoi>
             {chu ? (
-              <Khoi tieuDe="Ghi chú" mo={!!(hs.ghi_chu || hs.ghi_chu_rieng)}>
+              <Khoi tieuDe="Ghi chú" mo>
                 <GhiChuHs ma={hs.ma_hs} ghiChu={hs.ghi_chu ?? null} ghiChuRieng={hs.ghi_chu_rieng ?? null} />
               </Khoi>
             ) : null}

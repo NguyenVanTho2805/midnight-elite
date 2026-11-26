@@ -53,10 +53,12 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
   const [dangHoanTac, setDangHoanTac] = useState(false);
   const [tieuDiem, setTieuDiem] = useState({ r: 0, c: 0 });
   const tatCa = useRef<TatCa | null>(null);
+  /** Lựa chọn vừa chạm khi buổi quá 48 giờ chưa mở sửa — áp ngay sau "Mở sửa cả buổi". */
+  const choMoSua = useRef<{ id: number; t: TT | null } | null>(null);
   const bang = useRef<HTMLTableSectionElement>(null);
   const router = useRouter();
   const { hien } = useHoanTac();
-  useHangDoi(); // vẽ lại khi hàng đợi đổi (chấm "Chưa gửi", chỉ báo lưu)
+  const hd = useHangDoi(); // vẽ lại khi hàng đợi đổi (chấm "Chưa gửi", chỉ báo lưu, khoá "Xong")
   const cho = viecCuaNhom(nhom);
   const ghiDuoc = d.trang_thai_ghi === "mo" || (d.trang_thai_ghi === "qua_48h" && moSua);
   const xacNhan = d.trang_thai_ghi === "qua_48h" && moSua ? { xacNhan: true } : {};
@@ -135,11 +137,13 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
     return () => clearInterval(t);
   }, [nhom, buoiId, toi]);
 
-  function danh(id: number, t: TT | null) {
-    if (!ghiDuoc) {
-      if (d.trang_thai_ghi === "qua_48h") setHoiMoSua(true);
+  /** ep: vừa bấm "Mở sửa cả buổi" (state moSua chưa kịp cập nhật) — ghi luôn kèm xác nhận 48 giờ. */
+  function danh(id: number, t: TT | null, ep = false) {
+    if (!ghiDuoc && !ep) {
+      if (d.trang_thai_ghi === "qua_48h") { choMoSua.current = { id, t }; setHoiMoSua(true); }
       return;
     }
+    const xn = ep ? { xacNhan: true } : xacNhan;
     const cur = hang[id];
     if (!cur || cur.tt === t) return; // chạm nút đang chọn: không làm gì
     setHang((h) => ({ ...h, [id]: { ...h[id], tt: t, ...(t ? {} : { ghiChu: null }) } }));
@@ -147,7 +151,15 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
     setLoiHang((l) => { if (!(id in l)) return l; const n = { ...l }; delete n[id]; return n; });
     const khoa = `dd:${buoiId}:${id}`;
     const body = t === null ? { hocSinhId: id, trangThai: null } : { ...layViec(khoa)?.body, hocSinhId: id, trangThai: t };
-    datViec({ khoa, nhom, url: `/api/diem-danh/${buoiId}`, method: "PUT", body: { ...body, ...xacNhan } });
+    datViec({ khoa, nhom, url: `/api/diem-danh/${buoiId}`, method: "PUT", body: { ...body, ...xn } });
+  }
+
+  function moSuaCaBuoi() {
+    setMoSua(true);
+    setHoiMoSua(false);
+    const c = choMoSua.current;
+    choMoSua.current = null;
+    if (c) danh(c.id, c.t, true);
   }
 
   function thuLaiHang(id: number) {
@@ -234,7 +246,13 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
   const tieuDeNgan = `${b.mon.ten} · ${thuNganNgay(b.ngay)}`;
   const emDangMo = emMo !== null ? d.em.find((e) => e.hoc_sinh_id === emMo) : null;
   const du = dem.chua === 0 && d.em.length > 0;
-  const xong = du && !dangHoanTac;
+  // "Xong" là link rời trang: khoá khi còn thay đổi chưa gửi hoặc mất mạng (bấm vào trình duyệt sẽ báo lỗi mạng).
+  const chuaGui = cho.length;
+  const loiGui = hd.matMang || hd.hetPhien || hd.loiMayChu;
+  const duoiXong = chuaGui && loiGui ? `${chuaGui} chưa gửi` : chuaGui ? "Đang lưu…" : hd.matMang ? "Mất mạng" : null;
+  const xong = du && !dangHoanTac && !duoiXong;
+  // GV không thấy học phí (quyết định 14) — câu cảnh báo 48 giờ không nhắc học phí.
+  const doiGi = chu ? "chuyên cần và học phí" : "chuyên cần";
 
   return (
     <>
@@ -276,7 +294,7 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
           <>
             {d.trang_thai_ghi === "qua_48h" && !moSua ? (
               <div className="mt-2 flex flex-wrap items-center gap-3 rounded-[14px] bg-warn-bg px-4 py-3">
-                <p className="flex-1">Buổi đã qua {ngayQua} ngày. Sửa điểm danh sẽ đổi chuyên cần và học phí.</p>
+                <p className="flex-1">Buổi đã qua {ngayQua} ngày. Sửa điểm danh sẽ đổi {doiGi}.</p>
                 <button type="button" className={nutPhu} onClick={() => setHoiMoSua(true)}>Mở sửa</button>
               </div>
             ) : null}
@@ -284,7 +302,7 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
             {d.trang_thai_ghi === "tuong_lai" ? <p className="mt-2 rounded-[14px] bg-raised px-4 py-3">Buổi chưa diễn ra. Danh sách dưới đây chỉ để xem trước.</p> : null}
 
             <div className="dinh-duoi-dau sticky top-14 z-10 -mx-4 mt-2 bg-bg px-4 py-2 sm:top-16 lg:static lg:mx-0 lg:mt-4 lg:flex lg:items-center lg:gap-3 lg:px-0">
-              <div role="group" aria-label="Lọc theo trạng thái" className="flex gap-1.5 overflow-x-auto">
+              <div role="group" aria-label="Lọc theo trạng thái" className="-mr-4 flex scroll-px-4 gap-1.5 overflow-x-auto pr-4 lg:mr-0 lg:pr-0">
                 {([["chua", "Chưa điểm", dem.chua], ["co", "Có", dem.co], ["phep", "Phép", dem.phep], ["vang", "Vắng", dem.vang]] as const).map(([k, t, n]) => (
                   <button key={k} type="button" aria-pressed={loc === k} onClick={() => chonLoc(k)} className={`nhan inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[14px] font-semibold ${loc === k ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2"}`}>
                     {loc === k ? <IconDau size={14} /> : null}{t} <span className={`so ${k === "chua" && n > 0 ? "text-warn" : ""}`}>{n}</span>
@@ -298,14 +316,18 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
               <span className="hidden flex-1 lg:block" />
               {d.em.length && ghiDuoc ? (
                 <div className="day-an-toan fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 px-4 pt-3 backdrop-blur sm:left-[72px] lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-                  <div className="pb-3 lg:pb-0">
-                    {du && dangHoanTac ? (
-                      // Trong 5 giây Hoàn tác: báo đã đủ nhưng khoá "Xong" để không rời trang khi còn hoàn tác được.
-                      <button type="button" disabled className={`${nutPhu} min-h-14 w-full lg:min-h-11 lg:w-auto so`}>Đã điểm đủ {d.em.length}/{d.em.length} · Xong</button>
+                  <div className="flex gap-2 pb-3 lg:pb-0">
+                    {/* Tìm ở đáy, tầm ngón cái (điện thoại): mở ô tìm ở đầu trang. */}
+                    <button type="button" className={`${nutPhu} min-h-14 w-14 shrink-0 px-0 lg:hidden`} onClick={() => { setMoTim(true); setTim(""); window.scrollTo({ top: 0 }); }} aria-label="Tìm tên">
+                      <IconTim />
+                    </button>
+                    {du && (dangHoanTac || duoiXong) ? (
+                      // Trong 5 giây Hoàn tác, khi còn thay đổi chưa gửi hoặc mất mạng: báo đã đủ nhưng khoá "Xong" (không rời trang).
+                      <button type="button" disabled className={`${nutPhu} min-h-14 min-w-0 flex-1 lg:min-h-11 lg:flex-none so`}>Đã điểm đủ {d.em.length}/{d.em.length} · {duoiXong ?? "Xong"}</button>
                     ) : xong ? (
-                      <Link href="/quan-ly" className={`${nutPhu} min-h-14 w-full lg:min-h-11 lg:w-auto so`}>Đã điểm đủ {d.em.length}/{d.em.length} · Xong</Link>
+                      <Link href="/quan-ly" className={`${nutPhu} min-h-14 min-w-0 flex-1 lg:min-h-11 lg:flex-none so`}>Đã điểm đủ {d.em.length}/{d.em.length} · Xong</Link>
                     ) : (
-                      <button type="button" onClick={danhTatCa} disabled={dem.chua === 0} className={`${nutChinhTo} w-full lg:min-h-11 lg:w-auto lg:text-base so`}>
+                      <button type="button" onClick={danhTatCa} disabled={dem.chua === 0} className={`${nutChinhTo} min-w-0 flex-1 lg:min-h-11 lg:flex-none lg:text-base so`}>
                         Đánh tất cả có mặt ({dem.chua})
                       </button>
                     )}
@@ -354,7 +376,7 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                             {/* Điện thoại: tên + loại gộp một nút ≥ 44px (hàng ≈ 64–72px); máy tính: loại ở cột riêng. */}
                             <button type="button" onClick={() => setEmMo(id)} className="group min-h-11 text-left lg:min-h-0">
                               <span className="block text-base font-semibold leading-5 group-hover:underline" translate="no">{e.ho_ten}</span>
-                              <span className="block leading-5 lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} gon /> : <span className="text-[13px] text-text-3">Chính thức</span>}</span>
+                              <span className="block leading-5 lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} gon lien /> : <span className="text-[13px] text-text-3">Chính thức</span>}</span>
                             </button>
                             {choGui ? <span role="img" aria-label="Chưa gửi" className="inline-block size-2 shrink-0 rounded-full border border-text-3" /> : null}
                             <span className="hidden text-[13px] text-text-3 lg:inline" translate="no">{e.ma_hs}</span>
@@ -418,6 +440,9 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                 {chu ? <> · <Link href="/quan-ly/hoc-sinh?het=da-het" className="inline-flex min-h-11 items-center font-semibold text-gold hover:underline">Gia hạn</Link></> : null}
               </p>
             ) : null}
+            <div className="mt-4 lg:hidden">
+              <Link href={`/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}&buoi=${buoiId}${b.link_record ? "" : "&dan=1"}`} className={nutPhu}>{b.link_record ? "Xem record" : "Dán link record"}</Link>
+            </div>
             <p className="mt-3 hidden text-[13px] text-text-3 lg:block">Phím tắt: ↑↓ chọn em · ←→ chọn nút · 1 Có · 2 Phép · 3 Vắng · N ghi chú · Ctrl+Z hoàn tác (trong 5 giây)</p>
           </>
         )}
@@ -437,16 +462,16 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
       </ToTruot>
       <ToTruot
         mo={hoiMoSua}
-        dong={() => setHoiMoSua(false)}
+        dong={() => { choMoSua.current = null; setHoiMoSua(false); }}
         tieuDe="Sửa điểm danh buổi đã qua 48 giờ?"
         chan={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" className={nutPhu} onClick={() => setHoiMoSua(false)}>Để nguyên</button>
-            <button type="button" className={nutChinh} onClick={() => { setMoSua(true); setHoiMoSua(false); }}>Mở sửa cả buổi</button>
+            <button type="button" className={nutPhu} onClick={() => { choMoSua.current = null; setHoiMoSua(false); }}>Để nguyên</button>
+            <button type="button" className={nutChinh} onClick={moSuaCaBuoi}>Mở sửa cả buổi</button>
           </div>
         }
       >
-        <p className="text-text-2">Buổi {b.mon.ten} {thuNgay(b.ngay)} đã qua {ngayQua} ngày. Sửa điểm danh sẽ đổi chuyên cần và học phí; mọi lần sửa đều ghi nhật ký. Chỉ hỏi một lần cho cả buổi.</p>
+        <p className="text-text-2">Buổi {b.mon.ten} {thuNgay(b.ngay)} đã qua {ngayQua} ngày. Sửa điểm danh sẽ đổi {doiGi}; mọi lần sửa đều ghi nhật ký. Chỉ hỏi một lần cho cả buổi.{choMoSua.current ? " Lựa chọn vừa chạm sẽ được ghi ngay khi mở sửa." : ""}</p>
       </ToTruot>
     </>
   );

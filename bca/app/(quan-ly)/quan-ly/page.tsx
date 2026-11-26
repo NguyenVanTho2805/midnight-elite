@@ -13,7 +13,7 @@ import { layNguoiQuanLy } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
 import LoiKhoi from "@/components/khung/loi-khoi";
 import { ChoTai, Khoi as KhoiCho } from "@/components/ui/trang-thai";
-import { ddmm, gio, lucVN, thuNgay, thuNganNgay, tenMonDayDu } from "@/components/dinh-dang";
+import { ddmm, gio, lucVN, tenGv, thuNgay, thuNganNgay, tenMonDayDu } from "@/components/dinh-dang";
 import { IconMoNgoai } from "@/components/bieu-tuong";
 import { nutChinhTo, nutPhu } from "@/components/ui/nut";
 import { DemNguoc } from "@/components/quan-ly/dem-nguoc";
@@ -118,7 +118,7 @@ const theLon = "rounded-[20px] bg-raised p-4 sm:p-6";
 function TheToiNay({ b, luc, chu }: { b: Buoi; luc: number; chu: boolean }) {
   const mon = b.mon?.ten_day_du || tenMonDayDu(b.mon?.ma, b.mon?.ten);
   const meet = b.mon?.link_meet ? <a href={b.mon.link_meet} target="_blank" rel="noopener noreferrer" className={nutPhu}>Mở Meet <IconMoNgoai size={16} /><span className="sr-only"> (mở thẻ mới)</span></a> : null;
-  const gv = chu && b.mon?.giao_vien.length ? <span translate="no"> · GV {b.mon.giao_vien.join(", ")}</span> : null;
+  const gv = chu && b.mon?.giao_vien.length ? <> · <span translate="no" className="whitespace-nowrap">{tenGv(b.mon.giao_vien)}</span></> : null;
   const batDau = lucVN(b.ngay, b.gio.slice(0, 5)).getTime();
   const ketThuc = lucVN(b.ngay, b.gio.slice(6, 11)).getTime() + (b.gio.slice(6, 11) < b.gio.slice(0, 5) ? 86400_000 : 0);
   const moLuc = batDau - 30 * 60_000;
@@ -228,7 +228,7 @@ function ViecCanLam({ d, chu, lienHe }: { d: D; chu: boolean; lienHe: Map<string
       ) : null}
       {het.length ? <NhomThu loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={d.hom_nay} /> : null}
       {nhomTheoNgay(sap).map(([ngay, vs]) => (
-        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=3" homNay={d.hom_nay} />
+        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa={`/quan-ly/hoc-sinh?het_ngay=${ngay}`} homNay={d.hom_nay} />
       ))}
       {chua.length || thieu.length || vang.length ? (
         <ul className="rounded-[14px] border border-border bg-surface">

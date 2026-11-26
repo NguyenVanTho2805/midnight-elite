@@ -1,4 +1,5 @@
-// 403 của khu quản lý (forbidden() trong components/khung/nguoi.ts → Next trả HTTP 403 thật). Nằm trong khung (thanh bên, thanh dưới).
+// Giao diện "Không có quyền" của khu quản lý (forbidden() trong components/khung/nguoi.ts). Trang đã stream (có loading.tsx)
+// nên mã HTTP vẫn là 200 kèm noindex; route API mới trả 403 thật. Nằm trong khung (thanh bên, thanh dưới).
 import Link from "next/link";
 import { nutPhu } from "@/components/ui/nut";
 

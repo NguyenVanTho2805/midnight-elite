@@ -4,7 +4,7 @@ import { LoiQuyTac } from "@/lib/quy-tac";
 import { d2s, s2d } from "@/lib/ngay";
 import { nguoiTuToken } from "./phien";
 import { docCookie } from "./token";
-import { ghiNhatKy } from "./nhat-ky";
+import { ghiTuChoi } from "./nhat-ky";
 
 export type Ctx<P = Record<string, string>> = { params: Promise<P> };
 
@@ -17,7 +17,7 @@ export function route<P = Record<string, string>>(fn: (u: Nguoi, req: Request, p
       return Response.json(await fn(u, req, params));
     } catch (e) {
       if (e instanceof LoiQuyen) {
-        await ghiNhatKy(u, "tu_choi", "request", null, null, { phuong_thuc: req.method, duong_dan: new URL(req.url).pathname, ly_do: e.message });
+        await ghiTuChoi(u, req.method, new URL(req.url).pathname, e.message);
         return Response.json({ loi: e.message }, { status: 403 });
       }
       if (e instanceof LoiDuLieu) return Response.json({ loi: e.message, ma: e.ma }, { status: e.status });
@@ -41,9 +41,9 @@ export async function docJson(req: Request): Promise<Record<string, unknown>> {
   } catch {}
   throw new LoiDuLieu("Thân request phải là JSON object");
 }
-/** Số nguyên vừa cột int4 của Postgres (id vượt int32 / NaN / số lẻ ⇒ 400, không 500). */
+/** Số nguyên vừa cột int4 của Postgres (id vượt int32 / NaN / số lẻ / "0x2" / "1e3" ⇒ 400, không 500). */
 export const soNguyen = (v: unknown, ten: string) => {
-  const n = typeof v === "string" && v.trim() === "" ? NaN : Number(v);
+  const n = typeof v === "number" ? v : typeof v === "string" && /^-?\d+$/.test(v) ? Number(v) : NaN;
   if (!Number.isInteger(n) || n < -2147483648 || n > 2147483647) throw new LoiDuLieu(`${ten} không hợp lệ`);
   return n;
 };

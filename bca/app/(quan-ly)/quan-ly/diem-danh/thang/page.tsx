@@ -50,7 +50,7 @@ export default async function TrangMaTran({ searchParams }: { searchParams: Prom
             Chỉ em đang học<span className="sr-only">{dang ? " (đang bật, bấm để tắt)" : " (đang tắt, bấm để bật)"}</span>
           </Link>
         </div>
-        <MaTran key={`${mon}-${thang}`} d={r.d} chiDangHoc={dang} />
+        <MaTran key={`${mon}-${thang}`} d={r.d} chiDangHoc={dang} chu={u.vai === "chu"} />
       </NoiDung>
     </>
   );

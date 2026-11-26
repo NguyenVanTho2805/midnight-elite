@@ -4,7 +4,8 @@
 // Chạm ô → tờ trượt (điện thoại) / hộp thoại (máy tính): Có · Phép · Vắng · Về chưa điểm; quá 48 giờ hỏi xác nhận một lần cho cả cột.
 // Sửa ô đi qua hàng đợi chung (khoá `dd:${buoiId}:${hsId}`, nhóm `dd:${buoiId}` — cùng khoá với màn một buổi): mất mạng vẫn giữ.
 // Bàn phím: role="grid" + roving tabindex — cả bảng một điểm dừng Tab; mũi tên đi giữa ô/ngày/tên, Home/End đầu/cuối hàng,
-// 1/2/3 = Có/Phép/Vắng, Delete = về chưa điểm, Enter mở hộp chọn.
+// 1/2/3 = Có/Phép/Vắng, Delete = về chưa điểm, Enter mở hộp chọn. Cột quá 48 giờ chưa mở: 1/2/3/Delete cũng mở hộp hỏi
+// xác nhận như Enter, và lựa chọn vừa bấm được ghi ngay sau "Mở sửa buổi".
 import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { dangKyXuLy, datViec, layViec, nap, useHangDoi, viecCuaNhom } from "../khung/hang-doi";
@@ -25,9 +26,9 @@ const KY: Record<string, { k: string; mau: string; ten: string }> = {
   "-": { k: "–", mau: "text-text-3", ten: "không học ngày này" },
 };
 
-export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
+export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu: boolean }) {
   const [hang, setHang] = useState(d.hang);
-  const [mo, setMo] = useState<{ r: number; c: number } | null>(null);
+  const [mo, setMo] = useState<{ r: number; c: number; t?: "co" | "phep" | "vang" | null } | null>(null);
   const [moCot, setMoCot] = useState<Set<number>>(new Set());
   const [loi, setLoi] = useState("");
   const [goiY, setGoiY] = useState(false);
@@ -80,7 +81,7 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
   };
   const can48 = (c: number) => qua48Gio(new Date(d.buoi[c].bat_dau_luc), new Date(luc)) && !moCot.has(c);
 
-  function dat(r: number, c: number, t: "co" | "phep" | "vang" | null) {
+  function dat(r: number, c: number, t: "co" | "phep" | "vang" | null, xn = false) {
     const b = d.buoi[c];
     const hsId = hang[r].hoc_sinh_id;
     setHang((x) => x.map((h, i) => (i === r ? { ...h, o: h.o.map((v, j) => (j === c ? t : v)) } : h)));
@@ -88,7 +89,7 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
     setLoi("");
     const khoa = `dd:${b.id}:${hsId}`;
     const body = t === null ? { hocSinhId: hsId, trangThai: null } : { ...layViec(khoa)?.body, hocSinhId: hsId, trangThai: t };
-    datViec({ khoa, nhom: `dd:${b.id}`, url: `/api/diem-danh/${b.id}`, method: "PUT", body: { ...body, ...(moCotRef.current.has(c) ? { xacNhan: true } : {}) } });
+    datViec({ khoa, nhom: `dd:${b.id}`, url: `/api/diem-danh/${b.id}`, method: "PUT", body: { ...body, ...(xn || moCotRef.current.has(c) ? { xacNhan: true } : {}) } });
   }
 
   // Toạ độ roving: hàng -1 = đầu bảng (ngày), cột -1 = tên học sinh. Ô không có phần tử (lớp nghỉ, góc) bị bỏ qua.
@@ -115,10 +116,12 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
     else if (e.key === "End") toi(vr, d.buoi.length - 1, 0, -1);
     if (vr < 0 || c < 0) return;
     const { r } = hienThi[vr];
-    if (suaDuoc(c, hang[r].o[c]) && !can48(c)) {
-      if (["1", "2", "3"].includes(e.key)) { e.preventDefault(); void dat(r, c, NUT_DD[Number(e.key) - 1].v); }
-      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); void dat(r, c, null); }
-    }
+    if (!suaDuoc(c, hang[r].o[c])) return;
+    const t = ["1", "2", "3"].includes(e.key) ? NUT_DD[Number(e.key) - 1].v : e.key === "Delete" || e.key === "Backspace" ? null : undefined;
+    if (t === undefined) return;
+    e.preventDefault();
+    if (can48(c)) setMo({ r, c, t }); // hỏi xác nhận như Enter; ghi lựa chọn sau khi mở sửa
+    else dat(r, c, t);
   }
 
   const oMo = mo ? { h: hang[mo.r], b: d.buoi[mo.c], v: hang[mo.r].o[mo.c] } : null;
@@ -201,8 +204,8 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
         {oMo && mo ? (
           can48(mo.c) ? (
             <div className="grid gap-3">
-              <p className="rounded-[14px] bg-warn-bg px-3 py-2">Buổi đã qua 48 giờ. Sửa sẽ đổi chuyên cần và học phí; chỉ hỏi một lần cho cả cột này.</p>
-              <button type="button" className={nutChinh} onClick={() => setMoCot((s) => new Set(s).add(mo.c))}>Mở sửa buổi {ddmm(oMo.b.ngay)}</button>
+              <p className="rounded-[14px] bg-warn-bg px-3 py-2">Buổi đã qua 48 giờ. Sửa sẽ đổi {chu ? "chuyên cần và học phí" : "chuyên cần"}; chỉ hỏi một lần cho cả cột này.{mo.t !== undefined ? ` Mở sửa sẽ ghi luôn “${mo.t ? NUT_DD.find((n) => n.v === mo.t)!.nhan : "Về chưa điểm"}”.` : ""}</p>
+              <button type="button" className={nutChinh} onClick={() => { setMoCot((s) => new Set(s).add(mo.c)); if (mo.t !== undefined) dat(mo.r, mo.c, mo.t, true); }}>Mở sửa buổi {ddmm(oMo.b.ngay)}</button>
               <button type="button" className={nutPhu} onClick={() => setMo(null)}>Để nguyên</button>
             </div>
           ) : (

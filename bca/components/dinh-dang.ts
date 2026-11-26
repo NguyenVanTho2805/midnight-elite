@@ -23,6 +23,9 @@ export { lucVN };
 const TEN_DAY_DU: Record<string, string> = { toan: "Toán", su: "Lịch sử", dia: "Địa lí", anh: "Tiếng Anh" };
 export const tenMonDayDu = (ma: string | undefined, tenNgan = "") => (ma && TEN_DAY_DU[ma]) || tenNgan;
 
+/** "GV Thanh, GV Hoa" — không lặp chữ "GV" khi tên hiển thị đã bắt đầu bằng "GV". */
+export const tenGv = (ds: string[]) => ds.map((t) => (/^GV\s/i.test(t) ? t : `GV ${t}`)).join(", ");
+
 const SO = new Intl.NumberFormat("vi-VN");
 export const so = (n: number) => SO.format(n);
 export const tien = (n: number) => `${SO.format(n)}đ`;

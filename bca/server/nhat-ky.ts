@@ -15,6 +15,16 @@ export function ghiNhatKy(u: Nguoi | null, hanh_dong: string, doi_tuong: string,
   });
 }
 
+/** Nhật ký "từ chối" (phan-quyen.md 4.1), tối đa 1 dòng / người / route (phương thức + đường dẫn) / phút — không để gọi lặp làm phình bảng. */
+export async function ghiTuChoi(u: Nguoi, phuongThuc: string, duongDan: string, lyDo: string, luc = new Date()) {
+  const khoa = `${phuongThuc} ${duongDan}`;
+  const gan = await db.nhat_ky.findFirst({
+    where: { hanh_dong: "tu_choi", doi_tuong: "request", doi_tuong_id: khoa, luc: { gt: new Date(luc.getTime() - 60_000) }, ...(u.vai === "hoc_sinh" ? { vai_tro: `hoc_sinh:${u.hocSinhId}` } : { nguoi_dung_id: u.id }) },
+    select: { id: true },
+  });
+  if (!gan) await ghiNhatKy(u, "tu_choi", "request", khoa, null, { phuong_thuc: phuongThuc, duong_dan: duongDan, ly_do: lyDo });
+}
+
 /** Khoá dòng nhật ký của thao tác gốc tới hết transaction: hai lần hoàn tác cùng lúc ⇒ lần sau thấy lần trước đã xong ⇒ 409. */
 export const khoaNhatKy = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM nhat_ky WHERE id = ${id} FOR UPDATE`;
 

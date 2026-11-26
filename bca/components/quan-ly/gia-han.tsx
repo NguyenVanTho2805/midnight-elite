@@ -83,7 +83,18 @@ export function GiaHan({ em, homNay, mo, dong, xong }: { em: EmGiaHan[]; homNay:
       {mot ? (
         <p className="text-text-2">Áp cho: {mot.mon.join(", ") || "các môn đang thử"} {mot.den ? `(đang hết ${ddmm(mot.den)})` : mot.het ? `(đã hết ${mot.het})` : ""}</p>
       ) : (
-        <p className="text-text-2">Áp cho mọi môn đang thử của từng em.</p>
+        <>
+          <p className="text-text-2">Áp cho mọi môn đang thử của từng em:</p>
+          {/* Liệt kê đủ tên trước khi bấm (không gia hạn nhầm em). */}
+          <ul aria-label={`${em.length} em sẽ được gia hạn`} className="mt-2 max-h-48 overflow-y-auto rounded-[14px] border border-border">
+            {em.map((e) => (
+              <li key={e.ma_hs} className="flex flex-wrap items-baseline gap-x-2 border-b border-border px-3 py-2 text-[14px] last:border-b-0">
+                <span className="font-semibold" translate="no">{e.ho_ten}</span>
+                <span className="so text-text-3">{e.mon.join(", ") || "Môn thử"} · {e.den ? `hết ${ddmm(e.den)}` : e.het ? `đã hết ${e.het}` : "—"}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       <fieldset className="mt-4">
         <legend className={nhan}>Thêm</legend>

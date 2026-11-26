@@ -1,9 +1,9 @@
 // Danh sách + chi tiết học sinh cho khu quản lý. Cột chọn theo vai (lib/quyen.ts).
 import { d2s, ngayTrongThang, ngayVN, s2d, soNgayGiua, thangCua } from "@/lib/ngay";
 import { canChu, canQuanLy, cotHocSinh, laChu, LoiDuLieu, monXemDuoc, type Nguoi } from "@/lib/quyen";
-import { chuoi, demDD, hanThuChung, hieuLuc, ngayChinhThucMacDinh, ngayNghiMacDinh, oMon, tinhTrang, type GD } from "@/lib/quy-tac";
+import { chuoi, conMo, demDD, hanThuChung, hetThu, hieuLuc, ngayChinhThucMacDinh, ngayNghiMacDinh, oMon, tinhTrang, type GD } from "@/lib/quy-tac";
 import { catKhoangTrang, chuanHoaGmail, chuanHoaSdt, goiYGmail, soTenViet } from "@/lib/chuan-hoa";
-import { db } from "./db";
+import { db, type Tx } from "./db";
 import { caiDat, capMa, napGD, napMon } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 
@@ -17,7 +17,15 @@ const thuVao = (gds: GD[], h: string) => {
   return { tu, den, con_ngay: soNgayGiua(h, den), ngay_thu: soNgayGiua(tu, h) + 1, tong_ngay: soNgayGiua(tu, den) + 1 };
 };
 
-export async function danhSachHocSinh(u: Nguoi, opt: { coAn?: boolean } = {}, luc = new Date()) {
+/**
+ * Ngày hết thử của em theo đúng cách màn Hôm nay nhóm việc: đang thử (chưa có Chính thức còn mở) ⇒ hạn thử chung (nhóm "Thử sắp hết");
+ * đã hết thử ⇒ ngày hết (nhóm "Hết thử – hỏi em"). Không thuộc nhóm nào ⇒ null.
+ */
+export const ngayHetThu = (gds: GD[], h: string) =>
+  gds.some((g) => g.loai === "chinh_thuc" && conMo(g, h)) ? null : (hanThuChung(gds, h) ?? hetThu(gds, h));
+
+/** `hetNgay` (YYYY-MM-DD): chỉ em có ngayHetThu đúng ngày đó — nút "Xem N em ›" ở Hôm nay mở đúng nhóm (mục 22). */
+export async function danhSachHocSinh(u: Nguoi, opt: { coAn?: boolean; hetNgay?: string } = {}, luc = new Date()) {
   canQuanLy(u);
   const h = ngayVN(luc);
   const monIds = monXemDuoc(u);
@@ -31,6 +39,7 @@ export async function danhSachHocSinh(u: Nguoi, opt: { coAn?: boolean } = {}, lu
     hom_nay: h,
     mon: mons.map((m) => ({ ma: m.ma, ten: m.ten_ngan })),
     hoc_sinh: rows
+      .filter((r) => !opt.hetNgay || ngayHetThu(gdMap.get(r.id) ?? [], h) === opt.hetNgay)
       .map((r) => {
         const gds = gdMap.get(r.id) ?? [];
         return { ...r, mon: oTheoMon(gds, mons, h), tinh_trang: tinhTrang(gds, h), thu: thuVao(gds, h), dang_ky: gds[0]?.tu ?? null };
@@ -136,28 +145,33 @@ export type HoSoMoi = {
 /** ghi-danh.md Điều 1–2 — chủ tạo hồ sơ tay: mã mới không cấp lại, chuẩn hoá SĐT/Gmail, lứa theo ngày tạo. Trùng SĐT chỉ cảnh báo. */
 export async function taoHocSinh(u: Nguoi, v: HoSoMoi, luc = new Date()) {
   canChu(u);
+  if (!catKhoangTrang(v.hoTen)) throw new LoiDuLieu("Cần họ tên");
+  const { id: _id, ...r } = await db.$transaction((tx) => taoHoSoTx(tx, u, v, luc));
+  return r;
+}
+
+/** Phần ghi của taoHocSinh, dùng chung với "Tạo hồ sơ từ đơn" (server/don.ts) trong cùng transaction. Gọi sau khi đã kiểm quyền chủ. */
+export async function taoHoSoTx(tx: Tx, u: Nguoi, v: HoSoMoi, luc: Date) {
   const ho_ten = catKhoangTrang(v.hoTen);
   if (!ho_ten) throw new LoiDuLieu("Cần họ tên");
   const ngay_tao = v.ngayTao ?? ngayVN(luc);
   const gmail = chuanHoaGmail(v.gmail), sdt_hs = chuanHoaSdt(v.sdtHs), sdt_ph = chuanHoaSdt(v.sdtPh), username_azota = catKhoangTrang(v.usernameAzota);
-  return db.$transaction(async (tx) => {
-    const trungGmail = gmail && (await tx.hoc_sinh.findUnique({ where: { gmail }, select: { ma_hs: true } }));
-    if (trungGmail) throw new LoiDuLieu(`Gmail đã có ở ${trungGmail.ma_hs}`, 409, "trung_gmail");
-    const trungAzota = username_azota && (await tx.hoc_sinh.findUnique({ where: { username_azota }, select: { ma_hs: true } }));
-    if (trungAzota) throw new LoiDuLieu(`Username Azota đã có ở ${trungAzota.ma_hs}`, 409, "trung_azota");
-    const lua = await tx.lua.findFirst({ where: { tu_ngay: { lte: s2d(ngay_tao) }, OR: [{ den_ngay: null }, { den_ngay: { gte: s2d(ngay_tao) } }] }, orderBy: { tu_ngay: "desc" } });
-    const hs = await tx.hoc_sinh.create({
-      data: {
-        ma_hs: await capMa(tx, "hs"), ho_ten, ngay_tao: s2d(ngay_tao), lua_id: lua?.id ?? null, gmail, sdt_hs, sdt_ph, username_azota,
-        ho_ten_ph: catKhoangTrang(v.hoTenPh), truong: catKhoangTrang(v.truong), khoi: catKhoangTrang(v.khoi), muc_tieu: catKhoangTrang(v.mucTieu),
-        nguon: catKhoangTrang(v.nguon) ?? "Chủ thêm tay", ghi_chu: catKhoangTrang(v.ghiChu), ghi_chu_rieng: catKhoangTrang(v.ghiChuRieng), dong_y_vinh_danh: v.dongYVinhDanh === true,
-      },
-    });
-    const sdts = [sdt_hs, sdt_ph].filter((x): x is string => !!x);
-    const trungSdt = sdts.length
-      ? await tx.hoc_sinh.findMany({ where: { id: { not: hs.id }, OR: [{ sdt_hs: { in: sdts } }, { sdt_ph: { in: sdts } }] }, select: { ma_hs: true } })
-      : [];
-    await ghiNhatKy(u, "tao_hoc_sinh", "hoc_sinh", hs.ma_hs, null, { ma_hs: hs.ma_hs, lua_id: hs.lua_id, ngay_tao, nguon: hs.nguon }, tx);
-    return { ma_hs: hs.ma_hs, lua: lua?.ma ?? null, sdt_hs, sdt_ph, goi_y_gmail: goiYGmail(gmail), trung_sdt: trungSdt.map((x) => x.ma_hs) };
+  const trungGmail = gmail && (await tx.hoc_sinh.findUnique({ where: { gmail }, select: { ma_hs: true } }));
+  if (trungGmail) throw new LoiDuLieu(`Gmail đã có ở ${trungGmail.ma_hs}`, 409, "trung_gmail");
+  const trungAzota = username_azota && (await tx.hoc_sinh.findUnique({ where: { username_azota }, select: { ma_hs: true } }));
+  if (trungAzota) throw new LoiDuLieu(`Username Azota đã có ở ${trungAzota.ma_hs}`, 409, "trung_azota");
+  const lua = await tx.lua.findFirst({ where: { tu_ngay: { lte: s2d(ngay_tao) }, OR: [{ den_ngay: null }, { den_ngay: { gte: s2d(ngay_tao) } }] }, orderBy: { tu_ngay: "desc" } });
+  const hs = await tx.hoc_sinh.create({
+    data: {
+      ma_hs: await capMa(tx, "hs"), ho_ten, ngay_tao: s2d(ngay_tao), lua_id: lua?.id ?? null, gmail, sdt_hs, sdt_ph, username_azota,
+      ho_ten_ph: catKhoangTrang(v.hoTenPh), truong: catKhoangTrang(v.truong), khoi: catKhoangTrang(v.khoi), muc_tieu: catKhoangTrang(v.mucTieu),
+      nguon: catKhoangTrang(v.nguon) ?? "Chủ thêm tay", ghi_chu: catKhoangTrang(v.ghiChu), ghi_chu_rieng: catKhoangTrang(v.ghiChuRieng), dong_y_vinh_danh: v.dongYVinhDanh === true,
+    },
   });
+  const sdts = [sdt_hs, sdt_ph].filter((x): x is string => !!x);
+  const trungSdt = sdts.length
+    ? await tx.hoc_sinh.findMany({ where: { id: { not: hs.id }, OR: [{ sdt_hs: { in: sdts } }, { sdt_ph: { in: sdts } }] }, select: { ma_hs: true } })
+    : [];
+  await ghiNhatKy(u, "tao_hoc_sinh", "hoc_sinh", hs.ma_hs, null, { ma_hs: hs.ma_hs, lua_id: hs.lua_id, ngay_tao, nguon: hs.nguon }, tx);
+  return { id: hs.id, ma_hs: hs.ma_hs, lua: lua?.ma ?? null, sdt_hs, sdt_ph, goi_y_gmail: goiYGmail(gmail), trung_sdt: trungSdt.map((x) => x.ma_hs) };
 }

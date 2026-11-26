@@ -1,6 +1,8 @@
 "use client";
 // Phần tương tác của màn Buổi học (man-buoi-hoc.md): dán link record + nội dung buổi + ghi chú nội bộ (chủ + GV môn, qua hàng đợi),
 // huỷ / bỏ huỷ / xoá buổi và thêm học bù (chỉ chủ, lý do bắt buộc, Hoàn tác 5 giây).
+// T42: chỉ buổi TƯƠNG LAI chưa có dữ liệu mới có "Xoá buổi" (hỏi xác nhận + Hoàn tác 5 giây); buổi đã qua chỉ huỷ được.
+// "Sinh buổi còn thiếu" cho tháng đã có buổi: xem trước danh sách rồi mới tạo.
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { chuanHoaLink } from "@/lib/quy-tac";
@@ -127,9 +129,9 @@ export function SuaBuoi({ id, linkRecord, noiDung, ghiChu, dan }: { id: number; 
 type BuoiNho = { id: number; ngay: string; gio: string; mon: { ma: string; ten: string }; trang_thai: string; loai: string };
 type Mon = { ma: string; ten: string };
 
-/** Huỷ / bỏ huỷ / xoá buổi (chỉ chủ). */
-export function HanhDongBuoi({ b, daDiem, coDuLieu, mon, ds, homNay }: { b: BuoiNho & { ly_do_huy: string | null }; daDiem: number; coDuLieu: boolean; mon: Mon[]; ds: BuoiNho[]; homNay: string }) {
-  const [mo, setMo] = useState<"huy" | "bu" | null>(null);
+/** Huỷ / bỏ huỷ / xoá buổi (chỉ chủ). xoaDuoc: buổi chưa bắt đầu và chưa có dữ liệu (T42, T37). */
+export function HanhDongBuoi({ b, daDiem, xoaDuoc, mon, ds, homNay }: { b: BuoiNho & { ly_do_huy: string | null }; daDiem: number; xoaDuoc: boolean; mon: Mon[]; ds: BuoiNho[]; homNay: string }) {
+  const [mo, setMo] = useState<"huy" | "bu" | "xoa" | null>(null);
   const [lyDo, setLyDo] = useState("");
   const [buNgay, setBuNgay] = useState(false);
   const [loi, setLoi] = useState("");
@@ -161,7 +163,23 @@ export function HanhDongBuoi({ b, daDiem, coDuLieu, mon, ds, homNay }: { b: Buoi
     try { await goi(`/api/buoi-hoc/${b.id}/bo-huy`); router.refresh(); hien({ thongDiep: "Đã bỏ huỷ — buổi về Có học, điểm danh cũ hiện lại" }); } catch (e) { hien({ thongDiep: (e as Error).message }); }
   }
   async function xoa() {
-    try { await goi(`/api/buoi-hoc/${b.id}`, "DELETE"); router.replace(`/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}`); hien({ thongDiep: `Đã xoá buổi ${b.mon.ten} ${ddmm(b.ngay)}` }); } catch (e) { hien({ thongDiep: (e as Error).message }); }
+    setDang(true);
+    try {
+      const kq = await goi(`/api/buoi-hoc/${b.id}`, "DELETE");
+      setMo(null);
+      const thang = `/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}`;
+      router.replace(thang, { scroll: false });
+      hien({
+        thongDiep: `Đã xoá buổi ${b.mon.ten} ${ddmm(b.ngay)}`,
+        hoanTac: async () => {
+          try {
+            await goi(`/api/buoi-hoc/${b.id}/hoan-tac`, "POST", { nhatKyId: kq.nhatKyId });
+            router.replace(`${thang}&buoi=${b.id}`, { scroll: false });
+            hien({ thongDiep: `Đã khôi phục buổi ${b.mon.ten} ${ddmm(b.ngay)}` });
+          } catch (e) { hien({ thongDiep: (e as Error).message }); router.refresh(); }
+        },
+      });
+    } catch (e) { setLoi((e as Error).message); } finally { setDang(false); }
   }
 
   if (mang) return <p className="text-[14px] text-warn">Cần có mạng để thêm hoặc huỷ buổi.</p>;
@@ -173,7 +191,23 @@ export function HanhDongBuoi({ b, daDiem, coDuLieu, mon, ds, homNay }: { b: Buoi
         <button type="button" className={`${nutNguy} min-h-11`} onClick={() => { setLoi(""); setMo("huy"); }}>Huỷ buổi…</button>
       )}
       {b.trang_thai === "huy" ? <button type="button" className={nutPhu} onClick={() => setMo("bu")}>Thêm học bù cho buổi này</button> : null}
-      {!coDuLieu ? <button type="button" className={nutPhu} onClick={xoa}>Xoá buổi</button> : null}
+      {xoaDuoc ? <button type="button" className={nutPhu} onClick={() => { setLoi(""); setMo("xoa"); }}>Xoá buổi…</button> : null}
+
+      <ToTruot
+        mo={mo === "xoa"}
+        dong={() => setMo(null)}
+        tieuDe={`Xoá buổi ${ten}?`}
+        chan={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" autoFocus className={nutPhu} onClick={() => setMo(null)}>Giữ buổi</button>
+            <button type="button" className={nutNguy} onClick={xoa} disabled={dang}>{dang ? "Đang xoá…" : "Xoá buổi"}</button>
+          </div>
+        }
+      >
+        <p className="text-text-2">Buổi chưa diễn ra và chưa có điểm danh, nội dung hay record. Xoá thì buổi biến khỏi lịch của giáo viên và học sinh; có 5 giây để Hoàn tác.</p>
+        <p className="mt-2 text-text-2">Lớp chỉ nghỉ buổi này? Dùng <strong className="font-semibold text-text">Huỷ buổi</strong> để học sinh thấy “Lớp nghỉ” kèm lý do.</p>
+        {loi && mo === "xoa" ? <p role="alert" className="mt-2 text-danger">{loi}</p> : null}
+      </ToTruot>
 
       <ToTruot
         mo={mo === "huy"}
@@ -294,6 +328,74 @@ function HocBu({ mon, ds, homNay, buCho, dong }: { mon: Mon[]; ds: BuoiNho[]; ho
         {loi && !trung ? <p role="alert" className="text-danger">{loi}</p> : null}
       </div>
     </ToTruot>
+  );
+}
+
+/** Tháng đã có buổi: "Sinh buổi còn thiếu" (chỉ chủ) — xem trước danh sách buổi theo lịch còn thiếu, rồi mới tạo (T42). */
+type XemThieu = { se_tao: number; buoi: { mon?: string; ngay: string; gio: string }[]; bo_qua_da_qua: number };
+export function SinhBuoiThieu({ thang, mon }: { thang: string; mon: Mon[] }) {
+  const [mo, setMo] = useState(false);
+  const [xem, setXem] = useState<XemThieu | null>(null);
+  const [loi, setLoi] = useState("");
+  const [dang, setDang] = useState(false);
+  const router = useRouter();
+  const { hien } = useHoanTac();
+  const mang = useHangDoi().matMang;
+  const t = Number(thang.slice(5));
+  const tenMon = (ma?: string) => mon.find((m) => m.ma === ma)?.ten ?? ma ?? "";
+
+  async function moXem() {
+    setMo(true);
+    setXem(null);
+    setLoi("");
+    try {
+      const r = await fetch(`/api/buoi-hoc/sinh?thang=${thang}&con_thieu=1&xem=1`);
+      const k = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(k.loi ?? `Lỗi ${r.status}`);
+      setXem(k);
+    } catch (e) { setLoi((e as Error).message === "Failed to fetch" ? "Không tải được — kiểm tra mạng." : (e as Error).message); }
+  }
+  async function tao() {
+    setDang(true);
+    try {
+      const r = await fetch("/api/buoi-hoc/sinh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thang, conThieu: true }) });
+      const k = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(k.loi ?? `Lỗi ${r.status}`);
+      setMo(false);
+      router.refresh();
+      hien({ thongDiep: `Đã thêm ${k.tao_moi} buổi còn thiếu tháng ${t}` });
+    } catch (e) { setLoi((e as Error).message); } finally { setDang(false); }
+  }
+
+  return (
+    <>
+      <button type="button" className={`${nutPhu} px-3 text-[14px]`} onClick={moXem} disabled={mang} title={mang ? "Cần có mạng" : undefined}>Sinh buổi còn thiếu</button>
+      <ToTruot
+        mo={mo}
+        dong={() => setMo(false)}
+        tieuDe={`Sinh buổi còn thiếu · tháng ${t}`}
+        chan={
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" className={nutPhu} onClick={() => setMo(false)}>Đóng</button>
+            <button type="button" className={nutChinh} onClick={tao} disabled={dang || !xem || xem.se_tao === 0}>{dang ? "Đang tạo…" : xem ? `Tạo ${xem.se_tao} buổi` : "Tạo buổi"}</button>
+          </div>
+        }
+      >
+        <div aria-live="polite">
+          {loi ? <p role="alert" className="text-danger">{loi}</p> : !xem ? <p className="text-text-3">Đang xem trước…</p> : xem.se_tao === 0 ? (
+            <p className="text-text-2">Tháng {t} đã đủ buổi theo lịch môn — không có buổi nào để thêm.</p>
+          ) : (
+            <>
+              <p className="text-text-2">Sẽ thêm <span className="so font-semibold text-text">{xem.se_tao}</span> buổi theo lịch môn (chỉ ngày chưa có buổi, chưa tới giờ học):</p>
+              <ul className="so mt-2 max-h-56 overflow-y-auto rounded-[14px] border border-border">
+                {xem.buoi.map((x) => <li key={`${x.mon}-${x.ngay}`} className="border-b border-border px-3 py-2 text-[14px] last:border-b-0">{tenMon(x.mon)} · {thuNgay(x.ngay)} · {x.gio}</li>)}
+              </ul>
+            </>
+          )}
+          {xem?.bo_qua_da_qua ? <p className="mt-2 text-[14px] text-text-3"><span className="so">{xem.bo_qua_da_qua}</span> ngày thiếu đã qua — không sinh lại (thêm học bù nếu lớp có học).</p> : null}
+        </div>
+      </ToTruot>
+    </>
   );
 }
 

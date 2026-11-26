@@ -53,6 +53,8 @@ export async function giaHanThu(u: Nguoi, maHsList: string[], opt: { soNgay?: nu
   canChu(u);
   if (!lyDo?.trim()) throw new LoiDuLieu("Cần ghi lý do gia hạn");
   if (!maHsList.length) throw new LoiDuLieu("Chưa chọn học sinh");
+  const n = opt.soNgay;
+  if ((n !== undefined || opt.denNgay === undefined) && !(Number.isInteger(n) && n! >= 1 && n! <= 60)) throw new LoiDuLieu("Số ngày gia hạn phải là số nguyên 1–60"); // 400, không 409
   const h = ngayVN(luc);
   return db.$transaction(async (tx) => {
     const ketQua: { ma_hs: string; den_moi: string; doan_moi: boolean }[] = [];
