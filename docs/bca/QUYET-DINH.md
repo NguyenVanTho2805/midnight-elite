@@ -71,6 +71,8 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T30. Trang một em: mục Ghi danh luôn hiện đủ 4 môn.
 - T31. Buổi học: chỉ danh sách theo tuần, không lưới lịch tháng.
 - T32. Học sinh thấy "Nội dung buổi" ngay khi giáo viên ghi.
+- T33. Có bảng lưu "đánh dấu xong" cho việc ở màn Hôm nay ngay Đợt 1.
+- T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).

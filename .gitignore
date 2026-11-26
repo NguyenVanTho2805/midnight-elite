@@ -92,3 +92,4 @@ __pycache__/
 /bca/.next/
 /bca/next-env.d.ts
 /bca/*.tsbuildinfo
+/graphify-out/
