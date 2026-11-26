@@ -72,6 +72,10 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T31. Buổi học: chỉ danh sách theo tuần, không lưới lịch tháng.
 - T32. Học sinh thấy "Nội dung buổi" ngay khi giáo viên ghi.
 - T33. Có bảng lưu "đánh dấu xong" cho việc ở màn Hôm nay ngay Đợt 1.
+- T35. Bỏ ẩn hồ sơ chỉ khôi phục ngày ghi danh cũ nếu bỏ ẩn trong cùng ngày ẩn; sau đó chỉ hiện lại hồ sơ, chủ tự thêm môn (tránh tự tính phí ngày em đã nghỉ).
+- T36. Chỉ chủ được "Đánh dấu xong" việc ở Hôm nay.
+- T37. Không xoá buổi đã huỷ, buổi có ghi chú hoặc có buổi bù trỏ tới — chỉ huỷ được.
+- T38. "Ẩn 3 ngày" tính theo ngày lịch (ngày đánh dấu + 2 ngày sau).
 - T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
 ## Câu hỏi đang mở
