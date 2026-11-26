@@ -36,7 +36,18 @@ Từ BCA-D1-VAI-CL (vai chủ lớp, KHÔNG ĐẠT — 2 P2):
 24. Tờ "Gia hạn cả nhóm" liệt kê tên các em trước khi bấm.
 25. /api/gia-han: số ngày sai (−5, 9999) trả 400 thay vì 409; trang "Không tìm thấy" trả HTTP 404 nếu làm được.
 
+## Đợt 2 — đăng nhập Google (BCA-D2-DN, 26/11) — đã xong
+Đã làm: Google OIDC (code + PKCE + state + nonce), trang `/dang-nhap` mới, T41 khoá phiên học sinh (cột `hoc_sinh.phien_huy_luc`, nút ở hồ sơ), script `them-nguoi-dung.ts`. Test: vitest 188/188 (29 ca mới), Playwright 43/43 (7 ca mới). Việc chủ ngoài mã: `bca/README.md` mục "Việc của chủ ngoài mã".
+
+Còn lại (P3, không chặn lên chính thức):
+1. Màn "Tài khoản" cho chủ (thêm GV bằng Gmail + môn, khoá, đăng xuất mọi máy) thay script — chờ chủ trả lời câu hỏi mở.
+2. Bị từ chối "Gmail chưa có trong lớp": hiện Gmail đã chọn dạng che bớt (vd. `ng•••@gmail.com`) để em biết chọn nhầm tài khoản Google (truyền qua cookie ngắn hạn, không qua địa chỉ).
+3. Khi có route sửa Gmail hồ sơ học sinh: tự đặt `phien_huy_luc` (Gmail cũ không còn giữ phiên).
+4. `/api/dang-xuat` chỉ xoá cookie trên máy đó (token cũ còn hạn nếu bị lấy cắp) — cân nhắc đặt `phien_huy_luc` khi bấm "Đăng xuất mọi máy" của chính người dùng.
+5. Thiếu `BCA_SESSION_SECRET` ở production ⇒ trang `/dang-nhap` và route Google trả 500 (giống mọi trang khác); có thể hiện trang báo cấu hình thay vì 500.
+6. Nhãn "Đăng xuất em khỏi mọi máy…" gãy 2 dòng ở cột Liên hệ 1280 — rút gọn nếu giám khảo yêu cầu.
+
 ## Đợt 2 — ghi chú đầu vào
 - Khu học sinh thay trang /hoc tạm: chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
-- T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.
+- ~~T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.~~ Đã làm (BCA-D2-DN).
 - Dữ liệu `/api/hs/toi` đã đủ cho màn thật.

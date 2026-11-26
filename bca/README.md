@@ -1,4 +1,4 @@
-# BCA Midnight — app quản lý lớp (Đợt 1, phần máy chủ)
+# BCA Midnight — app quản lý lớp (Đợt 1 + đăng nhập Google của Đợt 2)
 
 App Next.js 16 độc lập trong `bca/` (không dùng chung gì với app KiN ở gốc kho).
 Quy tắc nghiệp vụ: `docs/bca/nghiep-vu/*.md`. Quyết định của chủ: `docs/bca/QUYET-DINH.md`.
@@ -8,6 +8,9 @@ Quy tắc nghiệp vụ: `docs/bca/nghiep-vu/*.md`. Quyết định của chủ:
 |---|---|
 | `BCA_DATABASE_URL` | Chuỗi kết nối Postgres (KHÔNG dùng `DATABASE_URL` — tên đó của app KiN) |
 | `BCA_SESSION_SECRET` | Khoá ký cookie phiên (≥ 16 ký tự). Bắt buộc ở mọi nơi trừ máy cục bộ (`VERCEL_ENV` chưa đặt và không `NODE_ENV=production`); thiếu thì ký/đọc phiên ném lỗi rõ, không dùng khoá mặc định |
+| `BCA_GOOGLE_CLIENT_ID` | Client ID của OAuth Client (loại Web application) trong Google Cloud. Thiếu (hoặc thiếu SECRET) ⇒ trang `/dang-nhap` ẩn nút Google và báo rõ, route trả về `/dang-nhap?loi=chua_cau_hinh`, không sập |
+| `BCA_GOOGLE_CLIENT_SECRET` | Client secret của OAuth Client đó. Chỉ đặt ở Vercel / máy mình, không ghi vào mã hay tệp |
+| `BCA_APP_URL` | Tuỳ chọn, **khuyên đặt cho Production** (vd. `https://<địa chỉ web>`): gốc dùng để dựng `redirect_uri` = `<BCA_APP_URL>/api/dang-nhap/google/callback`. Không đặt ⇒ dùng gốc của request. Không đặt cho Preview (sẽ chuyển người dùng sang địa chỉ production và báo "hết hạn") |
 | `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai (T40) — ở **mọi nơi, kể cả máy cục bộ**, còn phải có dấu `cai_dat.DU_LIEU_GIA` trong DB (do `seed-gia.ts` ghi; `chuyen-tu-sheet.ts` không bao giờ ghi và xoá nó khi `--apply`). `VERCEL_ENV=production`: luôn 404. Preview còn phải bật Deployment Protection của Vercel |
 
 ## Cài và chạy dev
@@ -22,6 +25,33 @@ BCA_DEV_LOGIN=1 BCA_DATABASE_URL=$BCA_DATABASE_URL npm run dev -- -p 3100
 ```
 Mở http://localhost:3100/dang-nhap → chọn vai (chủ lớp, GV Toán, GV Anh, HS chính thức, HS thử còn hạn, HS hết hạn).
 Trang `/quan-ly` và `/hoc` chỉ là trang chẩn đoán; màn thật do phòng Giao diện dựng.
+
+## Đăng nhập Google (Đợt 2, BCA-D2-DN)
+OpenID Connect, luồng authorization code + PKCE (S256) + state + nonce; chỉ dùng `jose` + `fetch` (không thêm thư viện).
+1. `GET /api/dang-nhap/google` (nút "Đăng nhập bằng Google") — sinh `state`, `nonce`, `code_verifier` (32 byte ngẫu nhiên), cất trong cookie ký `bca_google` (HttpOnly, SameSite=Lax, 10 phút, `Path=/api/dang-nhap/google`), chuyển sang Google với `scope=openid email`, `prompt=select_account`.
+2. `GET /api/dang-nhap/google/callback` — state phải khớp cookie (sai/thiếu/hết hạn ⇒ `het_han`, không gọi Google); đổi `code` + `code_verifier` ở `oauth2.googleapis.com/token`; kiểm `id_token` bằng JWKS của Google (RS256, `iss`, `aud` = client id, hạn, `nonce`), bắt buộc `email_verified`.
+3. Đối chiếu Gmail (dạng gốc — T48: `@gmail.com`/`@googlemail.com` bỏ dấu chấm và `+…`, không phân biệt hoa thường) lần lượt với `nguoi_dung.gmail` (chủ/GV, T49 ưu tiên) rồi `hoc_sinh.gmail`. **Không tự tạo tài khoản** (T17). Cấp cookie phiên `bca_phien` như cũ (`server/token.ts`, 30 ngày tự gia hạn) rồi về `/`.
+4. Từ chối ⇒ về `/dang-nhap?loi=<mã>`, trang hiện câu tiếng Việt: `khong_co_tai_khoan`, `tai_khoan_khoa`, `ho_so_an` (T41), `trung_gmail` (hai hồ sơ cùng một hộp Gmail), `chua_xac_minh`, `huy` (bấm Huỷ ở Google), `het_han`, `google_loi`, `chua_cau_hinh`. Không có Gmail trong địa chỉ hay nhật ký; không ghi nhật ký khi đăng nhập (chuyen-tu-sheet coi nhật ký có người dùng là "web đã vận hành").
+5. Đăng nhập thử theo vai giữ nguyên điều kiện T40, hiện dưới nút Google, không bao giờ ở production.
+
+T41 — khoá phiên học sinh: cột mới `hoc_sinh.phien_huy_luc` (migration `20261126180000_hoc_sinh_phien_huy`, chỉ thêm cột). Phiên học sinh hết hiệu lực ngay khi hồ sơ bị ẩn hoặc chủ bấm "Đăng xuất em khỏi mọi máy…" ở hồ sơ (`POST /api/hoc-sinh/[maHs]/thu-hoi-phien`, chỉ chủ, có nhật ký). Em vẫn đăng nhập lại bằng Google được.
+
+### Tài khoản chủ / giáo viên (T50)
+Chưa có màn Tài khoản trên web; chủ tạo bằng script (lặp lại an toàn, không xoá gì, không mở khoá tài khoản đã khoá, nhật ký vai `he_thong`):
+```bash
+BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmail chủ> --ten "Tên hiển thị" --vai chu
+BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmail GV> --ten "Chị Hoa" --vai giao_vien --mon toan
+```
+`--mon` là mã môn (`toan`, `su`, `dia`, `anh`), cách nhau dấu phẩy; bảng môn có sau khi chạy `chuyen-tu-sheet.ts --apply`. Kết quả in `canh_bao` nếu cùng hộp Gmail đã có ở tài khoản khác hoặc trên hồ sơ học sinh.
+
+### Việc của chủ ngoài mã (một lần)
+1. **Google Cloud Console** (miễn phí) → chọn/tạo project → *Google Auth Platform* (OAuth consent screen): User type **External**, tên app "BCA Midnight", email hỗ trợ; *Data access*: chỉ `openid` và `.../auth/userinfo.email` (không nhạy cảm ⇒ không cần Google duyệt); *Audience*: bấm **Publish app** (để "Testing" thì chỉ Gmail trong danh sách test user vào được).
+2. *Clients* → **Create client** → Application type **Web application** → *Authorized redirect URIs*: `https://<địa chỉ production của bca-midnight>/api/dang-nhap/google/callback` (thêm `http://localhost:3100/api/dang-nhap/google/callback` nếu muốn thử trên máy). Không cần *Authorized JavaScript origins*. Lưu Client ID + Client secret.
+3. **Vercel → project `bca-midnight` → Environment Variables**, môi trường **Production**: `BCA_GOOGLE_CLIENT_ID`, `BCA_GOOGLE_CLIENT_SECRET`, `BCA_APP_URL=https://<địa chỉ production>` và `BCA_DATABASE_URL` (Neon). `BCA_SESSION_SECRET` đã có. **Không** đặt `BCA_DEV_LOGIN` cho Production. Preview không cần biến Google (địa chỉ preview đổi mỗi lần đẩy, Google không nhận) — preview dùng đăng nhập thử trên DB giả. Đặt xong thì Redeploy.
+4. Chuyển dữ liệu thật (T21) rồi tạo tài khoản chủ + GV bằng script ở trên.
+5. Đăng nhập thử bằng Gmail chủ khi Vercel Authentication vẫn bật (chủ qua được vì là thành viên Vercel). Ổn thì **tắt Vercel Authentication cho Production** (giữ cho Preview) — nếu không, giáo viên và học sinh bị Vercel chặn trước khi tới trang đăng nhập.
+
+Thử trên máy với Google thật: tạo thêm redirect URI localhost như bước 2, rồi `BCA_GOOGLE_CLIENT_ID=… BCA_GOOGLE_CLIENT_SECRET=… npm run dev -- -p 3100`.
 
 ## Test
 Test xoá sạch và seed lại DB, nên phải dùng DB riêng tên `*_test`:
@@ -38,6 +68,8 @@ npx tsc --noEmit
 - `tests/chuyen.test.ts` — chuyen-tu-sheet trên DB rỗng với bảng tính giả: T34, đối soát số dòng + phân bố tình trạng (lệch ⇒ rollback), chặn `--apply` khi web đã vận hành, dòng nhật ký `chuyen_that`, xoá dấu `DU_LIEU_GIA`.
 - `tests/vong-4.test.ts` — vòng làm gọn cuối Đợt 1 (BCA-D1-MC5): T42 xoá buổi tương lai + hoàn tác + sinh buổi còn thiếu, T43 xử lý đơn + hoàn tác, homNay tách 4 khối, `soNguyen` chặt, giới hạn nhật ký "từ chối", PATCH buổi rỗng, gia hạn số ngày sai, lọc `het_ngay`.
 - `tests/hom-nay-ho-so-ban.test.ts` — một hồ sơ làm hỏng phép tính việc (giả lập bằng `vi.mock`) không làm sập màn Hôm nay.
+- `tests/dang-nhap-google.test.ts` — Đợt 2: đăng nhập Google với Google **giả lập** (thay `fetch`, khoá RSA tự sinh làm JWKS; không gọi mạng thật): thiếu biến, URL Google + PKCE (vector RFC 7636), cookie tạm, đăng nhập 3 vai, Gmail dạng gốc (T48/T49), từ chối (không có tài khoản, chưa xác minh, nonce/aud/iss/hạn/khoá lạ/HS256 giả, token lỗi, state sai, huỷ, khoá, ẩn, trùng), T41, script tạo tài khoản.
+- `tests-ui/dang-nhap.mjs` (Playwright, `npm run test:ui dang-nhap`; máy chủ chạy với `BCA_GOOGLE_CLIENT_ID/SECRET` giả + `BCA_DEV_LOGIN=1`) — nút Google 390/1280, 302 + cookie tạm (không theo chuyển hướng sang Google), state giả, câu báo lỗi, đã đăng nhập, T41 từ hồ sơ.
 - `tests/vong-3.test.ts` — vòng 3 (theo rà soát BCA-D1-RS-MC): đăng nhập thử theo môi trường, khoá ký bắt buộc, quyền các route còn thiếu, hạn hoàn tác 10 giây, gia hạn bỏ môn đã nghỉ, đầu vào sai ⇒ 400/404/409, thao tác đồng thời; các hàm bổ sung cho phòng Giao diện.
 
 ## Chuyển dữ liệu từ sheet
@@ -131,12 +163,13 @@ Hàm mới (không có route riêng — trang gọi thẳng):
 ```
 app/(quan-ly)/quan-ly/   trang chẩn đoán khu quản lý
 app/(hoc-sinh)/hoc/      trang chẩn đoán khu học sinh
-app/dang-nhap/           đăng nhập thử (BCA_DEV_LOGIN=1)
+app/dang-nhap/           trang đăng nhập: nút Google + đăng nhập thử (T40)
+app/api/dang-nhap/google/  bắt đầu + callback Google (server/google.ts)
 app/api/**/route.ts      route handlers (mỏng: đọc request → gọi server/*)
 lib/                     hàm thuần: ngày giờ VN, quy tắc nghiệp vụ, quyền, chuẩn hoá
 server/                  truy vấn + kiểm quyền + nhật ký (mọi hàm nhận người dùng hiện tại)
 proxy.ts                 tự gia hạn cookie phiên 30 ngày (không kiểm quyền)
 prisma/                  schema + migrations
-scripts/                 seed-gia.ts, chuyen-tu-sheet.ts
+scripts/                 seed-gia.ts, chuyen-tu-sheet.ts, them-nguoi-dung.ts
 tests/                   vitest
 ```
