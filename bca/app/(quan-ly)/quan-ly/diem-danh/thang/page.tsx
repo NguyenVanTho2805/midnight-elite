@@ -8,6 +8,7 @@ import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
 import { IconDau, IconQuayLai, IconTiep } from "@/components/bieu-tuong";
 import { nutBieuTuong } from "@/components/ui/nut";
 import { MaTran } from "@/components/quan-ly/ma-tran";
+import { ChiBaoLuu } from "@/components/khung/chi-bao-luu";
 
 export const metadata = { title: "Ma trận điểm danh" };
 
@@ -28,7 +29,7 @@ export default async function TrangMaTran({ searchParams }: { searchParams: Prom
   const chip = (bat: boolean) => `nhan inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 font-semibold ${bat ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2 hover:bg-row-hover"}`;
   return (
     <>
-      <DauTrang tieuDe="Ma trận điểm danh" quayLai={{ href: "/quan-ly/diem-danh", nhan: "Quay lại danh mục điểm danh" }} />
+      <DauTrang tieuDe="Ma trận điểm danh" quayLai={{ href: "/quan-ly/diem-danh", nhan: "Quay lại danh mục điểm danh" }}><ChiBaoLuu /></DauTrang>
       <NoiDung>
         <h1 className="sr-only">Ma trận điểm danh {r.d.mon.ten} tháng {Number(thang.slice(5))}/{thang.slice(0, 4)}</h1>
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">

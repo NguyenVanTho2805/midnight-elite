@@ -83,8 +83,8 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
   }, [nhom]);
 
   const guiHoanTac = useCallback((t: TatCa) => {
-    if (!t.ids?.length) return;
-    datViec({ khoa: `hoantac:${buoiId}:${t.luc}`, nhom, url: `/api/diem-danh/${buoiId}/hoan-tac`, method: "POST", body: { ids: t.ids, luc: t.luc } });
+    if (!t.ids?.length || !t.luc) return; // máy chủ lấy danh sách em từ nhật ký của chính người đó, chỉ cần `luc`
+    datViec({ khoa: `hoantac:${buoiId}:${t.luc}`, nhom, url: `/api/diem-danh/${buoiId}/hoan-tac`, method: "POST", body: { luc: t.luc } });
   }, [buoiId, nhom]);
 
   // Kết quả gửi từ hàng đợi.

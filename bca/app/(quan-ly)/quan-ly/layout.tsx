@@ -8,6 +8,7 @@ import { ThanhDuoi } from "@/components/khung/thanh-duoi";
 import { MatMang } from "@/components/khung/mat-mang";
 import { KhungClient } from "@/components/khung/khung-client";
 import { danhSachDon } from "@/server/don";
+import { demHocSinhDangHien } from "@/server/hoc-sinh";
 
 export const metadata: Metadata = { title: { default: "Quản lý lớp · BCA Midnight", template: "%s · BCA Midnight" } };
 export const viewport: Viewport = { themeColor: "#0A0F1E", colorScheme: "dark", viewportFit: "cover" };
@@ -15,8 +16,11 @@ export const viewport: Viewport = { themeColor: "#0A0F1E", colorScheme: "dark", 
 export default async function KhungQuanLy({ children }: { children: ReactNode }) {
   const u = await layNguoiQuanLy();
   const chu = u.vai === "chu";
-  const soDon = chu ? (await danhSachDon(u)).don.filter((d) => d.trang_thai === "moi" || d.trang_thai === "cho_duyet").length : 0;
-  const k = { chu, soDon, ten: u.ten, vaiNhan: chu ? "Chủ lớp" : "Giáo viên" };
+  const [soDon, soHs] = await Promise.all([
+    chu ? danhSachDon(u).then((r) => r.don.filter((d) => d.trang_thai === "moi" || d.trang_thai === "cho_duyet").length) : 0,
+    demHocSinhDangHien(u),
+  ]);
+  const k = { chu, soDon, soHs, ten: u.ten, vaiNhan: chu ? "Chủ lớp" : "Giáo viên" };
   return (
     <KhungClient>
       <a href="#noi-dung" className="sr-only z-50 rounded-[10px] bg-gold px-4 py-3 font-semibold text-on-gold focus:not-sr-only focus:fixed focus:left-4 focus:top-2">

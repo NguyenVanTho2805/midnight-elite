@@ -1,11 +1,10 @@
 import { connection } from "next/server";
-import { devLoginBat } from "@/server/token";
-import { VAI_THU } from "@/server/dang-nhap-thu";
+import { dangNhapThuBat, VAI_THU } from "@/server/dang-nhap-thu";
 import { NutVai } from "./nut-vai";
 
 export default async function DangNhap() {
   await connection(); // đọc BCA_DEV_LOGIN lúc chạy, không lúc build
-  const dev = devLoginBat();
+  const dev = await dangNhapThuBat();
   return (
     <main className="mx-auto max-w-md p-6">
       <h1 className="text-2xl font-extrabold">BCA Midnight</h1>

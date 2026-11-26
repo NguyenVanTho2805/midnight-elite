@@ -297,22 +297,40 @@ function HocBu({ mon, ds, homNay, buCho, dong }: { mon: Mon[]; ds: BuoiNho[]; ho
   );
 }
 
-/** Tháng chưa có lịch: chủ sinh buổi theo lịch môn (lặp lại an toàn, không tạo trùng). */
+/** Tháng chưa có lịch: chủ xem trước (GET …/sinh?xem=1, không ghi) rồi mới sinh buổi theo lịch môn (lặp lại an toàn, không tạo trùng). */
+type XemTruoc = { mon: { ma: string; ten: string; theo_lich: number; da_co: number; se_tao: number }[]; se_tao: number };
 export function SinhBuoi({ thang }: { thang: string }) {
+  const [xem, setXem] = useState<XemTruoc | null>(null);
   const [dang, setDang] = useState(false);
   const [kq, setKq] = useState("");
   const router = useRouter();
+  const t = Number(thang.slice(5));
+  useEffect(() => {
+    let huy = false;
+    fetch(`/api/buoi-hoc/sinh?thang=${thang}&xem=1`).then((r) => (r.ok ? r.json() : null)).then((k) => { if (!huy) setXem(k); }).catch(() => {});
+    return () => { huy = true; };
+  }, [thang]);
   return (
-    <div className="mt-3">
-      <button type="button" className={nutChinh} disabled={dang} onClick={async () => {
-        setDang(true);
-        const r = await fetch("/api/buoi-hoc/sinh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thang }) });
-        const k = await r.json().catch(() => ({}));
-        setKq(r.ok ? `Đã sinh ${k.tao_moi} buổi theo lịch.` : (k.loi ?? "Không sinh được"));
-        setDang(false);
-        router.refresh();
-      }}>{dang ? "Đang sinh…" : `Sinh buổi tháng ${Number(thang.slice(5))}`}</button>
-      {kq ? <p className="mt-2 text-text-2" aria-live="polite">{kq}</p> : null}
+    <div className="mt-3 grid gap-3">
+      {xem ? (
+        <div className="rounded-[14px] bg-raised px-3 py-2 text-[14px] text-text">
+          <p className="font-semibold">Xem trước: sẽ tạo <span className="so">{xem.se_tao}</span> buổi theo lịch môn</p>
+          <ul className="so mt-1 text-text-2">
+            {xem.mon.map((m) => <li key={m.ma}>{m.ten}: {m.se_tao} buổi mới{m.da_co ? ` · ${m.da_co} đã có` : ""}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      <div>
+        <button type="button" className={nutChinh} disabled={dang || xem?.se_tao === 0} onClick={async () => {
+          setDang(true);
+          const r = await fetch("/api/buoi-hoc/sinh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thang }) });
+          const k = await r.json().catch(() => ({}));
+          setKq(r.ok ? `Đã sinh ${k.tao_moi} buổi theo lịch.` : (k.loi ?? "Không sinh được"));
+          setDang(false);
+          router.refresh();
+        }}>{dang ? "Đang sinh…" : xem ? `Sinh ${xem.se_tao} buổi tháng ${t}` : `Sinh buổi tháng ${t}`}</button>
+      </div>
+      {kq ? <p className="text-text-2" aria-live="polite">{kq}</p> : null}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { ddmm, gio, sdt } from "@/components/dinh-dang";
 import { NutAnHoSo, NutChinhHs, NutMon, ThaoTacHs, type MonHs } from "@/components/quan-ly/thao-tac-hs";
 import { SaoChep } from "@/components/quan-ly/sao-chep";
+import { GhiChuHs } from "@/components/quan-ly/ghi-chu-hs";
 
 type D = Awaited<ReturnType<typeof chiTietHocSinh>>;
 type MonD = D["mon"][number];
@@ -119,9 +120,8 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
               {"don" in d && Array.isArray(d.don) && d.don.length ? <Dong nhan="Đơn đăng ký">{d.don.map((x) => `${ddmm(new Date(x.thoi_gian.getTime() + 7 * 3600_000).toISOString().slice(0, 10))} ${x.loai ?? ""}`).join(" · ")}</Dong> : null}
             </Khoi>
             {chu ? (
-              <Khoi tieuDe="Ghi chú">
-                <p className="whitespace-pre-line text-text-2">{hs.ghi_chu || "Chưa có ghi chú."}</p>
-                {hs.ghi_chu_rieng ? <p className="mt-2 whitespace-pre-line text-text-2"><span className="font-semibold text-text">Riêng của chủ: </span>{hs.ghi_chu_rieng}</p> : null}
+              <Khoi tieuDe="Ghi chú" mo={!!(hs.ghi_chu || hs.ghi_chu_rieng)}>
+                <GhiChuHs ma={hs.ma_hs} ghiChu={hs.ghi_chu ?? null} ghiChuRieng={hs.ghi_chu_rieng ?? null} />
               </Khoi>
             ) : null}
           </div>
@@ -131,7 +131,7 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
   );
 
   return chu ? (
-    <ThaoTacHs ma={hs.ma_hs} ten={hs.ho_ten} mon={monHs} thuDen={thu?.den ?? null} het={het} homNay={d.hom_nay} macDinhNghi={"mac_dinh_nghi" in d ? String(d.mac_dinh_nghi) : congNgay(d.hom_nay, -1)}>
+    <ThaoTacHs gia={"caiDat" in d && d.caiDat ? d.caiDat : undefined} ma={hs.ma_hs} ten={hs.ho_ten} mon={monHs} thuDen={thu?.den ?? null} het={het} homNay={d.hom_nay} macDinhNghi={"mac_dinh_nghi" in d ? String(d.mac_dinh_nghi) : congNgay(d.hom_nay, -1)}>
       {noiDung}
     </ThaoTacHs>
   ) : noiDung;

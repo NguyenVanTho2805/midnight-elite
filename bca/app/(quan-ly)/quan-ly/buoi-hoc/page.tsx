@@ -9,7 +9,7 @@ import { conGioBuoiToiQua, moDiemDanh } from "@/lib/quy-tac";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
 import { Chip } from "@/components/ui/chip";
-import { IconDau, IconQuayLai, IconTiep } from "@/components/bieu-tuong";
+import { IconDau, IconMoNgoai, IconQuayLai, IconTiep } from "@/components/bieu-tuong";
 import { nutBieuTuong, nutChinh, nutPhu } from "@/components/ui/nut";
 import { ddmm, gio, thuNgan, thuNgay, tenMonDayDu } from "@/components/dinh-dang";
 import { CuonToi, HanhDongBuoi, NutHocBu, SinhBuoi, SuaBuoi } from "@/components/quan-ly/buoi-hoc";
@@ -159,8 +159,8 @@ function ChiTiet({ b, chu, h, luc, dongHref, dan, mons, ds }: { b: B; chu: boole
       <div className="flex items-start gap-2">
         <Link href={dongHref} replace scroll={false} className={`${nutBieuTuong} -ml-2 lg:hidden`} aria-label="Quay lại danh sách buổi"><IconQuayLai /></Link>
         <div className="min-w-0 flex-1">
-          <h2 id="ct-buoi" className="text-[22px] font-extrabold leading-tight">{tenMonDayDu(b.mon.ma, b.mon.ten)} · {thuNgay(b.ngay)}</h2>
-          <p className="so text-text-2">{b.gio}–{gio(ketThuc)}</p>
+          <h2 id="ct-buoi" className="text-[22px] font-extrabold leading-tight">{b.mon.ten_day_du || tenMonDayDu(b.mon.ma, b.mon.ten)} · {thuNgay(b.ngay)}</h2>
+          <p className="so text-text-2">{b.gio}–{gio(ketThuc)}{b.mon.giao_vien.length ? <span translate="no"> · GV {b.mon.giao_vien.join(", ")}</span> : null}</p>
           <p className="mt-1">{huy ? <Chip mau="mo">Lớp nghỉ{b.ly_do_huy ? ` · ${b.ly_do_huy}` : ""}</Chip> : b.loai === "hoc_bu" ? <Chip>Học bù</Chip> : <Chip mau="ok">Có học</Chip>}</p>
         </div>
       </div>
@@ -171,6 +171,9 @@ function ChiTiet({ b, chu, h, luc, dongHref, dan, mons, ds }: { b: B; chu: boole
           <p className="so text-text-2">{t.co} có · {t.phep} phép · {t.vang} vắng · {chua} chưa</p>
           <Link href={`/quan-ly/diem-danh/${b.id}`} className={`${moDD && chua > 0 ? nutChinh : nutPhu} mt-3 w-full`}>{moDD ? (chua > 0 ? "Mở điểm danh" : "Xem điểm danh") : "Xem trước danh sách"}</Link>
         </div>
+      ) : null}
+      {b.mon.link_meet && !huy && b.ngay >= h ? (
+        <a href={b.mon.link_meet} target="_blank" rel="noopener noreferrer" className={`${nutPhu} w-full sm:w-auto sm:justify-self-start`}>Mở Meet <IconMoNgoai size={16} /></a>
       ) : null}
       <SuaBuoi key={b.id} id={b.id} linkRecord={b.link_record} noiDung={b.noi_dung} ghiChu={b.ghi_chu} dan={dan} />
       {chu ? <HanhDongBuoi b={{ ...nho(b), ly_do_huy: b.ly_do_huy }} daDiem={t?.da_diem ?? 0} coDuLieu={coDuLieu} mon={mons} ds={ds.map(nho)} homNay={h} /> : null}

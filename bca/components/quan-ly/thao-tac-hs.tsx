@@ -17,7 +17,8 @@ import { NgayDoc } from "../ui/ngay-doc";
 import { GiaHan } from "./gia-han";
 
 export type MonHs = { ma: string; ten: string; o: "hoc" | "thu" | "nghi" | null; macDinhCT?: string; vuaHetThu?: boolean };
-type Props = { ma: string; ten: string; mon: MonHs[]; thuDen: string | null; het: string | null; homNay: string; macDinhNghi: string };
+/** gia: đơn giá thật (đồng) từ chiTietHocSinh.caiDat — chỉ chủ; thiếu thì dùng mặc định. */
+type Props = { ma: string; ten: string; mon: MonHs[]; thuDen: string | null; het: string | null; homNay: string; macDinhNghi: string; gia?: { GIA_1_MON: number; GIA_TU_2_MON: number } };
 type Mo = { kieu: "gia-han" } | { kieu: "chinh-thuc"; mon?: string } | { kieu: "nghi"; mon?: string } | { kieu: "them"; mon: string } | { kieu: "menu"; mon: string } | { kieu: "an" } | null;
 
 async function goi(url: string, body: unknown) {
@@ -111,7 +112,7 @@ function ChanNut({ huy, chinh, nguy = false, dang, mang }: { huy: () => void; ch
   );
 }
 
-function ChinhThuc({ ma, ten, mon, homNay, monBatDau, dong }: Props & { monBatDau?: string; dong: () => void }) {
+function ChinhThuc({ ma, ten, mon, homNay, gia = MAC_DINH, monBatDau, dong }: Props & { monBatDau?: string; dong: () => void }) {
   const thu = mon.filter((m) => m.o === "thu");
   const chua = mon.filter((m) => m.o === null || m.o === "nghi");
   const [chon, setChon] = useState<Set<string>>(new Set(monBatDau ? [monBatDau] : thu.length ? thu.map((m) => m.ma) : mon.filter((m) => m.vuaHetThu).map((m) => m.ma)));
@@ -174,7 +175,7 @@ function ChinhThuc({ ma, ten, mon, homNay, monBatDau, dong }: Props & { monBatDa
       <p className="text-[13px] text-text-3">Buổi Có học/Học bù từ ngày này tính vào học phí.</p>
       {tu < macDinh && thu.some((m) => chon.has(m.ma)) ? <p className="mt-1 text-[13px] text-warn">Lên chính thức sớm — thử cắt còn đến {ddmm(congNgay(tu, -1))}.</p> : null}
       <p className="so mt-3 rounded-[14px] bg-raised px-3 py-2 text-[14px]">
-        Từ {ddmm(tu)} học {soMon} môn → {soMon >= 2 ? `${tien(MAC_DINH.GIA_TU_2_MON)}/buổi/môn` : `${tien(MAC_DINH.GIA_1_MON)}/buổi`} (dự kiến)
+        Từ {ddmm(tu)} học {soMon} môn → {soMon >= 2 ? `${tien(gia.GIA_TU_2_MON)}/buổi/môn` : `${tien(gia.GIA_1_MON)}/buổi`} (dự kiến — tiền thật tính theo số môn có buổi trong kỳ)
       </p>
       {conThuKhongChon.length ? (
         <label className="mt-3 flex min-h-11 items-center gap-3">

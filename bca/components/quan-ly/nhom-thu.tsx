@@ -1,16 +1,23 @@
 "use client";
-// Nhóm "Thử sắp hết" / "Hết thử – hỏi em" ở Hôm nay (man-hom-nay §6, T27, T28): 3 em + Xem tất cả + Gia hạn cả nhóm.
-// Điện thoại: mỗi em một nút "Xử lý" mở tờ trượt; máy tính: 3 nút ngay trên hàng. Chỉ chủ lớp thấy khối này.
+// Nhóm "Thử sắp hết" / "Hết thử – hỏi em" ở Hôm nay (man-hom-nay §6, §9, T27, T28): 3 em + Xem tất cả + Gia hạn cả nhóm.
+// Chỉ chủ lớp thấy khối này. Bố cục theo bề rộng khối (container query), không theo màn hình:
+// - Hẹp (< 560px, điện thoại): tên + môn + chip, một nút "Xử lý" mở tờ trượt.
+// - Rộng (≥ 560px): một hàng ≈ 48px trên lưới con chung (cột Học sinh · Lứa · SĐT HS · việc):
+//   "Lên chính thức", "Gia hạn" trên hàng; "Cho nghỉ…" và "Ẩn 3 ngày" trong nút "…".
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useHoanTac } from "../khung/hoan-tac";
+import { sdt } from "../dinh-dang";
+import { IconThem } from "../bieu-tuong";
 import { TrialChip } from "../ui/chip";
 import { ToTruot } from "../ui/to-truot";
 import { nutPhu } from "../ui/nut";
 import { GiaHan, type EmGiaHan } from "./gia-han";
 
-export type EmThu = EmGiaHan & { con_ngay?: number | null };
+export type EmThu = EmGiaHan & { con_ngay?: number | null; lua?: string | null; sdt?: string | null };
+
+const nho = "nhan inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-input px-3 text-[14px] font-semibold text-text hover:bg-row-hover";
 
 export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string; em: EmThu[]; xemTatCa: string; homNay: string; loai: "thu_sap_het" | "het_thu" }) {
   const [giaHan, setGiaHan] = useState<EmThu[] | null>(null);
@@ -31,10 +38,9 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
       },
     });
   }
-  const nho = "nhan inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-input px-3 text-[14px] font-semibold text-text hover:bg-row-hover";
   return (
-    <div className="rounded-[14px] border border-border bg-surface">
-      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
+    <div className="@container rounded-[14px] border border-border bg-surface">
+      <div className={`flex flex-col gap-2 px-4 py-3 @min-[560px]:flex-row @min-[560px]:items-center @min-[560px]:gap-3`}>
         <h3 className="flex-1 font-semibold">
           {tieuDe} <span className="so text-text-3">· {em.length} em</span>
         </h3>
@@ -43,25 +49,36 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
           <Link href={xemTatCa} className={nho}>Xem {em.length} em ›</Link>
         </div>
       </div>
-      <ul className="border-t border-border">
+      <ul className={`border-t border-border @min-[560px]:grid @min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto_auto] @min-[560px]:gap-x-3`}>
+        <li aria-hidden="true" className={`hidden px-4 pt-2 text-[13px] font-semibold text-text-2 @min-[560px]:col-span-4 @min-[560px]:grid @min-[560px]:grid-cols-subgrid`}>
+          <span>Học sinh</span><span>Lứa</span><span>SĐT HS</span><span />
+        </li>
         {em.slice(0, 3).map((e) => (
-          <li key={e.ma_hs} className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-2 last:border-b-0">
-            <div className="min-w-0 flex-1">
+          <li key={e.ma_hs} className={`grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-border px-4 py-2 last:border-b-0 @min-[560px]:col-span-4 @min-[560px]:min-h-12 @min-[560px]:grid-cols-subgrid @min-[560px]:py-0.5`}>
+            <div className="min-w-0 leading-5">
               <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}`} className="font-semibold hover:underline" translate="no">{e.ho_ten}</Link>
-              <span className="ml-2 text-[13px] text-text-3">{e.mon.join(", ")}</span>
+              <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-text-3">
+                {e.mon.join(", ")}
+                <TrialChip con={e.con_ngay} het={e.het} tienTo="" />
+              </span>
             </div>
-            <TrialChip con={e.con_ngay} het={e.het} tienTo="" />
-            <button type="button" className={`${nho} sm:hidden`} onClick={() => setXuLy(e)}>Xử lý</button>
-            <span className="hidden gap-2 sm:flex">
-              <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}?mo=chinh-thuc`} className={nho}>Lên chính thức</Link>
-              <button type="button" className={nho} onClick={() => setGiaHan([e])}>Gia hạn</button>
-              <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}?mo=nghi`} className={nho}>Cho nghỉ</Link>
-              <button type="button" className={`${nho} border-transparent text-text-2`} onClick={() => an(e)}>Ẩn 3 ngày</button>
+            <span className={`so hidden text-[14px] text-text-2 @min-[560px]:block`} translate="no"><span className="sr-only">Lứa </span>{e.lua ?? "—"}</span>
+            <span className={`so hidden whitespace-nowrap text-[14px] @min-[560px]:block`}>
+              {e.sdt ? <a href={`tel:${e.sdt}`} translate="no" className="inline-flex min-h-11 items-center hover:underline" aria-label={`Gọi ${e.ho_ten} ${sdt(e.sdt)}`}>{sdt(e.sdt)}</a> : <span className="text-text-3">—</span>}
+            </span>
+            <span className="flex justify-end">
+              {/* bọc ngoài để `hidden` không đụng `inline-flex` của nút */}
+              <span className="@min-[560px]:hidden"><button type="button" className={nho} onClick={() => setXuLy(e)}>Xử lý</button></span>
+              <span className="hidden gap-2 @min-[560px]:flex">
+                <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}?mo=chinh-thuc`} className={nho}>Lên chính thức</Link>
+                <button type="button" className={nho} onClick={() => setGiaHan([e])}>Gia hạn</button>
+                <MenuThem e={e} an={an} />
+              </span>
             </span>
           </li>
         ))}
         {em.length > 3 ? (
-          <li className="px-4 py-2 text-[14px] text-text-3"><Link href={xemTatCa} className="inline-flex min-h-11 items-center hover:text-text hover:underline">+ {em.length - 3} em nữa</Link></li>
+          <li className={`px-4 py-2 text-[14px] text-text-3 @min-[560px]:col-span-4`}><Link href={xemTatCa} className="inline-flex min-h-11 items-center hover:text-text hover:underline">+ {em.length - 3} em nữa</Link></li>
         ) : null}
       </ul>
       <ToTruot mo={!!xuLy} dong={() => setXuLy(null)} tieuDe={xuLy ? xuLy.ho_ten : ""}>
@@ -77,5 +94,35 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
       </ToTruot>
       <GiaHan em={giaHan ?? []} homNay={homNay} mo={!!giaHan} dong={() => setGiaHan(null)} />
     </div>
+  );
+}
+
+/** Nút "…" (mẫu disclosure): Cho nghỉ… / Ẩn 3 ngày. Esc hoặc chạm ra ngoài thì đóng, Esc trả tiêu điểm về nút. */
+function MenuThem({ e, an }: { e: EmThu; an: (e: EmThu) => void }) {
+  const [mo, setMo] = useState(false);
+  const goc = useRef<HTMLSpanElement>(null);
+  const nut = useRef<HTMLButtonElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (!mo) return;
+    const ngoai = (ev: PointerEvent) => { if (!goc.current?.contains(ev.target as Node)) setMo(false); };
+    const phim = (ev: KeyboardEvent) => { if (ev.key === "Escape") { setMo(false); nut.current?.focus(); } };
+    document.addEventListener("pointerdown", ngoai);
+    document.addEventListener("keydown", phim);
+    return () => { document.removeEventListener("pointerdown", ngoai); document.removeEventListener("keydown", phim); };
+  }, [mo]);
+  const muc = "flex min-h-11 w-full items-center rounded-[10px] px-3 text-left text-[14px] font-semibold hover:bg-row-hover";
+  return (
+    <span ref={goc} className="relative inline-flex" onBlur={(ev) => { if (!ev.currentTarget.contains(ev.relatedTarget as Node)) setMo(false); }}>
+      <button ref={nut} type="button" aria-expanded={mo} aria-controls={id} aria-label={`Việc khác cho ${e.ho_ten}`} className={`${nho} w-11 px-0`} onClick={() => setMo(!mo)}>
+        <IconThem size={20} />
+      </button>
+      {mo ? (
+        <span id={id} className="bong-noi absolute right-0 top-full z-40 mt-1 grid w-48 rounded-[14px] bg-raised p-1">
+          <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}?mo=nghi`} className={`${muc} text-danger`}>Cho nghỉ…</Link>
+          <button type="button" className={`${muc} text-text-2`} onClick={() => { setMo(false); an(e); }}>Ẩn 3 ngày</button>
+        </span>
+      ) : null}
+    </span>
   );
 }

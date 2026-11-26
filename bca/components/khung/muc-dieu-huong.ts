@@ -10,4 +10,5 @@ export const MUC = [
 ] as const;
 
 export const dangMo = (path: string, href: string) => (href === "/quan-ly" ? path === href : path === href || path.startsWith(`${href}/`));
-export type ThongTinKhung = { chu: boolean; soDon: number; ten: string; vaiNhan: string };
+/** soHs: số hồ sơ đang hiện (hoc-sinh.demHocSinhDangHien, đã lọc theo vai). */
+export type ThongTinKhung = { chu: boolean; soDon: number; soHs: number; ten: string; vaiNhan: string };

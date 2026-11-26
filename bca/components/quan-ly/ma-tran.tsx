@@ -2,8 +2,12 @@
 // Ma trận điểm danh tháng (man-diem-danh §7): ✓ có · P phép · K vắng · "·" chưa điểm · "–" không học ngày này.
 // Ký hiệu khác nhau về hình, màu chỉ bổ trợ; mỗi ô có aria-label đầy đủ. Cột tên dính, tự cuộn tới cột hôm nay.
 // Chạm ô → tờ trượt (điện thoại) / hộp thoại (máy tính): Có · Phép · Vắng · Về chưa điểm; quá 48 giờ hỏi xác nhận một lần cho cả cột.
+// Sửa ô đi qua hàng đợi chung (khoá `dd:${buoiId}:${hsId}`, nhóm `dd:${buoiId}` — cùng khoá với màn một buổi): mất mạng vẫn giữ.
+// Bàn phím: role="grid" + roving tabindex — cả bảng một điểm dừng Tab; mũi tên đi giữa ô/ngày/tên, Home/End đầu/cuối hàng,
+// 1/2/3 = Có/Phép/Vắng, Delete = về chưa điểm, Enter mở hộp chọn.
 import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { dangKyXuLy, datViec, layViec, nap, useHangDoi, viecCuaNhom } from "../khung/hang-doi";
 import type { maTranThang } from "@/server/diem-danh";
 import { chuoi, demDD, moDiemDanh, qua48Gio } from "@/lib/quy-tac";
 import { thuDay, thuNgan, ddmm } from "../dinh-dang";
@@ -31,6 +35,36 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
   const luc = Date.now();
   // Cột hôm nay, hoặc buổi gần nhất đã qua.
   const cotNay = d.buoi.reduce((k, b, i) => (b.ngay <= d.hom_nay && b.trang_thai !== "huy" ? i : k), -1);
+  const [tieuDiem, setTieuDiem] = useState({ r: 0, c: cotNay });
+  useHangDoi(); // vẽ lại chấm "chưa gửi" khi hàng đợi đổi
+  const moCotRef = useRef(moCot);
+  useEffect(() => { moCotRef.current = moCot; }, [moCot]);
+
+  // Thay đổi còn chờ (từ lần mở trước hoặc màn một buổi) → phủ lên dữ liệu máy chủ; lỗi từ máy chủ → trả ô về giá trị gốc.
+  useEffect(() => {
+    let huy = false;
+    const cot = new Map(d.buoi.map((b, c) => [b.id, c]));
+    const dong = new Map(d.hang.map((h, r) => [h.hoc_sinh_id, r]));
+    const doiO = (buoiId: number, hsId: number, t: O) => {
+      const c = cot.get(buoiId), r = dong.get(hsId);
+      if (c === undefined || r === undefined) return;
+      setHang((x) => x.map((h, i) => (i === r ? { ...h, o: h.o.map((v, j) => (j === c ? t : v)) } : h)));
+    };
+    void nap().then(() => {
+      if (huy) return;
+      for (const b of d.buoi) for (const v of viecCuaNhom(`dd:${b.id}`)) if ("trangThai" in v.body) doiO(b.id, Number(v.body.hocSinhId), v.body.trangThai as O);
+    });
+    const go = d.buoi.map((b) => dangKyXuLy(`dd:${b.id}`, {
+      loi: (v, _s, kq) => {
+        const hsId = Number(v.body.hocSinhId), c = cot.get(b.id), r = dong.get(hsId);
+        if (c === undefined || r === undefined) return;
+        doiO(b.id, hsId, d.hang[r].o[c]);
+        if (kq.ma === "can_xac_nhan_48h") setMoCot((s) => { const n = new Set(s); n.delete(c); return n; });
+        setLoi(`Không lưu được ô của ${d.hang[r].ho_ten} ngày ${ddmm(b.ngay)}: ${kq.loi ?? "lỗi máy chủ"}. Ô đã trả về như cũ.`);
+      },
+    }));
+    return () => { huy = true; go.forEach((f) => f()); };
+  }, [d]);
 
   useEffect(() => {
     const el = khung.current?.querySelector<HTMLElement>(`[data-cot="${cotNay}"]`);
@@ -46,36 +80,42 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
   };
   const can48 = (c: number) => qua48Gio(new Date(d.buoi[c].bat_dau_luc), new Date(luc)) && !moCot.has(c);
 
-  async function dat(r: number, c: number, t: "co" | "phep" | "vang" | null) {
+  function dat(r: number, c: number, t: "co" | "phep" | "vang" | null) {
     const b = d.buoi[c];
-    const cu = hang[r].o[c];
+    const hsId = hang[r].hoc_sinh_id;
     setHang((x) => x.map((h, i) => (i === r ? { ...h, o: h.o.map((v, j) => (j === c ? t : v)) } : h)));
     setMo(null);
     setLoi("");
-    try {
-      const res = await fetch(`/api/diem-danh/${b.id}`, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hocSinhId: hang[r].hoc_sinh_id, trangThai: t, xacNhan: moCot.has(c) }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).loi ?? `Lỗi ${res.status}`);
-    } catch (e) {
-      setHang((x) => x.map((h, i) => (i === r ? { ...h, o: h.o.map((v, j) => (j === c ? cu : v)) } : h)));
-      setLoi(`Không lưu được ô của ${hang[r].ho_ten} ngày ${ddmm(b.ngay)}: ${(e as Error).message}. Kiểm tra mạng rồi thử lại.`);
-    }
+    const khoa = `dd:${b.id}:${hsId}`;
+    const body = t === null ? { hocSinhId: hsId, trangThai: null } : { ...layViec(khoa)?.body, hocSinhId: hsId, trangThai: t };
+    datViec({ khoa, nhom: `dd:${b.id}`, url: `/api/diem-danh/${b.id}`, method: "PUT", body: { ...body, ...(moCotRef.current.has(c) ? { xacNhan: true } : {}) } });
   }
 
+  // Toạ độ roving: hàng -1 = đầu bảng (ngày), cột -1 = tên học sinh. Ô không có phần tử (lớp nghỉ, góc) bị bỏ qua.
+  const td = { r: Math.min(tieuDiem.r, hienThi.length - 1), c: tieuDiem.c };
+  const roving = (r: number, c: number) => ({
+    "data-o": `${r}:${c}`,
+    tabIndex: td.r === r && td.c === c ? 0 : -1,
+    onFocus: () => setTieuDiem({ r, c }),
+    onKeyDown: (e: KeyboardEvent) => phim(e, r, c),
+  });
   function phim(e: KeyboardEvent, vr: number, c: number) {
-    const di = (nr: number, nc: number) => {
-      const o = khung.current?.querySelector<HTMLElement>(`[data-o="${nr}-${nc}"]`);
-      if (o) { e.preventDefault(); o.focus(); }
+    const toi = (r: number, cc: number, dr: number, dc: number) => {
+      for (let i = 0; i < 80; i++, r += dr, cc += dc) {
+        if (r < -1 || r >= hienThi.length || cc < -1 || cc >= d.buoi.length) return;
+        const o = khung.current?.querySelector<HTMLElement>(`[data-o="${r}:${cc}"]`);
+        if (o) { e.preventDefault(); setTieuDiem({ r, c: cc }); o.focus(); return; }
+      }
     };
+    if (e.key === "ArrowRight") toi(vr, c + 1, 0, 1);
+    else if (e.key === "ArrowLeft") toi(vr, c - 1, 0, -1);
+    else if (e.key === "ArrowDown") toi(vr + 1, c, 1, 0);
+    else if (e.key === "ArrowUp") toi(vr - 1, c, -1, 0);
+    else if (e.key === "Home") toi(vr, -1, 0, 1);
+    else if (e.key === "End") toi(vr, d.buoi.length - 1, 0, -1);
+    if (vr < 0 || c < 0) return;
     const { r } = hienThi[vr];
-    if (e.key === "ArrowRight") di(vr, c + 1);
-    else if (e.key === "ArrowLeft") di(vr, c - 1);
-    else if (e.key === "ArrowDown") di(vr + 1, c);
-    else if (e.key === "ArrowUp") di(vr - 1, c);
-    else if (suaDuoc(c, hang[r].o[c]) && !can48(c)) {
+    if (suaDuoc(c, hang[r].o[c]) && !can48(c)) {
       if (["1", "2", "3"].includes(e.key)) { e.preventDefault(); void dat(r, c, NUT_DD[Number(e.key) - 1].v); }
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); void dat(r, c, null); }
     }
@@ -91,8 +131,8 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
       ) : !hienThi.length ? (
         <p className="rounded-[14px] border border-border bg-surface px-4 py-6 text-text-2">Chưa có em nào học {d.mon.ten} trong tháng này.</p>
       ) : (
-        <div ref={khung} className="max-h-[calc(100dvh-220px)] overflow-auto rounded-[14px] border border-border bg-surface">
-          <table className="border-separate border-spacing-0 text-[15px]">
+        <div ref={khung} className="max-h-[calc(100dvh-220px)] w-fit max-w-full overflow-auto rounded-[14px] border border-border bg-surface">
+          <table role="grid" className="border-separate border-spacing-0 text-[15px]">
             <caption className="sr-only">Ma trận điểm danh {d.mon.ten} tháng {d.thang.slice(5)}/{d.thang.slice(0, 4)}</caption>
             <thead>
               <tr>
@@ -104,7 +144,7 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
                   }
                   return (
                     <th key={b.id} scope="col" data-cot={c} className={`sticky top-0 z-10 min-w-11 border-b border-border p-0 text-[12px] font-semibold ${nay ? "bg-today-col text-gold" : "bg-surface text-text-2"}`}>
-                      <Link href={`/quan-ly/diem-danh/${b.id}`} className="so flex min-h-12 flex-col items-center justify-center leading-tight hover:underline" aria-label={`Điểm danh buổi ${thuDay(b.ngay)} ${ddmm(b.ngay)}${b.loai === "hoc_bu" ? ", học bù" : ""}`}>
+                      <Link {...roving(-1, c)} href={`/quan-ly/diem-danh/${b.id}`} className="so flex min-h-12 flex-col items-center justify-center leading-tight hover:underline" aria-label={`Điểm danh buổi ${thuDay(b.ngay)} ${ddmm(b.ngay)}${b.loai === "hoc_bu" ? ", học bù" : ""}`}>
                         <span>{thuNgan(b.ngay)}{b.loai === "hoc_bu" ? "·bù" : ""}</span>
                         <span>{b.ngay.slice(8)}</span>
                       </Link>
@@ -122,7 +162,7 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
                 return (
                   <tr key={h.hoc_sinh_id} className="hang-dai hover:bg-row-hover">
                     <th scope="row" className="sticky left-0 z-10 border-b border-r border-border bg-surface px-3 py-1 text-left font-semibold">
-                      <Link href={`/quan-ly/hoc-sinh/${h.ma_hs}`} className="block leading-snug hover:underline" translate="no">{h.ho_ten}</Link>
+                      <Link {...roving(vr, -1)} href={`/quan-ly/hoc-sinh/${h.ma_hs}`} className="block leading-snug hover:underline" translate="no">{h.ho_ten}</Link>
                       {h.loai === "thu" ? <span className="text-[12px] font-semibold text-trial-fg">· thử</span> : null}
                       {!h.dang_hoc ? <span className="text-[12px] text-text-3"> · đã nghỉ</span> : null}
                     </th>
@@ -132,14 +172,16 @@ export function MaTran({ d, chiDangHoc }: { d: D; chiDangHoc: boolean }) {
                       const ky = KY[String(v)];
                       const nhanO = `${h.ho_ten}, ${thuDay(b.ngay)} ${ddmm(b.ngay)}: ${ky.ten}`;
                       const sua = suaDuoc(col, v);
+                      const choGui = !!layViec(`dd:${b.id}:${h.hoc_sinh_id}`);
                       return (
                         <td key={b.id} className={`border-b border-border p-0 text-center ${col === cotNay ? "bg-today-col" : ""}`}>
                           {sua ? (
-                            <button type="button" data-o={`${vr}-${col}`} aria-label={nhanO} onKeyDown={(e) => phim(e, vr, col)} onClick={() => setMo({ r, c: col })} className={`so flex h-12 w-11 items-center justify-center font-semibold hover:bg-raised lg:h-11 ${ky.mau}`}>
+                            <button type="button" {...roving(vr, col)} aria-label={`${nhanO}${choGui ? ", chưa gửi" : ""}`} onClick={() => setMo({ r, c: col })} className={`so relative flex h-12 w-11 items-center justify-center font-semibold hover:bg-raised lg:h-11 ${ky.mau}`}>
                               <span aria-hidden="true">{ky.k}</span>
+                              {choGui ? <span aria-hidden="true" className="absolute right-1 top-1 size-1.5 rounded-full border border-text-3" /> : null}
                             </button>
                           ) : (
-                            <span role="img" data-o={`${vr}-${col}`} tabIndex={-1} aria-label={nhanO} onKeyDown={(e) => phim(e, vr, col)} className={`so flex h-12 w-11 items-center justify-center font-semibold lg:h-11 ${ky.mau}`}>{ky.k}</span>
+                            <span role="img" {...roving(vr, col)} aria-label={nhanO} className={`so flex h-12 w-11 items-center justify-center font-semibold lg:h-11 ${ky.mau}`}>{ky.k}</span>
                           )}
                         </td>
                       );

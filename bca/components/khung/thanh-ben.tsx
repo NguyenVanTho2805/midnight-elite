@@ -6,7 +6,7 @@ import { IconTrang } from "../bieu-tuong";
 import { dangMo, MUC, type ThongTinKhung } from "./muc-dieu-huong";
 import { NutDangXuat } from "./dang-xuat";
 
-export function ThanhBen({ chu, soDon, ten, vaiNhan }: ThongTinKhung) {
+export function ThanhBen({ chu, soDon, soHs, ten, vaiNhan }: ThongTinKhung) {
   const path = usePathname();
   return (
     <nav aria-label="Điều hướng chính" className="sticky top-0 z-30 hidden h-dvh w-[72px] shrink-0 flex-col border-r border-border bg-sidebar sm:flex lg:w-60">
@@ -31,6 +31,7 @@ export function ThanhBen({ chu, soDon, ten, vaiNhan }: ThongTinKhung) {
                 {href === "/quan-ly/don" && soDon > 0 ? (
                   <span className="so absolute right-1 top-1 min-w-5 rounded-full bg-gold px-1.5 text-center text-[12px] font-semibold text-on-gold lg:static" aria-label={`${soDon} đơn mới`}>{soDon}</span>
                 ) : null}
+                {href === "/quan-ly/hoc-sinh" ? <span className="so hidden text-[13px] font-normal text-text-3 lg:inline" aria-label={`${soHs} hồ sơ`}>{soHs}</span> : null}
               </Link>
             </li>
           );
