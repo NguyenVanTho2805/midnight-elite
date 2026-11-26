@@ -92,14 +92,15 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 ### Đợt 2 — đăng nhập Google (26/11, phiếu BCA-D2-DN; chi tiết `bca/README.md` mục "Đăng nhập Google")
 - T48. So Gmail khi đăng nhập theo "hộp thư": `@gmail.com` / `@googlemail.com` bỏ dấu chấm và phần `+…`, không phân biệt hoa thường (Gmail coi là cùng một hộp); địa chỉ khác so nguyên văn, không phân biệt hoa thường. Hai tài khoản/hồ sơ trỏ cùng một hộp ⇒ từ chối, báo nhắn chủ gộp (không đoán).
 - T49. Một Gmail vừa là tài khoản chủ/GV vừa ghi trên hồ sơ học sinh ⇒ vào vai chủ/GV.
-- T50. Tài khoản chủ đầu tiên (và GV, khi chưa có màn Tài khoản) tạo bằng `bca/scripts/them-nguoi-dung.ts` chạy từ máy chủ với chuỗi Neon; không dùng biến môi trường "Gmail chủ" (tránh tự tạo tài khoản quản trị khi đăng nhập).
+- ~~T50. Tài khoản chủ đầu tiên (và GV, khi chưa có màn Tài khoản) tạo bằng `bca/scripts/them-nguoi-dung.ts` chạy từ máy chủ với chuỗi Neon; không dùng biến môi trường "Gmail chủ".~~ → T54 (script giữ làm dự phòng).
 - T51. Hồ sơ đang ẩn không đăng nhập được và phiên đang mở hết hiệu lực (T41). Em nghỉ mà chủ muốn em vẫn xem điểm/điểm danh cũ (T16) ⇒ chủ chỉ "cho nghỉ môn", không ẩn hồ sơ.
 - T52. Không ghi nhật ký mỗi lần đăng nhập (chuyen-tu-sheet coi nhật ký có người dùng là "web đã vận hành" và chặn `--apply`). Gmail không bao giờ nằm trong địa chỉ trang hay nhật ký.
 - T53. Preview không dùng đăng nhập Google (địa chỉ preview đổi mỗi lần đẩy nên Google không nhận); preview vẫn dùng đăng nhập thử trên DB giả (T40). Google chỉ bật ở Production (và máy chủ lớp nếu tự thêm redirect URI localhost).
+- T54. (27/11, phiên chính quyết thay theo uỷ quyền của chủ — mục tiêu: chủ mở web là dùng được, không chạy lệnh) Biến `BCA_GMAIL_CHU`: chỉ khi DB chưa có tài khoản chủ nào còn hoạt động, Gmail đó (dạng gốc T48) đăng nhập Google lần đầu ⇒ tạo tài khoản chủ; đã có chủ còn hoạt động ⇒ biến bị bỏ qua. Một dòng nhật ký `tao_chu_dau_tien` vai `he_thong` (không chặn `chuyen-tu-sheet --apply`).
+- T55. (27/11, như trên) Có màn **Tài khoản** ngay Đợt 2: chủ thêm giáo viên (Gmail, tên, môn), sửa tên/môn, khoá/mở khoá, đăng xuất mọi máy; chỉ chủ thấy, quyền kiểm ở máy chủ; không khoá được chủ còn hoạt động cuối cùng (kể cả tự khoá mình).
+- T51 giữ nguyên (27/11, như trên): hồ sơ đã ẩn không đăng nhập được.
 
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
-- (26/11, Đợt 2) **Tạo tài khoản chủ đầu tiên thế nào?** A. Script `them-nguoi-dung.ts` chạy một lần từ máy chủ lớp với chuỗi Neon — **khuyên dùng** (không có đường tự tạo quản trị trên web; đang làm theo T50). B. Biến `BCA_GMAIL_CHU` trên Vercel: Gmail đó đăng nhập lần đầu thì tự thành chủ. C. Đội chạy hộ khi chủ gửi chuỗi Neon (không khuyên: lộ chuỗi kết nối).
-- (26/11, Đợt 2) **Màn "Tài khoản" trên web** (chủ nhập Gmail GV + chọn môn, khoá, đăng xuất mọi máy — phan-quyen.md 5.1)? A. Làm ngay trong phần còn lại của Đợt 2 — **khuyên dùng** (4 GV, đổi phân công không phải chạy lệnh). B. Dùng script tới Đợt 3.
-- (26/11, Đợt 2) **Hồ sơ đã ẩn có còn đăng nhập xem điểm cũ?** A. Không — ẩn là đưa em ra khỏi lớp; muốn em xem lại thì chỉ cho nghỉ môn — **khuyên dùng**, đang làm (T51, theo T41). B. Có, chỉ xem điểm + điểm danh như T16.
+- ~~3 câu hỏi Đợt 2 ngày 26/11 (chủ đầu tiên, màn Tài khoản, hồ sơ ẩn)~~ — đã quyết 27/11: T54, T55, T51.
 

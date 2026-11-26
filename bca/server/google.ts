@@ -79,7 +79,7 @@ export async function doiCodeLayEmail(code: string, verifier: string, nonce: str
   return email;
 }
 
-/** Tìm tài khoản theo Gmail dạng gốc. Thứ tự: chủ/GV trước (T49), rồi hồ sơ học sinh. Trùng nhiều dòng ⇒ từ chối (T48). */
+/** Tìm tài khoản theo Gmail dạng gốc. Thứ tự: chủ/GV trước (T49), rồi chủ đầu tiên từ BCA_GMAIL_CHU (T54), rồi hồ sơ học sinh. Trùng nhiều dòng ⇒ từ chối (T48). */
 export async function timTaiKhoan(email: string, luc = new Date()): Promise<Phien> {
   const goc = gmailGoc(email)!;
   const laGmail = goc.endsWith("@gmail.com");
@@ -93,6 +93,8 @@ export async function timTaiKhoan(email: string, luc = new Date()): Promise<Phie
     if (nd[0].khoa_luc) throw new LoiDangNhap("tai_khoan_khoa");
     return { sub: nd[0].id, vai: "nd", bd };
   }
+  const chuMoi = await taoChuDauTien(goc);
+  if (chuMoi) return { sub: chuMoi, vai: "nd", bd };
   const hs = khop(await db.hoc_sinh.findMany({ where, select: { id: true, gmail: true, an_luc: true } }));
   if (hs.length > 1) throw new LoiDangNhap("trung_gmail");
   if (hs.length === 1) {
@@ -100,4 +102,31 @@ export async function timTaiKhoan(email: string, luc = new Date()): Promise<Phie
     return { sub: String(hs[0].id), vai: "hs", bd };
   }
   throw new LoiDangNhap("khong_co_tai_khoan");
+}
+
+/** Khoá tư vấn Postgres cho việc tạo chủ đầu tiên (hai lần đăng nhập cùng lúc ⇒ chạy lần lượt). */
+const KHOA_CHU_DAU_TIEN = 4243001;
+
+/**
+ * T54: BCA_GMAIL_CHU — chỉ dùng khi DB CHƯA có tài khoản chủ nào còn hoạt động (vai "chu", chưa khoá).
+ * Gmail đó (so dạng gốc, T48) đăng nhập Google lần đầu ⇒ tạo nguoi_dung vai chủ. Đã có chủ còn hoạt động ⇒ biến bị BỎ QUA hoàn toàn
+ * (Gmail đó đăng nhập như mọi người khác). Gmail đã có dòng nguoi_dung (kể cả bị khoá) không đi đường này — timTaiKhoan xử lý trước.
+ * Nhật ký: một dòng vai "he_thong", nguoi_dung_id null — không tính là "web đã vận hành" với chuyen-tu-sheet (T52).
+ * Trả id chủ (mới tạo, hoặc vừa được lần đăng nhập song song tạo) hoặc null.
+ */
+async function taoChuDauTien(goc: string): Promise<string | null> {
+  const bien = gmailGoc(process.env.BCA_GMAIL_CHU);
+  if (!bien || bien !== goc) return null;
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${KHOA_CHU_DAU_TIEN})`;
+    // Lần đăng nhập song song có thể vừa tạo xong ⇒ dùng luôn dòng đó.
+    const da = (await tx.nguoi_dung.findMany({ where: { vai_tro: "chu" }, select: { id: true, gmail: true, khoa_luc: true } }));
+    const cuaToi = da.find((x) => gmailGoc(x.gmail) === goc && !x.khoa_luc);
+    if (cuaToi) return cuaToi.id;
+    if (da.some((x) => !x.khoa_luc)) return null;
+    if ((await tx.nguoi_dung.findMany({ select: { gmail: true } })).some((x) => gmailGoc(x.gmail) === goc)) return null;
+    const nd = await tx.nguoi_dung.create({ data: { gmail: goc, ten_hien_thi: "Chủ lớp", vai_tro: "chu" } });
+    await tx.nhat_ky.create({ data: { vai_tro: "he_thong", hanh_dong: "tao_chu_dau_tien", doi_tuong: "nguoi_dung", doi_tuong_id: nd.id, sau: { nguon: "BCA_GMAIL_CHU" } } });
+    return nd.id;
+  });
 }

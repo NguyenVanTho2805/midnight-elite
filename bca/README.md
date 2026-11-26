@@ -11,6 +11,7 @@ Quy tắc nghiệp vụ: `docs/bca/nghiep-vu/*.md`. Quyết định của chủ:
 | `BCA_GOOGLE_CLIENT_ID` | Client ID của OAuth Client (loại Web application) trong Google Cloud. Thiếu (hoặc thiếu SECRET) ⇒ trang `/dang-nhap` ẩn nút Google và báo rõ, route trả về `/dang-nhap?loi=chua_cau_hinh`, không sập |
 | `BCA_GOOGLE_CLIENT_SECRET` | Client secret của OAuth Client đó. Chỉ đặt ở Vercel / máy mình, không ghi vào mã hay tệp |
 | `BCA_APP_URL` | Tuỳ chọn, **khuyên đặt cho Production** (vd. `https://<địa chỉ web>`): gốc dùng để dựng `redirect_uri` = `<BCA_APP_URL>/api/dang-nhap/google/callback`. Không đặt ⇒ dùng gốc của request. Không đặt cho Preview (sẽ chuyển người dùng sang địa chỉ production và báo "hết hạn") |
+| `BCA_GMAIL_CHU` | Gmail của chủ lớp (một địa chỉ, so dạng gốc T48). **Chỉ khi DB chưa có tài khoản chủ nào còn hoạt động**: Gmail này đăng nhập Google lần đầu ⇒ tạo tài khoản chủ (T54). Đã có chủ còn hoạt động ⇒ biến bị bỏ qua hoàn toàn |
 | `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai (T40) — ở **mọi nơi, kể cả máy cục bộ**, còn phải có dấu `cai_dat.DU_LIEU_GIA` trong DB (do `seed-gia.ts` ghi; `chuyen-tu-sheet.ts` không bao giờ ghi và xoá nó khi `--apply`). `VERCEL_ENV=production`: luôn 404. Preview còn phải bật Deployment Protection của Vercel |
 
 ## Cài và chạy dev
@@ -36,8 +37,10 @@ OpenID Connect, luồng authorization code + PKCE (S256) + state + nonce; chỉ 
 
 T41 — khoá phiên học sinh: cột mới `hoc_sinh.phien_huy_luc` (migration `20261126180000_hoc_sinh_phien_huy`, chỉ thêm cột). Phiên học sinh hết hiệu lực ngay khi hồ sơ bị ẩn hoặc chủ bấm "Đăng xuất em khỏi mọi máy…" ở hồ sơ (`POST /api/hoc-sinh/[maHs]/thu-hoi-phien`, chỉ chủ, có nhật ký). Em vẫn đăng nhập lại bằng Google được.
 
-### Tài khoản chủ / giáo viên (T50)
-Chưa có màn Tài khoản trên web; chủ tạo bằng script (lặp lại an toàn, không xoá gì, không mở khoá tài khoản đã khoá, nhật ký vai `he_thong`):
+### Tài khoản chủ / giáo viên
+- **Chủ đầu tiên (T54):** đặt `BCA_GMAIL_CHU` ở Vercel. Khi DB chưa có chủ nào còn hoạt động (vai `chu`, chưa khoá), Gmail đó đăng nhập Google lần đầu thì máy chủ tạo tài khoản chủ (tên "Chủ lớp", sửa được ở màn Tài khoản). Hai lần đăng nhập cùng lúc chạy lần lượt (khoá tư vấn Postgres) ⇒ chỉ một chủ. Ghi một dòng nhật ký `tao_chu_dau_tien` vai `he_thong`, `nguoi_dung_id` null — không tính là "web đã vận hành" nên không chặn `chuyen-tu-sheet --apply` (T52). Đã có chủ còn hoạt động ⇒ biến bị bỏ qua (Gmail đó đăng nhập như mọi người). Gmail đã có tài khoản bị khoá ⇒ vẫn bị từ chối "đã khoá".
+- **Giáo viên:** chủ thêm ở màn Tài khoản (`/quan-ly/tai-khoan`).
+- **Dự phòng** (khi không vào được web): script lặp lại an toàn, không xoá gì, không mở khoá tài khoản đã khoá, nhật ký vai `he_thong`:
 ```bash
 BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmail chủ> --ten "Tên hiển thị" --vai chu
 BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmail GV> --ten "Chị Hoa" --vai giao_vien --mon toan
@@ -47,9 +50,9 @@ BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmai
 ### Việc của chủ ngoài mã (một lần)
 1. **Google Cloud Console** (miễn phí) → chọn/tạo project → *Google Auth Platform* (OAuth consent screen): User type **External**, tên app "BCA Midnight", email hỗ trợ; *Data access*: chỉ `openid` và `.../auth/userinfo.email` (không nhạy cảm ⇒ không cần Google duyệt); *Audience*: bấm **Publish app** (để "Testing" thì chỉ Gmail trong danh sách test user vào được).
 2. *Clients* → **Create client** → Application type **Web application** → *Authorized redirect URIs*: `https://<địa chỉ production của bca-midnight>/api/dang-nhap/google/callback` (thêm `http://localhost:3100/api/dang-nhap/google/callback` nếu muốn thử trên máy). Không cần *Authorized JavaScript origins*. Lưu Client ID + Client secret.
-3. **Vercel → project `bca-midnight` → Environment Variables**, môi trường **Production**: `BCA_GOOGLE_CLIENT_ID`, `BCA_GOOGLE_CLIENT_SECRET`, `BCA_APP_URL=https://<địa chỉ production>` và `BCA_DATABASE_URL` (Neon). `BCA_SESSION_SECRET` đã có. **Không** đặt `BCA_DEV_LOGIN` cho Production. Preview không cần biến Google (địa chỉ preview đổi mỗi lần đẩy, Google không nhận) — preview dùng đăng nhập thử trên DB giả. Đặt xong thì Redeploy.
-4. Chuyển dữ liệu thật (T21) rồi tạo tài khoản chủ + GV bằng script ở trên.
-5. Đăng nhập thử bằng Gmail chủ khi Vercel Authentication vẫn bật (chủ qua được vì là thành viên Vercel). Ổn thì **tắt Vercel Authentication cho Production** (giữ cho Preview) — nếu không, giáo viên và học sinh bị Vercel chặn trước khi tới trang đăng nhập.
+3. **Vercel → project `bca-midnight` → Environment Variables**, môi trường **Production**: `BCA_GOOGLE_CLIENT_ID`, `BCA_GOOGLE_CLIENT_SECRET`, `BCA_APP_URL=https://<địa chỉ production>`, `BCA_GMAIL_CHU=<Gmail của chủ>` và `BCA_DATABASE_URL` (Neon). `BCA_SESSION_SECRET` đã có. **Không** đặt `BCA_DEV_LOGIN` cho Production. Preview không cần biến Google (địa chỉ preview đổi mỗi lần đẩy, Google không nhận) — preview dùng đăng nhập thử trên DB giả. Đặt xong thì Redeploy.
+4. Mở web, bấm "Đăng nhập bằng Google" bằng đúng Gmail đã đặt ở `BCA_GMAIL_CHU` ⇒ vào vai chủ (không chạy lệnh nào). Vào **Tài khoản** để thêm giáo viên (Gmail, tên, môn). Môn chỉ chọn được khi DB đã có bảng môn — tức là sau khi chuyển dữ liệu thật từ sheet (T21, `chuyen-tu-sheet.ts --apply`, cần bản xuất `.xlsx`); trước đó vẫn thêm được GV chưa có môn rồi gán sau.
+5. Làm bước 4 khi Vercel Authentication vẫn bật (chủ qua được vì là thành viên Vercel). Ổn thì **tắt Vercel Authentication cho Production** (giữ cho Preview) — nếu không, giáo viên và học sinh bị Vercel chặn trước khi tới trang đăng nhập.
 
 Thử trên máy với Google thật: tạo thêm redirect URI localhost như bước 2, rồi `BCA_GOOGLE_CLIENT_ID=… BCA_GOOGLE_CLIENT_SECRET=… npm run dev -- -p 3100`.
 

@@ -3,7 +3,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { gmailGoc } from "@/lib/chuan-hoa";
-import { _datLaiJwks, GOOGLE_JWKS, GOOGLE_TOKEN, pkceChallenge } from "@/server/google";
+import { _datLaiJwks, GOOGLE_JWKS, GOOGLE_TOKEN, pkceChallenge, timTaiKhoan } from "@/server/google";
 import { docTam, kyPhien, kyTam, TEN_COOKIE } from "@/server/token";
 import { nguoiTuToken } from "@/server/phien";
 import { themNguoiDung } from "@/scripts/them-nguoi-dung";
@@ -15,7 +15,7 @@ import * as toi from "@/app/api/toi/route";
 import { CHU, GV_ANH, GV_TOAN, cookieHs, cookieNd, db, goi, napSeed } from "./chung";
 
 const CLIENT_ID = "test-client.apps.googleusercontent.com";
-const ENV = ["BCA_GOOGLE_CLIENT_ID", "BCA_GOOGLE_CLIENT_SECRET", "BCA_APP_URL"] as const;
+const ENV = ["BCA_GOOGLE_CLIENT_ID", "BCA_GOOGLE_CLIENT_SECRET", "BCA_APP_URL", "BCA_GMAIL_CHU"] as const;
 const goc = Object.fromEntries(ENV.map((k) => [k, process.env[k]]));
 
 let khoaGoogle: CryptoKey, khoaLa: CryptoKey;
@@ -61,6 +61,7 @@ beforeEach(() => {
   process.env.BCA_GOOGLE_CLIENT_ID = CLIENT_ID;
   process.env.BCA_GOOGLE_CLIENT_SECRET = "bi-mat-client-chi-de-test";
   delete process.env.BCA_APP_URL;
+  delete process.env.BCA_GMAIL_CHU;
   goiToken = [];
   traToken = () => new Response("chưa đặt", { status: 500 });
 });
@@ -301,6 +302,59 @@ describe("T41 — khoá phiên học sinh", () => {
   });
   it("sub học sinh hỏng (không phải số / vượt int4) → null, không 500", async () => {
     for (const sub of ["abc", "99999999999", "1.5", "-1"]) expect(await nguoiTuToken(await kyPhien({ sub, vai: "hs", bd: 1 }))).toBeNull();
+  });
+});
+
+describe("T54 — BCA_GMAIL_CHU tạo chủ đầu tiên khi DB chưa có chủ còn hoạt động", () => {
+  const GMAIL = "Chu.That@gmail.com";
+  // Điều kiện "web đã vận hành" của chuyen-tu-sheet (scripts/chuyen-tu-sheet.ts) — dòng nhật ký tạo chủ không được làm tăng số này.
+  const nhatKyNguoiDung = () => db.nhat_ky.count({ where: { OR: [{ nguoi_dung_id: { not: null } }, { vai_tro: { startsWith: "hoc_sinh" } }] } });
+  const xoaChuMoi = async () => {
+    const ids = (await db.nguoi_dung.findMany({ where: { gmail: { in: ["chuthat@gmail.com"] } }, select: { id: true } })).map((x) => x.id);
+    await db.nhat_ky.deleteMany({ where: { doi_tuong_id: { in: ids } } });
+    await db.nguoi_dung.deleteMany({ where: { id: { in: ids } } });
+  };
+  beforeEach(async () => {
+    await xoaChuMoi();
+    await db.nguoi_dung.updateMany({ where: { vai_tro: "chu" }, data: { khoa_luc: new Date() } }); // không còn chủ nào hoạt động
+    process.env.BCA_GMAIL_CHU = GMAIL;
+  });
+  afterAll(async () => {
+    await xoaChuMoi();
+    await db.nguoi_dung.updateMany({ where: { gmail: CHU }, data: { khoa_luc: null } });
+  });
+
+  it("Gmail đúng (dạng gốc), chưa có chủ ⇒ tạo đúng một chủ, vào vai chủ; một dòng nhật ký he_thong không làm hỏng điều kiện chuyen-tu-sheet (T52)", async () => {
+    const truoc = await nhatKyNguoiDung();
+    const v = await dangNhap({ email: "chuthat@gmail.com" });
+    expect(v.location).toBe("/");
+    expect((await goi(toi.GET, { cookie: v.phien })).json).toMatchObject({ vai: "chu" });
+    const nd = await db.nguoi_dung.findUniqueOrThrow({ where: { gmail: "chuthat@gmail.com" } });
+    expect(nd).toMatchObject({ vai_tro: "chu", khoa_luc: null });
+    expect(await db.nhat_ky.findMany({ where: { doi_tuong_id: nd.id }, select: { hanh_dong: true, vai_tro: true, nguoi_dung_id: true } })).toEqual([{ hanh_dong: "tao_chu_dau_tien", vai_tro: "he_thong", nguoi_dung_id: null }]);
+    expect(await nhatKyNguoiDung()).toBe(truoc);
+    // lần sau: đăng nhập vào đúng tài khoản đó, không tạo thêm
+    expect((await dangNhap({ email: "chu.that@gmail.com" })).location).toBe("/");
+    expect(await db.nguoi_dung.count({ where: { vai_tro: "chu", khoa_luc: null } })).toBe(1);
+  });
+  it("đã có chủ còn hoạt động ⇒ biến bị bỏ qua: Gmail đó KHÔNG thành chủ (khong_co_tai_khoan)", async () => {
+    await db.nguoi_dung.updateMany({ where: { gmail: CHU }, data: { khoa_luc: null } });
+    const v = await dangNhap({ email: "chuthat@gmail.com" });
+    expect(v.location).toBe("/dang-nhap?loi=khong_co_tai_khoan");
+    expect(await db.nguoi_dung.count({ where: { gmail: "chuthat@gmail.com" } })).toBe(0);
+  });
+  it("Gmail khác biến ⇒ từ chối; biến trống ⇒ không tạo; email_verified false ⇒ chua_xac_minh, không tạo", async () => {
+    expect((await dangNhap({ email: "nguoi.khac@gmail.com" })).location).toBe("/dang-nhap?loi=khong_co_tai_khoan");
+    expect((await dangNhap({ email: GMAIL, email_verified: false })).location).toBe("/dang-nhap?loi=chua_xac_minh");
+    process.env.BCA_GMAIL_CHU = "  ";
+    expect((await dangNhap({ email: GMAIL })).location).toBe("/dang-nhap?loi=khong_co_tai_khoan");
+    expect(await db.nguoi_dung.count({ where: { vai_tro: "chu", khoa_luc: null } })).toBe(0);
+  });
+  it("năm lần đăng nhập cùng lúc ⇒ chỉ một chủ, cả năm vào cùng tài khoản", async () => {
+    const kq = await Promise.all(Array.from({ length: 5 }, (_, i) => timTaiKhoan(i % 2 ? "chuthat@gmail.com" : "chu.that@gmail.com")));
+    expect(await db.nguoi_dung.count({ where: { vai_tro: "chu", khoa_luc: null } })).toBe(1);
+    expect(new Set(kq.map((p) => p.sub)).size).toBe(1);
+    expect(await db.nhat_ky.count({ where: { hanh_dong: "tao_chu_dau_tien" } })).toBe(1);
   });
 });
 
