@@ -1,8 +1,10 @@
+import { canQuanLy } from "@/lib/quyen";
 import { docJson, ngayHopLe, route } from "@/server/api";
 import { danhSachHocSinh, taoHocSinh } from "@/server/hoc-sinh";
 
 /** ?an=1 (chủ: gồm hồ sơ ẩn) · ?het_ngay=YYYY-MM-DD (chỉ em hết thử đúng ngày đó — nhóm ở Hôm nay). */
 export const GET = route((u, req) => {
+  canQuanLy(u); // quyền trước tham số: học sinh luôn 403, không 400
   const q = new URL(req.url).searchParams;
   const het = q.get("het_ngay");
   return danhSachHocSinh(u, { coAn: q.get("an") === "1", hetNgay: het ? ngayHopLe(het, "het_ngay") : undefined });

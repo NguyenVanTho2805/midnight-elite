@@ -1,3 +1,4 @@
+import { canChu } from "@/lib/quyen";
 import { docJson, route, soNguyen } from "@/server/api";
 import { suaNoiDungBuoi, xoaBuoi } from "@/server/buoi-hoc";
 
@@ -9,4 +10,7 @@ export const PATCH = route<{ id: string }>(async (u, req, p) => {
 });
 
 /** Chỉ chủ (T42). Xoá buổi chưa bắt đầu, chưa có dữ liệu; trả nhatKyId để hoàn tác. Có dữ liệu → 409 co_du_lieu; đã qua → 409 da_qua (chỉ huỷ được). */
-export const DELETE = route<{ id: string }>((u, _req, p) => xoaBuoi(u, soNguyen(p.id, "id")));
+export const DELETE = route<{ id: string }>((u, _req, p) => {
+  canChu(u); // quyền trước tham số: GV/học sinh luôn 403, không 400
+  return xoaBuoi(u, soNguyen(p.id, "id"));
+});

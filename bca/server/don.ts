@@ -2,7 +2,7 @@
 import { trang_thai_don } from "@/generated/prisma/enums";
 import { congNgay, ngayVN } from "@/lib/ngay";
 import { canChu, LoiDuLieu, type Nguoi } from "@/lib/quyen";
-import { conHanHoanTac, conMo, hanThuChung, type Viec } from "@/lib/quy-tac";
+import { conHanHoanTac, conMo, hanThuChung, type GD, type Viec } from "@/lib/quy-tac";
 import { catKhoangTrang, chuanHoaGmail, chuanHoaSdt, tenGiong } from "@/lib/chuan-hoa";
 import { db, type Tx } from "./db";
 import { caiDat, napGD, napMon } from "./du-lieu";
@@ -33,8 +33,27 @@ async function napDon(tx: Tx, id: number): Promise<Don> {
   if (!d) throw new LoiDuLieu("Không có đơn này", 404);
   return d;
 }
-/** Loại "Học thử" ⇒ thử; còn lại ("Chính thức") ⇒ thử kèm cờ muốn chính thức (T3). Cùng regex với chuyen-du-lieu.md 4.x. */
-const muonChinhThuc = (d: Don) => !/th[uử]/i.test((d.loai ?? "").normalize("NFC"));
+/** Loại "Học thử" ⇒ thử; loại khác có chữ ("Chính thức") ⇒ thử kèm cờ muốn chính thức (T3). Loại trống ⇒ không coi là muốn chính thức. Cùng regex với chuyen-du-lieu.md 4.x. */
+const muonChinhThuc = (d: Don) => {
+  const l = (d.loai ?? "").normalize("NFC").trim();
+  return !!l && !/th[uử]/i.test(l);
+};
+
+/**
+ * Khoảng thử khi nhận đơn (T1, T2, T44, T46, ghi-danh.md 5.1–5.2), dùng chung cho xem trước và tạo thật.
+ * `gds` = ghi danh của hồ sơ sẽ gắn ([] nếu tạo hồ sơ mới). `ly_do` khác null ⇒ cần chủ quyết (không tự cấp):
+ * - em từng có ghi danh (thử hoặc chính thức) mà hôm nay không còn môn nào mở (T2, T46): `het_thu_dang_ky_lai` / `da_nghi_dang_ky_lai` (từng chính thức);
+ * - 14 ngày tính từ ngày đăng ký đã hết: `don_qua_han`.
+ * Ngày hết: em đang thử ⇒ hạn chung (5.2); không thì ngày đăng ký + 13 (T1/T44); nếu ngày đó đã qua (đơn quá hạn) thì 14 ngày từ hôm nay — đây là ngày chủ nhận được khi bấm "Cấp thử".
+ */
+function khoangThuDon(gds: GD[], dk: string, h: string, soNgay: number) {
+  const tu = dk > h ? dk : h;
+  const daTung = gds.filter((g) => !g.huy);
+  const emCu = daTung.length > 0 && !daTung.some((g) => conMo(g, h));
+  const den = hanThuChung(gds, h) ?? congNgay(dk, soNgay - 1);
+  const ly_do = emCu ? (daTung.some((g) => g.loai === "chinh_thuc") ? "da_nghi_dang_ky_lai" : "het_thu_dang_ky_lai") : den < tu ? "don_qua_han" : null;
+  return { tu, den: den < tu ? congNgay(h, soNgay - 1) : den, ly_do };
+}
 
 const hoSoTuDon = (d: Don): HoSoMoi => ({
   hoTen: d.ho_ten, ngayTao: ngayVN(d.thoi_gian), sdtHs: d.sdt_hs ?? undefined, sdtPh: d.sdt_ph ?? undefined, gmail: d.gmail ?? undefined,
@@ -43,28 +62,33 @@ const hoSoTuDon = (d: Don): HoSoMoi => ({
 });
 
 /** ghi-danh.md 1.4: hồ sơ trùng Gmail hoặc SĐT HS/PH (kèm hồ sơ đơn đã gắn sẵn). Tên giống chỉ để chủ tham khảo — mọi ca trùng đều để chủ chọn. */
-async function hoSoTrung(tx: Tx, d: Don) {
+async function hoSoTrung(tx: Tx, d: Don, h: string, soNgay: number) {
   const gmail = chuanHoaGmail(d.gmail);
   const sdts = [chuanHoaSdt(d.sdt_hs), chuanHoaSdt(d.sdt_ph)].filter((x): x is string => !!x);
   const or = [...(gmail ? [{ gmail }] : []), ...(sdts.length ? [{ sdt_hs: { in: sdts } }, { sdt_ph: { in: sdts } }] : []), ...(d.hoc_sinh_id ? [{ id: d.hoc_sinh_id }] : [])];
   if (!or.length) return [];
   const rows = await tx.hoc_sinh.findMany({ where: { OR: or }, select: { id: true, ma_hs: true, ho_ten: true, gmail: true, sdt_hs: true, sdt_ph: true, an_luc: true }, orderBy: { id: "asc" } });
+  const gds = rows.length ? await napGD({ hoc_sinh_id: { in: rows.map((r) => r.id) } }, tx) : new Map();
   return rows.map((r) => ({
     ma_hs: r.ma_hs, ho_ten: r.ho_ten, an: !!r.an_luc, ten_giong: tenGiong(r.ho_ten, d.ho_ten),
     khop: [gmail && r.gmail === gmail && "gmail", sdts.some((s) => s === r.sdt_hs || s === r.sdt_ph) && "sdt", d.hoc_sinh_id === r.id && "don_da_gan"].filter((x): x is string => !!x),
+    thu_du_kien: khoangThuDon(gds.get(r.id) ?? [], ngayVN(d.thoi_gian), h, soNgay), // nếu gắn đơn vào hồ sơ này
   }));
 }
 
-/** Xem trước "Tạo hồ sơ từ đơn" (chỉ chủ, không ghi): hồ sơ điền sẵn, môn, khoảng thử, cờ muốn chính thức, hồ sơ có thể trùng. */
+/**
+ * Xem trước "Tạo hồ sơ từ đơn" (chỉ chủ, không ghi): hồ sơ điền sẵn, môn, cờ muốn chính thức, hồ sơ có thể trùng.
+ * `thu_du_kien {tu, den, ly_do}` nếu tạo hồ sơ mới; mỗi hồ sơ trong `trung` có `thu_du_kien` riêng nếu gắn vào đó (em đang thử ⇒ hạn chung) — cùng hàm với lúc tạo thật.
+ */
 export async function xemTruocDon(u: Nguoi, id: number, luc = new Date()) {
   canChu(u);
   const d = await db.don_dang_ky.findUnique({ where: { id } });
   if (!d) throw new LoiDuLieu("Không có đơn này", 404);
-  const [mons, { SO_NGAY_HOC_THU }, trung] = await Promise.all([napMon(), caiDat(), hoSoTrung(db, d)]);
   const h = ngayVN(luc), dk = ngayVN(d.thoi_gian);
+  const [mons, { SO_NGAY_HOC_THU }] = await Promise.all([napMon(), caiDat()]);
   return {
     don_id: d.id, trang_thai: d.trang_thai, da_xu_ly: !CHUA_XU_LY.includes(d.trang_thai), ho_so: hoSoTuDon(d), mon: d.mon_ids.map((m) => mons.find((x) => x.id === m)?.ma),
-    muon_chinh_thuc: muonChinhThuc(d), ngay_dang_ky: dk, thu_du_kien: { tu: dk > h ? dk : h, den: congNgay(dk, SO_NGAY_HOC_THU - 1) }, trung,
+    muon_chinh_thuc: muonChinhThuc(d), ngay_dang_ky: dk, thu_du_kien: khoangThuDon([], dk, h, SO_NGAY_HOC_THU), trung: await hoSoTrung(db, d, h, SO_NGAY_HOC_THU),
   };
 }
 
@@ -73,11 +97,12 @@ type Cot = (typeof COT_DIEN)[number];
 
 /**
  * T43 — tạo hồ sơ từ đơn (hoặc gắn vào hồ sơ cũ `maHs`) và ghi danh thử theo T1–T3:
- * - thử đến hết ngày đăng ký + 13 (T1, ghi-danh.md 5.1); bắt đầu từ ngày đăng ký, hoặc hôm nay nếu nhận đơn muộn (không phủ ngược, 5.4);
- * - em đang thử ⇒ môn mới hết cùng hạn chung (5.2); môn em đang học/đang thử ⇒ bỏ qua, báo trong `bo_qua`;
+ * - khoảng thử theo `khoangThuDon` (T1, T44, 5.2): em còn môn mở (đang học / đang thử) ⇒ môn mới ghi danh thử bình thường; môn em đang học/đang thử ⇒ bỏ qua, báo trong `bo_qua`;
  * - đơn "Chính thức" ⇒ vẫn thử, trả `muon_chinh_thuc: true` để chủ bấm chuyển (T3, QĐ 16);
  * - trùng Gmail/SĐT mà chưa chọn ⇒ `ket_qua: "trung_ho_so"` + `goi_y`, không ghi gì (gửi lại kèm `maHs` hoặc `taoMoi: true`);
- * - em đã hết thử đăng ký lại, hoặc đơn đã quá 14 ngày ⇒ `ket_qua: "can_chu_quyet"`, không ghi gì (T2); chủ gửi lại `capThuMoi: true` ⇒ thử 14 ngày từ hôm nay.
+ * - gắn hồ sơ cũ chỉ điền ô trống; Gmail của đơn đã thuộc hồ sơ khác ⇒ không điền, trả `trung_gmail: "<mã hồ sơ>"`;
+ * - em cũ không còn môn mở (T2, T46) hoặc đơn quá 14 ngày ⇒ `ket_qua: "can_chu_quyet"`, không ghi gì; chủ gửi lại `capThuMoi: true` (Cấp thử) ⇒
+ *   hết ngày đăng ký + 13 nếu đơn còn trong 14 ngày, đơn quá hạn thì 14 ngày từ hôm nay.
  */
 export async function taoHoSoTuDon(
   u: Nguoi, id: number, opt: { maHs?: string; taoMoi?: boolean; capThuMoi?: boolean; hoSo?: Partial<HoSoMoi> } = {}, luc = new Date(),
@@ -97,32 +122,27 @@ export async function taoHoSoTuDon(
       if (!cu) throw new LoiDuLieu(`Không có học sinh ${opt.maHs}`, 404);
       if (cu.an_luc) throw new LoiDuLieu(`Hồ sơ ${cu.ma_hs} đang ẩn — bỏ ẩn trước rồi gắn đơn`, 409, "ho_so_an");
     } else if (!opt.taoMoi) {
-      const goi_y = await hoSoTrung(tx, d);
+      const goi_y = await hoSoTrung(tx, d, h, SO_NGAY_HOC_THU);
       if (goi_y.length) return { ket_qua: "trung_ho_so" as const, goi_y, muon_chinh_thuc };
     }
 
-    // Khoảng thử (T1–T3), tính trước khi ghi để ca "chủ quyết" không ghi gì.
+    // Khoảng thử tính trước khi ghi để ca "chủ quyết" không ghi gì.
     const gds = cu ? ((await napGD({ hoc_sinh_id: cu.id }, tx)).get(cu.id) ?? []) : [];
-    const chung = hanThuChung(gds, h);
-    const hetThuDangKyLai = !chung && gds.some((g) => g.loai === "thu" && !g.huy);
-    const tu = dk > h ? dk : h;
-    let den = chung ?? congNgay(dk, SO_NGAY_HOC_THU - 1);
-    if (hetThuDangKyLai || den < tu) {
-      if (!opt.capThuMoi) return { ket_qua: "can_chu_quyet" as const, ly_do: hetThuDangKyLai ? "het_thu_dang_ky_lai" : "don_qua_han", ma_hs: cu?.ma_hs ?? null, muon_chinh_thuc };
-      den = congNgay(h, SO_NGAY_HOC_THU - 1);
-    }
+    const { tu, den, ly_do } = khoangThuDon(gds, dk, h, SO_NGAY_HOC_THU);
+    if (ly_do && !opt.capThuMoi) return { ket_qua: "can_chu_quyet" as const, ly_do, ma_hs: cu?.ma_hs ?? null, muon_chinh_thuc };
 
     let hs: { id: number; ma_hs: string }, canh_bao = {};
-    const dien: Partial<Record<Cot, null>> = {};
+    const dien: Partial<Record<Cot, string>> = {}; // ô vừa điền + giá trị (hoàn tác chỉ trả về trống nếu ô còn đúng giá trị này)
     if (cu) {
       // Chỉ điền ô hồ sơ đang trống, không ghi đè (1.4).
       const tuDon: Record<Cot, string | null> = {
         sdt_hs: chuanHoaSdt(d.sdt_hs), sdt_ph: chuanHoaSdt(d.sdt_ph), gmail: chuanHoaGmail(d.gmail), truong: catKhoangTrang(d.truong), khoi: catKhoangTrang(d.khoi),
         ho_ten_ph: catKhoangTrang(d.ho_ten_ph), muc_tieu: catKhoangTrang(d.muc_tieu),
       };
-      const data: Partial<Record<Cot, string>> = {};
-      for (const c of COT_DIEN) if (tuDon[c] && !cu[c]) { data[c] = tuDon[c]!; dien[c] = null; }
-      if (Object.keys(data).length) await tx.hoc_sinh.update({ where: { id: cu.id }, data });
+      for (const c of COT_DIEN) if (tuDon[c] && !cu[c]) dien[c] = tuDon[c]!;
+      const chuGmail = dien.gmail ? await tx.hoc_sinh.findUnique({ where: { gmail: dien.gmail }, select: { ma_hs: true } }) : null;
+      if (chuGmail) { delete dien.gmail; canh_bao = { trung_gmail: chuGmail.ma_hs }; } // Gmail là duy nhất: không điền, báo mã hồ sơ đang giữ
+      if (Object.keys(dien).length) await tx.hoc_sinh.update({ where: { id: cu.id }, data: dien });
       hs = cu;
     } else {
       const { id: hsId, ma_hs, ...cb } = await taoHoSoTx(tx, u, { ...hoSoTuDon(d), ...opt.hoSo }, luc);
@@ -175,7 +195,7 @@ export async function hoanTacXuLyDon(u: Nguoi, id: number, nhatKyId: number, luc
     const nk = await tx.nhat_ky.findUnique({ where: { id: nhatKyId } });
     if (!nk || !["tao_ho_so_tu_don", "bo_qua_don"].includes(nk.hanh_dong) || nk.doi_tuong !== "don_dang_ky" || nk.doi_tuong_id !== String(id))
       throw new LoiDuLieu("Không có lần xử lý đơn này", 404);
-    const sau = nk.sau as { luc: string; ma_hs?: string; ho_so_moi?: boolean; dien?: Record<string, null>; thay_doi?: ThayDoi[] };
+    const sau = nk.sau as { luc: string; ma_hs?: string; ho_so_moi?: boolean; dien?: Partial<Record<Cot, string>>; thay_doi?: ThayDoi[] };
     const truoc = nk.truoc as { trang_thai: trang_thai_don; hoc_sinh_id?: number | null; ghi_chu_xu_ly?: string | null };
     if (!conHanHoanTac(sau.luc, luc)) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
     if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_xu_ly_don", doi_tuong: "nhat_ky", doi_tuong_id: String(nhatKyId) } }))
@@ -202,7 +222,11 @@ export async function hoanTacXuLyDon(u: Nguoi, id: number, nhatKyId: number, luc
         if (conLai) throw daSua(); // đã có người ghi danh / gắn đơn khác vào hồ sơ mới trong lúc đó
         await tx.hoc_sinh.delete({ where: { id: hs.id } });
       } else if (sau.dien && Object.keys(sau.dien).length) {
-        await tx.hoc_sinh.update({ where: { id: hs.id }, data: sau.dien });
+        const cot = Object.keys(sau.dien) as Cot[];
+        await tx.$queryRaw`SELECT id FROM hoc_sinh WHERE id = ${hs.id} FOR UPDATE`;
+        const hien = (await tx.hoc_sinh.findUniqueOrThrow({ where: { id: hs.id }, select: Object.fromEntries(cot.map((c) => [c, true])) })) as unknown as Record<Cot, string | null>;
+        if (cot.some((c) => hien[c] !== sau.dien![c])) throw daSua(); // ô đã bị sửa sau khi điền ⇒ không ghi đè
+        await tx.hoc_sinh.update({ where: { id: hs.id }, data: Object.fromEntries(cot.map((c) => [c, null])) });
       }
     }
     await ghiNhatKy(u, "hoan_tac_xu_ly_don", "nhat_ky", nhatKyId, null, { don_id: id, hanh_dong: nk.hanh_dong }, tx);
