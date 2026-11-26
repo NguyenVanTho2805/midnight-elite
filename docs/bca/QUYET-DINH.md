@@ -99,6 +99,8 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T54. (27/11, phiên chính quyết thay theo uỷ quyền của chủ — mục tiêu: chủ mở web là dùng được, không chạy lệnh) Biến `BCA_GMAIL_CHU`: chỉ khi DB chưa có tài khoản chủ nào còn hoạt động, Gmail đó (dạng gốc T48) đăng nhập Google lần đầu ⇒ tạo tài khoản chủ; đã có chủ còn hoạt động ⇒ biến bị bỏ qua. Một dòng nhật ký `tao_chu_dau_tien` vai `he_thong` (không chặn `chuyen-tu-sheet --apply`).
 - T55. (27/11, như trên) Có màn **Tài khoản** ngay Đợt 2: chủ thêm giáo viên (Gmail, tên, môn), sửa tên/môn, khoá/mở khoá, đăng xuất mọi máy; chỉ chủ thấy, quyền kiểm ở máy chủ; không khoá được chủ còn hoạt động cuối cùng (kể cả tự khoá mình).
 - T51 giữ nguyên (27/11, như trên): hồ sơ đã ẩn không đăng nhập được.
+- T56. (27/11, đội tạm chọn — khu học sinh) "Liên hệ gia hạn" ở màn khoá mở link `ZALO_CHUNG`, không có thì `ZALO_HOC_THU`, không có cả hai thì câu "Nhắn chủ lớp qua Zalo để gia hạn". Nút Meet chỉ hiện khi môn có `link_meet` (Đợt 4 mới đồng bộ Meet); chưa có thì chỉ "Link Meet gửi trong nhóm Zalo của môn" + nút nhóm Zalo môn nếu có.
+- T57. (27/11, đội tạm chọn) Nút "Vào lớp ngay" bật từ 15 phút trước giờ học; trước đó nút vẫn bấm được và ghi "còn N phút".
 
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).

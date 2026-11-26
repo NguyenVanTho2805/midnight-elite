@@ -40,14 +40,23 @@ Từ BCA-D1-VAI-CL (vai chủ lớp, KHÔNG ĐẠT — 2 P2):
 Đã làm: Google OIDC (code + PKCE + state + nonce), trang `/dang-nhap` mới, T41 khoá phiên học sinh (cột `hoc_sinh.phien_huy_luc`, nút ở hồ sơ), script `them-nguoi-dung.ts`. Test: vitest 188/188 (29 ca mới), Playwright 43/43 (7 ca mới). Việc chủ ngoài mã: `bca/README.md` mục "Việc của chủ ngoài mã".
 
 Còn lại (P3, không chặn lên chính thức):
-1. Màn "Tài khoản" cho chủ (thêm GV bằng Gmail + môn, khoá, đăng xuất mọi máy) thay script — chờ chủ trả lời câu hỏi mở.
+1. ~~Màn "Tài khoản" cho chủ~~ — đã làm 27/11 (T55).
 2. Bị từ chối "Gmail chưa có trong lớp": hiện Gmail đã chọn dạng che bớt (vd. `ng•••@gmail.com`) để em biết chọn nhầm tài khoản Google (truyền qua cookie ngắn hạn, không qua địa chỉ).
 3. Khi có route sửa Gmail hồ sơ học sinh: tự đặt `phien_huy_luc` (Gmail cũ không còn giữ phiên).
 4. `/api/dang-xuat` chỉ xoá cookie trên máy đó (token cũ còn hạn nếu bị lấy cắp) — cân nhắc đặt `phien_huy_luc` khi bấm "Đăng xuất mọi máy" của chính người dùng.
 5. Thiếu `BCA_SESSION_SECRET` ở production ⇒ trang `/dang-nhap` và route Google trả 500 (giống mọi trang khác); có thể hiện trang báo cấu hình thay vì 500.
 6. Nhãn "Đăng xuất em khỏi mọi máy…" gãy 2 dòng ở cột Liên hệ 1280 — rút gọn nếu giám khảo yêu cầu.
 
+## Đợt 2 — màn Tài khoản (T55) + khu học sinh (BCA-D2-HS, 27/11) — đã xong
+Test: vitest 209/209, Playwright 54/54. Còn lại (P3):
+1. Khu học sinh: chưa có trang riêng một buổi (`/hoc/buoi/[id]`, API `GET /api/hs/buoi/[id]` đã có) — nội dung dài đang cắt 3 dòng.
+2. Khu học sinh: chưa có điểm (Đợt 3 — sổ điểm), chưa PWA/thông báo nhắc giờ học.
+3. Link Meet các môn đang trống trong dữ liệu sheet ⇒ học sinh chỉ thấy "Link Meet gửi trong nhóm Zalo" tới khi chủ điền link Meet (chưa có màn sửa môn) hoặc Đợt 4 đồng bộ Meet.
+4. Chưa có màn Cài đặt để chủ sửa `ZALO_HOC_THU` / `ZALO_CHUNG` / link Meet, link Zalo môn trên web (đang lấy từ sheet khi chuyển dữ liệu).
+5. Màn Tài khoản: chưa thêm được chủ thứ hai trên web (chỉ GV; chủ thứ hai dùng script dự phòng).
+6. Tài khoản chủ do `BCA_GMAIL_CHU` tạo có tên "Chủ lớp" — chủ sửa ở màn Tài khoản.
+
 ## Đợt 2 — ghi chú đầu vào
-- Khu học sinh thay trang /hoc tạm: chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
+- ~~Khu học sinh thay trang /hoc tạm~~ (đã làm 27/11, BCA-D2-HS): chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
 - ~~T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.~~ Đã làm (BCA-D2-DN).
 - Dữ liệu `/api/hs/toi` đã đủ cho màn thật.

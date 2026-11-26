@@ -65,6 +65,13 @@ BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmai
 
 Thử trên máy với Google thật: tạo thêm redirect URI localhost như bước 2, rồi `BCA_GOOGLE_CLIENT_ID=… BCA_GOOGLE_CLIENT_SECRET=… npm run dev -- -p 3100`.
 
+## Khu học sinh `/hoc` (Đợt 2, BCA-D2-HS)
+Đặc tả: `docs/bca/thiet-ke/man-khu-hoc-sinh.md`. Điện thoại trước, một cột (tối đa 560px). Dữ liệu `server/hs.cuaToi` (= `GET /api/hs/toi`), thêm ở đợt này:
+- `trang_thai` (`dang_hoc` · `dang_thu` · `sap_bat_dau` · `chua_ghi_danh` · `het_thu` · `da_nghi`), `thu {tu, den, con_ngay, ngay_thu, tong_ngay}`, `het_thu`, `bat_dau`, `chuoi` (chuỗi buổi đi học liên tiếp — `hs.chuoiDiHoc`: Phép / chưa điểm / lớp nghỉ không đứt, Vắng đứt), `lien_he {zalo_hoc_thu, zalo_chung}` (từ `cai_dat` `ZALO_HOC_THU`, `ZALO_CHUNG`).
+- `mon[]` thêm `ten_day_du`, `thu`, `gio`, `so_phut`, `dang_mo`, `link_meet`, `link_zalo` (chỉ khi em còn hạn môn đó hôm nay); `buoi[]` thêm `bat_dau` (ISO), `so_phut`.
+- `tinh_trang` của học sinh bỏ đuôi "– hỏi em" (câu dành cho chủ). Mọi link trả cho học sinh chỉ nhận `http(s)` (dữ liệu chuyển từ sheet có thể là chữ tuỳ ý).
+- Màn: câu "Tối nay học … lúc 22:15" + nút vàng 56px đổi theo giờ (`components/hoc-sinh/nut-toi-nay.tsx`: còn N phút → Vào lớp ngay → Xem record), khối học thử N/14 + thanh tiến độ + Zalo học thử, màn khoá hết hạn + "Liên hệ gia hạn" (T56), chuỗi đi học, môn của em, buổi sắp tới / đã học (Có mặt · Có phép · Vắng · Lớp nghỉ · "—" cho buổi đã qua chưa có dấu), nội dung buổi (T32) + record khi còn hạn.
+
 ## Test
 Test xoá sạch và seed lại DB, nên phải dùng DB riêng tên `*_test`:
 ```bash
@@ -84,6 +91,8 @@ npx tsc --noEmit
 - `tests-ui/dang-nhap.mjs` (Playwright, `npm run test:ui dang-nhap`; máy chủ chạy với `BCA_GOOGLE_CLIENT_ID/SECRET` giả + `BCA_DEV_LOGIN=1`) — nút Google 390/1280, 302 + cookie tạm (không theo chuyển hướng sang Google), state giả, câu báo lỗi, đã đăng nhập, T41 từ hồ sơ.
 - `tests/tai-khoan.test.ts` — màn Tài khoản (T55): quyền 403 trước tham số, thêm GV (chuẩn hoá, trùng hộp Gmail, gợi ý đuôi, T49), sửa tên/môn có hiệu lực ngay, khoá/mở khoá, chủ cuối (tự khoá, hai chủ khoá nhau cùng lúc), đăng xuất mọi máy.
 - `tests-ui/tai-khoan.mjs` (Playwright) — thêm GV 390/1280, báo gõ nhầm/trùng, sửa môn + khoá/mở khoá, chủ duy nhất, mục Thêm trên điện thoại, GV bị chặn.
+- `tests/khu-hoc-sinh.test.ts` — dữ liệu khu học sinh: em thử (ngày 12/14, link còn hạn), em hết thử (không link, không "hỏi em"), em chính thức, chặn link không phải http(s), chuỗi đi học, quyền `/api/hs/toi`.
+- `tests-ui/hoc-sinh.mjs` (Playwright) — 3 vai thử ở 390 (+1280): không mã máy / "hỏi em" / Gmail / SĐT / tiền, vùng bấm ≥ 44px, khối học thử, màn khoá, chặn dữ liệu em khác.
 - `tests/vong-3.test.ts` — vòng 3 (theo rà soát BCA-D1-RS-MC): đăng nhập thử theo môi trường, khoá ký bắt buộc, quyền các route còn thiếu, hạn hoàn tác 10 giây, gia hạn bỏ môn đã nghỉ, đầu vào sai ⇒ 400/404/409, thao tác đồng thời; các hàm bổ sung cho phòng Giao diện.
 
 ## Chuyển dữ liệu từ sheet
@@ -176,7 +185,7 @@ Hàm mới (không có route riêng — trang gọi thẳng):
 ## Cấu trúc
 ```
 app/(quan-ly)/quan-ly/   trang chẩn đoán khu quản lý
-app/(hoc-sinh)/hoc/      trang chẩn đoán khu học sinh
+app/(hoc-sinh)/hoc/      khu học sinh (màn thật, Đợt 2)
 app/dang-nhap/           trang đăng nhập: nút Google + đăng nhập thử (T40)
 app/api/dang-nhap/google/  bắt đầu + callback Google (server/google.ts)
 app/api/**/route.ts      route handlers (mỏng: đọc request → gọi server/*)
