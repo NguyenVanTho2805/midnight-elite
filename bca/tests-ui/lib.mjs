@@ -107,7 +107,7 @@ class Ca {
     await page.screenshot({ path: f, fullPage: true });
     return f;
   }
-  async don() { for (const c of this.ctxs) await c.close().catch(() => {}); }
+  async don() { for (const c of this.ctxs) await (c.dispose ? c.dispose() : c.close()).catch(() => {}); }
 }
 
 export async function chay(tenNhom) {
