@@ -127,22 +127,22 @@ Lấy bảng dày của mẫu B, tô theo token A, sửa ký hiệu.
 ### 1280px
 ```
  Ma trận điểm danh   [Toán][Sử][Địa][Anh]   ‹ Tháng 11/2026 ›   [ ] Chỉ em đang học
-┌───────────────────────┬────┬────┬────┬────┬────┬────┬────┬▓▓▓▓┬────┬──────┬──────┐
-│ Học sinh              │T3  │T7  │T3  │T7  │T3  │T7  │T3  │T7  │T3  │Có mặt│Chuỗi │
-│                       │03  │07  │10  │14  │17  │21  │24  │28  │01·bù│      │      │
-├───────────────────────┼────┼────┼────┼────┼────┼────┼────┼▓▓▓▓┼────┼──────┼──────┤
-│ Nguyễn Minh Anh       │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ P  │ ✓  │▓ ✓▓│    │ 7/8  │  2   │
-│ Trần Gia Bảo · thử    │ –  │ –  │ –  │ ✓  │ ✓  │ ✓  │ ✓  │▓ ✓▓│    │ 5/5  │  5   │
-│ Lê Thu Hà             │ ✓  │ ✓  │ K  │ ✓  │ ✓  │ ✓  │ ✓  │▓ P▓│    │ 6/8  │  5   │
-│ Vũ Khánh Linh         │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │▓ ·▓│    │ 7/7  │  7   │
-└───────────────────────┴────┴────┴────┴────┴────┴────┴────┴▓▓▓▓┴────┴──────┴──────┘
+┌───────────────────────┬────┬────┬────┬────┬────┬────┬────┬▓▓▓▓┬──────┬──────┐
+│ Học sinh              │T3  │T7  │T3  │T7  │T3  │T7  │T3  │T7  │Có mặt│Chuỗi │
+│                       │03  │07  │10  │14  │17  │21  │24  │28  │      │      │
+├───────────────────────┼────┼────┼────┼────┼────┼────┼────┼▓▓▓▓┼──────┼──────┤
+│ Nguyễn Minh Anh       │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ P  │ ✓  │▓ ✓▓│ 7/8  │  7   │
+│ Trần Gia Bảo · thử    │ –  │ –  │ –  │ ✓  │ ✓  │ ✓  │ ✓  │▓ ✓▓│ 5/5  │  5   │
+│ Lê Thu Hà             │ ✓  │ ✓  │ K  │ ✓  │ ✓  │ ✓  │ ✓  │▓ P▓│ 6/8  │  4   │
+│ Vũ Khánh Linh         │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │ ✓  │▓ ·▓│ 7/7  │  7   │
+└───────────────────────┴────┴────┴────┴────┴────┴────┴────┴▓▓▓▓┴──────┴──────┘
  ✓ có mặt · P vắng có phép · K vắng không phép · · chưa điểm · – không học ngày này
 ```
 - Cột tên dính trái (220px, tên + "· thử" `trial-fg`), đầu bảng dính trên, ô 44 × 40, ký hiệu 15/600 giữa ô.
 - Màu ký hiệu trên `surface`: ✓ `ok` (9.67) · P `excused` (10.14) · K `danger` (7.58) · "·" và "–" `text-3` (7.02). Ký hiệu khác nhau về **hình**, màu chỉ bổ trợ.
 - Cột hôm nay (hoặc buổi gần nhất đã qua) nền `today-col`, chữ đầu cột `gold`; khi mở, bảng **tự cuộn ngang** để cột này nằm trong tầm nhìn (cuộn tức thì, không trượt).
 - Buổi "Nghỉ": cột hẹp 28px, đầu cột "Nghỉ", ô gạch chéo `border`, không bấm được. Buổi "Học bù": đầu cột thêm "· bù".
-- "Có mặt" = số ✓ / số buổi em thuộc lớp (đã điểm). "Chuỗi" = số buổi có mặt liên tiếp gần nhất; **P không làm đứt chuỗi** (`huong-chon.md` sửa 5). Cả hai `tabular-nums`.
+- "Có mặt" = số ✓ / số buổi em thuộc lớp (đã điểm). "Chuỗi" = số buổi có mặt liên tiếp gần nhất; **P không làm đứt chuỗi và không cộng vào chuỗi**, ô "·" chưa điểm bị bỏ qua (`huong-chon.md` sửa 5). Cả hai `tabular-nums`.
 - Bấm ô (chủ lớp, giáo viên môn đó) → menu nhỏ cạnh ô: Có · Phép · Vắng · Về chưa điểm (mỗi mục cao 44). **Không bấm đổi vòng** như mẫu B. Ô quá 48 giờ: menu có thêm dòng "Buổi đã qua 48 giờ" và hỏi xác nhận một lần cho cả cột.
 - Bàn phím: bảng là lưới (`role="grid"`), mũi tên đi giữa ô, Enter mở menu, phím 1/2/3 đặt thẳng, Delete về chưa điểm.
 - Mỗi ô có `aria-label` đầy đủ: "Nguyễn Minh Anh, Thứ Bảy 28/11: có mặt".
@@ -182,7 +182,7 @@ Không GSAP, không Lenis (cần cuộn gốc cho đầu bảng dính và cột 
 2. Mỗi nút Có/Phép/Vắng ≥ 48px cao ở 390px, ≥ 44px ở 1280px; khoảng cách giữa hai nút ≥ 8px.
 3. "Đánh tất cả có mặt" không đổi em đã có Phép/Vắng; Hoàn tác trong 5 giây đưa đúng các em đó về Chưa điểm; quá 5 giây thì nút Hoàn tác biến mất.
 4. Chuyển tab trình duyệt trong lúc đếm 5 giây → về lại vẫn còn thời gian.
-5. Tắt mạng máy, chạm 3 em, tải lại trang khi vẫn mất mạng không bắt buộc; bật mạng → cả 3 lưu lên máy chủ, đầu trang "Đã lưu".
+5. Mở buổi khi có mạng, tắt hẳn mạng máy, chạm 3 em → 3 hàng có chấm "Chưa gửi", đầu trang "3 thay đổi chưa gửi"; bật mạng → cả 3 lưu lên máy chủ, đầu trang "Đã lưu".
 6. Thứ tự hàng không đổi sau mỗi chạm, kể cả khi đang lọc "Chưa điểm".
 7. Buổi > 48 giờ: chạm nút không đổi gì cho tới khi "Mở sửa" + xác nhận.
 8. Tài khoản chị Thu Hương (Anh) mở link buổi Toán → 403.
