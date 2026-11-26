@@ -20,7 +20,7 @@ function khoa() {
   return new TextEncoder().encode(s);
 }
 
-export const kyPhien = (p: Phien) =>
+export const kyPhien = async (p: Phien) =>
   new SignJWT({ vai: p.vai, bd: p.bd }).setProtectedHeader({ alg: "HS256" }).setSubject(p.sub).setIssuedAt().setExpirationTime(`${HAN_GIAY}s`).sign(khoa());
 
 export async function docPhien(token?: string | null): Promise<(Phien & { iat: number }) | null> {

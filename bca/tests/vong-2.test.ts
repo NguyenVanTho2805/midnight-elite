@@ -87,42 +87,7 @@ describe("T34 — cột nghi_luc thay cho ghi chú 'Cho nghỉ…'", () => {
   });
 });
 
-describe("T34 — chuyen-tu-sheet nhận 'chủ đã cho nghỉ' từ cột Tình trạng của sheet (xem trước, rollback)", () => {
-  it("em sheet ghi 'Đã nghỉ' mà ghi danh là hết thử → nghi_luc; em 'Hết thử – hỏi em' giữ nguyên; ghi chú không được đọc", async () => {
-    const ExcelJS = (await import("exceljs")).default;
-    const wb = new ExcelJS.Workbook();
-    const bang = (ten: string, cot: string[], dong: unknown[][] = []) => { const ws = wb.addWorksheet(ten); ws.addRow(cot); for (const d of dong) ws.addRow(d); };
-    bang("📚 Lứa", ["Mã lứa", "Tên lứa", "Nhận từ ngày", "Đến ngày", "Ghi chú"], [["L9", "Lứa thử", "01/11/2026", null, null]]);
-    bang("⚙️ Cài đặt", ["Khoá", "Giá trị", "", "", "Môn", "Tên đầy đủ", "Thứ", "Giờ", "Số phút"], [
-      ["SO_NGAY_HOC_THU", 14, null, null, "Toán", "Toán", "3,7", "22:15", 90],
-      [null, null, null, null, "Sử", "Lịch sử", "4,8", "22:15", 90],
-      [null, null, null, null, "Địa", "Địa lí", "6", "22:15", 90],
-      [null, null, null, null, "Anh", "Tiếng Anh", "2,5", "22:15", 90],
-    ]);
-    const cotHs = ["Mã HS", "Họ tên", "Lứa", "SĐT HS", "SĐT PH", "Gmail", "Trường", "Khối", "Họ tên PH", "Mục tiêu", "Nguồn", "Username Azota", "Đồng ý vinh danh", "Đã nhắn chào", "Ghi chú", "Note", "Ngày tạo", "Số dư đầu kỳ", "Nghỉ/ẩn", "Tình trạng", "Toán", "Sử", "Địa", "Anh"];
-    const em = (ma: string, tt: string) => [ma, `Em ${ma}`, "L9", "0900000901", null, `${ma.toLowerCase()}@sheet.invalid`, null, null, null, null, "Web", `az${ma}`, false, true, null, null, "01/11/2026", 0, false, tt, "Nghỉ", null, null, null];
-    bang("👥 Học sinh", cotHs, [em("HS9001", "Đã nghỉ"), em("HS9002", "Hết thử 14/11 – hỏi em")]);
-    const cotGd = ["Mã GD", "Mã HS", "Họ tên", "Môn", "Loại", "Từ ngày", "Học đến hết ngày", "Miễn phí", "Đơn giá riêng", "Ghi chú"];
-    bang("📝 Ghi danh", cotGd, [
-      ["GD90001", "HS9001", null, "Toán", "Thử", "01/11/2026", "14/11/2026", false, null, null],
-      ["GD90002", "HS9002", null, "Toán", "Thử", "01/11/2026", "14/11/2026", false, null, "Cho nghỉ đến hết 14/11"],
-    ]);
-    bang("📥 Đăng ký", ["Thời gian"]);
-    bang("📅 Buổi học", ["Ngày", "Môn", "Trạng thái", "Đã điểm danh", "Nội dung buổi", "Link record", "Ghi chú"]);
-    bang("__DiemDanh", ["Ngày", "Môn", "Mã HS", "Ký hiệu"]);
-    bang("Điểm danh", [""]);
-    const { mkdtemp } = await import("node:fs/promises");
-    const { tmpdir } = await import("node:os");
-    const tep = `${await mkdtemp(`${tmpdir()}/bca-chuyen-`)}/gia.xlsx`;
-    await wb.xlsx.writeFile(tep);
-    const { chuyen } = await import("@/scripts/chuyen-tu-sheet");
-    const bao = (await chuyen(db as never, tep, { apply: false, ngayChot: "2026-11-26" })) as Record<string, unknown>;
-    expect(bao.ket_qua).toBe("KHỚP (đã rollback vì đang xem trước)");
-    expect(bao.t34_chu_da_cho_nghi).toEqual(["HS9001"]);
-    expect(bao.tinh_trang).toEqual({ "Đã nghỉ": 1, "Hết thử 14/11 – hỏi em": 1 });
-    expect(await db.hoc_sinh.count({ where: { ma_hs: { in: ["HS9001", "HS9002"] } } })).toBe(0); // đã rollback
-  });
-});
+// T34 + chuyen-tu-sheet: xem tests/chuyen.test.ts (chạy trên DB rỗng để đối soát số dòng khớp).
 
 describe("Hoàn tác chuyển chính thức (man-hoc-sinh.md 9.2) — chỉ chủ, một lần, 5 giây", () => {
   const gdCua = async (ma: string) =>

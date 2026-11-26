@@ -139,16 +139,20 @@ export async function danhDauXong(u: Nguoi, loai: string, khoa: string, luc = ne
   canChu(u);
   if (!(loai in NGAY_AN_VIEC)) throw new LoiDuLieu(`Loại việc không hợp lệ: ${loai}`);
   if (!khoa || khoa.length > 100) throw new LoiDuLieu("Thiếu khoá việc");
-  const r = await db.viec_xong.upsert({ where: { loai_khoa: { loai, khoa } }, create: { loai, khoa, nguoi_dung_id: u.id, luc }, update: { nguoi_dung_id: u.id, luc } });
-  await ghiNhatKy(u, "danh_dau_xong", "viec", `${loai}|${khoa}`, null, { luc: r.luc.toISOString() });
-  return { loai, khoa, an_den: congNgay(ngayVN(luc), NGAY_AN_VIEC[loai] - 1) };
+  return db.$transaction(async (tx) => {
+    const r = await tx.viec_xong.upsert({ where: { loai_khoa: { loai, khoa } }, create: { loai, khoa, nguoi_dung_id: u.id, luc }, update: { nguoi_dung_id: u.id, luc } });
+    await ghiNhatKy(u, "danh_dau_xong", "viec", `${loai}|${khoa}`, null, { luc: r.luc.toISOString() }, tx);
+    return { loai, khoa, an_den: congNgay(ngayVN(luc), NGAY_AN_VIEC[loai] - 1) };
+  });
 }
 
 /** T33: bỏ đánh dấu (Hoàn tác) — việc hiện lại nếu điều kiện vẫn đúng. */
 export async function boDanhDauXong(u: Nguoi, loai: string, khoa: string) {
   canChu(u);
-  const r = await db.viec_xong.deleteMany({ where: { loai, khoa } });
-  if (!r.count) throw new LoiDuLieu("Việc này chưa được đánh dấu xong", 404);
-  await ghiNhatKy(u, "bo_danh_dau_xong", "viec", `${loai}|${khoa}`, null, null);
-  return { loai, khoa };
+  return db.$transaction(async (tx) => {
+    const r = await tx.viec_xong.deleteMany({ where: { loai, khoa } });
+    if (!r.count) throw new LoiDuLieu("Việc này chưa được đánh dấu xong", 404);
+    await ghiNhatKy(u, "bo_danh_dau_xong", "viec", `${loai}|${khoa}`, null, null, tx);
+    return { loai, khoa };
+  });
 }

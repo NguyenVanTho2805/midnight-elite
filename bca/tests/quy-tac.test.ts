@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { lucVN, ngayVN } from "@/lib/ngay";
 import { chuanHoaSdt, goiYGmail, sdtHopLe } from "@/lib/chuan-hoa";
 import {
-  buoiTheoLich, chuanHoaLink, chuoi, hetThu, hieuLuc, keHoachChinhThuc, keHoachGiaHan, keHoachNghi, keHoachThemThu, khoangThu,
+  buoiTheoLich, chuanHoaLink, chuoi, conHanHoanTac, hetThu, hieuLuc, keHoachChinhThuc, keHoachGiaHan, keHoachNghi, keHoachThemThu, khoangThu,
   moDiemDanh, ngayChinhThucMacDinh, ngayNghiMacDinh, oMon, qua48Gio, tienKy, tinhTrang, thuSapHet, type GD,
 } from "@/lib/quy-tac";
 import { COT_HS_CHU, COT_HS_GV, coMon, type Nguoi } from "@/lib/quyen";
@@ -58,6 +58,28 @@ describe("Gia hạn thử (5.4)", () => {
     expect(k.viec[0]).toMatchObject({ kieu: "tao", tu: "2026-12-17", den: "2026-12-19" });
   });
   it("số ngày sai bị chặn", () => expect(() => keHoachGiaHan([thu(1, "2026-12-02", "2026-12-15")], "2026-12-14", { soNgay: 0 })).toThrow());
+  it("T4 + T34: môn chủ đã cho nghỉ (cắt hết hôm nay, nghi) không được gia hạn — còn hạn: chỉ Toán 15/12 → 18/12", () => {
+    const gds = [thu(1, "2026-12-02", "2026-12-15"), { ...thu(4, "2026-12-02", "2026-12-14"), nghi: true }];
+    expect(keHoachGiaHan(gds, "2026-12-14", { soNgay: 3 }).viec).toEqual([{ kieu: "sua_den", id: 1, den: "2026-12-18" }]);
+  });
+  it("T4 + T34: đã hết cả hai, Anh chủ đã cho nghỉ → đoạn mới chỉ Toán", () => {
+    const gds = [thu(1, "2026-12-02", "2026-12-15"), { ...thu(4, "2026-12-02", "2026-12-15"), nghi: true }];
+    expect(keHoachGiaHan(gds, "2026-12-17", { soNgay: 3 }).viec.map((v) => (v as { mon_id: number }).mon_id)).toEqual([1]);
+  });
+  it("chỉ còn môn đã nghỉ → không có gì để gia hạn", () =>
+    expect(() => keHoachGiaHan([{ ...thu(4, "2026-12-02", "2026-12-14"), nghi: true }], "2026-12-14", { soNgay: 3 })).toThrow("không có môn học thử"));
+  it("ngày hết mới phải SAU ngày hết hiện tại (15/12): 15/12 hay 14/12 → chặn; 16/12 được", () => {
+    const gds = [thu(1, "2026-12-02", "2026-12-15")];
+    expect(() => keHoachGiaHan(gds, "2026-12-10", { denNgay: "2026-12-15" })).toThrow("sau ngày hết hiện tại 15/12");
+    expect(() => keHoachGiaHan(gds, "2026-12-10", { denNgay: "2026-12-14" })).toThrow("sau ngày hết hiện tại 15/12");
+    expect(keHoachGiaHan(gds, "2026-12-10", { denNgay: "2026-12-16" }).denMoi).toBe("2026-12-16");
+  });
+  it("hạn hoàn tác 10 giây tính từ lúc thao tác gốc; thiếu mốc gốc = quá hạn", () => {
+    const goc = "2026-12-01T15:00:00.000Z";
+    expect(conHanHoanTac(goc, new Date("2026-12-01T15:00:10.000Z"))).toBe(true);
+    expect(conHanHoanTac(goc, new Date("2026-12-01T15:00:10.001Z"))).toBe(false);
+    expect(conHanHoanTac(undefined, new Date(goc))).toBe(false);
+  });
 });
 
 describe("Chuyển chính thức (Điều 7) + tiền", () => {

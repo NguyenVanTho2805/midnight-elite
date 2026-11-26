@@ -18,6 +18,7 @@ const hsId = async (ma: string) => (await db.hoc_sinh.findUniqueOrThrow({ where:
 const gdCua = async (ma: string, mon: number) =>
   (await db.ghi_danh.findMany({ where: { hoc_sinh_id: await hsId(ma), mon_id: mon }, orderBy: { id: "asc" } })).map((g) => ({ loai: g.loai, tu: d2s(g.tu_ngay), den: g.den_ngay ? d2s(g.den_ngay) : null, huy: !!g.huy_luc }));
 const ma = (e: unknown) => (e as { ma?: string }).ma;
+const giay = (goc: Date, s: number) => new Date(goc.getTime() + s * 1000);
 
 beforeAll(async () => {
   await napSeed();
@@ -72,15 +73,18 @@ describe("Điểm danh (diem-danh.md)", () => {
     const [a, b] = ct.em;
     await datDiemDanh(gvAnh, id, a.hoc_sinh_id, { trangThai: "vang" }, luc);
     await datDiemDanh(gvAnh, id, b.hoc_sinh_id, { trangThai: "vang" }, luc);
-    const r = await danhTatCaCoMat(gvAnh, id, {}, lucVN("2026-11-26", "22:21"));
+    const lucDanh = lucVN("2026-11-26", "22:21");
+    const r = await danhTatCaCoMat(gvAnh, id, {}, lucDanh);
     expect(r.ids).toHaveLength(41);
     expect(r.tien_do).toEqual({ si_so: 43, da_diem: 43, xong: true });
     expect((await chiTietDiemDanh(gvAnh, id, luc)).dem).toEqual({ chua_diem: 0, co: 41, phep: 0, vang: 2 });
     expect((await db.buoi_hoc.findUniqueOrThrow({ where: { id } })).da_diem_danh_luc).not.toBeNull();
     // Một em bị sửa tay sau "đánh tất cả" → hoàn tác không đụng em đó
-    await datDiemDanh(gvAnh, id, r.ids[0], { trangThai: "phep" }, lucVN("2026-11-26", "22:22"));
-    const h = await hoanTacTatCa(gvAnh, id, r.ids, r.luc, lucVN("2026-11-26", "22:22"));
+    await datDiemDanh(gvAnh, id, r.ids[0], { trangThai: "phep" }, giay(lucDanh, 3));
+    await expect(hoanTacTatCa(chu, id, r.luc, giay(lucDanh, 4))).rejects.toSatisfy((e) => (e as { status?: number }).status === 404); // lần đánh của người khác
+    const h = await hoanTacTatCa(gvAnh, id, r.luc, giay(lucDanh, 5));
     expect(h.so_tra_lai).toBe(40);
+    await expect(hoanTacTatCa(gvAnh, id, r.luc, giay(lucDanh, 6))).rejects.toSatisfy((e) => ma(e) === "da_hoan_tac");
     expect((await chiTietDiemDanh(gvAnh, id, luc)).dem).toEqual({ chua_diem: 40, co: 0, phep: 1, vang: 2 });
     expect((await db.buoi_hoc.findUniqueOrThrow({ where: { id } })).da_diem_danh_luc).toBeNull();
   });
@@ -129,10 +133,10 @@ describe("Ghi danh — chỉ chủ (ghi-danh.md)", () => {
       { loai: "thu", tu: "2026-11-05", den: "2026-11-18", huy: false },
       { loai: "thu", tu: "2026-11-26", den: "2026-12-02", huy: false },
     ]);
-    expect(await hoanTacGiaHan(chu, r.nhatKyId)).toEqual({ traLai: 4, boQua: 0 });
+    expect(await hoanTacGiaHan(chu, r.nhatKyId, giay(T22, 3))).toEqual({ traLai: 4, boQua: 0 });
     expect(await gdCua("HS0021", 2)).toEqual([{ loai: "thu", tu: "2026-11-15", den: "2026-11-28", huy: false }]);
     expect(await gdCua("HS0065", 1)).toHaveLength(1);
-    await expect(hoanTacGiaHan(chu, r.nhatKyId)).rejects.toSatisfy((e) => (e as { status?: number }).status === 409);
+    await expect(hoanTacGiaHan(chu, r.nhatKyId, giay(T22, 4))).rejects.toSatisfy((e) => ma(e) === "da_hoan_tac");
   });
   it("gia hạn cần lý do; GV không được gia hạn / chuyển chính thức / thêm môn / cho nghỉ (QĐ 16)", async () => {
     await expect(giaHanThu(chu, ["HS0021"], { soNgay: 3 }, " ", T22)).rejects.toThrow("lý do");

@@ -10,9 +10,12 @@ export async function danhSachNguoiDung(u: Nguoi) {
 
 export async function thuHoiPhien(u: Nguoi, id: string, khoaTaiKhoan = false, luc = new Date()) {
   canChu(u);
-  const nd = await db.nguoi_dung.findUnique({ where: { id } });
-  if (!nd) throw new LoiDuLieu("Không có người dùng này", 404);
-  await db.nguoi_dung.update({ where: { id }, data: { phien_huy_luc: luc, ...(khoaTaiKhoan ? { khoa_luc: luc } : {}) } });
-  await ghiNhatKy(u, khoaTaiKhoan ? "khoa_tai_khoan" : "thu_hoi_phien", "nguoi_dung", id, { khoa_luc: nd.khoa_luc }, { phien_huy_luc: luc.toISOString(), khoa: khoaTaiKhoan });
-  return { ok: true };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new LoiDuLieu("Không có người dùng này", 404);
+  return db.$transaction(async (tx) => {
+    const nd = await tx.nguoi_dung.findUnique({ where: { id } });
+    if (!nd) throw new LoiDuLieu("Không có người dùng này", 404);
+    await tx.nguoi_dung.update({ where: { id }, data: { phien_huy_luc: luc, ...(khoaTaiKhoan ? { khoa_luc: luc } : {}) } });
+    await ghiNhatKy(u, khoaTaiKhoan ? "khoa_tai_khoan" : "thu_hoi_phien", "nguoi_dung", id, { khoa_luc: nd.khoa_luc }, { phien_huy_luc: luc.toISOString(), khoa: khoaTaiKhoan }, tx);
+    return { ok: true };
+  });
 }

@@ -1,8 +1,11 @@
 // Chuyển dữ liệu từ bản xuất .xlsx của Google Sheet (docs/bca/nghiep-vu/chuyen-du-lieu.md).
-//   npx tsx scripts/chuyen-tu-sheet.ts <tệp.xlsx> [--ngay-chot=YYYY-MM-DD] [--apply]
+//   npx tsx scripts/chuyen-tu-sheet.ts <tệp.xlsx> [--ngay-chot=YYYY-MM-DD] [--apply] [--ghi-de-du-lieu-web]
 // Mặc định XEM TRƯỚC: chạy hết trong một transaction rồi rollback, chỉ in số đếm và số dòng sheet.
-// --apply mới ghi. Lặp lại an toàn (upsert theo mã HS, mã GD, (môn, giờ bắt đầu), (buổi, em), mã yêu cầu).
-// KHÔNG in tên, SĐT, Gmail. KHÔNG commit tệp xlsx.
+// --apply mới ghi (kèm một dòng nhat_ky "chuyen_that"). Lặp lại an toàn (upsert theo mã HS, mã GD, (môn, giờ bắt đầu), (buổi, em), mã yêu cầu)
+// CHỈ KHI web chưa vận hành: đã có nhật ký do người dùng, ghi danh tạo trên web hoặc điểm danh nguồn web ⇒ --apply bị chặn,
+// muốn chạy tiếp phải thêm --ghi-de-du-lieu-web (chủ quyết). Lệch bất kỳ số đối soát nào ⇒ rollback.
+// DB không phải cục bộ (kể cả xem trước) cần BCA_CHO_PHEP_CHUYEN_THAT=1.
+// KHÔNG in tên, SĐT, Gmail hay nội dung ô. KHÔNG commit tệp xlsx. KHÔNG bao giờ ghi khoá cai_dat DU_LIEU_GIA (xoá nó khi --apply).
 // Tạm chọn đang áp: T18 (dựng lại hồ sơ mất từ đơn), T19 (không chuyển __DaXoa), T20 (buổi chưa tick mà có dấu ⇒ đã điểm danh),
 // T34 (sheet ghi "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ chủ đã bấm nghỉ ⇒ nghi_luc; không đọc chữ trong ghi chú).
 import ExcelJS from "exceljs";
@@ -16,7 +19,8 @@ const MON_MA: Record<string, string> = { Toán: "toan", Sử: "su", Địa: "dia
 const TT_DON: Record<string, "moi" | "cho_duyet" | "da_nhan" | "trung" | "bo_qua" | "lead_cu"> = {
   Mới: "moi", "Chờ duyệt": "cho_duyet", "Đã nhận": "da_nhan", Trùng: "trung", "Bỏ qua": "bo_qua", "Lead cũ": "lead_cu",
 };
-const BO_CAI_DAT = new Set(["STK", "SDT_GS", "EMAIL_GIAO_VIEN", "TU_NHAN_HOC_THU", "TU_NHAN_TOI_DA_NGAY", "ID_FILE_V7", "LINK_LANDING", "GIO_MEET", "SO_PHUT"]);
+const DAU_DU_LIEU_GIA = "DU_LIEU_GIA"; // = server/dang-nhap-thu.ts (T40)
+const BO_CAI_DAT = new Set([DAU_DU_LIEU_GIA, "STK", "SDT_GS", "EMAIL_GIAO_VIEN", "TU_NHAN_HOC_THU", "TU_NHAN_TOI_DA_NGAY", "ID_FILE_V7", "LINK_LANDING", "GIO_MEET", "SO_PHUT"]);
 
 class Dung extends Error {}
 const ROLLBACK = Symbol("rollback");
@@ -40,7 +44,7 @@ const ngay = (v: Cell): string | null => {
   if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
   m = s.match(/^\d{4}-\d{2}-\d{2}/);
   if (m) return m[0];
-  throw new Dung(`Ngày không đọc được: "${s.slice(0, 20)}"`);
+  throw new Dung("Có ô ngày không đọc được (dd/MM/yyyy hoặc yyyy-MM-dd)"); // không in nội dung ô
 };
 const bool = (v: Cell) => v === true || /^(true|có|x|✓)$/i.test(chu(v) ?? "");
 
@@ -61,7 +65,7 @@ const tab = (wb: ExcelJS.Workbook, ten: string) => {
   return ws;
 };
 
-export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolean; ngayChot: string }) {
+export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolean; ngayChot: string; ghiDeDuLieuWeb?: boolean }) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(tep);
   const luc = new Date();
@@ -263,6 +267,20 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
   // ── Ghi trong một transaction ──
   try {
     await db.$transaction(async (tx) => {
+      // Web đã vận hành? (P2-4) — chặn --apply ghi đè lên dữ liệu người dùng đã nhập trên web.
+      const web = {
+        nhat_ky_nguoi_dung: await tx.nhat_ky.count({ where: { OR: [{ nguoi_dung_id: { not: null } }, { vai_tro: { startsWith: "hoc_sinh" } }] } }),
+        ghi_danh_tao_tren_web: await tx.ghi_danh.count({ where: { tao_boi: { not: null } } }),
+        diem_danh_web: await tx.diem_danh.count({ where: { nguon: "web" } }),
+      };
+      const lanTruoc = await tx.nhat_ky.findFirst({ where: { hanh_dong: "chuyen_that" }, orderBy: { id: "desc" }, select: { luc: true } });
+      bao.web_da_van_hanh = web;
+      bao.lan_chuyen_that_truoc = lanTruoc?.luc.toISOString() ?? null;
+      if (opt.apply && Object.values(web).some((n) => n > 0) && !opt.ghiDeDuLieuWeb)
+        throw new Dung(
+          `Web đã vận hành (${web.nhat_ky_nguoi_dung} nhật ký người dùng, ${web.ghi_danh_tao_tren_web} ghi danh tạo trên web, ${web.diem_danh_web} điểm danh web` +
+            `${lanTruoc ? `; lần chuyển thật trước ${lanTruoc.luc.toISOString()}` : ""}) — từ chối --apply. Chỉ khi chủ quyết ghi đè: thêm --ghi-de-du-lieu-web.`,
+        );
       for (const l of lua) await tx.lua.upsert({ where: { ma: l.ma }, create: { ma: l.ma, ten: l.ten, tu_ngay: s2d(l.tu), den_ngay: l.den ? s2d(l.den) : null, ghi_chu: l.ghi_chu }, update: { ten: l.ten, tu_ngay: s2d(l.tu), den_ngay: l.den ? s2d(l.den) : null, ghi_chu: l.ghi_chu } });
       for (const m of mon) await tx.mon.upsert({ where: { id: m.id }, create: m, update: m });
       for (const c of caiDat) await tx.cai_dat.upsert({ where: { khoa: c.khoa }, create: { khoa: c.khoa, gia_tri: c.gia_tri as never }, update: { gia_tri: c.gia_tri as never } });
@@ -378,10 +396,35 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
         gmail_can_xem: hs.filter((x) => !gmailHopLe(x.gmail)).map((x) => x.ma_hs),
         loi,
       });
-      const lech = [lechO > 0 && "ô môn", siSoThang.some((s) => s.tinh !== s.ma_tran) && "sĩ số tháng ma trận"].filter(Boolean);
+      // Đối soát số dòng: CSDL sau khi ghi phải đúng bằng số đọc từ sheet (dòng thừa/thiếu/gộp nhầm đều là lệch).
+      const doiSoat = {
+        lua: [lua.length, await tx.lua.count()], mon: [mon.length, await tx.mon.count()], hoc_sinh: [hs.length, await tx.hoc_sinh.count()],
+        ghi_danh: [gd.length, gdDb.length], buoi_hoc: [buoi.length, await tx.buoi_hoc.count()], diem_danh: [diem.length, await tx.diem_danh.count()],
+        don_dang_ky: [don.length, await tx.don_dang_ky.count()],
+      };
+      const lechDong = Object.entries(doiSoat).filter(([, [a, b]]) => a !== b).map(([k, [a, b]]) => `${k} sheet ${a} ≠ CSDL ${b}`);
+      // Phân bố tình trạng (chỉ hồ sơ có dòng ở tab Học sinh) so với cột Tình trạng của sheet.
+      const gom = (ds: string[]) => ds.reduce<Record<string, number>>((m, t) => ({ ...m, [t]: (m[t] ?? 0) + 1 }), {});
+      const rut = (t: string) => t.replace(/^Thử → CT.*/, "Thử → CT");
+      const tuSheet = hs.filter((x) => x.so > 0);
+      const ttSheet = gom(tuSheet.map((x) => rut(x.tinh_trang ?? "(trống)")));
+      const ttTinh = gom(tuSheet.map((x) => rut(tinhTrang(gdMap.get(hsId.get(x.ma_hs)!) ?? [], h))));
+      const lechTT = [...new Set([...Object.keys(ttSheet), ...Object.keys(ttTinh)])].filter((k) => ttSheet[k] !== ttTinh[k]);
+      Object.assign(bao, { doi_soat_so_dong: Object.fromEntries(Object.entries(doiSoat).map(([k, [a, b]]) => [k, { sheet: a, csdl: b }])), tinh_trang_sheet: ttSheet });
+      const lech = [
+        ...lechDong,
+        lechTT.length && `phân bố tình trạng (${lechTT.map((k) => `${k}: sheet ${ttSheet[k] ?? 0} ≠ tính ${ttTinh[k] ?? 0}`).join("; ")})`,
+        lechO > 0 && "ô môn",
+        siSoThang.some((s) => s.tinh !== s.ma_tran) && "sĩ số tháng ma trận",
+      ].filter(Boolean);
       if (lech.length) { bao.ket_qua = `LỆCH: ${lech.join(", ")} ⇒ rollback`; throw ROLLBACK; }
       bao.ket_qua = opt.apply ? "ĐÃ GHI" : "KHỚP (đã rollback vì đang xem trước)";
       if (!opt.apply) throw ROLLBACK;
+      await tx.cai_dat.deleteMany({ where: { khoa: DAU_DU_LIEU_GIA } }); // DB đã có dữ liệu thật ⇒ tắt đăng nhập thử trên preview (T40)
+      const nk = await tx.nhat_ky.create({
+        data: { vai_tro: "he_thong", hanh_dong: "chuyen_that", doi_tuong: "he_thong", sau: { ngay_chot: h, ghi_de_du_lieu_web: !!opt.ghiDeDuLieuWeb, web_da_van_hanh: web, doi_soat: doiSoat } },
+      });
+      bao.nhat_ky_chuyen_that = nk.id;
     }, { timeout: 300_000, maxWait: 30_000 });
   } catch (e) {
     if (e !== ROLLBACK) throw e;
@@ -413,22 +456,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const tep = args.find((a) => !a.startsWith("--"));
   const apply = args.includes("--apply");
+  const ghiDeDuLieuWeb = args.includes("--ghi-de-du-lieu-web");
   const ngayChot = args.find((a) => a.startsWith("--ngay-chot="))?.split("=")[1] ?? ngayVN(new Date());
   if (!tep) {
-    console.error("Cách dùng: npx tsx scripts/chuyen-tu-sheet.ts <tệp.xlsx> [--ngay-chot=YYYY-MM-DD] [--apply]");
+    console.error("Cách dùng: npx tsx scripts/chuyen-tu-sheet.ts <tệp.xlsx> [--ngay-chot=YYYY-MM-DD] [--apply] [--ghi-de-du-lieu-web]");
     process.exit(1);
   }
   const url = process.env.BCA_DATABASE_URL ?? "";
   const host = (() => { try { return new URL(url).hostname; } catch { return ""; } })();
-  if (apply && !["localhost", "127.0.0.1"].includes(host) && process.env.BCA_CHO_PHEP_CHUYEN_THAT !== "1") {
-    console.error("Từ chối --apply lên DB không phải cục bộ. Chuyển thật chỉ khi chủ quyết (T21): đặt BCA_CHO_PHEP_CHUYEN_THAT=1.");
+  if (!["localhost", "127.0.0.1"].includes(host) && process.env.BCA_CHO_PHEP_CHUYEN_THAT !== "1") {
+    console.error("Từ chối chạy lên DB không phải cục bộ (kể cả xem trước). Chỉ khi chủ quyết (T21): đặt BCA_CHO_PHEP_CHUYEN_THAT=1.");
     process.exit(1);
   }
   const { PrismaPg } = await import("@prisma/adapter-pg");
   const { PrismaClient } = await import("../generated/prisma/client");
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   try {
-    console.log(JSON.stringify(await chuyen(db, tep, { apply, ngayChot }), null, 2));
+    console.log(JSON.stringify(await chuyen(db, tep, { apply, ngayChot, ghiDeDuLieuWeb }), null, 2));
   } catch (e) {
     if (e instanceof Dung) { console.error("DỪNG:", e.message); process.exitCode = 2; } else throw e;
   } finally {
