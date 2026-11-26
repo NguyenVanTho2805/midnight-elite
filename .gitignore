@@ -83,3 +83,6 @@ cookies*.txt
 tools/local-e2e/mathtype-golden.json
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Python
+__pycache__/
