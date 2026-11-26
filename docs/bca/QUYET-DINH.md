@@ -36,6 +36,8 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 22. **Trang giới thiệu theo cài đặt sáng/tối của máy** (`prefers-color-scheme`); khu học sinh và quản lý giữ nền tối.
 23. **Thứ tự đợt:** Đợt 1 quản lý lớp (học sinh + ghi danh, buổi học + điểm danh, màn Hôm nay, chuyển dữ liệu từ sheet) → Đợt 2 khu học sinh + đăng nhập Google → Đợt 3 sổ điểm, học phí → Đợt 4 trang giới thiệu + form, email, Meet.
 24. **Chủ duyệt cuối mỗi đợt.** Trong đợt đội tự làm, tự kiểm, tự rà; câu hỏi nghiệp vụ gửi chủ ngay khi gặp.
+25. **Đợt 1 chủ đã thử trên máy và duyệt (26/11).** Bước tiếp chạy song song: (a) đưa bản thử lên mạng, (b) đội làm đăng nhập Google (Đợt 2) để lên chính thức.
+26. **Chỗ đặt web (26/11):** project Vercel riêng `bca-midnight` (thư mục gốc `bca/`), địa chỉ riêng; web KiN (project `midnight-elite`) và `DATABASE_URL` của nó giữ nguyên. Tạm bật Vercel Authentication cho **mọi** địa chỉ của `bca-midnight` (kể cả production) tới khi đăng nhập Google xong. Biến đã đặt: `BCA_SESSION_SECRET` (Preview + Production), `BCA_DEV_LOGIN=1` (chỉ Preview). Lệnh dựng chạy `prisma migrate deploy` vào DB riêng của BCA.
 
 ## Tạm chọn, chờ chủ duyệt (26/11, chủ vắng 5 giờ — đội chọn phương án khuyên dùng; chủ đổi được)
 Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "Câu hỏi cho chủ".
