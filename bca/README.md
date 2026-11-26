@@ -53,6 +53,9 @@ Mọi route kiểm quyền ở máy chủ; "chỉ chủ" = GV/học sinh nhận 
 | `DELETE /api/hom-nay/xong?loai=&khoa=` | `hom-nay.boDanhDauXong` | chủ | T33: bỏ đánh dấu (Hoàn tác) |
 | `POST /api/hoc-sinh/[maHs]/nghi-mon` `{mon: "anh" \| ["toan","anh"], denNgay?}` | `ghi-danh.nghiMon` | chủ | T34: cắt theo luật 22:00 và ghi `ghi_danh.nghi_luc` + `nghi_boi`. Em hết thử (không còn dòng mở) → chỉ ghi `nghi_luc` lên dòng cuối, giữ ngày → hết việc "Hết thử – hỏi em". Ghi chú không còn được đọc |
 
+| `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc` | `ghi-danh.chuyenChinhThuc` | chủ | Nay trả thêm `nhatKyId` để hoàn tác |
+| `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc/hoan-tac` `{nhatKyId}` | `ghi-danh.hoanTacChuyenChinhThuc` | chủ | Hoàn tác một lần, trong `HAN_HOAN_TAC_CT_MS` = 10 giây (thanh 5 giây + 5 giây mạng); tất cả hoặc không: dòng đã bị sửa sau đó → 409 `da_sua`; quá hạn → 409 `het_gio`; lần hai → 409 `da_hoan_tac` |
+
 T34 trong `lib/quy-tac.ts`: `hetThu` = lần ghi danh cuối toàn Thử, đã hết, **còn ít nhất một môn chưa bị chủ cho nghỉ**. `scripts/chuyen-tu-sheet.ts`: em có Tình trạng sheet "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ đánh `nghi_luc` (báo ở `t34_chu_da_cho_nghi`).
 
 ## Cấu trúc

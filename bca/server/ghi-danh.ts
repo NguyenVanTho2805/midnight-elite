@@ -124,7 +124,38 @@ export async function chuyenChinhThuc(u: Nguoi, maHs: string, monMas: string[], 
     const sau = (await napGD({ hoc_sinh_id: hs.id }, tx)).get(hs.id) ?? [];
     const soMonCT = new Set(sau.filter((g) => g.loai === "chinh_thuc" && conMo(g, h)).map((g) => g.mon_id)).size;
     const gia = await caiDat(tx);
-    return { thayDoi, donGiaDuKien: donGiaKy(soMonCT, gia), soMonChinhThuc: soMonCT };
+    const nk = await ghiNhatKy(u, "chuyen_chinh_thuc", "nhom_chuyen_chinh_thuc", hs.ma_hs, null, { luc: luc.toISOString(), mon: monMas, thay_doi: thayDoi }, tx);
+    return { nhatKyId: nk.id, thayDoi, donGiaDuKien: donGiaKy(soMonCT, gia), soMonChinhThuc: soMonCT };
+  });
+}
+
+/** Thanh Hoàn tác hiện 5 giây (man-hoc-sinh.md 9.2); máy chủ nhận thêm 5 giây cho mạng chậm. */
+export const HAN_HOAN_TAC_CT_MS = 10_000;
+
+/** Hoàn tác một lần chuyển chính thức: chỉ chủ, một lần, trong hạn, và chỉ khi chưa ai sửa các dòng đó (tất cả hoặc không). */
+export async function hoanTacChuyenChinhThuc(u: Nguoi, maHs: string, nhatKyId: number, luc = new Date()) {
+  canChu(u);
+  return db.$transaction(async (tx) => {
+    const nk = await tx.nhat_ky.findUnique({ where: { id: nhatKyId } });
+    if (!nk || nk.doi_tuong !== "nhom_chuyen_chinh_thuc" || nk.doi_tuong_id !== maHs) throw new LoiDuLieu("Không có lần chuyển chính thức này", 404);
+    const sau = nk.sau as { luc: string; thay_doi: ThayDoi[] };
+    if (luc.getTime() - Date.parse(sau.luc) > HAN_HOAN_TAC_CT_MS) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
+    if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_chuyen_chinh_thuc", doi_tuong: "nhom_chuyen_chinh_thuc", doi_tuong_id: String(nhatKyId) } }))
+      throw new LoiDuLieu("Lần chuyển này đã được hoàn tác", 409, "da_hoan_tac");
+    const rows = await tx.ghi_danh.findMany({ where: { id: { in: sau.thay_doi.map((t) => t.id) } } });
+    const conNguyen = (t: ThayDoi) => {
+      const g = rows.find((r) => r.id === t.id);
+      return !!g && d2sOrNull(g.den_ngay) === t.den_moi && (t.kieu === "huy") === !!g.huy_luc && (!t.nghi || !!g.nghi_luc);
+    };
+    if (!sau.thay_doi.every(conNguyen)) throw new LoiDuLieu("Ghi danh đã bị sửa sau lần chuyển này — không hoàn tác được", 409, "da_sua");
+    // Xoá dòng Chính thức mới trước, rồi mới trả ngày Thử (tránh chồng ngày).
+    for (const t of [...sau.thay_doi].sort((a, b) => Number(b.kieu === "tao") - Number(a.kieu === "tao"))) {
+      if (t.kieu === "tao") await tx.ghi_danh.delete({ where: { id: t.id } });
+      else await tx.ghi_danh.update({ where: { id: t.id }, data: { den_ngay: t.den_cu ? s2d(t.den_cu) : null, huy_luc: null, ...(t.nghi ? { nghi_luc: null, nghi_boi: null } : {}) } });
+      await ghiNhatKy(u, "hoan_tac_chuyen_chinh_thuc", "ghi_danh", t.id, { den_ngay: t.den_moi }, t.kieu === "tao" ? { xoa: true } : { den_ngay: t.den_cu }, tx);
+    }
+    await ghiNhatKy(u, "hoan_tac_chuyen_chinh_thuc", "nhom_chuyen_chinh_thuc", nhatKyId, null, { ma_hs: maHs, so_dong: sau.thay_doi.length }, tx);
+    return { traLai: sau.thay_doi.length };
   });
 }
 

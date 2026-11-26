@@ -6,9 +6,10 @@ import { CHU, GV_ANH, cookieNd, db, goi, napSeed, nguoi } from "./chung";
 import { homNay } from "@/server/hom-nay";
 import type { Nguoi } from "@/lib/quyen";
 import { chiTietHocSinh } from "@/server/hoc-sinh";
-import { nghiMon } from "@/server/ghi-danh";
+import { chuyenChinhThuc, hoanTacChuyenChinhThuc, nghiMon } from "@/server/ghi-danh";
 import * as xong from "@/app/api/hom-nay/xong/route";
 import * as nghiMonR from "@/app/api/hoc-sinh/[maHs]/nghi-mon/route";
+import * as hoanTacCT from "@/app/api/hoc-sinh/[maHs]/chuyen-chinh-thuc/hoan-tac/route";
 
 let chu: Nguoi, cChu: string, cGvAnh: string;
 const T22 = lucVN("2026-11-26", "22:00");
@@ -113,5 +114,43 @@ describe("T34 — chuyen-tu-sheet nhận 'chủ đã cho nghỉ' từ cột Tìn
     expect(bao.t34_chu_da_cho_nghi).toEqual(["HS9001"]);
     expect(bao.tinh_trang).toEqual({ "Đã nghỉ": 1, "Hết thử 14/11 – hỏi em": 1 });
     expect(await db.hoc_sinh.count({ where: { ma_hs: { in: ["HS9001", "HS9002"] } } })).toBe(0); // đã rollback
+  });
+});
+
+describe("Hoàn tác chuyển chính thức (man-hoc-sinh.md 9.2) — chỉ chủ, một lần, 5 giây", () => {
+  const gdCua = async (ma: string) =>
+    (await db.ghi_danh.findMany({ where: { hoc_sinh: { ma_hs: ma } }, orderBy: { id: "asc" } })).map((g) => `${g.mon_id}:${g.loai}:${d2s(g.tu_ngay)}→${g.den_ngay ? d2s(g.den_ngay) : "…"}${g.huy_luc ? ":huy" : ""}${g.nghi_luc ? ":nghi" : ""}`);
+  const giay = (s: number) => new Date(T22.getTime() + s * 1000);
+
+  it("HS0027 thử Toán + Anh lên chính thức từ 26/11 → 55.000đ/buổi/môn; hoàn tác sau 3 giây trả đúng như cũ; lần hai 409", async () => {
+    const truoc = await gdCua("HS0027");
+    const r = await chuyenChinhThuc(chu, "HS0027", ["toan", "anh"], { tuNgay: "2026-11-26" }, T22);
+    expect(r).toMatchObject({ donGiaDuKien: 55_000, soMonChinhThuc: 2 });
+    expect(await gdCua("HS0027")).not.toEqual(truoc);
+    expect(await hoanTacChuyenChinhThuc(chu, "HS0027", r.nhatKyId, giay(3))).toEqual({ traLai: 4 });
+    expect(await gdCua("HS0027")).toEqual(truoc);
+    await expect(hoanTacChuyenChinhThuc(chu, "HS0027", r.nhatKyId, giay(4))).rejects.toSatisfy((e) => (e as { ma?: string }).ma === "da_hoan_tac");
+  });
+  it("kèm 'cho nghỉ các môn thử còn lại': hoàn tác bỏ cả nghi_luc", async () => {
+    const truoc = await gdCua("HS0028"); // thử Sử + Địa + Anh
+    const r = await chuyenChinhThuc(chu, "HS0028", ["su"], { nghiMonThuConLai: true }, T22);
+    expect((await gdCua("HS0028")).filter((x) => x.endsWith(":nghi"))).toHaveLength(2);
+    await hoanTacChuyenChinhThuc(chu, "HS0028", r.nhatKyId, giay(2));
+    expect(await gdCua("HS0028")).toEqual(truoc);
+  });
+  it("quá hạn (11 giây) hoặc đã có thay đổi sau → 409, không đổi gì", async () => {
+    const r = await chuyenChinhThuc(chu, "HS0029", ["toan"], {}, T22);
+    const sau = await gdCua("HS0029");
+    await expect(hoanTacChuyenChinhThuc(chu, "HS0029", r.nhatKyId, giay(11))).rejects.toSatisfy((e) => (e as { ma?: string }).ma === "het_gio");
+    const r2 = await chuyenChinhThuc(chu, "HS0030", ["anh"], {}, T22);
+    await nghiMon(chu, "HS0030", "anh", undefined, giay(1));
+    await expect(hoanTacChuyenChinhThuc(chu, "HS0030", r2.nhatKyId, giay(2))).rejects.toSatisfy((e) => (e as { ma?: string }).ma === "da_sua");
+    expect(await gdCua("HS0029")).toEqual(sau);
+  });
+  it("GV gọi API hoàn tác → 403; mã em không khớp lần chuyển → 404", async () => {
+    const r = await chuyenChinhThuc(chu, "HS0031", ["anh"], {}, new Date());
+    expect((await goi(hoanTacCT.POST, { cookie: cGvAnh, params: { maHs: "HS0031" }, body: { nhatKyId: r.nhatKyId } })).status).toBe(403);
+    expect((await goi(hoanTacCT.POST, { cookie: cChu, params: { maHs: "HS0032" }, body: { nhatKyId: r.nhatKyId } })).status).toBe(404);
+    expect((await goi(hoanTacCT.POST, { cookie: cChu, params: { maHs: "HS0031" }, body: { nhatKyId: r.nhatKyId } })).status).toBe(200);
   });
 });
