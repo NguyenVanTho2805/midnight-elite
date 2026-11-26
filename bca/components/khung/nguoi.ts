@@ -11,7 +11,7 @@ export const layNguoiQuanLy = cache(async (): Promise<NguoiQuanLy> => {
   return u;
 });
 
-/** Gọi hàm máy chủ; lỗi quyền → forbidden() (HTTP 403 thật, giao diện ở quan-ly/forbidden.tsx; cần
+/** Gọi hàm máy chủ; lỗi quyền → forbidden() (giao diện quan-ly/forbidden.tsx; trang có loading.tsx đã stream nên mã HTTP vẫn 200 + noindex — API mới trả 403 thật; cần
  *  `experimental.authInterrupts` trong next.config.ts); không có → 404. */
 export async function tai<T>(fn: () => Promise<T>): Promise<T> {
   try {
