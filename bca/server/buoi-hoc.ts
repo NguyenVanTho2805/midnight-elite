@@ -272,7 +272,7 @@ export async function doiLichMon(u: Nguoi, ma: string, v: { thu?: number[]; gio?
 
   const kq = await db.$transaction(async (tx) => {
     await tx.mon.update({ where: { id: mon.id }, data: { thu, gio_bat_dau: gio, so_phut: soPhut } });
-    const cu = await tx.buoi_hoc.findMany({ where: { mon_id: mon.id, loai: "theo_lich", ngay: { gte: s2d(tu) }, bat_dau_luc: { gt: luc } }, include: DEM_DU_LIEU });
+    const cu = await tx.buoi_hoc.findMany({ where: { mon_id: mon.id, loai: "theo_lich", ngay: { gte: s2d(tu) }, bat_dau_luc: { gt: luc } }, include: DEM_DU_LIEU, orderBy: { bat_dau_luc: "asc" } }); // `giu` theo ngày, không theo thứ tự vật lý
     const giu = cu.filter((b) => duLieuBuoi(b).length), xoa = cu.filter((b) => !duLieuBuoi(b).length);
     await tx.buoi_hoc.deleteMany({ where: { id: { in: xoa.map((b) => b.id) } } });
     const { NGAY_BAT_DAU_TINH_PHI } = await caiDat(tx);

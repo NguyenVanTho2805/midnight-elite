@@ -8,5 +8,5 @@ export const PATCH = route<{ id: string }>(async (u, req, p) => {
   return suaNoiDungBuoi(u, soNguyen(p.id, "id"), { noiDung: s(b.noiDung), linkRecord: s(b.linkRecord), ghiChu: s(b.ghiChu) });
 });
 
-/** Chỉ chủ. Xoá buổi chưa có dữ liệu; có điểm danh/nội dung/record/ghi chú/đã huỷ/có buổi bù → 409 (chỉ huỷ được). */
+/** Chỉ chủ (T42). Xoá buổi chưa bắt đầu, chưa có dữ liệu; trả nhatKyId để hoàn tác. Có dữ liệu → 409 co_du_lieu; đã qua → 409 da_qua (chỉ huỷ được). */
 export const DELETE = route<{ id: string }>((u, _req, p) => xoaBuoi(u, soNguyen(p.id, "id")));
