@@ -45,31 +45,35 @@ Trả lời trong 3 giây: **tối nay có buổi gì, đã điểm danh chưa, 
 - Câu và nút to theo mẫu C, tô theo token A (nền `raised`, bo 20). Đây là chỗ **duy nhất** có nút vàng trên Hôm nay.
 - "Điểm danh" là `<Link>` có prefetch, để màn điểm danh mở tức thì và có sẵn danh sách nếu mạng rớt trong buổi Meet.
 - Đếm ngược cập nhật mỗi phút; lần dựng đầu ở máy chủ.
+- Trang mở trước 21:45 và để nguyên: tới 21:45 trang tự làm mới một lần (`router.refresh()`), nút "Điểm danh mở lúc 21:45" đổi thành nút vàng "Điểm danh" ở cùng chỗ (bản dựng: `HenLamMoi` trong `components/quan-ly/dem-nguoc.tsx`).
 
 ## 6. Khối "Việc cần làm"
+_Cập nhật 26/11 theo bản dựng (BCA-D1-GD3)._
 ```
 Việc cần làm
 [Đơn 1] [Thử sắp hết 33] [Chưa điểm 5] [Thiếu record 5]     ← chip đếm, là <a> tới danh sách lọc
 ───────────────────────────────────────────────────────
-● Mất hồ sơ · HS0xxx còn 4 ghi danh thử mở          [Mở]      mức 1
-● Đơn chờ duyệt · Nguyễn … · Học thử · Toán, Sử      [Mở]      mức 1
-Thử sắp hết · 33 em
-  Hết thứ Bảy 28/11 · 16 em                [Gia hạn cả nhóm] [Xem 16 em ›]
-    Trần Gia Bảo     Toán, Anh   còn 2 ngày          [Xử lý]
-    Phạm Đức Huy     Sử          còn 2 ngày          [Xử lý]
-    Lê Hoàng Nam     Toán, Sử    còn 2 ngày          [Xử lý]
+● Đơn chờ duyệt · Nguyễn … · 25/11                  [Mở]      mức 1 → /quan-ly/don?don=<id> (đúng đơn)
+Hết thử – hỏi em · 2 em               [Gia hạn cả nhóm] [Xem 2 em ›]
+Thử sắp hết · Hết Thứ Bảy 28/11 · 16 em  [Gia hạn cả nhóm] [Xem 16 em ›]   → /quan-ly/hoc-sinh?het_ngay=2026-11-28
+    Trần Gia Bảo  Toán, Anh  còn 2 ngày                            [Xử lý]            ← khối hẹp (< 560px)
+    Trần Gia Bảo  Toán, Anh  còn 2 ngày │ L2 │ 0912 345 678 │ [Lên chính thức] [Gia hạn] [⋯]   ← khối rộng (≥ 560px)
     + 13 em nữa
-  Hết Chủ nhật 29/11 · 17 em               …
-Buổi chưa điểm danh
-  Toán · 2 buổi (21/11, 24/11)                       [Điểm danh]
-  Địa · 20/11 · Anh · 23/11 · Sử · 25/11             [Điểm danh]
-Buổi thiếu record · 5                                [Mở]
+Thử sắp hết · Hết Chủ nhật 29/11 · 17 em  …
+Buổi chưa điểm danh · Toán · 2 buổi                [T6 21/11] [T2 24/11]   ← mỗi buổi một nút tới màn điểm danh
+Em vắng nhiều · Anh · 3 em vắng từ 2 buổi           [Tên 2] [Tên 3] [Ma trận ›]
+Buổi thiếu record · Toán · 2                        [Mở]
+Sửa dữ liệu · Tên · Gmail, SĐT                      [Mở]      mức 6
 ```
 - **Chip đếm** đầu khối là "thẻ số liệu bấm được để lọc" của `huong-chon.md` sửa 3: `Đơn` → `/quan-ly/don`, `Thử sắp hết` → `/quan-ly/hoc-sinh?het=3`, `Chưa điểm` → `/quan-ly/diem-danh#chua-diem`, `Thiếu record` → `/quan-ly/buoi-hoc?record=thieu`. Số > 0 chữ `warn`, bằng 0 chữ `text-3` (vẫn bấm được).
 - Việc xếp theo mức của nghiệp vụ, mỗi hàng ≥ 56px, là `<a>` hoặc có nút thật.
 - **Thử sắp hết / Hết thử – hỏi em** (chủ lớp): gom theo ngày hết; mỗi nhóm hiện 3 em đầu (theo tên). Nhóm "Hết thử – hỏi em" (đã hết, đang bị khoá) đứng trên, chip `danger-bg` "Hết thử 25/11".
-  - Nghiệp vụ 3.2 cho mỗi hàng ba việc **Lên chính thức / Gia hạn / Cho nghỉ**. Điện thoại: một nút **"Xử lý"** mở tờ trượt có 3 việc đó + "Đánh dấu xong (ẩn 3 ngày)". Máy tính: 3 nút 44px ngay trên hàng + nút "Ẩn 3 ngày". Hộp thoại của từng việc: `man-hoc-sinh.md` §9.
-  - "Gia hạn cả nhóm" mở hộp thoại gia hạn nhiều em (`man-hoc-sinh.md` §9.1), sẵn 16 em.
+  - Nghiệp vụ 3.2 cho mỗi hàng ba việc **Lên chính thức / Gia hạn / Cho nghỉ**. Bố cục theo **bề rộng khối** (container query 560px), không theo màn hình:
+    - Khối hẹp (điện thoại): một nút **"Xử lý"** mở tờ trượt có 3 việc đó + "Đánh dấu xong (ẩn 3 ngày)".
+    - Khối rộng (máy tính): **2 nút 44px** trên hàng — "Lên chính thức", "Gia hạn" — và nút **"⋯"** (mẫu disclosure, Esc đóng) chứa "Cho nghỉ…" (chữ `danger`) và "Ẩn 3 ngày". Hàng có thêm cột Lứa và SĐT HS (bấm gọi). Hộp thoại của từng việc: `man-hoc-sinh.md` §9.
+  - "Gia hạn cả nhóm" mở hộp thoại gia hạn nhiều em (`man-hoc-sinh.md` §9.1), sẵn 16 em, **liệt kê tên từng em** (môn · hạn hiện tại) trước nút Gia hạn.
+  - "Xem N em ›" mở danh sách học sinh lọc đúng ngày hết của nhóm (`?het_ngay=YYYY-MM-DD`); số trên nút bằng số em trong nhóm và bằng số em danh sách hiện (trừ em chủ vừa "Ẩn 3 ngày").
+- **Đơn chờ duyệt** (chủ lớp, T43): "Mở" dẫn tới đúng đơn trên màn Đơn (đơn được tô và cuộn tới); ở đó có "Tạo hồ sơ" và "Bỏ qua". Đơn đã xử lý hết khỏi danh sách việc.
 - **Đánh dấu xong** (nghiệp vụ 3.3): việc học thử ẩn 3 ngày, việc khác ẩn tới hết hôm nay; sau khi ẩn hiện thanh Hoàn tác 5 giây.
 - Chip ≤ 3 ngày dùng `warn-bg`/`warn` (`huong-chon.md` sửa 4).
 - Không còn việc: "Không còn việc gì cần làm hôm nay."
@@ -116,22 +120,25 @@ Theo nghiệp vụ Điều 4, mỗi thẻ là `<a>` tới danh sách đã lọc:
 - Giáo viên: thẻ tối nay của môn mình, việc mức 5 của môn mình, thẻ sĩ số và có mặt, lịch.
 
 ## 9. Bố cục 1280px
+_Cập nhật 26/11 theo bản dựng (BCA-D1-GD3): lưới 8/4 thay 7/5 để hàng thử sắp hết đủ chỗ cho cột Lứa · SĐT HS · 2 nút + "⋯" trên một dòng 48px._
 ```
-┌ thanh bên ┬───────────────────────────────────────────────────────────────┐
-│           │ Hôm nay · Thứ Năm 26/11                                        │
-│           │ ┌───────────────────────────────────┐ ┌───────────────────────┐ │
-│           │ │ Tối nay học Tiếng Anh lúc 22:15   │ │ Số liệu lớp           │ │
-│           │ │ 8 chính thức · 43 thử · còn 12 ph │ │ 20 Chính thức · 50 Thử│ │
-│           │ │ [   Điểm danh   ] [Mở Meet ↗]     │ │ 33 Hết ≤ 3 ngày · 0 Lên│ │
-│           │ └───────────────────────────────────┘ │ Sĩ số · Có mặt theo môn│ │
-│           │ ┌ Việc cần làm ─────────────────────┐ ├───────────────────────┤ │
-│           │ │ [Đơn 1][Thử sắp hết 33][Chưa điểm 5]│ │ 7 ngày tới            │ │
-│           │ │ (danh sách theo mức, hàng 48)     │ │ T6 27 Địa · T7 28 Toán│ │
-│           │ └───────────────────────────────────┘ └───────────────────────┘ │
-└───────────┴───────────────────────────────────────────────────────────────┘
+┌ thanh bên ┬────────────────────────────────────────────────────────────────────┐
+│           │ Hôm nay · Thứ Năm 26/11                                             │
+│           │ ┌──────────────────────────────────────────┐ ┌────────────────────┐ │
+│           │ │ Tối nay học Tiếng Anh lúc 22:15          │ │ Số liệu lớp        │ │
+│           │ │ 8 chính thức · 43 thử · còn 12 ph · GV … │ │ 20 Chính · 50 Thử  │ │
+│           │ │ [   Điểm danh   ] [Mở Meet ↗]            │ │ 33 Hết ≤3 · 0 Lên  │ │
+│           │ └──────────────────────────────────────────┘ │ Sĩ số · Có mặt     │ │
+│           │ ┌ Việc cần làm ────────────────────────────┐ ├────────────────────┤ │
+│           │ │ [Đơn 1][Thử sắp hết 33][Chưa điểm 5]…    │ │ 7 ngày tới         │ │
+│           │ │ Tên · môn · còn 2 ngày │L2│SĐT│[Lên CT][Gia hạn][⋯]│ T6 27 Địa …  │ │
+│           │ └──────────────────────────────────────────┘ └────────────────────┘ │
+└───────────┴────────────────────────────────────────────────────────────────────┘
 ```
-- Lưới 12 cột, khoảng 24: cột trái 7 (tối nay, việc cần làm), cột phải 5 (số liệu, 7 ngày tới). Thứ tự trong DOM vẫn là tối nay → việc → số liệu → lịch (đúng thứ tự đọc của trình đọc màn hình).
-- Nút "Điểm danh" cao 48, rộng theo chữ. Hàng thử sắp hết có thêm cột "Lứa" và "SĐT HS" (chủ lớp) để gọi nhanh.
+- Lưới 12 cột, khoảng 24: **cột trái 8** (tối nay, việc cần làm), **cột phải 4** (số liệu, 7 ngày tới). Thứ tự trong DOM vẫn là tối nay → việc → số liệu → lịch (đúng thứ tự đọc của trình đọc màn hình).
+- Nút "Điểm danh" cao 56, tối thiểu 224px (`sm:min-w-56`). Hàng thử sắp hết có thêm cột "Lứa" và "SĐT HS" (chủ lớp) để gọi nhanh; việc trên hàng là 2 nút + "⋯" (§6).
+- Tên giáo viên phụ trách ("GV Thanh, GV Hoa") đứng cuối dòng phụ của thẻ tối nay, không xuống dòng giữa cụm; không lặp chữ "GV" khi tên hiển thị đã có.
+- Mỗi khối có Suspense riêng; khối tối nay đọc hàm riêng (`lopToiNay`) nên hiện trước các khối còn lại.
 
 ## 10. Trạng thái
 | Trạng thái | Cách hiện |

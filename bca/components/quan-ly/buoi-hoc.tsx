@@ -173,7 +173,7 @@ export function HanhDongBuoi({ b, daDiem, xoaDuoc, mon, ds, homNay }: { b: BuoiN
         thongDiep: `Đã xoá buổi ${b.mon.ten} ${ddmm(b.ngay)}`,
         hoanTac: async () => {
           try {
-            await goi(`/api/buoi-hoc/${b.id}/hoan-tac`, "POST", { nhatKyId: kq.nhatKyId });
+            await goi(`/api/buoi-hoc/${b.id}/hoan-tac-xoa`, "POST", { nhatKyId: kq.nhatKyId });
             router.replace(`${thang}&buoi=${b.id}`, { scroll: false });
             hien({ thongDiep: `Đã khôi phục buổi ${b.mon.ten} ${ddmm(b.ngay)}` });
           } catch (e) { hien({ thongDiep: (e as Error).message }); router.refresh(); }
@@ -199,7 +199,7 @@ export function HanhDongBuoi({ b, daDiem, xoaDuoc, mon, ds, homNay }: { b: BuoiN
         tieuDe={`Xoá buổi ${ten}?`}
         chan={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" autoFocus className={nutPhu} onClick={() => setMo(null)}>Giữ buổi</button>
+            <button type="button" data-autofocus className={nutPhu} onClick={() => setMo(null)}>Giữ buổi</button>
             <button type="button" className={nutNguy} onClick={xoa} disabled={dang}>{dang ? "Đang xoá…" : "Xoá buổi"}</button>
           </div>
         }
@@ -215,7 +215,7 @@ export function HanhDongBuoi({ b, daDiem, xoaDuoc, mon, ds, homNay }: { b: BuoiN
         tieuDe={`Huỷ buổi ${ten}?`}
         chan={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" autoFocus className={nutPhu} onClick={() => setMo(null)}>Giữ buổi</button>
+            <button type="button" data-autofocus className={nutPhu} onClick={() => setMo(null)}>Giữ buổi</button>
             <button type="button" className={nutNguy} onClick={huy} disabled={dang}>{dang ? "Đang huỷ…" : "Huỷ buổi"}</button>
           </div>
         }
@@ -349,7 +349,7 @@ export function SinhBuoiThieu({ thang, mon }: { thang: string; mon: Mon[] }) {
     setXem(null);
     setLoi("");
     try {
-      const r = await fetch(`/api/buoi-hoc/sinh?thang=${thang}&con_thieu=1&xem=1`);
+      const r = await fetch(`/api/buoi-hoc/con-thieu?thang=${thang}`);
       const k = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(k.loi ?? `Lỗi ${r.status}`);
       setXem(k);
@@ -358,7 +358,7 @@ export function SinhBuoiThieu({ thang, mon }: { thang: string; mon: Mon[] }) {
   async function tao() {
     setDang(true);
     try {
-      const r = await fetch("/api/buoi-hoc/sinh", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thang, conThieu: true }) });
+      const r = await fetch("/api/buoi-hoc/con-thieu", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ thang }) });
       const k = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(k.loi ?? `Lỗi ${r.status}`);
       setMo(false);
@@ -377,7 +377,7 @@ export function SinhBuoiThieu({ thang, mon }: { thang: string; mon: Mon[] }) {
         chan={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" className={nutPhu} onClick={() => setMo(false)}>Đóng</button>
-            <button type="button" className={nutChinh} onClick={tao} disabled={dang || !xem || xem.se_tao === 0}>{dang ? "Đang tạo…" : xem ? `Tạo ${xem.se_tao} buổi` : "Tạo buổi"}</button>
+            <button type="button" className={nutChinh} onClick={tao} disabled={dang || !xem || xem.se_tao === 0}>{dang ? "Đang tạo…" : xem ? (xem.se_tao ? `Tạo ${xem.se_tao} buổi` : "Đã đủ buổi") : "Tạo buổi"}</button>
           </div>
         }
       >

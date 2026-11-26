@@ -1,12 +1,12 @@
 // Màn Hôm nay (man-hom-nay.md) — chủ lớp và giáo viên; lọc theo vai làm ở máy chủ (server/hom-nay.ts).
 // Mỗi khối (tối nay · việc · số liệu · lịch) là một async component trong Suspense + ranh giới lỗi riêng (§10):
-// lỗi khi dựng một khối không làm mất thẻ Điểm danh. Hiện cả 4 khối đọc chung MỘT lần gọi homNay (React cache theo
-// lượt tải) và chọn phần mình cần — khi phòng Máy chủ tách homNay thành hàm riêng cho "lớp tối nay", khối tối nay
-// sẽ tự tải trước mà không phải đổi bố cục.
+// lỗi khi dựng một khối không làm mất thẻ Điểm danh. Mỗi khối gọi hàm riêng của máy chủ (lopToiNay · viecCanLam · theSo ·
+// lich7Ngay, React cache theo lượt tải); cả 4 bắt đầu ngay khi trang dựng, khối tối nay nhẹ nhất nên hiện trước.
+// Việc thử sắp hết kèm sẵn lứa + SĐT HS (không phải đọc cả danh sách học sinh).
 import Link from "next/link";
 import { cache, Suspense, type ReactNode } from "react";
-import { homNay } from "@/server/hom-nay";
-import { danhSachHocSinh } from "@/server/hoc-sinh";
+import { lich7Ngay, lopToiNay, theSo, viecCanLam } from "@/server/hom-nay";
+import { napMon } from "@/server/du-lieu";
 import { ngayVN } from "@/lib/ngay";
 import type { NguoiQuanLy } from "@/lib/quyen";
 import { layNguoiQuanLy } from "@/components/khung/nguoi";
@@ -16,31 +16,31 @@ import { ChoTai, Khoi as KhoiCho } from "@/components/ui/trang-thai";
 import { ddmm, gio, lucVN, tenGv, thuNgay, thuNganNgay, tenMonDayDu } from "@/components/dinh-dang";
 import { IconMoNgoai } from "@/components/bieu-tuong";
 import { nutChinhTo, nutPhu } from "@/components/ui/nut";
-import { DemNguoc } from "@/components/quan-ly/dem-nguoc";
+import { DemNguoc, HenLamMoi } from "@/components/quan-ly/dem-nguoc";
 import { NhomThu, type EmThu } from "@/components/quan-ly/nhom-thu";
 
 export const metadata = { title: "Hôm nay" };
 
-type D = Awaited<ReturnType<typeof homNay>>;
-type Buoi = D["lop_toi_nay"][number];
+type Buoi = Awaited<ReturnType<typeof lopToiNay>>[number];
+type Lich = Awaited<ReturnType<typeof lich7Ngay>>;
+type TheSo = Awaited<ReturnType<typeof theSo>>;
+type DsViec = Awaited<ReturnType<typeof viecCanLam>>["viec"];
 type Mon = { ma: string; ten: string } | undefined;
-type Viec = D["viec"][number];
+type Viec = DsViec[number];
 type P = { u: NguoiQuanLy; luc: number };
 
-/** Một lần gọi homNay cho cả trang (các khối cùng đọc). */
-const layHomNay = cache((u: NguoiQuanLy, luc: number) => homNay(u, new Date(luc)));
-/** Lứa + SĐT HS cho khối thử sắp hết (chỉ chủ). Tạm đọc từ danhSachHocSinh — đề nghị homNay trả kèm lua/sdt_hs trong việc thử. */
-const layLienHe = cache(async (u: NguoiQuanLy) => {
-  const r = await danhSachHocSinh(u);
-  return new Map(r.hoc_sinh.map((x) => [x.ma_hs, { lua: x.lua?.ma ?? null, sdt: (x as { sdt_hs?: string | null }).sdt_hs ?? null }]));
-});
+// Một lần gọi mỗi hàm cho cả lượt tải (khối tối nay rỗng cũng đọc lịch để báo buổi kế).
+const layToiNay = cache((u: NguoiQuanLy, luc: number) => lopToiNay(u, new Date(luc)));
+const layViec = cache((u: NguoiQuanLy, luc: number) => viecCanLam(u, new Date(luc)));
+const laySo = cache((u: NguoiQuanLy, luc: number) => theSo(u, new Date(luc)));
+const layLich = cache((u: NguoiQuanLy, luc: number) => lich7Ngay(u, new Date(luc)));
 
 export default async function HomNay() {
   const u = await layNguoiQuanLy();
   const luc = Date.now();
   const chu = u.vai === "chu";
-  void layHomNay(u, luc); // bắt đầu tải ngay, các khối dùng lại
-  if (chu) void layLienHe(u);
+  // Bắt đầu cả 4 ngay (chạy song song, mỗi khối chờ đúng phần của mình). Lỗi để ranh giới lỗi của khối bắt khi khối đọc lại.
+  for (const f of [layToiNay, layViec, laySo, layLich]) f(u, luc).catch(() => {});
   const hom = ngayVN(new Date(luc));
   return (
     <>
@@ -89,28 +89,22 @@ function ChoSoLieu({ chu }: { chu: boolean }) {
 }
 
 async function KhoiToiNay({ u, luc }: P) {
-  const d = await layHomNay(u, luc);
+  const ds = await layToiNay(u, luc);
   const chu = u.vai === "chu";
-  return (
-    <section aria-label="Lớp tối nay" className="grid gap-3">
-      {d.lop_toi_nay.length ? (
-        d.lop_toi_nay.map((b) => <TheToiNay key={b.id} b={b} luc={luc} chu={chu} />)
-      ) : (
-        <TheKhongBuoi d={d} monGv={chu ? null : d.the_so.si_so.map((s) => s.mon?.ten).join(", ")} />
-      )}
-    </section>
-  );
+  if (ds.length) return <section aria-label="Lớp tối nay" className="grid gap-3">{ds.map((b) => <TheToiNay key={b.id} b={b} luc={luc} chu={chu} />)}</section>;
+  const [lich, mons] = await Promise.all([layLich(u, luc), chu ? null : napMon()]);
+  const monGv = mons ? mons.filter((m) => u.monIds.includes(m.id)).map((m) => m.ten_ngan).join(", ") : null;
+  return <section aria-label="Lớp tối nay" className="grid gap-3"><TheKhongBuoi lich={lich} hom={ngayVN(new Date(luc))} monGv={monGv} /></section>;
 }
 async function KhoiViec({ u, luc }: P) {
-  const chu = u.vai === "chu";
-  const [d, lienHe] = await Promise.all([layHomNay(u, luc), chu ? layLienHe(u) : null]);
-  return <ViecCanLam d={d} chu={chu} lienHe={lienHe} />;
+  const d = await layViec(u, luc);
+  return <ViecCanLam viec={d.viec} chu={u.vai === "chu"} hom={ngayVN(new Date(luc))} />;
 }
 async function KhoiSoLieu({ u, luc }: P) {
-  return <SoLieu d={await layHomNay(u, luc)} chu={u.vai === "chu"} />;
+  return <SoLieu t={await laySo(u, luc)} chu={u.vai === "chu"} />;
 }
 async function KhoiLich({ u, luc }: P) {
-  return <Lich7 d={await layHomNay(u, luc)} />;
+  return <Lich7 lich={await layLich(u, luc)} hom={ngayVN(new Date(luc))} />;
 }
 
 const theLon = "rounded-[20px] bg-raised p-4 sm:p-6";
@@ -139,7 +133,8 @@ function TheToiNay({ b, luc, chu }: { b: Buoi; luc: number; chu: boolean }) {
   } else if (luc < moLuc) {
     h1 = `Tối nay học ${mon} lúc ${gioBd}`;
     phu = <>{b.chinh_thuc} chính thức · {b.thu} thử · còn <DemNguoc den={batDau} luc={luc} /></>;
-    chinh = <Link href={ddHref} prefetch className={`${nutPhu} min-h-14 w-full sm:w-auto`}>Điểm danh mở lúc {gio(moLuc)}</Link>;
+    // Trang để nguyên tới 21:45: làm mới một lần để nút đổi thành nút vàng "Điểm danh".
+    chinh = <><Link href={ddHref} prefetch className={`${nutPhu} min-h-14 w-full sm:w-auto`}>Điểm danh mở lúc {gio(moLuc)}</Link><HenLamMoi luc={moLuc} /></>;
     phuNut = <Link href={ndHref} className={nutPhu}>Thêm nội dung / record</Link>;
   } else if (luc <= ketThuc) {
     h1 = luc < batDau ? `Tối nay học ${mon} lúc ${gioBd}` : `Đang học ${mon}`;
@@ -167,8 +162,8 @@ function TheToiNay({ b, luc, chu }: { b: Buoi; luc: number; chu: boolean }) {
   );
 }
 
-function TheKhongBuoi({ d, monGv }: { d: D; monGv: string | null }) {
-  const ke = d.lich_7_ngay.flatMap((x) => x.buoi).find((b) => b.ngay > d.hom_nay && b.trang_thai !== "huy");
+function TheKhongBuoi({ lich, hom, monGv }: { lich: Lich; hom: string; monGv: string | null }) {
+  const ke = lich.flatMap((x) => x.buoi).find((b) => b.ngay > hom && b.trang_thai !== "huy");
   return (
     <article className={theLon}>
       <h2 className="text-[22px] font-extrabold leading-tight text-balance lg:text-[28px]">Tối nay không có buổi{monGv ? ` ${monGv}` : ""}</h2>
@@ -183,8 +178,8 @@ const hangViec = "flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b 
 const chuNhieuNut = "min-w-0 basis-full sm:basis-0 sm:flex-1";
 const nutNho = "nhan inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-input px-3 text-[14px] font-semibold hover:bg-row-hover";
 
-function ViecCanLam({ d, chu, lienHe }: { d: D; chu: boolean; lienHe: Map<string, { lua: string | null; sdt: string | null }> | null }) {
-  const theo = <L extends string>(loai: L) => d.viec.filter((v) => v.loai === loai);
+function ViecCanLam({ viec, chu, hom }: { viec: DsViec; chu: boolean; hom: string }) {
+  const theo = <L extends string>(loai: L) => viec.filter((v) => v.loai === loai);
   const don = theo("don_cho_duyet");
   const sap = theo("thu_sap_het");
   const het = theo("het_thu");
@@ -198,7 +193,7 @@ function ViecCanLam({ d, chu, lienHe }: { d: D; chu: boolean; lienHe: Map<string
     { nhan: "Chưa điểm", so: dem(chua), href: "/quan-ly/diem-danh#chua-diem" },
     { nhan: "Thiếu record", so: dem(thieu), href: "/quan-ly/buoi-hoc?record=thieu" },
   ];
-  const emThu = (v: Viec): EmThu => ({ ma_hs: String(v.ma_hs), ho_ten: String(v.ho_ten), mon: ((v.mon as Mon[]) ?? []).map((m) => m?.ten ?? ""), den: v.loai === "thu_sap_het" ? v.ngay : null, het: v.loai === "het_thu" && v.ngay ? ddmm(v.ngay) : null, con_ngay: (v.con_ngay as number) ?? null, ...lienHe?.get(String(v.ma_hs)) });
+  const emThu = (v: Viec): EmThu => ({ ma_hs: String(v.ma_hs), ho_ten: String(v.ho_ten), mon: ((v.mon as Mon[]) ?? []).map((m) => m?.ten ?? ""), den: v.loai === "thu_sap_het" ? v.ngay : null, het: v.loai === "het_thu" && v.ngay ? ddmm(v.ngay) : null, con_ngay: (v.con_ngay as number) ?? null, lua: (v.lua as string | null) ?? null, sdt: (v.sdt_hs as string | null) ?? null });
   const nhomTheoNgay = (vs: Viec[]) => [...Map.groupBy(vs, (v) => v.ngay ?? "").entries()].sort(([a], [b]) => a.localeCompare(b));
   const coViec = don.length + sap.length + het.length + chua.length + thieu.length + vang.length + sua.length > 0;
 
@@ -221,14 +216,14 @@ function ViecCanLam({ d, chu, lienHe }: { d: D; chu: boolean; lienHe: Map<string
             <li key={String(v.don_id)} className={hangViec}>
               <span aria-hidden="true" className="size-2 rounded-full bg-gold" />
               <p className="min-w-0 flex-1"><span className="font-semibold">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span>{v.ngay ? <span className="so text-text-3"> · {ddmm(v.ngay)}</span> : null}</p>
-              <Link href="/quan-ly/don" className={nutNho}>Mở</Link>
+              <Link href={`/quan-ly/don?don=${v.don_id}`} className={nutNho}>Mở</Link>
             </li>
           ))}
         </ul>
       ) : null}
-      {het.length ? <NhomThu loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={d.hom_nay} /> : null}
+      {het.length ? <NhomThu loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={hom} /> : null}
       {nhomTheoNgay(sap).map(([ngay, vs]) => (
-        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa={`/quan-ly/hoc-sinh?het_ngay=${ngay}`} homNay={d.hom_nay} />
+        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa={`/quan-ly/hoc-sinh?het_ngay=${ngay}`} homNay={hom} />
       ))}
       {chua.length || thieu.length || vang.length ? (
         <ul className="rounded-[14px] border border-border bg-surface">
@@ -277,8 +272,8 @@ function ViecCanLam({ d, chu, lienHe }: { d: D; chu: boolean; lienHe: Map<string
   );
 }
 
-function SoLieu({ d, chu }: { d: D; chu: boolean }) {
-  const t = d.the_so as D["the_so"] & Partial<{ dang_hoc_chinh_thuc: number; dang_thu: number; thu_het_3_ngay: number; len_chinh_thuc_thang_nay: number }>;
+function SoLieu({ t: t0, chu }: { t: TheSo; chu: boolean }) {
+  const t = t0 as TheSo & Partial<{ dang_hoc_chinh_thuc: number; dang_thu: number; thu_het_3_ngay: number; len_chinh_thuc_thang_nay: number }>;
   const the = "nhan flex min-h-20 flex-col justify-center rounded-[14px] border border-border bg-surface px-4 py-3 hover:bg-row-hover";
   return (
     <section aria-labelledby="so-lieu" className="grid gap-3">
@@ -298,7 +293,7 @@ function SoLieu({ d, chu }: { d: D; chu: boolean }) {
       <div className="rounded-[14px] border border-border bg-surface">
         <h3 className="px-4 pt-3 text-[13px] font-semibold text-text-2">Sĩ số theo môn</h3>
         <ul className="py-1">
-          {d.the_so.si_so.map((s) => (
+          {t.si_so.map((s) => (
             <li key={s.mon?.ma}>
               <Link href={`/quan-ly/hoc-sinh?mon=${s.mon?.ma}`} className="flex min-h-11 items-center justify-between gap-3 px-4 hover:bg-row-hover">
                 <span className="font-semibold">{s.mon?.ten}</span>
@@ -309,7 +304,7 @@ function SoLieu({ d, chu }: { d: D; chu: boolean }) {
         </ul>
         <h3 className="border-t border-border px-4 pt-3 text-[13px] font-semibold text-text-2">Có mặt tháng này</h3>
         <ul className="py-1">
-          {d.the_so.co_mat_thang.map((s) => (
+          {t.co_mat_thang.map((s) => (
             <li key={s.mon?.ma}>
               <Link href={`/quan-ly/diem-danh/thang?mon=${s.mon?.ma}`} className="flex min-h-11 items-center justify-between gap-3 px-4 hover:bg-row-hover">
                 <span className="font-semibold">{s.mon?.ten}</span>
@@ -323,14 +318,14 @@ function SoLieu({ d, chu }: { d: D; chu: boolean }) {
   );
 }
 
-function Lich7({ d }: { d: D }) {
+function Lich7({ lich, hom }: { lich: Lich; hom: string }) {
   return (
     <section aria-labelledby="lich7" className="grid gap-3">
       <h2 id="lich7" className="text-lg font-semibold">7 ngày tới</h2>
       <ul className="rounded-[14px] border border-border bg-surface py-1">
-        {d.lich_7_ngay.map((x) => (
-          <li key={x.ngay} className={`flex min-h-11 flex-wrap items-center gap-x-3 px-4 py-1 ${x.ngay === d.hom_nay ? "bg-today-col" : ""}`}>
-            <span className={`so w-20 shrink-0 font-semibold ${x.ngay === d.hom_nay ? "text-gold" : "text-text-2"}`}>{thuNganNgay(x.ngay)}</span>
+        {lich.map((x) => (
+          <li key={x.ngay} className={`flex min-h-11 flex-wrap items-center gap-x-3 px-4 py-1 ${x.ngay === hom ? "bg-today-col" : ""}`}>
+            <span className={`so w-20 shrink-0 font-semibold ${x.ngay === hom ? "text-gold" : "text-text-2"}`}>{thuNganNgay(x.ngay)}</span>
             {x.buoi.length ? (
               x.buoi.map((b) => (
                 <Link key={b.id} href={`/quan-ly/buoi-hoc?thang=${b.ngay.slice(0, 7)}&buoi=${b.id}`} className="inline-flex min-h-11 items-center hover:underline">

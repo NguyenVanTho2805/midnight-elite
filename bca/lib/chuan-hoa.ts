@@ -29,6 +29,12 @@ export const catKhoangTrang = (v: unknown) => {
 export const boDau = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
 
+/** ghi-danh.md 1.4: tên giống = bỏ dấu + chữ thường trùng hẳn, hoặc cùng tên gọi (từ cuối) và chung ít nhất 2 từ. */
+export function tenGiong(a: string, b: string) {
+  const ta = boDau(a).trim().split(/\s+/), tb = boDau(b).trim().split(/\s+/);
+  return ta.join(" ") === tb.join(" ") || (ta.at(-1) === tb.at(-1) && new Set(ta.filter((w) => tb.includes(w))).size >= 2);
+}
+
 const XEP = new Intl.Collator("vi");
 /** Sắp tên kiểu Việt: tên (từ cuối) rồi họ đệm. */
 export const soTenViet = (a: string, b: string) => {

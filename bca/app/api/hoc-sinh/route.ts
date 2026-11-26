@@ -1,7 +1,12 @@
 import { docJson, ngayHopLe, route } from "@/server/api";
 import { danhSachHocSinh, taoHocSinh } from "@/server/hoc-sinh";
 
-export const GET = route((u, req) => danhSachHocSinh(u, { coAn: new URL(req.url).searchParams.get("an") === "1" }));
+/** ?an=1 (chủ: gồm hồ sơ ẩn) · ?het_ngay=YYYY-MM-DD (chỉ em hết thử đúng ngày đó — nhóm ở Hôm nay). */
+export const GET = route((u, req) => {
+  const q = new URL(req.url).searchParams;
+  const het = q.get("het_ngay");
+  return danhSachHocSinh(u, { coAn: q.get("an") === "1", hetNgay: het ? ngayHopLe(het, "het_ngay") : undefined });
+});
 
 /** Chủ tạo hồ sơ tay: { hoTen, ngayTao?, sdtHs?, sdtPh?, gmail?, hoTenPh?, truong?, khoi?, mucTieu?, nguon?, usernameAzota?, ghiChu?, ghiChuRieng?, dongYVinhDanh? }. */
 export const POST = route(async (u, req) => {

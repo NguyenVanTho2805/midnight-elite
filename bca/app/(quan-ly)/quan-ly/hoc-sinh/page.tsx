@@ -8,10 +8,12 @@ export const metadata = { title: "Học sinh" };
 
 const lienHe = (r: { sdt_hs: string | null; gmail: string | null }) => ({ sdt: r.sdt_hs, gmail: r.gmail });
 
-export default async function TrangHocSinh() {
-  const u = await layNguoiQuanLy();
+export default async function TrangHocSinh({ searchParams }: { searchParams: Promise<{ het_ngay?: string }> }) {
+  const [u, sp] = await Promise.all([layNguoiQuanLy(), searchParams]);
   const chu = u.vai === "chu";
-  const d = await danhSachHocSinh(u);
+  // ?het_ngay= : nút "Xem N em ›" ở Hôm nay mở đúng nhóm ngày hết (máy chủ lọc cùng quy tắc nhóm việc).
+  const hetNgay = /^\d{4}-\d{2}-\d{2}$/.test(sp.het_ngay ?? "") ? sp.het_ngay : undefined;
+  const d = await danhSachHocSinh(u, { hetNgay });
   const ds: HsDong[] = d.hoc_sinh.map((r) => ({
     ma: r.ma_hs,
     ten: r.ho_ten,

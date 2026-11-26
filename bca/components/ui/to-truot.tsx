@@ -1,6 +1,6 @@
 "use client";
 // Tờ trượt đáy (điện thoại) / hộp thoại 480px (≥ 640px) bằng <dialog> gốc.
-// Đóng bằng nút "Đóng", Esc, chạm nền. Chuyển động 240ms, tắt khi giảm chuyển động (globals.css).
+// Đóng bằng nút "Đóng", Esc, chạm nền. Tiêu điểm đầu: phần tử có `data-autofocus` nếu có. Chuyển động 240ms, tắt khi giảm chuyển động (globals.css).
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { IconDong } from "../bieu-tuong";
 import { nutBieuTuong } from "./nut";
@@ -11,7 +11,12 @@ export function ToTruot({ mo, dong, tieuDe, children, chan }: { mo: boolean; don
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (mo && !d.open) d.showModal();
+    if (mo && !d.open) {
+      d.showModal();
+      // showModal() đưa tiêu điểm về phần tử bấm được đầu tiên (nút Đóng). Nút an toàn đánh dấu `data-autofocus`
+      // (vd. "Giữ buổi") nhận tiêu điểm sau đó — autoFocus của React chạy trước showModal nên bị ghi đè.
+      d.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    }
     if (!mo && d.open) d.close();
   }, [mo]);
   return (

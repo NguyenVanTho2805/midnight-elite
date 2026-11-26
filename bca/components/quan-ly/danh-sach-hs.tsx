@@ -1,6 +1,7 @@
 "use client";
 // Danh sách học sinh (man-hoc-sinh §3–§5). ~70 em: tìm/lọc ở máy, mọi bộ lọc nằm trên URL
-// (?mon=&loai=&lua=&het=&het_ngay=&q=&sap=; het_ngay=YYYY-MM-DD = nhóm "Thử sắp hết · Hết <ngày>" ở Hôm nay). Chủ lớp: chọn nhiều em → Gia hạn thử (T29) kèm Hoàn tác.
+// (?mon=&loai=&lua=&het=&het_ngay=&q=&sap=). het_ngay=YYYY-MM-DD = đúng nhóm "Thử sắp hết · Hết <ngày>" ở Hôm nay — máy chủ lọc
+// (danhSachHocSinh `hetNgay`, cùng quy tắc nhóm), ở đây chỉ hiện chip bỏ lọc. Chủ lớp: chọn nhiều em → Gia hạn thử (T29) kèm Hoàn tác.
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -70,8 +71,6 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
     if (p.lua && x.lua !== p.lua) return false;
     if (p.het === "3" && !sapHet(x)) return false;
     if (p.het === "da-het" && !hetThu(x)) return false;
-    // Cùng quy tắc nhóm ở Hôm nay (thuSapHet): hạn thử chung đúng ngày đó, chưa có môn chính thức.
-    if (p.hetNgay && !(x.thu?.den === p.hetNgay && !x.mon.some((m) => m.o === "hoc"))) return false;
     if (qq && !(boDau(x.ten).includes(qq) || x.ma.toLowerCase().includes(qq) || (so.length >= 3 && x.sdt?.includes(so)) || x.gmail?.includes(q.trim().toLowerCase()))) return false;
     return true;
   };

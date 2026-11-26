@@ -1,4 +1,5 @@
-// Đơn đăng ký — danh sách đơn giản, chỉ chủ lớp (Đợt 1 chỉ đọc; nhận đơn tự động là Đợt 4).
+// Đơn đăng ký — chỉ chủ lớp. T43: mỗi đơn chờ có "Tạo hồ sơ" và "Bỏ qua" (components/quan-ly/xu-ly-don.tsx).
+// ?don=<id>: mở từ việc "Đơn chờ duyệt" ở Hôm nay — đơn đó được tô và cuộn tới (kể cả khi đã xử lý).
 import Link from "next/link";
 import { danhSachDon } from "@/server/don";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
@@ -6,6 +7,8 @@ import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
 import { Chip, type MauChip } from "@/components/ui/chip";
 import { ddmm, gio, sdt } from "@/components/dinh-dang";
 import { ngayVN } from "@/lib/ngay";
+import { XuLyDon } from "@/components/quan-ly/xu-ly-don";
+import { CuonToi } from "@/components/quan-ly/buoi-hoc";
 
 export const metadata = { title: "Đơn đăng ký" };
 
@@ -15,12 +18,13 @@ const TT: Record<string, { nhan: string; mau: MauChip }> = {
 };
 const TEN_MON: Record<string, string> = { toan: "Toán", su: "Sử", dia: "Địa", anh: "Anh" };
 
-export default async function TrangDon({ searchParams }: { searchParams: Promise<{ loc?: string }> }) {
+export default async function TrangDon({ searchParams }: { searchParams: Promise<{ loc?: string; don?: string }> }) {
   const [u, sp] = await Promise.all([layNguoiQuanLy(), searchParams]);
   const r = { d: await tai(() => danhSachDon(u)) };
   const choXuLy = (t: string) => t === "moi" || t === "cho_duyet";
   const tatCa = sp.loc === "tat-ca";
-  const ds = r.d.don.filter((d) => tatCa || choXuLy(d.trang_thai));
+  const donChon = sp.don && /^\d+$/.test(sp.don) ? Number(sp.don) : null;
+  const ds = r.d.don.filter((d) => tatCa || choXuLy(d.trang_thai) || d.id === donChon);
   const soCho = r.d.don.filter((d) => choXuLy(d.trang_thai)).length;
   const chip = (bat: boolean) => `nhan inline-flex min-h-11 items-center rounded-full border px-4 font-semibold ${bat ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2 hover:bg-row-hover"}`;
   return (
@@ -40,7 +44,7 @@ export default async function TrangDon({ searchParams }: { searchParams: Promise
               const tt = TT[d.trang_thai] ?? { nhan: d.trang_thai, mau: "mo" as const };
               const ngay = ngayVN(new Date(d.thoi_gian));
               return (
-                <li key={d.id} className="hang-dai flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border px-4 py-3 last:border-b-0">
+                <li key={d.id} id={`don-${d.id}`} aria-current={d.id === donChon ? "true" : undefined} className={`hang-dai flex scroll-mt-24 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-3 last:border-b-0 ${d.id === donChon ? "bg-nav-active" : ""}`}>
                   <div className="min-w-0 flex-1 basis-60">
                     <p className="font-semibold" translate="no">{d.ho_ten}</p>
                     <p className="so text-[13px] text-text-3">{ddmm(ngay)} {gio(d.thoi_gian)} · {d.loai ?? "—"} · {d.nguon ?? "—"}{d.sdt_hs ? <> · <a href={`tel:${d.sdt_hs}`} className="hover:underline" translate="no">{sdt(d.sdt_hs)}</a></> : null}</p>
@@ -48,11 +52,14 @@ export default async function TrangDon({ searchParams }: { searchParams: Promise
                   <span className="flex flex-wrap gap-1.5">{d.mon.map((m) => <Chip key={m}>{TEN_MON[m ?? ""] ?? m}</Chip>)}</span>
                   <Chip mau={tt.mau}>{tt.nhan}</Chip>
                   {d.ma_hs ? <Link href={`/quan-ly/hoc-sinh/${d.ma_hs}`} className="inline-flex min-h-11 items-center font-semibold text-gold hover:underline" translate="no">{d.ma_hs} ›</Link> : null}
+                  {d.trang_thai === "bo_qua" && d.ghi_chu_xu_ly ? <p className="basis-full text-[13px] text-text-3">Lý do bỏ qua: {d.ghi_chu_xu_ly}</p> : null}
+                  {choXuLy(d.trang_thai) ? <span className="basis-full sm:basis-auto"><XuLyDon id={d.id} ten={d.ho_ten} /></span> : null}
                 </li>
               );
             })}
           </ul>
         )}
+        {donChon && ds.some((d) => d.id === donChon) ? <CuonToi id={`don-${donChon}`} /> : null}
       </NoiDung>
     </>
   );

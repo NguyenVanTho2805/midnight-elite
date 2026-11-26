@@ -19,9 +19,9 @@ async function monTheoMa(tx: Tx, ma: string) {
   return m;
 }
 
-type ThayDoi = { id: number; ma_gd: string; kieu: Viec["kieu"]; den_cu: string | null; den_moi: string | null; nghi?: boolean };
+export type ThayDoi = { id: number; ma_gd: string; kieu: Viec["kieu"]; den_cu: string | null; den_moi: string | null; nghi?: boolean };
 /** Ghi kế hoạch vào CSDL, mỗi dòng một nhật ký (ghi-danh.md 3.5). */
-async function apDung(tx: Tx, u: Nguoi, hsId: number, viec: Viec[], hanh_dong: string, ly_do: string | null, luc: Date) {
+export async function apDung(tx: Tx, u: Nguoi, hsId: number, viec: Viec[], hanh_dong: string, ly_do: string | null, luc: Date) {
   const ra: ThayDoi[] = [];
   for (const v of viec) {
     if (v.kieu === "tao") {
@@ -143,7 +143,7 @@ export async function chuyenChinhThuc(u: Nguoi, maHs: string, monMas: string[], 
 }
 
 /** Trả các dòng về trước một thao tác — tất cả hoặc không: dòng nào đã bị sửa sau đó thì không làm gì, trả false. */
-async function traLai(tx: Tx, u: Nguoi, thayDoi: ThayDoi[], hanh_dong: string) {
+export async function traLai(tx: Tx, u: Nguoi, thayDoi: ThayDoi[], hanh_dong: string) {
   const rows = await tx.ghi_danh.findMany({ where: { id: { in: thayDoi.map((t) => t.id) } } });
   const conNguyen = (t: ThayDoi) => {
     const g = rows.find((r) => r.id === t.id);
