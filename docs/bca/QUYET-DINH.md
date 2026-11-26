@@ -76,6 +76,8 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T36. Chỉ chủ được "Đánh dấu xong" việc ở Hôm nay.
 - T37. Không xoá buổi đã huỷ, buổi có ghi chú hoặc có buổi bù trỏ tới — chỉ huỷ được.
 - T38. "Ẩn 3 ngày" tính theo ngày lịch (ngày đánh dấu + 2 ngày sau).
+- T39. T13 chỉ áp cho màn Hôm nay: danh sách điểm danh và hồ sơ em vẫn hiện nhãn "Thử · còn N ngày" cho giáo viên.
+- T40. Đăng nhập thử trên địa chỉ xem thử Vercel chỉ bật khi DB là dữ liệu giả (có dấu `DU_LIEU_GIA`) và kèm Deployment Protection của Vercel; với DB thật chỉ dùng đăng nhập Google.
 - T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
 ## Câu hỏi đang mở
