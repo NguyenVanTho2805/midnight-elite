@@ -39,7 +39,16 @@ T41 — khoá phiên học sinh: cột mới `hoc_sinh.phien_huy_luc` (migration
 
 ### Tài khoản chủ / giáo viên
 - **Chủ đầu tiên (T54):** đặt `BCA_GMAIL_CHU` ở Vercel. Khi DB chưa có chủ nào còn hoạt động (vai `chu`, chưa khoá), Gmail đó đăng nhập Google lần đầu thì máy chủ tạo tài khoản chủ (tên "Chủ lớp", sửa được ở màn Tài khoản). Hai lần đăng nhập cùng lúc chạy lần lượt (khoá tư vấn Postgres) ⇒ chỉ một chủ. Ghi một dòng nhật ký `tao_chu_dau_tien` vai `he_thong`, `nguoi_dung_id` null — không tính là "web đã vận hành" nên không chặn `chuyen-tu-sheet --apply` (T52). Đã có chủ còn hoạt động ⇒ biến bị bỏ qua (Gmail đó đăng nhập như mọi người). Gmail đã có tài khoản bị khoá ⇒ vẫn bị từ chối "đã khoá".
-- **Giáo viên:** chủ thêm ở màn Tài khoản (`/quan-ly/tai-khoan`).
+- **Giáo viên:** chủ thêm ở màn **Tài khoản** (`/quan-ly/tai-khoan`, T55; thanh bên "Tài khoản", điện thoại: Thêm → "Tài khoản giáo viên"). Chỉ chủ thấy; mọi route kiểm quyền ở máy chủ trước khi đọc tham số (GV/học sinh ⇒ 403):
+
+| Route | Hàm (`server/nguoi-dung.ts`) | Việc |
+|---|---|---|
+| `POST /api/nguoi-dung` `{gmail, ten, mon?}` | `themGiaoVien` | Thêm GV. Gmail chuẩn hoá; trùng hộp Gmail (T48) với tài khoản có sẵn ⇒ 409 `trung`; gõ nhầm đuôi ⇒ 400 kèm gợi ý; Gmail đang ghi trên hồ sơ học sinh ⇒ vẫn thêm, trả `trung_ho_so_hs` (T49). Nhật ký `them_giao_vien` |
+| `PATCH /api/nguoi-dung/[id]` `{ten?, mon?}` | `suaNguoiDung` | Sửa tên (mọi tài khoản); đặt lại môn của GV (chủ ⇒ 400) — bỏ môn có hiệu lực ngay. Nhật ký `phan_cong` / `sua_nguoi_dung` có trước/sau |
+| `POST /api/nguoi-dung/[id]/khoa` `{khoa: boolean}` | `datKhoaTaiKhoan` | Khoá (kèm thu hồi mọi phiên) / mở khoá (phiên cũ vẫn hết). Chủ còn hoạt động cuối cùng ⇒ 409 `chu_cuoi` (kể cả tự khoá mình, kể cả hai chủ khoá nhau cùng lúc — khoá tư vấn Postgres) |
+| `POST /api/nguoi-dung/[id]/thu-hoi-phien` `{khoaTaiKhoan?}` | `thuHoiPhien` | Đăng xuất mọi máy; `khoaTaiKhoan` cùng luật chủ cuối |
+
+Việc tài khoản và nhật ký "từ chối" không tính là "web đã vận hành" (`HANH_DONG_KHONG_TINH` trong `chuyen-tu-sheet.ts`) ⇒ chủ thêm GV trước khi chuyển dữ liệu thật vẫn chạy được `--apply`.
 - **Dự phòng** (khi không vào được web): script lặp lại an toàn, không xoá gì, không mở khoá tài khoản đã khoá, nhật ký vai `he_thong`:
 ```bash
 BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail <gmail chủ> --ten "Tên hiển thị" --vai chu
@@ -73,6 +82,8 @@ npx tsc --noEmit
 - `tests/hom-nay-ho-so-ban.test.ts` — một hồ sơ làm hỏng phép tính việc (giả lập bằng `vi.mock`) không làm sập màn Hôm nay.
 - `tests/dang-nhap-google.test.ts` — Đợt 2: đăng nhập Google với Google **giả lập** (thay `fetch`, khoá RSA tự sinh làm JWKS; không gọi mạng thật): thiếu biến, URL Google + PKCE (vector RFC 7636), cookie tạm, đăng nhập 3 vai, Gmail dạng gốc (T48/T49), từ chối (không có tài khoản, chưa xác minh, nonce/aud/iss/hạn/khoá lạ/HS256 giả, token lỗi, state sai, huỷ, khoá, ẩn, trùng), T41, script tạo tài khoản.
 - `tests-ui/dang-nhap.mjs` (Playwright, `npm run test:ui dang-nhap`; máy chủ chạy với `BCA_GOOGLE_CLIENT_ID/SECRET` giả + `BCA_DEV_LOGIN=1`) — nút Google 390/1280, 302 + cookie tạm (không theo chuyển hướng sang Google), state giả, câu báo lỗi, đã đăng nhập, T41 từ hồ sơ.
+- `tests/tai-khoan.test.ts` — màn Tài khoản (T55): quyền 403 trước tham số, thêm GV (chuẩn hoá, trùng hộp Gmail, gợi ý đuôi, T49), sửa tên/môn có hiệu lực ngay, khoá/mở khoá, chủ cuối (tự khoá, hai chủ khoá nhau cùng lúc), đăng xuất mọi máy.
+- `tests-ui/tai-khoan.mjs` (Playwright) — thêm GV 390/1280, báo gõ nhầm/trùng, sửa môn + khoá/mở khoá, chủ duy nhất, mục Thêm trên điện thoại, GV bị chặn.
 - `tests/vong-3.test.ts` — vòng 3 (theo rà soát BCA-D1-RS-MC): đăng nhập thử theo môi trường, khoá ký bắt buộc, quyền các route còn thiếu, hạn hoàn tác 10 giây, gia hạn bỏ môn đã nghỉ, đầu vào sai ⇒ 400/404/409, thao tác đồng thời; các hàm bổ sung cho phòng Giao diện.
 
 ## Chuyển dữ liệu từ sheet

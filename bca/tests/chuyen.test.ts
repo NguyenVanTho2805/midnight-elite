@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import ExcelJS from "exceljs";
 import { db, kiemDbThu } from "./chung";
 import { xoaHet } from "@/scripts/seed-gia";
-import { chuyen } from "@/scripts/chuyen-tu-sheet";
+import { chuyen, HANH_DONG_KHONG_TINH } from "@/scripts/chuyen-tu-sheet";
 
 type Bao = Record<string, unknown>;
 const OPT = { apply: false, ngayChot: "2026-11-26" };
@@ -89,6 +89,13 @@ describe("P2-4 — chuyển thật một lần; web đã vận hành thì chặn
     expect(bao).toMatchObject({ ket_qua: "ĐÃ GHI", web_da_van_hanh: { nhat_ky_nguoi_dung: 0, ghi_danh_tao_tren_web: 0, diem_danh_web: 0 } });
     expect(bao.lan_chuyen_that_truoc).not.toBeNull();
   });
+  it("việc tài khoản của chủ (thêm GV, phân công, khoá…) và 'từ chối' trước khi chuyển → KHÔNG chặn --apply (T55)", async () => {
+    const id = randomUUID();
+    for (const hanh_dong of HANH_DONG_KHONG_TINH) await db.nhat_ky.create({ data: { nguoi_dung_id: id, vai_tro: "chu", hanh_dong, doi_tuong: "nguoi_dung" } });
+    const bao = (await chuyen(db as never, await tepGia(), { ...OPT, apply: true })) as Bao;
+    expect(bao).toMatchObject({ ket_qua: "ĐÃ GHI", web_da_van_hanh: { nhat_ky_nguoi_dung: 0 } });
+    await db.nhat_ky.deleteMany({ where: { nguoi_dung_id: id } });
+  });
   it("có nhật ký do người dùng / ghi danh tạo trên web → --apply bị chặn, không đổi gì; xem trước vẫn chạy; có --ghi-de-du-lieu-web mới ghi", async () => {
     const tep = await tepGia();
     await db.nhat_ky.create({ data: { nguoi_dung_id: randomUUID(), vai_tro: "chu", hanh_dong: "gia_han_thu", doi_tuong: "nhom_gia_han" } });
@@ -96,7 +103,7 @@ describe("P2-4 — chuyển thật một lần; web đã vận hành thì chặn
     await db.nhat_ky.deleteMany({ where: { hanh_dong: "gia_han_thu" } });
     await db.ghi_danh.update({ where: { ma_gd: "GD90001" }, data: { tao_boi: randomUUID() } });
     await expect(chuyen(db as never, tep, { ...OPT, apply: true })).rejects.toThrow(/1 ghi danh tạo trên web/);
-    expect(await db.nhat_ky.count({ where: { hanh_dong: "chuyen_that" } })).toBe(2);
+    expect(await db.nhat_ky.count({ where: { hanh_dong: "chuyen_that" } })).toBe(3);
     expect(((await chuyen(db as never, tep, OPT)) as Bao).ket_qua).toMatch(/^KHỚP/);
     expect(((await chuyen(db as never, tep, { ...OPT, apply: true, ghiDeDuLieuWeb: true })) as Bao).ket_qua).toBe("ĐÃ GHI");
     expect(await db.nhat_ky.findFirst({ where: { hanh_dong: "chuyen_that" }, orderBy: { id: "desc" } })).toMatchObject({ sau: { ghi_de_du_lieu_web: true } });

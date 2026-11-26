@@ -27,7 +27,7 @@ export function ThanhDuoi({ chu, soDon, ten, vaiNhan }: ThongTinKhung) {
   const banPhim = useBanPhimMo();
   if (/^\/quan-ly\/diem-danh\/\d+/.test(path) || banPhim) return null;
   const o = "nhan flex min-h-16 flex-1 flex-col items-center justify-center gap-1 text-[12px] font-semibold";
-  const themDangMo = path.startsWith("/quan-ly/don");
+  const themDangMo = path.startsWith("/quan-ly/don") || path.startsWith("/quan-ly/tai-khoan");
   return (
     <>
       <nav aria-label="Điều hướng chính" className="day-an-toan fixed inset-x-0 bottom-0 z-30 border-t border-border bg-sidebar sm:hidden">
@@ -62,6 +62,14 @@ export function ThanhDuoi({ chu, soDon, ten, vaiNhan }: ThongTinKhung) {
                 <IconDon size={20} />
                 <span className="flex-1">Đơn đăng ký</span>
                 {soDon > 0 ? <span className="so rounded-full bg-gold px-2 text-[13px] font-semibold text-on-gold">{soDon}</span> : null}
+              </Link>
+            </li>
+          ) : null}
+          {chu ? (
+            <li>
+              <Link href="/quan-ly/tai-khoan" onClick={() => setThem(false)} className="nhan flex min-h-12 items-center gap-3 rounded-[10px] px-3 hover:bg-row-hover">
+                <IconTaiKhoan size={20} />
+                <span className="flex-1">Tài khoản giáo viên</span>
               </Link>
             </li>
           ) : null}

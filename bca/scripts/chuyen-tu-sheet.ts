@@ -269,7 +269,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
     await db.$transaction(async (tx) => {
       // Web đã vận hành? (P2-4) — chặn --apply ghi đè lên dữ liệu người dùng đã nhập trên web.
       const web = {
-        nhat_ky_nguoi_dung: await tx.nhat_ky.count({ where: { OR: [{ nguoi_dung_id: { not: null } }, { vai_tro: { startsWith: "hoc_sinh" } }] } }),
+        nhat_ky_nguoi_dung: await tx.nhat_ky.count({ where: { OR: [{ nguoi_dung_id: { not: null } }, { vai_tro: { startsWith: "hoc_sinh" } }], hanh_dong: { notIn: [...HANH_DONG_KHONG_TINH] } } }),
         ghi_danh_tao_tren_web: await tx.ghi_danh.count({ where: { tao_boi: { not: null } } }),
         diem_danh_web: await tx.diem_danh.count({ where: { nguon: "web" } }),
       };
@@ -452,6 +452,12 @@ async function daXoa(wb: ExcelJS.Workbook, tienTo: "HS" | "GD") {
 }
 
 // ── Chạy trực tiếp ──
+/**
+ * Nhật ký KHÔNG tính là "web đã vận hành": việc tài khoản (T55 — chủ thêm GV, sửa, khoá, đăng xuất mọi máy) và "từ chối"
+ * không đụng dữ liệu lớp, nên chủ làm trước khi chuyển dữ liệu thật vẫn chạy được --apply.
+ */
+export const HANH_DONG_KHONG_TINH = ["them_giao_vien", "sua_nguoi_dung", "phan_cong", "khoa_tai_khoan", "mo_khoa_tai_khoan", "thu_hoi_phien", "tu_choi"] as const;
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const tep = args.find((a) => !a.startsWith("--"));
