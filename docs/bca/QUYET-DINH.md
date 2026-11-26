@@ -32,5 +32,10 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 
 20. **Giao diện (26/11, 3 giám khảo chọn):** một ngôn ngữ nền tối "Midnight" (mẫu A) cho mọi khu; phần đầu học sinh dạng câu + nút to (mẫu C); bảng dày kiểu ma trận (mẫu B). Chi tiết: `thiet-ke/huong-chon.md`, `thiet-ke/token.md`.
 
+21. **Giáo viên điểm danh trên điện thoại ngay trong buổi Meet** — màn điểm danh 1 cột, nút to, "đánh tất cả có mặt" là ưu tiên của Đợt 1.
+22. **Trang giới thiệu theo cài đặt sáng/tối của máy** (`prefers-color-scheme`); khu học sinh và quản lý giữ nền tối.
+23. **Thứ tự đợt:** Đợt 1 quản lý lớp (học sinh + ghi danh, buổi học + điểm danh, màn Hôm nay, chuyển dữ liệu từ sheet) → Đợt 2 khu học sinh + đăng nhập Google → Đợt 3 sổ điểm, học phí → Đợt 4 trang giới thiệu + form, email, Meet.
+24. **Chủ duyệt cuối mỗi đợt.** Trong đợt đội tự làm, tự kiểm, tự rà; câu hỏi nghiệp vụ gửi chủ ngay khi gặp.
+
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
