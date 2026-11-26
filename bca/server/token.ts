@@ -35,7 +35,26 @@ export async function docPhien(token?: string | null): Promise<(Phien & { iat: n
   }
 }
 
+/** Token tạm (luồng Google: state + PKCE + nonce), ký cùng khoá nhưng có `muc` riêng ⇒ không dùng được làm phiên và ngược lại. */
+export const kyTam = async (muc: string, data: Record<string, string>, giay: number) =>
+  new SignJWT({ ...data, muc }).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime(`${giay}s`).sign(khoa());
+
+export async function docTam(muc: string, token?: string | null): Promise<Record<string, unknown> | null> {
+  if (!token) return null;
+  const k = khoa();
+  try {
+    const { payload } = await jwtVerify(token, k, { algorithms: ["HS256"] });
+    return payload.muc === muc ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export const cookieOpt = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: HAN_GIAY, secure: process.env.NODE_ENV === "production" };
+
+/** Chuỗi Set-Cookie (route handler trả Response thường). maxAge 0 = xoá. */
+export const chuoiCookie = (ten: string, giaTri: string, maxAge: number, path = "/") =>
+  `${ten}=${giaTri}; Path=${path}; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${cookieOpt.secure ? "; Secure" : ""}`;
 
 export function docCookie(header: string | null, ten = TEN_COOKIE) {
   for (const p of (header ?? "").split(";")) {

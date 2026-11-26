@@ -3,13 +3,17 @@ import type { Nguoi } from "@/lib/quyen";
 import { db } from "./db";
 import { docPhien, TEN_COOKIE } from "./token";
 
-/** Nạp người dùng từ CSDL mỗi request: tài khoản bị khoá / phiên bị thu hồi / mất phân công có hiệu lực ngay. */
+/** Nạp người dùng từ CSDL mỗi request: tài khoản bị khoá / phiên bị thu hồi / mất phân công / hồ sơ học sinh bị ẩn có hiệu lực ngay. */
 export async function nguoiTuToken(token?: string | null): Promise<Nguoi | null> {
   const p = await docPhien(token);
   if (!p) return null;
   if (p.vai === "hs") {
-    const hs = await db.hoc_sinh.findUnique({ where: { id: Number(p.sub) }, select: { id: true, ho_ten: true } });
-    return hs ? { vai: "hoc_sinh", hocSinhId: hs.id, ten: hs.ho_ten } : null;
+    const id = Number(p.sub);
+    if (!Number.isInteger(id) || id < 1 || id > 2147483647) return null;
+    const hs = await db.hoc_sinh.findUnique({ where: { id }, select: { id: true, ho_ten: true, an_luc: true, phien_huy_luc: true } });
+    // T41: hồ sơ bị ẩn hoặc chủ khoá phiên ⇒ hết hiệu lực ngay từ request kế tiếp (giống nguoi_dung).
+    if (!hs || hs.an_luc || (hs.phien_huy_luc && p.bd * 1000 < hs.phien_huy_luc.getTime())) return null;
+    return { vai: "hoc_sinh", hocSinhId: hs.id, ten: hs.ho_ten };
   }
   const nd = await db.nguoi_dung.findUnique({ where: { id: p.sub }, include: { phan_cong: true } });
   if (!nd || nd.khoa_luc) return null;

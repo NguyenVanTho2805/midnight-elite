@@ -132,6 +132,18 @@ export async function suaGhiChuHocSinh(u: Nguoi, maHs: string, v: { ghiChu?: str
   });
 }
 
+/** T41: chủ đăng xuất em khỏi mọi máy ngay (phiên cấp trước lúc này hết hiệu lực từ request kế tiếp). Em vẫn đăng nhập lại được bằng Google. */
+export async function thuHoiPhienHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
+  canChu(u);
+  return db.$transaction(async (tx) => {
+    const cu = await tx.hoc_sinh.findUnique({ where: { ma_hs: maHs }, select: { id: true, phien_huy_luc: true } });
+    if (!cu) throw new LoiDuLieu(`Không có học sinh ${maHs}`, 404);
+    await tx.hoc_sinh.update({ where: { id: cu.id }, data: { phien_huy_luc: luc } });
+    await ghiNhatKy(u, "thu_hoi_phien_hoc_sinh", "hoc_sinh", maHs, { phien_huy_luc: cu.phien_huy_luc?.toISOString() ?? null }, { phien_huy_luc: luc.toISOString() }, tx);
+    return { ok: true, ma_hs: maHs };
+  });
+}
+
 export async function tenNguoiDung(ids: (string | null)[]) {
   const ds = [...new Set(ids.filter((x): x is string => !!x))];
   const rows = ds.length ? await db.nguoi_dung.findMany({ where: { id: { in: ds } }, select: { id: true, ten_hien_thi: true } }) : [];
