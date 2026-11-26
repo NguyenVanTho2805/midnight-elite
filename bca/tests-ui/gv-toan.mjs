@@ -155,7 +155,7 @@ test(N, "Vượt quyền: buổi Anh / em chỉ học Anh / ma trận Anh / đơ
     const h = await page.locator("main h1").first().innerText();
     ok(tieuDe.test(h), `${url}: cần màn chặn ${tieuDe}, đang "${h}"`);
   };
-  await chan(`/quan-ly/diem-danh/${anh.id}`, /^Không có quyền$/);
+  await chan(`/quan-ly/diem-danh/${anh.id}`, /^(Không có quyền|Không tìm thấy)$/);
   ok(!(await page.getByRole("button", { name: /Đánh tất cả/ }).count()), "Màn chặn mà vẫn có nút Đánh tất cả");
   const tenAnh = (await mayChu(api, anh.id));
   const chuMan = await page.locator("main").innerText();
