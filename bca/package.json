@@ -1,0 +1,17 @@
+{
+  "name": "bca-midnight",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "seed:gia": "tsx scripts/seed-gia.ts",
+    "chuyen": "tsx scripts/chuyen-tu-sheet.ts",
+    "test": "vitest run"
+  }
+}

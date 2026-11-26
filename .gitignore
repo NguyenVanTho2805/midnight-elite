@@ -86,3 +86,9 @@ tools/local-e2e/mathtype-golden.json
 
 # Python
 __pycache__/
+
+# App BCA Midnight (bca/)
+/bca/node_modules/
+/bca/.next/
+/bca/next-env.d.ts
+/bca/*.tsbuildinfo
