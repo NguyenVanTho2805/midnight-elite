@@ -347,14 +347,14 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                     const choGui = !!layViec(`dd:${buoiId}:${id}`);
                     const loi = loiHang[id];
                     return (
-                      <tr key={id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-2 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
+                      <tr key={id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-1.5 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
                         <td className="so hidden px-3 text-text-3 lg:table-cell">{r + 1}</td>
                         <td className="min-w-0 lg:px-3 lg:py-1.5">
                           <span className="flex items-center gap-2">
                             {/* Điện thoại: tên + loại gộp một nút ≥ 44px (hàng ≈ 64–72px); máy tính: loại ở cột riêng. */}
                             <button type="button" onClick={() => setEmMo(id)} className="group min-h-11 text-left lg:min-h-0">
-                              <span className="block text-base font-semibold leading-snug group-hover:underline" translate="no">{e.ho_ten}</span>
-                              <span className="mt-0.5 block lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} /> : <span className="text-[13px] text-text-3">Chính thức</span>}</span>
+                              <span className="block text-base font-semibold leading-5 group-hover:underline" translate="no">{e.ho_ten}</span>
+                              <span className="block leading-5 lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} gon /> : <span className="text-[13px] text-text-3">Chính thức</span>}</span>
                             </button>
                             {choGui ? <span role="img" aria-label="Chưa gửi" className="inline-block size-2 shrink-0 rounded-full border border-text-3" /> : null}
                             <span className="hidden text-[13px] text-text-3 lg:inline" translate="no">{e.ma_hs}</span>
@@ -364,7 +364,7 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                           {loi ? <p className="text-[13px] text-danger">Không lưu được · <button type="button" className="min-h-11 font-semibold underline" onClick={() => thuLaiHang(id)}>Thử lại</button> <span className="text-text-3">({loi})</span></p> : null}
                         </td>
                         <td className="hidden px-3 lg:table-cell">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} /> : <span className="text-[13px] text-text-2">Chính thức</span>}</td>
-                        <td className="lg:px-3 lg:py-1.5">
+                        <td className="lg:px-3 lg:py-0.5">
                           <div role="group" aria-label={`Điểm danh ${e.ho_ten}`} className="grid grid-cols-3 gap-2 lg:flex">
                             {NUT_DD.map((n, c) => {
                               const chon = h?.tt === n.v;

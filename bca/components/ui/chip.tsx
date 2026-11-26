@@ -12,19 +12,21 @@ const MAU = {
 } as const;
 export type MauChip = keyof typeof MAU;
 
-export function Chip({ mau = "trung", children, className = "" }: { mau?: MauChip; children: ReactNode; className?: string }) {
-  return <span className={`inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-[13px] font-semibold leading-5 whitespace-normal ${MAU[mau]} ${className}`}>{children}</span>;
+/** liền: không xuống dòng trong chip (ô bảng hẹp, chip ngắn như "còn 8 ngày"). */
+export function Chip({ mau = "trung", children, className = "", lien = false, gon = false }: { mau?: MauChip; children: ReactNode; className?: string; lien?: boolean; gon?: boolean }) {
+  return <span className={`inline-flex max-w-full items-center rounded-full px-2.5 ${gon ? "py-0" : "py-0.5"} text-[13px] font-semibold leading-5 ${lien ? "whitespace-nowrap" : "whitespace-normal"} ${MAU[mau]} ${className}`}>{children}</span>;
 }
 
 /** "Thử · còn 9 ngày"; ≤ 3 ngày đổi màu warn; đã hết → danger. */
-export function TrialChip({ con, het, tienTo = "Thử · " }: { con?: number | null; het?: string | null; tienTo?: string }) {
-  if (het) return <Chip mau="danger">Hết thử {het}</Chip>;
+export function TrialChip({ con, het, tienTo = "Thử · ", lien = false, gon = false }: { con?: number | null; het?: string | null; tienTo?: string; lien?: boolean; gon?: boolean }) {
+  if (het) return <Chip mau="danger" lien={lien} gon={gon}>Hết thử {het}</Chip>;
   if (con === null || con === undefined) return null;
-  return <Chip mau={con <= 3 ? "warn" : "thu"}>{tienTo}{con === 0 ? "hết hôm nay" : `còn ${con} ngày`}</Chip>;
+  return <Chip mau={con <= 3 ? "warn" : "thu"} lien={lien} gon={gon}>{tienTo}{con === 0 ? "hết hôm nay" : `còn ${con} ngày`}</Chip>;
 }
 
 /** Chip môn theo loại: "Toán · chính thức" / "Toán · thử" / "Toán · nghỉ". */
-export function MonChip({ ten, o }: { ten: string; o: "hoc" | "thu" | "nghi" | null }) {
+/** gon: chip thấp 20px cho ô bảng (2 dòng chip vẫn ≤ 56px). */
+export function MonChip({ ten, o, gon = false }: { ten: string; o: "hoc" | "thu" | "nghi" | null; gon?: boolean }) {
   if (!o) return null;
-  return <Chip mau={o === "hoc" ? "ok" : o === "thu" ? "thu" : "mo"}>{ten} · {o === "hoc" ? "chính thức" : o === "thu" ? "thử" : "nghỉ"}</Chip>;
+  return <Chip gon={gon} mau={o === "hoc" ? "ok" : o === "thu" ? "thu" : "mo"}>{ten} · {o === "hoc" ? "chính thức" : o === "thu" ? "thử" : "nghỉ"}</Chip>;
 }

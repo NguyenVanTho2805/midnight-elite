@@ -96,7 +96,7 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
   const khongThu = daChon.length - coTheGiaHan.length;
   const tenMon = (ma: string | null) => mon.find((m) => m.ma === ma)?.ten;
 
-  const hanThu = (x: HsDong) => (hetThu(x) ? <TrialChip het={x.tinhTrang.match(/\d\d\/\d\d/)?.[0] ?? ""} /> : x.thu ? <TrialChip con={x.thu.con} tienTo="" /> : null);
+  const hanThu = (x: HsDong, lien = false) => (hetThu(x) ? <TrialChip lien={lien} het={x.tinhTrang.match(/\d\d\/\d\d/)?.[0] ?? ""} /> : x.thu ? <TrialChip lien={lien} con={x.thu.con} tienTo="" /> : null);
 
   return (
     <>
@@ -173,9 +173,9 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
               <caption className="sr-only">Danh sách học sinh</caption>
               <colgroup>
                 {chu ? <col className="w-12" /> : null}
-                <col className={chu ? "w-[28%]" : "w-[34%]"} />
+                <col className={chu ? "w-[27%]" : "w-[33%]"} />
                 <col className={chu ? "w-[30%]" : "w-[36%]"} />
-                <col className={chu ? "w-[16%]" : "w-[18%]"} />
+                <col className={chu ? "w-[17%]" : "w-[19%]"} />
                 <col className={chu ? "w-[8%]" : "w-[9%]"} />
                 {chu ? <col className="w-[13%]" /> : null}
                 <col className="w-8" />
@@ -213,8 +213,8 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
                       <Link href={`/quan-ly/hoc-sinh/${x.ma}`} className="font-semibold after:absolute after:inset-0 hover:underline" translate="no">{x.ten}</Link>
                       <span className="so ml-2 whitespace-nowrap text-[13px] text-text-3" translate="no">{x.ma}{x.lua ? ` · ${x.lua}` : ""}</span>
                     </td>
-                    <td className="px-3 py-1.5"><span className="flex flex-wrap gap-1.5">{x.mon.map((m) => <MonChip key={m.ma} ten={m.ten} o={m.o} />)}</span></td>
-                    <td className="so px-3 py-1.5">{hetThu(x) || x.thu ? <span className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">{hanThu(x)}{x.thu ? <span className="text-text-3">{ddmm(x.thu.den)}</span> : null}</span> : <span className="text-text-3">—</span>}</td>
+                    <td className="px-3 py-1"><span className="flex flex-wrap gap-x-1.5 gap-y-1">{x.mon.map((m) => <MonChip key={m.ma} ten={m.ten} o={m.o} gon />)}</span></td>
+                    <td className="so px-3 py-1.5">{hetThu(x) || x.thu ? <span className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">{hanThu(x, true)}{x.thu ? <span className="text-text-3">{ddmm(x.thu.den)}</span> : null}</span> : <span className="text-text-3">—</span>}</td>
                     <td className="so px-3 py-1.5 text-text-2">{x.dangKy ? ddmm(x.dangKy) : "—"}</td>
                     {chu ? <td className="so relative z-[1] whitespace-nowrap px-3 py-0">{x.sdt ? <a href={`tel:${x.sdt}`} translate="no" className="inline-flex min-h-11 items-center hover:underline">{sdt(x.sdt)}</a> : <span className="text-text-3">—</span>}</td> : null}
                     <td aria-hidden="true" className="px-2 text-text-3">›</td>

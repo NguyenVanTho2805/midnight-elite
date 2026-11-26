@@ -59,7 +59,7 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
               <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}`} className="font-semibold hover:underline" translate="no">{e.ho_ten}</Link>
               <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-text-3">
                 {e.mon.join(", ")}
-                <TrialChip con={e.con_ngay} het={e.het} tienTo="" />
+                <TrialChip con={e.con_ngay} het={e.het} tienTo="" lien />
               </span>
             </div>
             <span className={`so hidden text-[14px] text-text-2 @min-[560px]:block`} translate="no"><span className="sr-only">Lứa </span>{e.lua ?? "—"}</span>
