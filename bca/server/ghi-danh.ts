@@ -19,7 +19,7 @@ async function monTheoMa(tx: Tx, ma: string) {
   return m;
 }
 
-type ThayDoi = { id: number; ma_gd: string; kieu: Viec["kieu"]; den_cu: string | null; den_moi: string | null };
+type ThayDoi = { id: number; ma_gd: string; kieu: Viec["kieu"]; den_cu: string | null; den_moi: string | null; nghi?: boolean };
 /** Ghi kế hoạch vào CSDL, mỗi dòng một nhật ký (ghi-danh.md 3.5). */
 async function apDung(tx: Tx, u: Nguoi, hsId: number, viec: Viec[], hanh_dong: string, ly_do: string | null, luc: Date) {
   const ra: ThayDoi[] = [];
@@ -34,10 +34,15 @@ async function apDung(tx: Tx, u: Nguoi, hsId: number, viec: Viec[], hanh_dong: s
       const cu = await tx.ghi_danh.findUniqueOrThrow({ where: { id: v.id } });
       const g = await tx.ghi_danh.update({
         where: { id: v.id },
-        data: { den_ngay: s2d(v.den), ...(v.kieu === "huy" ? { huy_luc: luc } : {}), ...(v.kieu === "sua_den" && v.ghi_chu ? { ghi_chu: v.ghi_chu } : {}) },
+        data: {
+          den_ngay: s2d(v.den), ...(v.kieu === "huy" ? { huy_luc: luc } : {}),
+          ...(v.kieu === "sua_den" && v.ghi_chu ? { ghi_chu: v.ghi_chu } : {}),
+          ...(v.kieu === "sua_den" && v.nghi ? { nghi_luc: luc, nghi_boi: u.vai === "hoc_sinh" ? null : u.id } : {}),
+        },
       });
-      ra.push({ id: g.id, ma_gd: g.ma_gd, kieu: v.kieu, den_cu: d2sOrNull(cu.den_ngay), den_moi: v.den });
-      await ghiNhatKy(u, hanh_dong, "ghi_danh", g.id, { den_ngay: d2sOrNull(cu.den_ngay), huy_luc: cu.huy_luc, ghi_chu: cu.ghi_chu }, { den_ngay: v.den, huy: v.kieu === "huy", ghi_chu: g.ghi_chu, ly_do }, tx);
+      const nghi = v.kieu === "sua_den" && !!v.nghi;
+      ra.push({ id: g.id, ma_gd: g.ma_gd, kieu: v.kieu, den_cu: d2sOrNull(cu.den_ngay), den_moi: v.den, ...(nghi ? { nghi } : {}) });
+      await ghiNhatKy(u, hanh_dong, "ghi_danh", g.id, { den_ngay: d2sOrNull(cu.den_ngay), huy_luc: cu.huy_luc, ghi_chu: cu.ghi_chu, nghi_luc: cu.nghi_luc }, { den_ngay: v.den, huy: v.kieu === "huy", ghi_chu: g.ghi_chu, nghi, ly_do }, tx);
     }
   }
   return ra;
@@ -137,14 +142,17 @@ export async function themMon(u: Nguoi, maHs: string, monMa: string, loai: "thu"
   });
 }
 
-/** ghi-danh.md Điều 8 — cho nghỉ một môn, mặc định theo luật 22:00. */
-export async function nghiMon(u: Nguoi, maHs: string, monMa: string, denNgay?: string, luc = new Date()) {
+/** ghi-danh.md Điều 8 — cho nghỉ một hoặc nhiều môn, mặc định theo luật 22:00; ghi nghi_luc (T34). */
+export async function nghiMon(u: Nguoi, maHs: string, monMa: string | string[], denNgay?: string, luc = new Date()) {
   canChu(u);
+  const mas = [monMa].flat();
+  if (!mas.length) throw new LoiDuLieu("Chưa chọn môn");
   return db.$transaction(async (tx) => {
     const hs = await timHs(tx, maHs);
-    const m = await monTheoMa(tx, monMa);
     const gds = (await napGD({ hoc_sinh_id: hs.id }, tx)).get(hs.id) ?? [];
     const cat = denNgay ?? ngayNghiMacDinh(luc);
-    return { denNgay: cat, thayDoi: await apDung(tx, u, hs.id, keHoachNghi(gds, m.id, cat), "nghi_mon", null, luc) };
+    const thayDoi: ThayDoi[] = [];
+    for (const ma of mas) thayDoi.push(...(await apDung(tx, u, hs.id, keHoachNghi(gds, (await monTheoMa(tx, ma)).id, cat), "nghi_mon", null, luc)));
+    return { denNgay: cat, thayDoi };
   });
 }

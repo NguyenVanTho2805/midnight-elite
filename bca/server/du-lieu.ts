@@ -1,12 +1,12 @@
 // Nạp dữ liệu dùng chung. Lớp có ~70 em, ~200 ghi danh: nạp gọn rồi tính bằng hàm thuần ở lib/.
 import { d2s, d2sOrNull } from "@/lib/ngay";
-import { DAU_NGHI, MAC_DINH, type GD } from "@/lib/quy-tac";
+import { MAC_DINH, type GD } from "@/lib/quy-tac";
 import { db, type Tx } from "./db";
 
-type GDRow = { id: number; ma_gd: string; hoc_sinh_id: number; mon_id: number; loai: GD["loai"]; tu_ngay: Date; den_ngay: Date | null; huy_luc: Date | null; ghi_chu: string | null };
+type GDRow = { id: number; ma_gd: string; hoc_sinh_id: number; mon_id: number; loai: GD["loai"]; tu_ngay: Date; den_ngay: Date | null; huy_luc: Date | null; nghi_luc: Date | null };
 export const toGD = (r: GDRow): GD & { hoc_sinh_id: number } => ({
   id: r.id, ma_gd: r.ma_gd, hoc_sinh_id: r.hoc_sinh_id, mon_id: r.mon_id, loai: r.loai,
-  tu: d2s(r.tu_ngay), den: d2sOrNull(r.den_ngay), huy: !!r.huy_luc, nghi: !!r.ghi_chu?.startsWith(DAU_NGHI),
+  tu: d2s(r.tu_ngay), den: d2sOrNull(r.den_ngay), huy: !!r.huy_luc, nghi: !!r.nghi_luc,
 });
 
 export async function napGD(where: { hoc_sinh_id?: number | { in: number[] }; mon_id?: { in: number[] } } = {}, tx: Tx = db) {

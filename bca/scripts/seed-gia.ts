@@ -60,7 +60,7 @@ export async function seedGia(db: PrismaClient) {
   //  60–64 hết thử (đăng ký 01–05/11 → hết 14–18/11), chưa ai xử lý
   //  65–67 thử 10/11–23/11 rồi chính thức từ 24/11
   //  68 đã nghỉ (chủ cho nghỉ đến hết 20/11) · 69 đã ẩn hồ sơ
-  const gd: { hoc_sinh_id: number; mon_id: number; loai: "thu" | "chinh_thuc"; tu: string; den: string | null; ghi_chu?: string }[] = [];
+  const gd: { hoc_sinh_id: number; mon_id: number; loai: "thu" | "chinh_thuc"; tu: string; den: string | null; ghi_chu?: string; nghi?: boolean }[] = [];
   const don: { i: number; ngay: string; mon: number[]; loai: string; trang_thai: "da_nhan" | "cho_duyet" }[] = [];
   for (let i = 0; i < 70; i++) {
     const ten = `${HO[i % 10]} ${DEM[(i * 3) % 10]} ${TEN[i % 13]}`;
@@ -79,7 +79,7 @@ export async function seedGia(db: PrismaClient) {
     const id = hs.id;
     if (i < 20 || i >= 68) {
       const mons = i % 3 === 0 ? [1, 2] : i % 3 === 1 ? [4] : [1, 3, 4];
-      for (const m of mons) gd.push({ hoc_sinh_id: id, mon_id: m, loai: "chinh_thuc", tu: "2026-06-30", den: i === 68 ? "2026-11-20" : null, ghi_chu: i === 68 ? "Cho nghỉ đến hết 20/11" : undefined });
+      for (const m of mons) gd.push({ hoc_sinh_id: id, mon_id: m, loai: "chinh_thuc", tu: "2026-06-30", den: i === 68 ? "2026-11-20" : null, nghi: i === 68 });
       if (i < 2) gd.push({ hoc_sinh_id: id, mon_id: i === 0 ? 3 : 1, loai: "thu", tu: "2026-11-20", den: "2026-12-03" });
     } else if (i < 60) {
       const mons = [[1, 2], [4], [1, 4], [2, 3, 4]][i % 4];
@@ -93,7 +93,7 @@ export async function seedGia(db: PrismaClient) {
     }
   }
   for (const [k, g] of gd.entries())
-    await db.ghi_danh.create({ data: { ma_gd: `GD${String(k + 1).padStart(5, "0")}`, hoc_sinh_id: g.hoc_sinh_id, mon_id: g.mon_id, loai: g.loai, tu_ngay: s2d(g.tu), den_ngay: g.den ? s2d(g.den) : null, ghi_chu: g.ghi_chu } });
+    await db.ghi_danh.create({ data: { ma_gd: `GD${String(k + 1).padStart(5, "0")}`, hoc_sinh_id: g.hoc_sinh_id, mon_id: g.mon_id, loai: g.loai, tu_ngay: s2d(g.tu), den_ngay: g.den ? s2d(g.den) : null, ghi_chu: g.ghi_chu, nghi_luc: g.nghi ? new Date("2026-11-20T15:30:00Z") : null } });
   await db.bo_dem.createMany({ data: [{ khoa: "hs", gia_tri: 83 }, { khoa: "gd", gia_tri: gd.length + 19 }] });
 
   don.push({ i: 0, ngay: "2026-11-25", mon: [1], loai: "Học thử", trang_thai: "cho_duyet" });

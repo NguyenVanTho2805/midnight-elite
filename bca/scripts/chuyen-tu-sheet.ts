@@ -3,11 +3,12 @@
 // Mặc định XEM TRƯỚC: chạy hết trong một transaction rồi rollback, chỉ in số đếm và số dòng sheet.
 // --apply mới ghi. Lặp lại an toàn (upsert theo mã HS, mã GD, (môn, giờ bắt đầu), (buổi, em), mã yêu cầu).
 // KHÔNG in tên, SĐT, Gmail. KHÔNG commit tệp xlsx.
-// Tạm chọn đang áp: T18 (dựng lại hồ sơ mất từ đơn), T19 (không chuyển __DaXoa), T20 (buổi chưa tick mà có dấu ⇒ đã điểm danh).
+// Tạm chọn đang áp: T18 (dựng lại hồ sơ mất từ đơn), T19 (không chuyển __DaXoa), T20 (buổi chưa tick mà có dấu ⇒ đã điểm danh),
+// T34 (sheet ghi "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ chủ đã bấm nghỉ ⇒ nghi_luc; không đọc chữ trong ghi chú).
 import ExcelJS from "exceljs";
 import { chuanHoaGmail, chuanHoaSdt, catKhoangTrang, gmailHopLe, sdtHopLe } from "../lib/chuan-hoa";
 import { d2s, lucVN, ngayVN, s2d } from "../lib/ngay";
-import { hieuLuc, oMon, tinhTrang, type GD } from "../lib/quy-tac";
+import { hetThu, hieuLuc, oMon, tinhTrang, type GD } from "../lib/quy-tac";
 import type { PrismaClient } from "../generated/prisma/client";
 
 type Cell = ExcelJS.CellValue;
@@ -110,7 +111,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
       truong: chu(r.g("Trường")), khoi: chu(r.g("Khối")), ho_ten_ph: chu(r.g("Họ tên PH")), muc_tieu: chu(r.g("Mục tiêu")), nguon: chu(r.g("Nguồn")),
       username_azota: chu(r.g("Username Azota")), dong_y_vinh_danh: bool(r.g("Đồng ý vinh danh")), da_nhan_chao: bool(r.g("Đã nhắn chào")),
       ghi_chu: chu(r.g("Ghi chú")), ghi_chu_rieng: chu(r.g("Note")), ngay_tao: ngay(r.g("Ngày tạo"))!, so_du_dau_ky: Math.round(Number(r.g("Số dư đầu kỳ")) || 0),
-      an: bool(r.g("Nghỉ/ẩn")), o: Object.fromEntries(["Toán", "Sử", "Địa", "Anh"].map((m) => [m, chu(r.g(m))])), chu_thuong: /^\p{Ll}/u.test(ho_ten),
+      an: bool(r.g("Nghỉ/ẩn")), tinh_trang: chu(r.g("Tình trạng")), o: Object.fromEntries(["Toán", "Sử", "Địa", "Anh"].map((m) => [m, chu(r.g(m))])), chu_thuong: /^\p{Ll}/u.test(ho_ten),
     };
   }).filter((x) => x !== null);
   trung(hs.map((x) => x.ma_hs), "Mã HS");
@@ -157,6 +158,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
   const coHs = new Set(hs.map((x) => x.ma_hs));
   const mo = [...new Set(gd.filter((g) => !coHs.has(g.ma_hs)).map((g) => g.ma_hs))];
   const dungLai: string[] = [];
+  const choNghi: string[] = [];
   for (const ma of mo) {
     const d = don.filter((x) => x.ma_hs === ma).sort((a, b) => a.thoi_gian.getTime() - b.thoi_gian.getTime())[0];
     const gds = gd.filter((g) => g.ma_hs === ma);
@@ -166,7 +168,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
       so: 0, ma_hs: ma, ho_ten: d?.ho_ten ?? gds[0].ho_ten ?? ma, lua: l?.ma ?? null, sdt_hs: d?.sdt_hs ?? null, sdt_ph: d?.sdt_ph ?? null, gmail: d?.gmail ?? null,
       truong: d?.truong ?? null, khoi: d?.khoi ?? null, ho_ten_ph: d && !d.loi_du_lieu.includes("ho_ten_ph_la_so") ? d.ho_ten_ph : null, muc_tieu: d?.muc_tieu ?? null,
       nguon: "Dựng lại từ đơn (T18)", username_azota: null, dong_y_vinh_danh: d?.dong_y_vinh_danh ?? false, da_nhan_chao: false, ghi_chu: null,
-      ghi_chu_rieng: `Hồ sơ dựng lại khi chuyển dữ liệu: mất dòng ở tab Học sinh, ${gds.length} ghi danh (T18)`, ngay_tao: ngayTao, so_du_dau_ky: 0, an: false, o: {}, chu_thuong: false,
+      ghi_chu_rieng: `Hồ sơ dựng lại khi chuyển dữ liệu: mất dòng ở tab Học sinh, ${gds.length} ghi danh (T18)`, ngay_tao: ngayTao, so_du_dau_ky: 0, an: false, tinh_trang: null, o: {}, chu_thuong: false,
     });
     dungLai.push(`${ma} (${gds.length} ghi danh, ${d ? `đơn dòng ${d.so}` : "không có đơn"})`);
   }
@@ -282,6 +284,14 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
         const huy_luc = g.huy ? (cu?.huy_luc ?? luc) : null;
         await tx.ghi_danh.upsert({ where: { ma_gd: g.ma_gd }, create: { ma_gd: g.ma_gd, ...data, huy_luc }, update: { ...data, huy_luc } });
       }
+      // T34: chủ đã bấm nghỉ trên sheet ⇒ đánh nghi_luc lên các dòng thử cuối (giữ nghi_luc cũ khi chạy lại).
+      for (const x of hs.filter((x) => /^Đã nghỉ/i.test(x.tinh_trang ?? ""))) {
+        const rows = await tx.ghi_danh.findMany({ where: { hoc_sinh_id: hsId.get(x.ma_hs)! } });
+        const het = hetThu(rows.map(gdCua), opt.ngayChot);
+        if (!het) continue;
+        await tx.ghi_danh.updateMany({ where: { id: { in: rows.filter((g) => !g.huy_luc && !g.nghi_luc && g.den_ngay && d2s(g.den_ngay) === het).map((g) => g.id) } }, data: { nghi_luc: luc } });
+        choNghi.push(x.ma_hs);
+      }
       const so = (s: string) => Number(s.replace(/\D/g, "")) || 0;
       const maxHs = Math.max(...hs.map((x) => so(x.ma_hs)), ...don.map((d) => so(d.ma_hs ?? "")), ...(await daXoa(wb, "HS")));
       const maxGd = Math.max(...gd.map((g) => so(g.ma_gd)), ...(await daXoa(wb, "GD")));
@@ -324,7 +334,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
       const h = opt.ngayChot;
       const gdDb = await tx.ghi_danh.findMany();
       const gdMap = new Map<number, GD[]>();
-      for (const g of gdDb) gdMap.set(g.hoc_sinh_id, [...(gdMap.get(g.hoc_sinh_id) ?? []), { mon_id: g.mon_id, loai: g.loai, tu: d2s(g.tu_ngay), den: g.den_ngay ? d2s(g.den_ngay) : null, huy: !!g.huy_luc }]);
+      for (const g of gdDb) gdMap.set(g.hoc_sinh_id, [...(gdMap.get(g.hoc_sinh_id) ?? []), gdCua(g)]);
       const CHU_O = { hoc: "Học", thu: "Thử", nghi: "Nghỉ" } as const;
       let lechO = 0, soO = 0;
       for (const x of hs.filter((x) => x.so > 0)) for (const m of mon) {
@@ -359,6 +369,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
         buoi_da_diem_danh_xong: daXong,
         dau_ma_tran_chua_luu: dauMaTran,
         t18_dung_lai_ho_so: dungLai,
+        t34_chu_da_cho_nghi: choNghi,
         t20_buoi_chua_tick_co_dau: t20,
         doi_soat_o_mon: `${lechO}/${soO} ô lệch`,
         tinh_trang: tinh,
@@ -381,6 +392,10 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
     const thay = new Set<string>();
     for (const x of ds) { if (thay.has(x)) throw new Dung(`Trùng ${ten} — dừng cả lần chuyển`); thay.add(x); }
   }
+}
+
+function gdCua(g: { mon_id: number; loai: GD["loai"]; tu_ngay: Date; den_ngay: Date | null; huy_luc: Date | null; nghi_luc: Date | null }): GD {
+  return { mon_id: g.mon_id, loai: g.loai, tu: d2s(g.tu_ngay), den: g.den_ngay ? d2s(g.den_ngay) : null, huy: !!g.huy_luc, nghi: !!g.nghi_luc };
 }
 
 /** Số mã lớn nhất trong __DaXoa (chỉ đọc số, không chuyển dữ liệu — T19). */

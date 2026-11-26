@@ -58,7 +58,7 @@ export async function homNay(u: Nguoi, luc = new Date()) {
     for (const x of hs) {
       const gds = gdMap.get(x.id) ?? [];
       const het = hetThu(gds, h);
-      if (het) viec.push({ muc: 2, loai: "het_thu", khoa: x.ma_hs, ngay: het, ma_hs: x.ma_hs, ho_ten: x.ho_ten, mon: monCua(gds.filter((g) => g.den === het), tenMon) });
+      if (het) viec.push({ muc: 2, loai: "het_thu", khoa: x.ma_hs, ngay: het, ma_hs: x.ma_hs, ho_ten: x.ho_ten, mon: monCua(gds.filter((g) => g.den === het && !g.huy && !g.nghi), tenMon) });
       const sap = thuSapHet(gds, h);
       if (sap) viec.push({ muc: 3, loai: "thu_sap_het", khoa: x.ma_hs, ngay: sap, ma_hs: x.ma_hs, ho_ten: x.ho_ten, con_ngay: soNgayGiua(h, sap), mon: monCua(gds.filter((g) => g.loai === "thu" && hieuLuc(g, h)), tenMon) });
       const x2 = x as typeof x & { gmail: string | null; sdt_hs: string | null; sdt_ph: string | null; lua_id: number | null };

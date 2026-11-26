@@ -99,9 +99,15 @@ describe("Nghỉ môn (Điều 8, luật 22:00)", () => {
   it("thử đến 15/12 + CT hẹn 16/12, nghỉ ngày 11/12: Thử cắt 11/12, CT bị huỷ", () => {
     const v = keHoachNghi([thu(1, "2026-12-02", "2026-12-15", 1), ct(1, "2026-12-16", null, 2)], 1, "2026-12-11");
     expect(v).toEqual([
-      { kieu: "sua_den", id: 1, den: "2026-12-11", ghi_chu: "Cho nghỉ đến hết 11/12" },
+      { kieu: "sua_den", id: 1, den: "2026-12-11", nghi: true },
       { kieu: "huy", id: 2, den: "2026-12-15" },
     ]);
+  });
+  it("T34: em hết thử 14/11 (không còn dòng mở) → chỉ ghi nghi lên dòng cuối, giữ ngày; nghỉ lần hai báo lỗi", () => {
+    const g = thu(1, "2026-11-01", "2026-11-14", 7);
+    expect(keHoachNghi([g], 1, "2026-11-25")).toEqual([{ kieu: "sua_den", id: 7, den: "2026-11-14", nghi: true }]);
+    expect(() => keHoachNghi([{ ...g, nghi: true }], 1, "2026-11-25")).toThrow("đã nghỉ");
+    expect(() => keHoachNghi([g], 2, "2026-11-25")).toThrow("chưa ghi danh");
   });
 });
 
@@ -114,6 +120,11 @@ describe("Ô môn và tình trạng (Điều 4)", () => {
   it("hết thử chưa xử lý → 'Hết thử dd/mm – hỏi em'; bị chủ cho nghỉ → 'Đã nghỉ'", () => {
     expect(tinhTrang([thu(1, "2026-11-01", "2026-11-14")], "2026-11-26")).toBe("Hết thử 14/11 – hỏi em");
     expect(hetThu([{ ...thu(1, "2026-11-01", "2026-11-10"), nghi: true }], "2026-11-26")).toBeNull();
+  });
+  it("T34: thử Toán + Anh hết 14/11, chủ chỉ cho nghỉ Toán → vẫn 'Hết thử – hỏi em' (còn Anh); nghỉ cả hai → 'Đã nghỉ'", () => {
+    const toan = thu(1, "2026-11-01", "2026-11-14", 1), anh = thu(4, "2026-11-01", "2026-11-14", 4);
+    expect(tinhTrang([{ ...toan, nghi: true }, anh], "2026-11-26")).toBe("Hết thử 14/11 – hỏi em");
+    expect(tinhTrang([{ ...toan, nghi: true }, { ...anh, nghi: true }], "2026-11-26")).toBe("Đã nghỉ");
   });
   it("thử sắp hết trong 3 ngày, không tính em có chính thức", () => {
     expect(thuSapHet([thu(1, "2026-11-15", "2026-11-28")], "2026-11-26")).toBe("2026-11-28");

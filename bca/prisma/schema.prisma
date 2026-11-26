@@ -153,6 +153,8 @@ model ghi_danh {
   mien_phi      Boolean       @default(false)
   don_gia_rieng Int?
   ghi_chu       String?
+  nghi_luc      DateTime?     @db.Timestamptz // T34: chủ cho nghỉ môn (không dựa vào chữ trong ghi chú)
+  nghi_boi      String?       @db.Uuid
   tao_boi       String?       @db.Uuid
   tao_luc       DateTime      @default(now()) @db.Timestamptz
   cap_nhat_luc  DateTime      @default(now()) @updatedAt @db.Timestamptz

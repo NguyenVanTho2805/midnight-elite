@@ -79,7 +79,7 @@ export async function chiTietHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
       const tt = bs.map((b) => b.trang_thai);
       return {
         ma: m.ma, ten: m.ten_ngan, o: oMon(gds, m.id, h),
-        ghi_danh: cua.map((g) => ({ id: g.id, ma_gd: g.ma_gd, loai: g.loai, tu_ngay: g.tu, den_ngay: g.den, huy: g.huy })),
+        ghi_danh: cua.map((g) => ({ id: g.id, ma_gd: g.ma_gd, loai: g.loai, tu_ngay: g.tu, den_ngay: g.den, huy: g.huy, nghi: !!g.nghi })),
         lich_su: lichSu.filter((l) => cua.some((g) => String(g.id) === l.doi_tuong_id)).map((l) => ({ luc: l.luc, ai: tenNguoi.get(l.nguoi_dung_id ?? "") ?? "Hệ thống", hanh_dong: l.hanh_dong, truoc: l.truoc, sau: l.sau })),
         chuyen_can: { thang, buoi: bs, ...demDD(tt), chuoi: chuoi(tt) },
         ...(laChu(u) ? { mac_dinh_chinh_thuc: ngayChinhThucMacDinh(gds, m.id, h) } : {}),

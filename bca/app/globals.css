@@ -38,3 +38,40 @@ body { font-family: var(--font-sans); }
 .so { font-variant-numeric: tabular-nums; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition-duration: 0ms !important; animation-duration: 0ms !important; } }
+
+/* ── Bổ sung của phòng Giao diện (BCA-D1-GD) — chỉ thêm, không đổi token đã chốt ── */
+@theme inline {
+  --color-gold-hover: var(--gold-hover); --color-trial-fg: var(--trial-fg); --color-trial-bg: var(--trial-bg);
+  --color-on-ok: var(--on-ok); --color-on-excused: var(--on-excused); --color-on-danger: var(--on-danger);
+  --color-ok-bg: var(--ok-bg); --color-excused-bg: var(--excused-bg); --color-danger-bg: var(--danger-bg); --color-warn-bg: var(--warn-bg);
+  --color-row-hover: var(--row-hover); --color-today-col: var(--today-col); --color-nav-active: var(--nav-active);
+  --color-sidebar: var(--sidebar); --color-skeleton: var(--skeleton);
+}
+html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; scroll-padding-top: 72px; }
+/* Nhấn nút: scale(.97) 80ms (token dur-press) */
+.nhan { transition: transform var(--dur-press) var(--ease-out); }
+.nhan:active { transform: scale(.97); }
+.bong-noi { box-shadow: var(--shadow-overlay); }
+.bong-dinh { box-shadow: var(--shadow-sticky); }
+.day-an-toan { padding-bottom: env(safe-area-inset-bottom); }
+/* Khung quản lý: chừa chỗ thanh dưới trên điện thoại */
+@media (max-width: 639px) { .co-thanh-duoi { padding-bottom: calc(64px + env(safe-area-inset-bottom)); } }
+/* Khối chờ tải: chỉ hiện nếu chờ > 300ms để tránh nháy */
+@keyframes bca-hien { to { opacity: 1; } }
+.cho-tai { opacity: 0; animation: bca-hien 0ms linear 300ms forwards; }
+/* Tờ trượt đáy / hộp thoại (dur-sheet 240ms) */
+dialog.to-truot { margin: auto auto 0; width: 100%; max-width: 100%; max-height: 90dvh; overscroll-behavior: contain; border-radius: 20px 20px 0 0; }
+@media (min-width: 640px) { dialog.to-truot { margin: auto; width: 480px; border-radius: 20px; } }
+dialog.to-truot::backdrop { background: rgba(0,0,0,.6); }
+@keyframes bca-truot-len { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes bca-mo-dan { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+dialog.to-truot[open] { animation: bca-truot-len var(--dur-sheet) var(--ease-out); }
+@media (min-width: 640px) { dialog.to-truot[open] { animation-name: bca-mo-dan; } }
+.hien-nhanh { animation: bca-mo-dan var(--dur-fast) var(--ease-out); }
+/* Hàng do người khác vừa sửa: nền raised 600ms rồi về */
+@keyframes bca-nhap { 0%, 60% { background: var(--raised); } 100% { background: transparent; } }
+.vua-doi { animation: bca-nhap 600ms ease-out; }
+/* Vạch đếm ngược Hoàn tác */
+.vach-dem { transform-origin: left; }
+.hang-dai { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+@media (prefers-reduced-motion: reduce) { .nhan:active { transform: none; } }

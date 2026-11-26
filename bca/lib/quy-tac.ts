@@ -3,10 +3,8 @@ import { congNgay, ddmm, lucVN, ngayTrongThang, ngayVN, phutVN, thuISO } from ".
 
 export type Loai = "thu" | "chinh_thuc";
 export type TrangThaiDD = "co" | "phep" | "vang";
-/** Một ghi danh ở dạng ngày chuỗi. */
+/** Một ghi danh ở dạng ngày chuỗi. `nghi` = chủ đã cho nghỉ (cột nghi_luc, T34). */
 export type GD = { id?: number; ma_gd?: string; mon_id: number; loai: Loai; tu: string; den: string | null; huy: boolean; nghi?: boolean };
-/** Ghi chú đánh dấu ghi danh bị chủ cắt bằng "Cho nghỉ" (để không hiện "Hết thử – hỏi em"). */
-export const DAU_NGHI = "Cho nghỉ";
 
 export const MAC_DINH = { SO_NGAY_HOC_THU: 14, NGAY_BAT_DAU_TINH_PHI: "2026-11-16", GIA_1_MON: 65_000, GIA_TU_2_MON: 55_000 };
 
@@ -56,13 +54,13 @@ export function tinhTrang(gds: GD[], h: string): string {
   return het ? `Hết thử ${ddmm(het)} – hỏi em` : "Đã nghỉ";
 }
 
-/** hom-nay.md mức 2: lần ghi danh gần nhất toàn là Thử, đã hết, không còn ghi danh mở. Trả ngày hết. */
+/** hom-nay.md mức 2: lần ghi danh gần nhất toàn là Thử, đã hết, không còn ghi danh mở, còn môn chủ chưa cho nghỉ (T34). Trả ngày hết. */
 export function hetThu(gds: GD[], h: string): string | null {
   const s = gds.filter((g) => !g.huy);
   if (!s.length || s.some((g) => conMo(g, h))) return null;
   const moiNhat = s.map((g) => g.den!).sort().at(-1)!;
   const lanCuoi = s.filter((g) => g.den === moiNhat);
-  return lanCuoi.every((g) => g.loai === "thu" && !g.nghi) ? moiNhat : null;
+  return lanCuoi.every((g) => g.loai === "thu") && lanCuoi.some((g) => !g.nghi) ? moiNhat : null;
 }
 
 /** hom-nay.md mức 3: ngày hết thử nếu nằm trong [H, H+3] và em chưa có Chính thức còn mở. */
@@ -75,7 +73,7 @@ export function thuSapHet(gds: GD[], h: string): string | null {
 // ── Kế hoạch thay đổi ghi danh (trả danh sách việc; máy chủ ghi trong một transaction) ──
 export type Viec =
   | { kieu: "tao"; mon_id: number; loai: Loai; tu: string; den: string | null; ghi_chu?: string }
-  | { kieu: "sua_den"; id: number; den: string; ghi_chu?: string }
+  | { kieu: "sua_den"; id: number; den: string; ghi_chu?: string; nghi?: true }
   | { kieu: "huy"; id: number; den: string };
 
 export class LoiQuyTac extends Error {}
@@ -147,14 +145,21 @@ export function keHoachThemThu(gds: GD[], monId: number, h: string, soNgay = MAC
 /** Điều 8.1: ngày "học đến hết" mặc định khi cho nghỉ (luật 22:00). */
 export const ngayNghiMacDinh = (luc: Date) => (phutVN(luc) < 22 * 60 ? congNgay(ngayVN(luc), -1) : ngayVN(luc));
 
-/** Điều 8.1: cho nghỉ môn đến hết ngày cat. */
+/** Điều 8.1: cho nghỉ môn đến hết ngày cat; dòng bị cắt ghi nghi_luc (T34). */
 export function keHoachNghi(gds: GD[], monId: number, cat: string): Viec[] {
+  const m = gds.filter((g) => g.mon_id === monId && !g.huy);
   const viec: Viec[] = [];
-  for (const g of gds.filter((g) => g.mon_id === monId && conMo(g, cat))) {
+  for (const g of m.filter((g) => conMo(g, cat))) {
     if (g.tu > cat) viec.push({ kieu: "huy", id: g.id!, den: congNgay(g.tu, -1) });
-    else if (g.den === null || g.den > cat) viec.push({ kieu: "sua_den", id: g.id!, den: cat, ghi_chu: `${DAU_NGHI} đến hết ${ddmm(cat)}` });
+    else viec.push({ kieu: "sua_den", id: g.id!, den: cat, nghi: true });
   }
-  if (!viec.length) throw new LoiQuyTac("Em không còn ghi danh mở ở môn này");
+  if (!viec.length) {
+    // Không còn dòng mở (vd. "Hết thử – hỏi em"): chỉ ghi "chủ cho nghỉ" lên dòng kết thúc muộn nhất, giữ ngày.
+    const cuoi = m.sort((a, b) => a.den!.localeCompare(b.den!)).at(-1);
+    if (!cuoi) throw new LoiQuyTac("Em chưa ghi danh môn này");
+    if (cuoi.nghi) throw new LoiQuyTac("Em đã nghỉ môn này");
+    viec.push({ kieu: "sua_den", id: cuoi.id!, den: cuoi.den!, nghi: true });
+  }
   return viec;
 }
 

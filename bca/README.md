@@ -51,6 +51,9 @@ Mọi route kiểm quyền ở máy chủ; "chỉ chủ" = GV/học sinh nhận 
 |---|---|---|---|
 | `POST /api/hom-nay/xong` `{loai, khoa}` | `hom-nay.danhDauXong` | chủ | T33: đánh dấu xong; ẩn 3 ngày (`het_thu`, `thu_sap_het`) hoặc hết hôm nay (việc khác). Mỗi việc trong `GET /api/hom-nay` có `khoa`; thẻ số không trừ việc đã ẩn; `so_viec_da_an` |
 | `DELETE /api/hom-nay/xong?loai=&khoa=` | `hom-nay.boDanhDauXong` | chủ | T33: bỏ đánh dấu (Hoàn tác) |
+| `POST /api/hoc-sinh/[maHs]/nghi-mon` `{mon: "anh" \| ["toan","anh"], denNgay?}` | `ghi-danh.nghiMon` | chủ | T34: cắt theo luật 22:00 và ghi `ghi_danh.nghi_luc` + `nghi_boi`. Em hết thử (không còn dòng mở) → chỉ ghi `nghi_luc` lên dòng cuối, giữ ngày → hết việc "Hết thử – hỏi em". Ghi chú không còn được đọc |
+
+T34 trong `lib/quy-tac.ts`: `hetThu` = lần ghi danh cuối toàn Thử, đã hết, **còn ít nhất một môn chưa bị chủ cho nghỉ**. `scripts/chuyen-tu-sheet.ts`: em có Tình trạng sheet "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ đánh `nghi_luc` (báo ở `t34_chu_da_cho_nghi`).
 
 ## Cấu trúc
 ```
