@@ -129,6 +129,23 @@ export async function chuyenChinhThuc(u: Nguoi, maHs: string, monMas: string[], 
   });
 }
 
+/** Trả các dòng về trước một thao tác — tất cả hoặc không: dòng nào đã bị sửa sau đó thì không làm gì, trả false. */
+async function traLai(tx: Tx, u: Nguoi, thayDoi: ThayDoi[], hanh_dong: string) {
+  const rows = await tx.ghi_danh.findMany({ where: { id: { in: thayDoi.map((t) => t.id) } } });
+  const conNguyen = (t: ThayDoi) => {
+    const g = rows.find((r) => r.id === t.id);
+    return !!g && d2sOrNull(g.den_ngay) === t.den_moi && (t.kieu === "huy") === !!g.huy_luc && (!t.nghi || !!g.nghi_luc);
+  };
+  if (!thayDoi.every(conNguyen)) return false;
+  // Xoá dòng mới tạo trước, rồi mới trả ngày cũ (tránh chồng ngày).
+  for (const t of [...thayDoi].sort((a, b) => Number(b.kieu === "tao") - Number(a.kieu === "tao"))) {
+    if (t.kieu === "tao") await tx.ghi_danh.delete({ where: { id: t.id } });
+    else await tx.ghi_danh.update({ where: { id: t.id }, data: { den_ngay: t.den_cu ? s2d(t.den_cu) : null, huy_luc: null, ...(t.nghi ? { nghi_luc: null, nghi_boi: null } : {}) } });
+    await ghiNhatKy(u, hanh_dong, "ghi_danh", t.id, { den_ngay: t.den_moi }, t.kieu === "tao" ? { xoa: true } : { den_ngay: t.den_cu }, tx);
+  }
+  return true;
+}
+
 /** Thanh Hoàn tác hiện 5 giây (man-hoc-sinh.md 9.2); máy chủ nhận thêm 5 giây cho mạng chậm. */
 export const HAN_HOAN_TAC_CT_MS = 10_000;
 
@@ -142,18 +159,8 @@ export async function hoanTacChuyenChinhThuc(u: Nguoi, maHs: string, nhatKyId: n
     if (luc.getTime() - Date.parse(sau.luc) > HAN_HOAN_TAC_CT_MS) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
     if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_chuyen_chinh_thuc", doi_tuong: "nhom_chuyen_chinh_thuc", doi_tuong_id: String(nhatKyId) } }))
       throw new LoiDuLieu("Lần chuyển này đã được hoàn tác", 409, "da_hoan_tac");
-    const rows = await tx.ghi_danh.findMany({ where: { id: { in: sau.thay_doi.map((t) => t.id) } } });
-    const conNguyen = (t: ThayDoi) => {
-      const g = rows.find((r) => r.id === t.id);
-      return !!g && d2sOrNull(g.den_ngay) === t.den_moi && (t.kieu === "huy") === !!g.huy_luc && (!t.nghi || !!g.nghi_luc);
-    };
-    if (!sau.thay_doi.every(conNguyen)) throw new LoiDuLieu("Ghi danh đã bị sửa sau lần chuyển này — không hoàn tác được", 409, "da_sua");
-    // Xoá dòng Chính thức mới trước, rồi mới trả ngày Thử (tránh chồng ngày).
-    for (const t of [...sau.thay_doi].sort((a, b) => Number(b.kieu === "tao") - Number(a.kieu === "tao"))) {
-      if (t.kieu === "tao") await tx.ghi_danh.delete({ where: { id: t.id } });
-      else await tx.ghi_danh.update({ where: { id: t.id }, data: { den_ngay: t.den_cu ? s2d(t.den_cu) : null, huy_luc: null, ...(t.nghi ? { nghi_luc: null, nghi_boi: null } : {}) } });
-      await ghiNhatKy(u, "hoan_tac_chuyen_chinh_thuc", "ghi_danh", t.id, { den_ngay: t.den_moi }, t.kieu === "tao" ? { xoa: true } : { den_ngay: t.den_cu }, tx);
-    }
+    if (!(await traLai(tx, u, sau.thay_doi, "hoan_tac_chuyen_chinh_thuc")))
+      throw new LoiDuLieu("Ghi danh đã bị sửa sau lần chuyển này — không hoàn tác được", 409, "da_sua");
     await ghiNhatKy(u, "hoan_tac_chuyen_chinh_thuc", "nhom_chuyen_chinh_thuc", nhatKyId, null, { ma_hs: maHs, so_dong: sau.thay_doi.length }, tx);
     return { traLai: sau.thay_doi.length };
   });
@@ -185,5 +192,38 @@ export async function nghiMon(u: Nguoi, maHs: string, monMa: string | string[], 
     const thayDoi: ThayDoi[] = [];
     for (const ma of mas) thayDoi.push(...(await apDung(tx, u, hs.id, keHoachNghi(gds, (await monTheoMa(tx, ma)).id, cat), "nghi_mon", null, luc)));
     return { denNgay: cat, thayDoi };
+  });
+}
+
+/** ghi-danh.md Điều 10 / T7 — ẩn hồ sơ (không xoá cứng): dừng mọi ghi danh còn mở theo luật 22:00, ghi nghi_luc. */
+export async function anHocSinh(u: Nguoi, maHs: string, denNgay?: string, luc = new Date()) {
+  canChu(u);
+  return db.$transaction(async (tx) => {
+    const hs = await timHs(tx, maHs);
+    if (hs.an_luc) throw new LoiDuLieu("Hồ sơ đã ẩn", 409);
+    const gds = (await napGD({ hoc_sinh_id: hs.id }, tx)).get(hs.id) ?? [];
+    const cat = denNgay ?? ngayNghiMacDinh(luc);
+    const thayDoi: ThayDoi[] = [];
+    for (const m of new Set(gds.filter((g) => conMo(g, cat)).map((g) => g.mon_id)))
+      thayDoi.push(...(await apDung(tx, u, hs.id, keHoachNghi(gds, m, cat), "an_hoc_sinh", null, luc)));
+    await tx.hoc_sinh.update({ where: { id: hs.id }, data: { an_luc: luc } });
+    await ghiNhatKy(u, "an_hoc_sinh", "hoc_sinh", maHs, { an_luc: null }, { an_luc: luc.toISOString(), den_ngay: cat, thay_doi: thayDoi }, tx);
+    return { ma_hs: maHs, an_luc: luc, denNgay: cat, thayDoi };
+  });
+}
+
+/** ghi-danh.md 10.2 — bỏ ẩn. Khôi phục ngày cũ chỉ khi bỏ ẩn ngay trong ngày (tick nhầm), chưa ghi danh lại và các dòng chưa bị sửa. */
+export async function boAnHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
+  canChu(u);
+  return db.$transaction(async (tx) => {
+    const hs = await timHs(tx, maHs);
+    if (!hs.an_luc) throw new LoiDuLieu("Hồ sơ không bị ẩn", 409);
+    const nk = await tx.nhat_ky.findFirst({ where: { hanh_dong: "an_hoc_sinh", doi_tuong: "hoc_sinh", doi_tuong_id: maHs }, orderBy: { id: "desc" } });
+    const thayDoi = (nk?.sau as { thay_doi?: ThayDoi[] } | null)?.thay_doi ?? [];
+    const coGdMoi = await tx.ghi_danh.count({ where: { hoc_sinh_id: hs.id, tao_luc: { gt: hs.an_luc } } });
+    const khoiPhuc = ngayVN(hs.an_luc) === ngayVN(luc) && !coGdMoi && thayDoi.length > 0 && (await traLai(tx, u, thayDoi, "bo_an_hoc_sinh"));
+    await tx.hoc_sinh.update({ where: { id: hs.id }, data: { an_luc: null } });
+    await ghiNhatKy(u, "bo_an_hoc_sinh", "hoc_sinh", maHs, { an_luc: hs.an_luc.toISOString() }, { an_luc: null, khoi_phuc_ghi_danh: khoiPhuc }, tx);
+    return { ma_hs: maHs, khoi_phuc_ghi_danh: khoiPhuc };
   });
 }

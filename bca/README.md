@@ -34,6 +34,7 @@ npx tsc --noEmit
 - `tests/quy-tac.test.ts` — thuần: ngày thử, mặc định, tiền (đồng), quyền.
 - `tests/api-quyen.test.ts` — gọi route handler thật theo vai (chủ / GV / học sinh), 401/403/404.
 - `tests/nghiep-vu-db.test.ts` — nghiệp vụ trên DB với giờ cố định (26/11/2026).
+- `tests/vong-2.test.ts` — vòng 2: việc xong (T33), `nghi_luc` (T34, cả chuyen-tu-sheet với bảng tính giả), hoàn tác chuyển chính thức, tạo/ẩn hồ sơ, đổi lịch môn (T8), xoá buổi.
 
 ## Chuyển dữ liệu từ sheet
 ```bash
@@ -55,6 +56,11 @@ Mọi route kiểm quyền ở máy chủ; "chỉ chủ" = GV/học sinh nhận 
 
 | `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc` | `ghi-danh.chuyenChinhThuc` | chủ | Nay trả thêm `nhatKyId` để hoàn tác |
 | `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc/hoan-tac` `{nhatKyId}` | `ghi-danh.hoanTacChuyenChinhThuc` | chủ | Hoàn tác một lần, trong `HAN_HOAN_TAC_CT_MS` = 10 giây (thanh 5 giây + 5 giây mạng); tất cả hoặc không: dòng đã bị sửa sau đó → 409 `da_sua`; quá hạn → 409 `het_gio`; lần hai → 409 `da_hoan_tac` |
+| `POST /api/hoc-sinh` `{hoTen, ngayTao?, sdtHs?, sdtPh?, gmail?, hoTenPh?, truong?, khoi?, mucTieu?, nguon?, usernameAzota?, ghiChu?, ghiChuRieng?, dongYVinhDanh?}` | `hoc-sinh.taoHocSinh` | chủ | Tạo hồ sơ tay: mã từ `bo_dem` (không cấp lại), lứa theo ngày tạo, chuẩn hoá SĐT/Gmail; trả `goi_y_gmail`, `trung_sdt` (chỉ cảnh báo); trùng Gmail/Azota → 409 |
+| `POST /api/hoc-sinh/[maHs]/an` `{denNgay?}` | `ghi-danh.anHocSinh` | chủ | T7: ẩn (không xoá cứng — không có `DELETE`); dừng mọi ghi danh còn mở theo luật 22:00, ghi `nghi_luc` |
+| `POST /api/hoc-sinh/[maHs]/bo-an` | `ghi-danh.boAnHocSinh` | chủ | Bỏ ẩn; khôi phục ngày cũ chỉ khi bỏ ẩn **trong cùng ngày** (tick nhầm), chưa ghi danh lại và dòng chưa bị sửa (`khoi_phuc_ghi_danh`) |
+| `PATCH /api/mon/[ma]` `{thu?, gio?, soPhut?, tuNgay?}` | `buoi-hoc.doiLichMon` | chủ | T8: buổi theo lịch từ `tuNgay` (≥ hôm nay, chưa bắt đầu) chưa có dữ liệu → xoá và sinh lại theo lịch mới trong các tháng đã sinh; buổi có dữ liệu giữ nguyên, trả ở `giu` (không sinh buổi thứ hai cùng ngày); `canh_bao` trùng giờ môn khác + số em học cả hai |
+| `DELETE /api/buoi-hoc/[id]` | `buoi-hoc.xoaBuoi` | chủ | Xoá buổi chưa có dữ liệu; có điểm danh / nội dung / record / ghi chú / đã huỷ / có buổi bù → 409 `co_du_lieu` (chỉ huỷ được) |
 
 T34 trong `lib/quy-tac.ts`: `hetThu` = lần ghi danh cuối toàn Thử, đã hết, **còn ít nhất một môn chưa bị chủ cho nghỉ**. `scripts/chuyen-tu-sheet.ts`: em có Tình trạng sheet "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ đánh `nghi_luc` (báo ở `t34_chu_da_cho_nghi`).
 

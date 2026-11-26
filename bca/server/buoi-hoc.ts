@@ -1,7 +1,7 @@
 // Buổi học (buoi-hoc.md). Sinh / huỷ / học bù: chỉ chủ (T9). Nội dung + record: chủ + GV môn.
-import { d2s, gioVN, lucVN, ngayTrongThang, s2d } from "@/lib/ngay";
+import { d2s, gioVN, lucVN, ngayTrongThang, ngayVN, s2d, thangCua } from "@/lib/ngay";
 import { canChu, canMon, canQuanLy, LoiDuLieu, monXemDuoc, type Nguoi } from "@/lib/quyen";
-import { buoiTheoLich, chuanHoaLink, hieuLuc } from "@/lib/quy-tac";
+import { buoiTheoLich, chuanHoaLink, conMo, hieuLuc } from "@/lib/quy-tac";
 import { db } from "./db";
 import { caiDat, napGD } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
@@ -123,4 +123,73 @@ export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string
   const r = await db.buoi_hoc.update({ where: { id }, data });
   await ghiNhatKy(u, "sua_noi_dung_buoi", "buoi_hoc", id, { noi_dung: b.noi_dung, link_record: b.link_record }, { noi_dung: r.noi_dung, link_record: r.link_record });
   return { id, noi_dung: r.noi_dung, link_record: r.link_record };
+}
+
+// ── Buổi "có dữ liệu" (buoi-hoc.md 6.3): điểm danh, nội dung, record, ghi chú, đã huỷ (có lý do cho học sinh) hoặc có buổi bù trỏ tới ──
+const DEM_DU_LIEU = { _count: { select: { diem_danh: true, buoi_bu: true } } } as const;
+type BuoiDem = { trang_thai: string; noi_dung: string | null; link_record: string | null; ghi_chu: string | null; _count: { diem_danh: number; buoi_bu: number } };
+const duLieuBuoi = (b: BuoiDem) =>
+  [b._count.diem_danh > 0 && "diem_danh", !!b.noi_dung && "noi_dung", !!b.link_record && "link_record", !!b.ghi_chu && "ghi_chu", b.trang_thai === "huy" && "da_huy", b._count.buoi_bu > 0 && "co_buoi_bu"]
+    .filter((x): x is string => !!x);
+
+/** buoi-hoc.md 6.3 — chủ xoá buổi chưa có dữ liệu (vd. sinh nhầm). Có dữ liệu thì chỉ được huỷ. */
+export async function xoaBuoi(u: Nguoi, id: number) {
+  canChu(u);
+  const b = await db.buoi_hoc.findUnique({ where: { id }, include: DEM_DU_LIEU });
+  if (!b) throw new LoiDuLieu("Không có buổi này", 404);
+  const co = duLieuBuoi(b);
+  if (co.length) throw new LoiDuLieu(`Buổi đã có dữ liệu (${co.join(", ")}) — chỉ huỷ được, không xoá`, 409, "co_du_lieu");
+  await db.buoi_hoc.delete({ where: { id } });
+  await ghiNhatKy(u, "xoa_buoi", "buoi_hoc", id, { mon_id: b.mon_id, ngay: d2s(b.ngay), bat_dau_luc: b.bat_dau_luc.toISOString(), so_phut: b.so_phut, loai: b.loai }, null);
+  return { id, da_xoa: true };
+}
+
+const TEN_THU = (t: number) => (t === 7 ? "CN" : `T${t + 1}`);
+const phut = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
+
+/**
+ * buoi-hoc.md Điều 4 / T8 — đổi lịch môn từ ngày hiệu lực: buổi theo lịch tương lai chưa có dữ liệu bị xoá và sinh lại
+ * theo lịch mới (chỉ trong các tháng đã sinh); buổi đã có dữ liệu giữ nguyên và trả về cho chủ. Trùng giờ môn khác: cảnh báo.
+ */
+export async function doiLichMon(u: Nguoi, ma: string, v: { thu?: number[]; gio?: string; soPhut?: number; tuNgay?: string }, luc = new Date()) {
+  canChu(u);
+  const h = ngayVN(luc);
+  const tu = v.tuNgay ?? h;
+  if (tu < h) throw new LoiDuLieu("Ngày hiệu lực phải từ hôm nay trở đi (buổi đã qua giữ nguyên)");
+  const mon = await db.mon.findUnique({ where: { ma } });
+  if (!mon) throw new LoiDuLieu(`Không có môn ${ma}`, 404);
+  const thu = [...new Set(v.thu ?? mon.thu)].sort();
+  if (!thu.length || thu.some((t) => !Number.isInteger(t) || t < 1 || t > 7)) throw new LoiDuLieu("Thứ phải là số 1–7 (1 = T2 … 7 = CN)");
+  const gio = v.gio ?? mon.gio_bat_dau;
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(gio)) throw new LoiDuLieu("Giờ phải dạng HH:MM");
+  const soPhut = v.soPhut ?? mon.so_phut;
+  if (!Number.isInteger(soPhut) || soPhut < 15 || soPhut > 300) throw new LoiDuLieu("Số phút 15–300");
+
+  const kq = await db.$transaction(async (tx) => {
+    await tx.mon.update({ where: { id: mon.id }, data: { thu, gio_bat_dau: gio, so_phut: soPhut } });
+    const cu = await tx.buoi_hoc.findMany({ where: { mon_id: mon.id, loai: "theo_lich", ngay: { gte: s2d(tu) }, bat_dau_luc: { gt: luc } }, include: DEM_DU_LIEU });
+    const giu = cu.filter((b) => duLieuBuoi(b).length), xoa = cu.filter((b) => !duLieuBuoi(b).length);
+    await tx.buoi_hoc.deleteMany({ where: { id: { in: xoa.map((b) => b.id) } } });
+    const { NGAY_BAT_DAU_TINH_PHI } = await caiDat(tx);
+    const ngayGiu = new Set(giu.map((b) => d2s(b.ngay))); // không sinh buổi thứ hai cùng ngày với buổi đang giữ
+    const moi = [...new Set(cu.map((b) => thangCua(d2s(b.ngay))))]
+      .flatMap((t) => buoiTheoLich([{ id: mon.id, thu, gio_bat_dau: gio, so_phut: soPhut }], t, NGAY_BAT_DAU_TINH_PHI))
+      .filter((b) => b.ngay >= tu && b.bat_dau_luc > luc && !ngayGiu.has(b.ngay));
+    const tao = await tx.buoi_hoc.createMany({ data: moi.map((b) => ({ ...b, ngay: s2d(b.ngay) })), skipDuplicates: true });
+    const giuRa = giu.map((b) => ({ id: b.id, ngay: d2s(b.ngay), gio: gioVN(b.bat_dau_luc), du_lieu: duLieuBuoi(b) }));
+    await ghiNhatKy(u, "doi_lich_mon", "mon", ma, { thu: mon.thu, gio: mon.gio_bat_dau, so_phut: mon.so_phut }, { thu, gio, so_phut: soPhut, tu_ngay: tu, xoa: xoa.length, tao: tao.count, giu: giuRa }, tx);
+    return { tu_ngay: tu, xoa: xoa.length, tao: tao.count, giu: giuRa };
+  });
+
+  // Cảnh báo trùng giờ (4.1): cùng thứ và chồng khoảng giờ với môn khác, kèm số em học cả hai môn.
+  const khac = (await db.mon.findMany({ where: { id: { not: mon.id } } })).filter(
+    (o) => o.thu.some((t) => thu.includes(t)) && phut(o.gio_bat_dau) < phut(gio) + soPhut && phut(gio) < phut(o.gio_bat_dau) + o.so_phut,
+  );
+  const gdMap = await napGD({ mon_id: { in: [mon.id, ...khac.map((o) => o.id)] } });
+  const canh_bao = khac.map((o) => {
+    let n = 0;
+    for (const gds of gdMap.values()) if (gds.some((g) => g.mon_id === mon.id && conMo(g, tu)) && gds.some((g) => g.mon_id === o.id && conMo(g, tu))) n++;
+    return `Trùng giờ ${o.ten_ngan} ${o.thu.filter((t) => thu.includes(t)).map(TEN_THU).join(", ")} ${o.gio_bat_dau}, ${n} em học cả hai môn`;
+  });
+  return { ...kq, canh_bao };
 }
