@@ -56,7 +56,8 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
         {em.slice(0, 3).map((e) => (
           <li key={e.ma_hs} className={`grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-b border-border px-4 py-2 last:border-b-0 @min-[560px]:col-span-4 @min-[560px]:min-h-12 @min-[560px]:grid-cols-subgrid @min-[560px]:py-0.5`}>
             <div className="min-w-0 leading-5">
-              <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}`} className="font-semibold hover:underline" translate="no">{e.ho_ten}</Link>
+              {/* Vùng chạm 44px (man-hom-nay §14.5), margin âm giữ hàng gọn — phần thừa chỉ chồng lên dòng chữ môn (không bấm được). */}
+              <Link href={`/quan-ly/hoc-sinh/${e.ma_hs}`} className="-my-3 inline-flex min-h-11 items-center font-semibold hover:underline" translate="no">{e.ho_ten}</Link>
               <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-text-3">
                 {e.mon.join(", ")}
                 <TrialChip con={e.con_ngay} het={e.het} tienTo="" lien />
