@@ -7,8 +7,8 @@ Quy tắc nghiệp vụ: `docs/bca/nghiep-vu/*.md`. Quyết định của chủ:
 | Biến | Dùng cho |
 |---|---|
 | `BCA_DATABASE_URL` | Chuỗi kết nối Postgres (KHÔNG dùng `DATABASE_URL` — tên đó của app KiN) |
-| `BCA_SESSION_SECRET` | Khoá ký cookie phiên (≥ 16 ký tự). Bắt buộc ngoài máy dev |
-| `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai. Bị bỏ qua khi `VERCEL_ENV=production` |
+| `BCA_SESSION_SECRET` | Khoá ký cookie phiên (≥ 16 ký tự). Bắt buộc ở mọi nơi trừ máy cục bộ (`VERCEL_ENV` chưa đặt và không `NODE_ENV=production`); thiếu thì ký/đọc phiên ném lỗi rõ, không dùng khoá mặc định |
+| `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai (T40): máy cục bộ; hoặc `VERCEL_ENV=preview` **và** DB có dấu `cai_dat.DU_LIEU_GIA` (do `seed-gia.ts` ghi; `chuyen-tu-sheet.ts` không bao giờ ghi và xoá nó khi `--apply`). Production: luôn 404. Preview còn phải bật Deployment Protection của Vercel |
 
 ## Cài và chạy dev
 ```bash
@@ -34,15 +34,21 @@ npx tsc --noEmit
 - `tests/quy-tac.test.ts` — thuần: ngày thử, mặc định, tiền (đồng), quyền.
 - `tests/api-quyen.test.ts` — gọi route handler thật theo vai (chủ / GV / học sinh), 401/403/404.
 - `tests/nghiep-vu-db.test.ts` — nghiệp vụ trên DB với giờ cố định (26/11/2026).
-- `tests/vong-2.test.ts` — vòng 2: việc xong (T33), `nghi_luc` (T34, cả chuyen-tu-sheet với bảng tính giả), hoàn tác chuyển chính thức, tạo/ẩn hồ sơ, đổi lịch môn (T8), xoá buổi.
+- `tests/vong-2.test.ts` — vòng 2: việc xong (T33), `nghi_luc` (T34), hoàn tác chuyển chính thức, tạo/ẩn hồ sơ, đổi lịch môn (T8), xoá buổi.
+- `tests/chuyen.test.ts` — chuyen-tu-sheet trên DB rỗng với bảng tính giả: T34, đối soát số dòng + phân bố tình trạng (lệch ⇒ rollback), chặn `--apply` khi web đã vận hành, dòng nhật ký `chuyen_that`, xoá dấu `DU_LIEU_GIA`.
+- `tests/vong-3.test.ts` — vòng 3 (theo rà soát BCA-D1-RS-MC): đăng nhập thử theo môi trường, khoá ký bắt buộc, quyền các route còn thiếu, hạn hoàn tác 10 giây, gia hạn bỏ môn đã nghỉ, đầu vào sai ⇒ 400/404/409, thao tác đồng thời; các hàm bổ sung cho phòng Giao diện.
 
 ## Chuyển dữ liệu từ sheet
 ```bash
-# xem trước (mặc định, rollback, chỉ in số đếm và số dòng sheet)
+# xem trước (mặc định, rollback, chỉ in số đếm và số dòng sheet — không in nội dung ô)
 npx tsx scripts/chuyen-tu-sheet.ts /đường/dẫn/ban-xuat.xlsx --ngay-chot=2026-11-26
-# ghi thật (DB cục bộ; DB khác cần BCA_CHO_PHEP_CHUYEN_THAT=1 — chỉ khi chủ quyết, T21)
+# ghi thật (chỉ khi chủ quyết, T21)
 npx tsx scripts/chuyen-tu-sheet.ts /đường/dẫn/ban-xuat.xlsx --ngay-chot=2026-11-26 --apply
 ```
+- DB không phải `localhost` (kể cả xem trước) cần `BCA_CHO_PHEP_CHUYEN_THAT=1`.
+- Lệch **bất kỳ** số đối soát nào ⇒ rollback: số dòng `lua/mon/hoc_sinh/ghi_danh/buoi_hoc/diem_danh/don_dang_ky` trong CSDL so với số đọc từ sheet (`doi_soat_so_dong`), phân bố tình trạng so với cột Tình trạng (`tinh_trang_sheet`), ô môn, sĩ số tháng ma trận.
+- `--apply` ghi một dòng `nhat_ky` `hanh_dong = "chuyen_that"` (người dùng null, vai `he_thong`) và xoá `cai_dat.DU_LIEU_GIA`.
+- Web đã vận hành (có nhật ký do người dùng, ghi danh có `tao_boi`, hoặc điểm danh `nguon = web`) ⇒ `--apply` bị từ chối (báo kèm lần `chuyen_that` trước). Chỉ khi chủ quyết ghi đè: thêm `--ghi-de-du-lieu-web`.
 Không commit tệp `.xlsx` hay bất kỳ dữ liệu thật nào.
 
 ## Route và hàm thêm ở vòng 2 (BCA-D1-MC2)
@@ -55,12 +61,31 @@ Mọi route kiểm quyền ở máy chủ; "chỉ chủ" = GV/học sinh nhận 
 | `POST /api/hoc-sinh/[maHs]/nghi-mon` `{mon: "anh" \| ["toan","anh"], denNgay?}` | `ghi-danh.nghiMon` | chủ | T34: cắt theo luật 22:00 và ghi `ghi_danh.nghi_luc` + `nghi_boi`. Em hết thử (không còn dòng mở) → chỉ ghi `nghi_luc` lên dòng cuối, giữ ngày → hết việc "Hết thử – hỏi em". Ghi chú không còn được đọc |
 
 | `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc` | `ghi-danh.chuyenChinhThuc` | chủ | Nay trả thêm `nhatKyId` để hoàn tác |
-| `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc/hoan-tac` `{nhatKyId}` | `ghi-danh.hoanTacChuyenChinhThuc` | chủ | Hoàn tác một lần, trong `HAN_HOAN_TAC_CT_MS` = 10 giây (thanh 5 giây + 5 giây mạng); tất cả hoặc không: dòng đã bị sửa sau đó → 409 `da_sua`; quá hạn → 409 `het_gio`; lần hai → 409 `da_hoan_tac` |
+| `POST /api/hoc-sinh/[maHs]/chuyen-chinh-thuc/hoan-tac` `{nhatKyId}` | `ghi-danh.hoanTacChuyenChinhThuc` | chủ | Hoàn tác một lần, trong `HAN_HOAN_TAC_MS` = 10 giây (thanh 5 giây + 5 giây mạng); tất cả hoặc không: dòng đã bị sửa sau đó → 409 `da_sua`; quá hạn → 409 `het_gio`; lần hai → 409 `da_hoan_tac` |
 | `POST /api/hoc-sinh` `{hoTen, ngayTao?, sdtHs?, sdtPh?, gmail?, hoTenPh?, truong?, khoi?, mucTieu?, nguon?, usernameAzota?, ghiChu?, ghiChuRieng?, dongYVinhDanh?}` | `hoc-sinh.taoHocSinh` | chủ | Tạo hồ sơ tay: mã từ `bo_dem` (không cấp lại), lứa theo ngày tạo, chuẩn hoá SĐT/Gmail; trả `goi_y_gmail`, `trung_sdt` (chỉ cảnh báo); trùng Gmail/Azota → 409 |
 | `POST /api/hoc-sinh/[maHs]/an` `{denNgay?}` | `ghi-danh.anHocSinh` | chủ | T7: ẩn (không xoá cứng — không có `DELETE`); dừng mọi ghi danh còn mở theo luật 22:00, ghi `nghi_luc` |
 | `POST /api/hoc-sinh/[maHs]/bo-an` | `ghi-danh.boAnHocSinh` | chủ | Bỏ ẩn; khôi phục ngày cũ chỉ khi bỏ ẩn **trong cùng ngày** (tick nhầm), chưa ghi danh lại và dòng chưa bị sửa (`khoi_phuc_ghi_danh`) |
 | `PATCH /api/mon/[ma]` `{thu?, gio?, soPhut?, tuNgay?}` | `buoi-hoc.doiLichMon` | chủ | T8: buổi theo lịch từ `tuNgay` (≥ hôm nay, chưa bắt đầu) chưa có dữ liệu → xoá và sinh lại theo lịch mới trong các tháng đã sinh; buổi có dữ liệu giữ nguyên, trả ở `giu` (không sinh buổi thứ hai cùng ngày); `canh_bao` trùng giờ môn khác + số em học cả hai |
 | `DELETE /api/buoi-hoc/[id]` | `buoi-hoc.xoaBuoi` | chủ | Xoá buổi chưa có dữ liệu; có điểm danh / nội dung / record / ghi chú / đã huỷ / có buổi bù → 409 `co_du_lieu` (chỉ huỷ được) |
+
+## Vòng 3 (BCA-D1-MC3, sửa theo rà soát BCA-D1-RS-MC)
+- **Hoàn tác** gia hạn / chuyển chính thức / "đánh tất cả": hạn `HAN_HOAN_TAC_MS` = 10 giây (`lib/quy-tac.ts`) tính từ lúc thao tác gốc (lưu trong nhật ký máy chủ, không tin giờ máy khách) ⇒ quá hạn 409 `het_gio`; lần hai 409 `da_hoan_tac`; hai lần cùng lúc ⇒ khoá dòng (`FOR UPDATE`) ⇒ một lần chạy, lần kia 409. Hoàn tác gia hạn mà đoạn thử sắp bị cắt/xoá đã có điểm danh ⇒ 409 `co_diem_danh`.
+- `POST /api/diem-danh/[buoiId]/hoan-tac` nay chỉ cần `{ luc }` (trường `ids` cũ được bỏ qua — máy chủ lấy danh sách em từ nhật ký của chính người đó; `luc` không khớp ⇒ 404).
+- Gia hạn chỉ áp môn đang thử **chưa bị chủ cho nghỉ** (T4 + T34); ngày hết mới phải sau ngày hết hiện tại (409).
+- `chuyenChinhThuc` trả thêm `donGiaLaUocTinh: true` (tiền thật theo số môn có buổi trong kỳ — T5, Đợt 3).
+- Đầu vào sai ⇒ 400 (tháng/ngày không có thật, id NaN/vượt int32, trạng thái đơn lạ), cookie `%` hỏng ⇒ 401, id người dùng không phải uuid ⇒ 404; trùng khoá duy nhất khi thao tác cùng lúc (vd. hai lần tạo cùng Gmail) ⇒ 409 `trung`, dòng vừa bị xoá ⇒ 409 `da_doi`.
+- Điểm danh, huỷ/bỏ huỷ/xoá buổi khoá dòng `buoi_hoc` đầu transaction; mọi thay đổi buổi, người dùng, việc xong ghi cùng nhật ký trong một transaction.
+- Đổi lịch môn: ngày trước `tuNgay` thuộc tháng chưa sinh buổi ⇒ 400 `thang_chua_sinh` (sinh buổi theo lịch cũ trước rồi mới đổi).
+
+| Route / hàm mới cho phòng Giao diện | Ai | Việc |
+|---|---|---|
+| `PATCH /api/buoi-hoc/[id]` thêm `ghiChu` | chủ + GV môn | Ghi chú nội bộ buổi ≤ 500 ký tự; học sinh không bao giờ nhận |
+| `PATCH /api/hoc-sinh/[maHs]` `{ghiChu?, ghiChuRieng?}` → `hoc-sinh.suaGhiChuHocSinh` | chủ | Sửa ghi chú hồ sơ (≤ 2.000 ký tự, rỗng = xoá), có nhật ký |
+| `GET /api/buoi-hoc/sinh?thang=YYYY-MM&xem=1` → `buoi-hoc.xemTruocSinhBuoi` | chủ | Xem trước sinh buổi: theo môn `theo_lich / da_co / se_tao`, không ghi |
+| `homNay`, `danhSachBuoi` | chủ + GV (môn mình) | Mỗi `mon` có thêm `ten_day_du`, `link_meet`, `giao_vien` (tên hiển thị GV phụ trách, không Gmail) |
+| `hoc-sinh.demHocSinhDangHien(u)` | chủ + GV | Đếm nhẹ hồ sơ đang hiện (cùng lọc với danh sách theo vai) cho thanh bên |
+| `chiTietHocSinh` thêm `caiDat: {GIA_1_MON, GIA_TU_2_MON}` | chỉ chủ | Đơn giá thật (đồng) từ `cai_dat` |
+| `next.config.ts` `experimental.authInterrupts` | — | Trang gọi được `forbidden()` / `unauthorized()` để trả 403/401 thật |
 
 T34 trong `lib/quy-tac.ts`: `hetThu` = lần ghi danh cuối toàn Thử, đã hết, **còn ít nhất một môn chưa bị chủ cho nghỉ**. `scripts/chuyen-tu-sheet.ts`: em có Tình trạng sheet "Đã nghỉ" mà theo ghi danh là "Hết thử – hỏi em" ⇒ đánh `nghi_luc` (báo ở `t34_chu_da_cho_nghi`).
 

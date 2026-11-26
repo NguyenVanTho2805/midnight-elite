@@ -3,7 +3,7 @@ import { congNgay, d2s, gioVN, lucVN, ngayTrongThang, ngayVN, s2d, thangCua } fr
 import { canChu, canMon, canQuanLy, LoiDuLieu, monXemDuoc, type Nguoi } from "@/lib/quyen";
 import { buoiTheoLich, chuanHoaLink, conMo, hieuLuc } from "@/lib/quy-tac";
 import { db, type Tx } from "./db";
-import { caiDat, napGD } from "./du-lieu";
+import { caiDat, giaoVienTheoMon, napGD } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 import { tienDo } from "./diem-danh";
 
@@ -17,13 +17,13 @@ export async function danhSachBuoi(u: Nguoi, opt: { thang: string; mon?: string 
   const buois = await db.buoi_hoc.findMany({
     where: { ngay: { gte: s2d(ngays[0]), lte: s2d(ngays.at(-1)!) }, ...(mon ? { mon_id: mon.id } : monIds ? { mon_id: { in: monIds } } : {}) },
     orderBy: { bat_dau_luc: "asc" },
-    include: { mon: { select: { ma: true, ten_ngan: true } } },
+    include: { mon: { select: { ma: true, ten_ngan: true, ten_day_du: true, link_meet: true } } },
   });
-  const td = await tienDo(buois);
+  const [td, gv] = await Promise.all([tienDo(buois), giaoVienTheoMon([...new Set(buois.map((b) => b.mon_id))])]);
   return {
     thang: opt.thang,
     buoi: buois.map((b) => ({
-      id: b.id, ngay: d2s(b.ngay), gio: gioVN(b.bat_dau_luc), bat_dau_luc: b.bat_dau_luc, so_phut: b.so_phut, mon: { ma: b.mon.ma, ten: b.mon.ten_ngan },
+      id: b.id, ngay: d2s(b.ngay), gio: gioVN(b.bat_dau_luc), bat_dau_luc: b.bat_dau_luc, so_phut: b.so_phut, mon: { ma: b.mon.ma, ten: b.mon.ten_ngan, ten_day_du: b.mon.ten_day_du, link_meet: b.mon.link_meet, giao_vien: gv.get(b.mon_id) ?? [] },
       loai: b.loai, trang_thai: b.trang_thai, ly_do_huy: b.ly_do_huy, bu_cho_buoi_id: b.bu_cho_buoi_id,
       noi_dung: b.noi_dung, link_record: b.link_record, ghi_chu: b.ghi_chu, da_diem_danh_luc: b.da_diem_danh_luc, tien_do: td.get(b.id),
     })),
@@ -40,6 +40,22 @@ export async function sinhBuoiThang(u: Nguoi, thang: string) {
     await ghiNhatKy(u, "sinh_buoi", "thang", thang, null, { theo_lich: ds.length, tao_moi: r.count }, tx);
     return { theo_lich: ds.length, tao_moi: r.count };
   });
+}
+
+/** Xem trước "Sinh buổi tháng" (chỉ chủ, không ghi): theo lịch / đã có / sẽ tạo, theo môn. */
+export async function xemTruocSinhBuoi(u: Nguoi, thang: string) {
+  canChu(u);
+  const ngays = ngayTrongThang(thang);
+  const [mons, cd] = await Promise.all([db.mon.findMany({ orderBy: { thu_tu: "asc" } }), caiDat()]);
+  const ds = buoiTheoLich(mons, thang, cd.NGAY_BAT_DAU_TINH_PHI);
+  const co = await db.buoi_hoc.findMany({ where: { ngay: { gte: s2d(ngays[0]), lte: s2d(ngays.at(-1)!) } }, select: { mon_id: true, bat_dau_luc: true } });
+  const daCo = new Set(co.map((b) => `${b.mon_id}|${b.bat_dau_luc.getTime()}`)); // cùng khoá trùng với createMany skipDuplicates
+  const mon = mons.map((m) => {
+    const cua = ds.filter((b) => b.mon_id === m.id);
+    const seTao = cua.filter((b) => !daCo.has(`${m.id}|${b.bat_dau_luc.getTime()}`)).length;
+    return { ma: m.ma, ten: m.ten_ngan, theo_lich: cua.length, da_co: cua.length - seTao, se_tao: seTao };
+  });
+  return { thang, mon, theo_lich: ds.length, se_tao: mon.reduce((t, m) => t + m.se_tao, 0) };
 }
 
 /** buoi-hoc.md Điều 6: huỷ có lý do; buổi đã có điểm danh phải xác nhận lần nữa. */
@@ -111,13 +127,18 @@ export async function themHocBu(u: Nguoi, v: { mon: string; ngay: string; gio?: 
   return { id: b.id, canh_bao: canhBao };
 }
 
-/** buoi-hoc.md Điều 8: nội dung ≤ 2000 ký tự, link record https. Chủ + GV môn (kể cả sau buổi). */
-export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string | null; linkRecord?: string | null }) {
+/** buoi-hoc.md Điều 8: nội dung ≤ 2000 ký tự, link record https, ghi chú nội bộ ≤ 500 (học sinh không thấy). Chủ + GV môn (kể cả sau buổi). */
+export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string | null; linkRecord?: string | null; ghiChu?: string | null }) {
   canQuanLy(u);
   const b = await db.buoi_hoc.findUnique({ where: { id } });
   if (!b) throw new LoiDuLieu("Không có buổi này", 404);
   canMon(u, b.mon_id);
-  const data: { noi_dung?: string | null; link_record?: string | null } = {};
+  const data: { noi_dung?: string | null; link_record?: string | null; ghi_chu?: string | null } = {};
+  if (v.ghiChu !== undefined) {
+    const s = v.ghiChu?.trim() || null;
+    if (s && s.length > 500) throw new LoiDuLieu("Ghi chú buổi tối đa 500 ký tự");
+    data.ghi_chu = s;
+  }
   if (v.noiDung !== undefined) {
     const s = v.noiDung?.trim() || null;
     if (s && s.length > 2000) throw new LoiDuLieu("Nội dung buổi tối đa 2.000 ký tự");
@@ -133,8 +154,8 @@ export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string
   }
   return db.$transaction(async (tx) => {
     const r = await tx.buoi_hoc.update({ where: { id }, data });
-    await ghiNhatKy(u, "sua_noi_dung_buoi", "buoi_hoc", id, { noi_dung: b.noi_dung, link_record: b.link_record }, { noi_dung: r.noi_dung, link_record: r.link_record }, tx);
-    return { id, noi_dung: r.noi_dung, link_record: r.link_record };
+    await ghiNhatKy(u, "sua_noi_dung_buoi", "buoi_hoc", id, { noi_dung: b.noi_dung, link_record: b.link_record, ghi_chu: b.ghi_chu }, { noi_dung: r.noi_dung, link_record: r.link_record, ghi_chu: r.ghi_chu }, tx);
+    return { id, noi_dung: r.noi_dung, link_record: r.link_record, ghi_chu: r.ghi_chu };
   });
 }
 

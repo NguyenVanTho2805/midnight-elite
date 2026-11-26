@@ -33,6 +33,18 @@ export async function caiDat(tx: Tx = db) {
 }
 
 export const napMon = (tx: Tx = db) => tx.mon.findMany({ orderBy: { thu_tu: "asc" } });
+
+/** Tên giáo viên phụ trách từng môn (chỉ tên hiển thị, tài khoản chưa khoá) — cho chi tiết buổi. */
+export async function giaoVienTheoMon(monIds: number[]) {
+  const pc = await db.phan_cong.findMany({
+    where: { mon_id: { in: monIds }, nguoi_dung: { khoa_luc: null, vai_tro: "giao_vien" } },
+    select: { mon_id: true, nguoi_dung: { select: { ten_hien_thi: true } } },
+    orderBy: { tao_luc: "asc" },
+  });
+  const ra = new Map<number, string[]>(monIds.map((id) => [id, []]));
+  for (const p of pc) ra.get(p.mon_id)?.push(p.nguoi_dung.ten_hien_thi);
+  return ra;
+}
 export async function monTheoMa(ma: string) {
   const m = await db.mon.findUnique({ where: { ma } });
   return m;

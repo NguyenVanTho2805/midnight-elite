@@ -25,6 +25,10 @@ import * as hsBuoi from "@/app/api/hs/buoi/[id]/route";
 import * as don from "@/app/api/don/route";
 import * as hocSinhR from "@/app/api/hoc-sinh/route";
 import * as monR from "@/app/api/mon/[ma]/route";
+import * as hocSinhMaR from "@/app/api/hoc-sinh/[maHs]/route";
+import * as sinhR from "@/app/api/buoi-hoc/sinh/route";
+import * as homNayR from "@/app/api/hom-nay/route";
+import { demHocSinhDangHien } from "@/server/hoc-sinh";
 
 let chu: Nguoi, gvAnh: Nguoi, cChu: string, cGvAnh: string;
 const T22 = lucVN("2026-11-26", "22:00");
@@ -215,6 +219,62 @@ describe("P3 — đầu vào sai trả 400/404/409, không 500", () => {
   });
   it("P3-5: đơn giá trả về khi chuyển chính thức ghi rõ là ước tính", async () => {
     expect(await chuyenChinhThuc(chu, "HS0037", ["anh"], {}, T22)).toMatchObject({ donGiaDuKien: expect.any(Number), donGiaLaUocTinh: true });
+  });
+});
+
+describe("Bổ sung cho phòng Giao diện (Điều hành, BCA-D1-MC3)", () => {
+  it("1. ghi chú nội bộ buổi: chủ + GV môn sửa được, GV môn khác 403, học sinh không thấy", async () => {
+    const id = String(await buoi(4, "2026-11-19"));
+    expect(await goi(buoiIdR.PATCH, { cookie: cGvAnh, method: "PATCH", params: { id }, body: { ghiChu: "Lớp ồn, nhắc mic" } })).toMatchObject({ status: 200, json: { ghi_chu: "Lớp ồn, nhắc mic" } });
+    expect((await goi(buoiIdR.PATCH, { cookie: cGvAnh, method: "PATCH", params: { id: String(await buoi(1, "2026-11-17")) }, body: { ghiChu: "x" } })).status).toBe(403);
+    expect((await goi(buoiIdR.PATCH, { cookie: cChu, method: "PATCH", params: { id }, body: { ghiChu: "x".repeat(501) } })).status).toBe(400);
+    const hs = await cookieHs("HS0002"); // chính thức Anh
+    expect(JSON.stringify((await goi(hsToi.GET, { cookie: hs })).json)).not.toContain("Lớp ồn");
+    expect(JSON.stringify((await goi(hsBuoi.GET, { cookie: hs, params: { id } })).json)).not.toContain("Lớp ồn");
+  });
+  it("2. sửa ghi chú hồ sơ (ghi_chu, ghi_chu_rieng): chỉ chủ, có nhật ký; GV/HS 403 và không đổi", async () => {
+    const r = await goi(hocSinhMaR.PATCH, { cookie: cChu, method: "PATCH", params: { maHs: "HS0002" }, body: { ghiChu: " Hay quên bài ", ghiChuRieng: "PH khó tính" } });
+    expect(r).toMatchObject({ status: 200, json: { ghi_chu: "Hay quên bài", ghi_chu_rieng: "PH khó tính" } });
+    expect(await db.nhat_ky.count({ where: { hanh_dong: "sua_ghi_chu_hoc_sinh", doi_tuong_id: "HS0002" } })).toBe(1);
+    for (const cookie of [cGvAnh, await cookieHs("HS0002")])
+      expect((await goi(hocSinhMaR.PATCH, { cookie, method: "PATCH", params: { maHs: "HS0002" }, body: { ghiChuRieng: "đổi" } })).status).toBe(403);
+    expect((await db.hoc_sinh.findUniqueOrThrow({ where: { ma_hs: "HS0002" } })).ghi_chu_rieng).toBe("PH khó tính");
+    expect((await goi(hocSinhMaR.PATCH, { cookie: cChu, method: "PATCH", params: { maHs: "HS9999" }, body: { ghiChu: "x" } })).status).toBe(404);
+    expect((await goi(hocSinhMaR.PATCH, { cookie: cChu, method: "PATCH", params: { maHs: "HS0002" }, body: {} })).status).toBe(400);
+  });
+  it("3. xem trước sinh buổi: Toán tháng 12 đã có đủ (se_tao 0), tháng 03/2027 Toán 9 buổi; không ghi gì; GV 403", async () => {
+    const dem = await db.buoi_hoc.count();
+    const t12 = await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=2026-12&xem=1" });
+    expect(t12.status).toBe(200); // (Địa đã đổi lịch sang T5 ở test trên ⇒ tháng 12 Địa có buổi T5 "sẽ tạo"; Toán đủ)
+    expect(t12.json.mon.find((m: { ma: string }) => m.ma === "toan")).toEqual({ ma: "toan", ten: "Toán", theo_lich: 9, da_co: 9, se_tao: 0 });
+    const t3 = await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=2027-03&xem=1" });
+    expect(t3.json.mon.find((m: { ma: string }) => m.ma === "toan")).toEqual({ ma: "toan", ten: "Toán", theo_lich: 9, da_co: 0, se_tao: 9 });
+    expect(await db.buoi_hoc.count()).toBe(dem);
+    expect((await goi(sinhR.GET, { cookie: cGvAnh, path: "/api/buoi-hoc/sinh?thang=2027-03&xem=1" })).status).toBe(403);
+    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=3-2027" })).status).toBe(400);
+  });
+  it("4. Hôm nay + danh sách buổi trả tên đầy đủ, link Meet, tên GV phụ trách; GV chỉ môn mình", async () => {
+    await db.mon.update({ where: { ma: "anh" }, data: { link_meet: "https://meet.google.com/gia-anh" } });
+    const b = await goi(buoiHoc.GET, { cookie: cGvAnh, path: "/api/buoi-hoc?thang=2026-11" });
+    expect(b.json.buoi[0].mon).toEqual({ ma: "anh", ten: "Anh", ten_day_du: "Tiếng Anh", link_meet: "https://meet.google.com/gia-anh", giao_vien: ["GV Anh (thử)"] });
+    const h = await goi(homNayR.GET, { cookie: cGvAnh });
+    expect(h.json.the_so.si_so.map((x: { mon: { ma: string } }) => x.mon)).toEqual([{ ma: "anh", ten: "Anh", ten_day_du: "Tiếng Anh", link_meet: "https://meet.google.com/gia-anh", giao_vien: ["GV Anh (thử)"] }]);
+    const c = await goi(buoiHoc.GET, { cookie: cChu, path: "/api/buoi-hoc?thang=2026-11&mon=toan" });
+    expect(c.json.buoi[0].mon).toMatchObject({ ma: "toan", giao_vien: ["GV Toán (thử)"] });
+    expect(JSON.stringify(c.json)).not.toContain("@bca.invalid"); // không lộ Gmail giáo viên
+  });
+  it("5. đếm học sinh đang hiện: chủ 69 (70 − 1 ẩn) cộng hồ sơ tạo thêm; GV Anh = số dòng danh sách của GV; HS 403", async () => {
+    const dsGv = await goi(hocSinhR.GET, { cookie: cGvAnh });
+    expect(await demHocSinhDangHien(gvAnh)).toBe(dsGv.json.hoc_sinh.length);
+    const dsChu = await goi(hocSinhR.GET, { cookie: cChu });
+    expect(await demHocSinhDangHien(chu)).toBe(dsChu.json.hoc_sinh.length);
+    await expect(demHocSinhDangHien({ vai: "hoc_sinh", hocSinhId: 1, ten: "" })).rejects.toThrow();
+  });
+  it("6. chi tiết học sinh: chủ có caiDat đơn giá thật từ cai_dat; GV không có", async () => {
+    await db.cai_dat.update({ where: { khoa: "GIA_1_MON" }, data: { gia_tri: 70000 } });
+    expect((await goi(hocSinhMaR.GET, { cookie: cChu, params: { maHs: "HS0002" } })).json.caiDat).toEqual({ GIA_1_MON: 70_000, GIA_TU_2_MON: 55_000 });
+    await db.cai_dat.update({ where: { khoa: "GIA_1_MON" }, data: { gia_tri: 65000 } });
+    expect((await goi(hocSinhMaR.GET, { cookie: cGvAnh, params: { maHs: "HS0002" } })).json).not.toHaveProperty("caiDat");
   });
 });
 

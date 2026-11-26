@@ -4,7 +4,7 @@ import { canChu, canQuanLy, cotHocSinh, laChu, LoiDuLieu, monXemDuoc, type Nguoi
 import { chuoi, demDD, hanThuChung, hieuLuc, ngayChinhThucMacDinh, ngayNghiMacDinh, oMon, tinhTrang, type GD } from "@/lib/quy-tac";
 import { catKhoangTrang, chuanHoaGmail, chuanHoaSdt, goiYGmail, soTenViet } from "@/lib/chuan-hoa";
 import { db } from "./db";
-import { capMa, napGD, napMon } from "./du-lieu";
+import { caiDat, capMa, napGD, napMon } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 
 function oTheoMon(gds: GD[], mons: { id: number; ma: string }[], h: string) {
@@ -89,10 +89,38 @@ export async function chiTietHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
     ...(laChu(u)
       ? {
           mac_dinh_nghi: ngayNghiMacDinh(luc),
+          caiDat: await caiDat().then(({ GIA_1_MON, GIA_TU_2_MON }) => ({ GIA_1_MON, GIA_TU_2_MON })), // đơn giá thật (đồng) — chỉ chủ (QĐ 14)
           don: await db.don_dang_ky.findMany({ where: { hoc_sinh_id: hs.id }, orderBy: { thoi_gian: "desc" }, select: { thoi_gian: true, loai: true, nguon: true, biet_qua: true, trang_thai: true } }),
         }
       : {}),
   };
+}
+
+/** Đếm nhẹ số hồ sơ đang hiện (thanh bên): chủ = mọi em chưa ẩn; GV = em chưa ẩn từng ghi danh môn mình (cùng lọc với danh sách). */
+export async function demHocSinhDangHien(u: Nguoi) {
+  canQuanLy(u);
+  const monIds = monXemDuoc(u);
+  return db.hoc_sinh.count({ where: { an_luc: null, ...(monIds ? { ghi_danh: { some: { mon_id: { in: monIds } } } } : {}) } });
+}
+
+/** Chủ sửa ghi chú hồ sơ (`ghiChu` chung, `ghiChuRieng` chỉ chủ thấy); mỗi ô ≤ 2.000 ký tự, chuỗi rỗng = xoá. */
+export async function suaGhiChuHocSinh(u: Nguoi, maHs: string, v: { ghiChu?: string | null; ghiChuRieng?: string | null }) {
+  canChu(u);
+  const data: { ghi_chu?: string | null; ghi_chu_rieng?: string | null } = {};
+  for (const [k, cot] of [["ghiChu", "ghi_chu"], ["ghiChuRieng", "ghi_chu_rieng"]] as const) {
+    if (v[k] === undefined) continue;
+    const t = v[k]?.trim() || null;
+    if (t && t.length > 2000) throw new LoiDuLieu("Ghi chú tối đa 2.000 ký tự");
+    data[cot] = t;
+  }
+  if (!Object.keys(data).length) throw new LoiDuLieu("Không có gì để lưu");
+  return db.$transaction(async (tx) => {
+    const cu = await tx.hoc_sinh.findUnique({ where: { ma_hs: maHs }, select: { id: true, ghi_chu: true, ghi_chu_rieng: true } });
+    if (!cu) throw new LoiDuLieu(`Không có học sinh ${maHs}`, 404);
+    const r = await tx.hoc_sinh.update({ where: { id: cu.id }, data, select: { ghi_chu: true, ghi_chu_rieng: true } });
+    await ghiNhatKy(u, "sua_ghi_chu_hoc_sinh", "hoc_sinh", maHs, { ghi_chu: cu.ghi_chu, ghi_chu_rieng: cu.ghi_chu_rieng }, r, tx);
+    return { ma_hs: maHs, ...r };
+  });
 }
 
 export async function tenNguoiDung(ids: (string | null)[]) {

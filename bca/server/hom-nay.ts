@@ -4,7 +4,7 @@ import { canChu, canQuanLy, laChu, LoiDuLieu, monXemDuoc, type Nguoi } from "@/l
 import { conGioBuoiToiQua, hetThu, hieuLuc, moDiemDanh, thuSapHet } from "@/lib/quy-tac";
 import { chuanHoaGmail, gmailHopLe, sdtHopLe } from "@/lib/chuan-hoa";
 import { db } from "./db";
-import { napGD, napMon } from "./du-lieu";
+import { giaoVienTheoMon, napGD, napMon } from "./du-lieu";
 import { tienDo } from "./diem-danh";
 import { ghiNhatKy } from "./nhat-ky";
 
@@ -22,7 +22,8 @@ export async function homNay(u: Nguoi, luc = new Date()) {
   const monIds = monXemDuoc(u);
   const mons = (await napMon()).filter((m) => !monIds || monIds.includes(m.id));
   const idsMon = mons.map((m) => m.id);
-  const tenMon = new Map(mons.map((m) => [m.id, { ma: m.ma, ten: m.ten_ngan }]));
+  const gvMon = await giaoVienTheoMon(idsMon);
+  const tenMon = new Map(mons.map((m) => [m.id, { ma: m.ma, ten: m.ten_ngan, ten_day_du: m.ten_day_du, link_meet: m.link_meet, giao_vien: gvMon.get(m.id) ?? [] }]));
   const thang = ngayTrongThang(thangCua(h));
   const tu = [congNgay(h, -14), thang[0]].sort()[0];
 
@@ -130,7 +131,7 @@ export async function homNay(u: Nguoi, luc = new Date()) {
   return { hom_nay: h, vai: u.vai, lop_toi_nay: lopToiNay, viec: hien, so_viec_da_an: viec.length - hien.length, the_so: theSo, lich_7_ngay: lich7 };
 }
 
-function monCua(gds: { mon_id: number }[], ten: Map<number, { ma: string; ten: string }>) {
+function monCua<T>(gds: { mon_id: number }[], ten: Map<number, T>) {
   return [...new Set(gds.map((g) => g.mon_id))].map((id) => ten.get(id)).filter(Boolean);
 }
 
