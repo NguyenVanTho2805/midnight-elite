@@ -30,6 +30,7 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 18. **Cơ sở dữ liệu:** Neon miễn phí, một DB mới tách hẳn khỏi DB của KiN đang chạy.
 19. **Công cụ:** Graphify, Playwright CLI, Agent Skills (Vercel), Ponytail, GSAP, Lenis, React Bits (qua `components.json` → `@react-bits/…`), 21st.dev (cần khoá API của chủ để cài linh kiện; xem trang `.md` để tham khảo thì không cần).
 
+20. **Giao diện (26/11, 3 giám khảo chọn):** một ngôn ngữ nền tối "Midnight" (mẫu A) cho mọi khu; phần đầu học sinh dạng câu + nút to (mẫu C); bảng dày kiểu ma trận (mẫu B). Chi tiết: `thiet-ke/huong-chon.md`, `thiet-ke/token.md`.
+
 ## Câu hỏi đang mở
-- Hướng giao diện: đang để các agent giám khảo chấm 3 mẫu A/B/C.
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
