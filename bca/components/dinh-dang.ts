@@ -11,6 +11,8 @@ export const thuDay = (d: string) => THU[thuSo(d)];
 export const thuNgan = (d: string) => THU_NGAN[thuSo(d)];
 /** "Thứ Năm 26/11" */
 export const thuNgay = (d: string) => `${thuDay(d)} ${ddmm(d)}`;
+/** "Thứ Ba 29/11/2026" — dòng đọc lại dưới ô chọn ngày. */
+export const ngayDu = (d: string) => `${thuDay(d)} ${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 /** "T5 26/11" */
 export const thuNganNgay = (d: string) => `${thuNgan(d)} ${ddmm(d)}`;
 /** Giờ:phút theo giờ Việt Nam của một thời điểm. */

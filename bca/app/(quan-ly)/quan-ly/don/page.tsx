@@ -3,7 +3,6 @@ import Link from "next/link";
 import { danhSachDon } from "@/server/don";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
-import { KhongCoQuyen } from "@/components/ui/trang-thai";
 import { Chip, type MauChip } from "@/components/ui/chip";
 import { ddmm, gio, sdt } from "@/components/dinh-dang";
 import { ngayVN } from "@/lib/ngay";
@@ -18,8 +17,7 @@ const TEN_MON: Record<string, string> = { toan: "Toán", su: "Sử", dia: "Đị
 
 export default async function TrangDon({ searchParams }: { searchParams: Promise<{ loc?: string }> }) {
   const [u, sp] = await Promise.all([layNguoiQuanLy(), searchParams]);
-  const r = await tai(() => danhSachDon(u));
-  if (r.cam) return <KhongCoQuyen />;
+  const r = { d: await tai(() => danhSachDon(u)) };
   const choXuLy = (t: string) => t === "moi" || t === "cho_duyet";
   const tatCa = sp.loc === "tat-ca";
   const ds = r.d.don.filter((d) => tatCa || choXuLy(d.trang_thai));

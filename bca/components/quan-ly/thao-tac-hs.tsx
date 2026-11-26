@@ -13,6 +13,7 @@ import { ToTruot } from "../ui/to-truot";
 import { nhan, nutBieuTuong, nutChinh, nutNguy, nutPhu, oNhap } from "../ui/nut";
 import { useHoanTac } from "../khung/hoan-tac";
 import { useHangDoi } from "../khung/hang-doi";
+import { NgayDoc } from "../ui/ngay-doc";
 import { GiaHan } from "./gia-han";
 
 export type MonHs = { ma: string; ten: string; o: "hoc" | "thu" | "nghi" | null; macDinhCT?: string; vuaHetThu?: boolean };
@@ -125,6 +126,7 @@ function ChinhThuc({ ma, ten, mon, homNay, monBatDau, dong }: Props & { monBatDa
   const tu = ngay ?? macDinh;
   const soMon = mon.filter((m) => m.o === "hoc").length + chon.size;
   const conThuKhongChon = thu.filter((m) => !chon.has(m.ma));
+  const idNgay = useId();
 
   async function gui() {
     if (!chon.size) return setLoi("Chọn ít nhất một môn.");
@@ -154,7 +156,7 @@ function ChinhThuc({ ma, ten, mon, homNay, monBatDau, dong }: Props & { monBatDa
   }
   const o = (m: MonHs) => (
     <label key={m.ma} className="flex min-h-11 items-center gap-3">
-      <input type="checkbox" className="size-5 accent-gold" checked={chon.has(m.ma)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(m.ma)) n.delete(m.ma); else n.add(m.ma); return n; })} />
+      <input type="checkbox" className="o-tich size-5" checked={chon.has(m.ma)} onChange={() => setChon((s) => { const n = new Set(s); if (n.has(m.ma)) n.delete(m.ma); else n.add(m.ma); return n; })} />
       <span>{m.ten} <span className="text-text-3">· {m.o === "thu" ? "đang thử" : m.vuaHetThu ? "vừa hết thử" : m.o === "nghi" ? "đã nghỉ" : "chưa ghi danh"}</span></span>
     </label>
   );
@@ -166,16 +168,17 @@ function ChinhThuc({ ma, ten, mon, homNay, monBatDau, dong }: Props & { monBatDa
       </fieldset>
       <label className="mt-3 block">
         <span className={nhan}>Chính thức từ ngày</span>
-        <input type="date" value={tu} onChange={(e) => setNgay(e.target.value || null)} className={`${oNhap} mt-1 so`} />
+        <input type="date" value={tu} onChange={(e) => setNgay(e.target.value || null)} className={`${oNhap} mt-1 so`} aria-describedby={idNgay} />
       </label>
-      <p className="mt-1 text-[13px] text-text-3">Buổi Có học/Học bù từ ngày này tính vào học phí.</p>
+      <NgayDoc ngay={tu} id={idNgay} />
+      <p className="text-[13px] text-text-3">Buổi Có học/Học bù từ ngày này tính vào học phí.</p>
       {tu < macDinh && thu.some((m) => chon.has(m.ma)) ? <p className="mt-1 text-[13px] text-warn">Lên chính thức sớm — thử cắt còn đến {ddmm(congNgay(tu, -1))}.</p> : null}
       <p className="so mt-3 rounded-[14px] bg-raised px-3 py-2 text-[14px]">
         Từ {ddmm(tu)} học {soMon} môn → {soMon >= 2 ? `${tien(MAC_DINH.GIA_TU_2_MON)}/buổi/môn` : `${tien(MAC_DINH.GIA_1_MON)}/buổi`} (dự kiến)
       </p>
       {conThuKhongChon.length ? (
         <label className="mt-3 flex min-h-11 items-center gap-3">
-          <input type="checkbox" className="size-5 accent-gold" checked={nghiConLai} onChange={(e) => setNghiConLai(e.target.checked)} />
+          <input type="checkbox" className="o-tich size-5" checked={nghiConLai} onChange={(e) => setNghiConLai(e.target.checked)} />
           <span>Cho nghỉ các môn thử còn lại ({conThuKhongChon.map((m) => m.ten).join(", ")})</span>
         </label>
       ) : null}
@@ -218,8 +221,9 @@ function Nghi({ ma, ten, mon, macDinhNghi, monChon, dong }: Props & { monChon?: 
       </select>
       <label className="mt-3 block">
         <span className={nhan}>Học đến hết ngày</span>
-        <input type="date" value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} />
+        <input type="date" value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} aria-describedby={`${id}-ngay`} />
       </label>
+      <NgayDoc ngay={ngay} id={`${id}-ngay`} />
       <p className="mt-2 text-[14px] text-text-2">Em không có tên trong buổi {tenMon} từ {ddmm(congNgay(ngay, 1))}; điểm danh cũ vẫn giữ.</p>
       {loi ? <p role="alert" className="mt-2 text-danger">{loi}</p> : null}
     </ToTruot>

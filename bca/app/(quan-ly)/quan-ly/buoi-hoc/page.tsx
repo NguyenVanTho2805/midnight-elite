@@ -8,7 +8,6 @@ import { congNgay, ngayVN, thuISO } from "@/lib/ngay";
 import { conGioBuoiToiQua, moDiemDanh } from "@/lib/quy-tac";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
-import { KhongCoQuyen } from "@/components/ui/trang-thai";
 import { Chip } from "@/components/ui/chip";
 import { IconDau, IconQuayLai, IconTiep } from "@/components/bieu-tuong";
 import { nutBieuTuong, nutChinh, nutPhu } from "@/components/ui/nut";
@@ -27,8 +26,7 @@ export default async function TrangBuoiHoc({ searchParams }: { searchParams: Pro
   const h = ngayVN(luc);
   const thang = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.thang ?? "") ? sp.thang! : h.slice(0, 7);
   const mons = (await napMon()).filter((m) => chu || u.monIds.includes(m.id)).map((m) => ({ ma: m.ma, ten: m.ten_ngan }));
-  const r = await tai(() => danhSachBuoi(u, { thang, mon: sp.mon || undefined }));
-  if (r.cam) return <KhongCoQuyen thongDiep="Bạn chỉ xem được buổi của môn mình dạy." />;
+  const r = { d: await tai(() => danhSachBuoi(u, { thang, mon: sp.mon || undefined })) };
   const thieuRec = sp.record === "thieu";
   const tatCa = r.d.buoi;
   const ds = thieuRec ? tatCa.filter((b) => b.trang_thai !== "huy" && !b.link_record && b.ngay < h) : tatCa;
@@ -174,13 +172,7 @@ function ChiTiet({ b, chu, h, luc, dongHref, dan, mons, ds }: { b: B; chu: boole
           <Link href={`/quan-ly/diem-danh/${b.id}`} className={`${moDD && chua > 0 ? nutChinh : nutPhu} mt-3 w-full`}>{moDD ? (chua > 0 ? "Mở điểm danh" : "Xem điểm danh") : "Xem trước danh sách"}</Link>
         </div>
       ) : null}
-      <SuaBuoi key={b.id} id={b.id} linkRecord={b.link_record} noiDung={b.noi_dung} dan={dan} />
-      {b.ghi_chu ? (
-        <div>
-          <h3 className="text-[13px] font-semibold text-text-2">Ghi chú nội bộ</h3>
-          <p className="mt-1 whitespace-pre-line text-text-2">{b.ghi_chu}</p>
-        </div>
-      ) : null}
+      <SuaBuoi key={b.id} id={b.id} linkRecord={b.link_record} noiDung={b.noi_dung} ghiChu={b.ghi_chu} dan={dan} />
       {chu ? <HanhDongBuoi b={{ ...nho(b), ly_do_huy: b.ly_do_huy }} daDiem={t?.da_diem ?? 0} coDuLieu={coDuLieu} mon={mons} ds={ds.map(nho)} homNay={h} /> : null}
     </section>
   );

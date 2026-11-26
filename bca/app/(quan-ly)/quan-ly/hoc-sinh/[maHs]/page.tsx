@@ -6,7 +6,6 @@ import { chiTietHocSinh } from "@/server/hoc-sinh";
 import { congNgay } from "@/lib/ngay";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
-import { KhongCoQuyen } from "@/components/ui/trang-thai";
 import { Chip } from "@/components/ui/chip";
 import { ddmm, gio, sdt } from "@/components/dinh-dang";
 import { NutAnHoSo, NutChinhHs, NutMon, ThaoTacHs, type MonHs } from "@/components/quan-ly/thao-tac-hs";
@@ -27,9 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ maHs: str
 export default async function TrangMotEm({ params }: { params: Promise<{ maHs: string }> }) {
   const { maHs } = await params;
   const u = await layNguoiQuanLy();
-  const r = await tai(() => chiTietHocSinh(u, maHs));
-  if (r.cam) return <KhongCoQuyen thongDiep="Em này không học môn bạn dạy." />;
-  const d = r.d;
+  const d = await tai(() => chiTietHocSinh(u, maHs));
   const chu = u.vai === "chu";
   const hs = d.hoc_sinh as typeof d.hoc_sinh & Partial<Record<"sdt_hs" | "sdt_ph" | "gmail" | "ho_ten_ph" | "truong" | "khoi" | "muc_tieu" | "nguon" | "ghi_chu" | "ghi_chu_rieng", string | null>> & { ngay_tao?: Date; dong_y_vinh_danh?: boolean };
   const het = d.tinh_trang.startsWith("Hết thử") ? (d.mon.flatMap((m) => m.ghi_danh).filter((g) => g.loai === "thu" && !g.huy).map((g) => g.den_ngay ?? "").sort().at(-1) ?? null) : null;
@@ -101,7 +98,7 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
             {chu ? (
               <Khoi tieuDe="Liên hệ" mo>
                 <Dong nhan="SĐT học sinh">{hs.sdt_hs ? <a href={`tel:${hs.sdt_hs}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_hs)}</a> : "—"}</Dong>
-                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="break-all">{hs.gmail}</span><SaoChep chu={hs.gmail} /></span> : "—"}</Dong>
+                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="min-w-0 [overflow-wrap:anywhere]">{hs.gmail}</span><SaoChep chu={hs.gmail} /></span> : "—"}</Dong>
                 <Dong nhan="Phụ huynh">{hs.ho_ten_ph ?? "—"}</Dong>
                 <Dong nhan="SĐT phụ huynh">{hs.sdt_ph ? <a href={`tel:${hs.sdt_ph}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_ph)}</a> : "—"}</Dong>
               </Khoi>
@@ -192,7 +189,7 @@ function Khoi({ tieuDe, mo = false, children }: { tieuDe: string; mo?: boolean; 
 
 function Dong({ nhan, children }: { nhan: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[8rem_1fr] items-center gap-2 border-t border-border py-1.5 text-[14px] first:border-t-0">
+    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-2 border-t border-border py-1.5 text-[14px] first:border-t-0">
       <span className="text-text-3">{nhan}</span>
       <span className="min-w-0">{children}</span>
     </div>

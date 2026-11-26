@@ -233,7 +233,8 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
   const ngayQua = Math.floor((Date.now() - batDau) / 86400_000);
   const tieuDeNgan = `${b.mon.ten} · ${thuNganNgay(b.ngay)}`;
   const emDangMo = emMo !== null ? d.em.find((e) => e.hoc_sinh_id === emMo) : null;
-  const xong = dem.chua === 0 && d.em.length > 0 && !dangHoanTac;
+  const du = dem.chua === 0 && d.em.length > 0;
+  const xong = du && !dangHoanTac;
 
   return (
     <>
@@ -298,7 +299,10 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
               {d.em.length && ghiDuoc ? (
                 <div className="day-an-toan fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 px-4 pt-3 backdrop-blur sm:left-[72px] lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
                   <div className="pb-3 lg:pb-0">
-                    {xong ? (
+                    {du && dangHoanTac ? (
+                      // Trong 5 giây Hoàn tác: báo đã đủ nhưng khoá "Xong" để không rời trang khi còn hoàn tác được.
+                      <button type="button" disabled className={`${nutPhu} min-h-14 w-full lg:min-h-11 lg:w-auto so`}>Đã điểm đủ {d.em.length}/{d.em.length} · Xong</button>
+                    ) : xong ? (
                       <Link href="/quan-ly" className={`${nutPhu} min-h-14 w-full lg:min-h-11 lg:w-auto so`}>Đã điểm đủ {d.em.length}/{d.em.length} · Xong</Link>
                     ) : (
                       <button type="button" onClick={danhTatCa} disabled={dem.chua === 0} className={`${nutChinhTo} w-full lg:min-h-11 lg:w-auto lg:text-base so`}>
@@ -343,17 +347,18 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                     const choGui = !!layViec(`dd:${buoiId}:${id}`);
                     const loi = loiHang[id];
                     return (
-                      <tr key={id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-3 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
+                      <tr key={id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-2 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
                         <td className="so hidden px-3 text-text-3 lg:table-cell">{r + 1}</td>
                         <td className="min-w-0 lg:px-3 lg:py-1.5">
                           <span className="flex items-center gap-2">
-                            <button type="button" onClick={() => setEmMo(id)} className="min-h-11 text-left text-base font-semibold leading-snug hover:underline lg:min-h-0" translate="no">
-                              {e.ho_ten}
+                            {/* Điện thoại: tên + loại gộp một nút ≥ 44px (hàng ≈ 64–72px); máy tính: loại ở cột riêng. */}
+                            <button type="button" onClick={() => setEmMo(id)} className="group min-h-11 text-left lg:min-h-0">
+                              <span className="block text-base font-semibold leading-snug group-hover:underline" translate="no">{e.ho_ten}</span>
+                              <span className="mt-0.5 block lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} /> : <span className="text-[13px] text-text-3">Chính thức</span>}</span>
                             </button>
                             {choGui ? <span role="img" aria-label="Chưa gửi" className="inline-block size-2 shrink-0 rounded-full border border-text-3" /> : null}
                             <span className="hidden text-[13px] text-text-3 lg:inline" translate="no">{e.ma_hs}</span>
                           </span>
-                          <div className="mt-0.5 lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} /> : <span className="text-[13px] text-text-3">Chính thức</span>}</div>
                           {h?.ghiChu ? <p className="mt-0.5 text-[13px] text-text-2 lg:hidden">{h.ghiChu}</p> : null}
                           {h?.ghiBoi && h.ghiBoi !== toi && h.ghiLuc ? <p className="text-[12px] text-text-3">Lần sửa cuối: {h.ghiBoi} lúc {gio(h.ghiLuc)}</p> : null}
                           {loi ? <p className="text-[13px] text-danger">Không lưu được · <button type="button" className="min-h-11 font-semibold underline" onClick={() => thuLaiHang(id)}>Thử lại</button> <span className="text-text-3">({loi})</span></p> : null}
@@ -384,20 +389,22 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                           </div>
                         </td>
                         <td className="hidden px-3 lg:table-cell">
+                          {!h?.tt ? <span className="px-2 text-text-3"><span aria-hidden="true">—</span><span className="sr-only">Chưa điểm danh, chưa ghi chú được</span></span> : (
                           <label>
                             <span className="sr-only">Ghi chú cho {e.ho_ten}</span>
                             <input
                               key={`${id}-${h?.ghiChu ?? ""}`}
                               data-ghi-chu={id}
                               defaultValue={h?.ghiChu ?? ""}
-                              disabled={!ghiDuoc || !h?.tt}
-                              placeholder={h?.tt ? "Thêm ghi chú…" : "Điểm danh trước"}
+                              disabled={!ghiDuoc}
+                              placeholder="Thêm ghi chú…"
                               maxLength={500}
                               onBlur={(ev) => luuGhiChu(id, ev.target.value)}
                               onKeyDown={(ev) => { if (ev.key === "Enter") ev.currentTarget.blur(); }}
                               className="min-h-11 w-full rounded-[10px] border border-transparent bg-transparent px-2 text-sm text-text placeholder:text-text-3 hover:border-border-input focus:border-border-input disabled:opacity-60"
                             />
                           </label>
+                          )}
                         </td>
                       </tr>
                     );

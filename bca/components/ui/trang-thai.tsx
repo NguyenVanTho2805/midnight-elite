@@ -1,7 +1,6 @@
-// Trạng thái chung: trống, lỗi, chờ tải, không có quyền (khung-quan-ly §4).
+// Trạng thái chung: trống, lỗi, chờ tải (khung-quan-ly §4). Không có quyền: app/(quan-ly)/quan-ly/forbidden.tsx.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { nutPhu } from "./nut";
 
 export function Trong({ children, hanhDong }: { children: ReactNode; hanhDong?: { href: string; nhan: string } }) {
   return (
@@ -34,12 +33,3 @@ export function ChoTai({ children }: { children: ReactNode }) {
   );
 }
 
-export function KhongCoQuyen({ thongDiep = "Mục này chỉ chủ lớp xem được." }: { thongDiep?: string }) {
-  return (
-    <div className="mx-auto max-w-[1120px] px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="text-[22px] font-extrabold lg:text-[28px]">Không có quyền</h1>
-      <p className="mt-2 text-text-2">{thongDiep}</p>
-      <Link href="/quan-ly" className={`${nutPhu} mt-4`}>Về Hôm nay</Link>
-    </div>
-  );
-}

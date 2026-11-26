@@ -9,6 +9,7 @@ import { ToTruot } from "../ui/to-truot";
 import { nhan, nutChinh, nutPhu, oNhap } from "../ui/nut";
 import { useHoanTac } from "../khung/hoan-tac";
 import { useHangDoi } from "../khung/hang-doi";
+import { NgayDoc } from "../ui/ngay-doc";
 
 export type EmGiaHan = { ma_hs: string; ho_ten: string; mon: string[]; den: string | null; het?: string | null };
 const CHON = [3, 7, 14] as const;
@@ -100,9 +101,10 @@ export function GiaHan({ em, homNay, mo, dong, xong }: { em: EmGiaHan[]; homNay:
       {kieu === "ngay" ? (
         <label className="mt-3 block">
           <span className={nhan}>Ngày hết mới</span>
-          <input type="date" min={homNay} value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} />
+          <input type="date" min={homNay} value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} aria-describedby={`${id}-ngay`} />
         </label>
       ) : null}
+      {kieu === "ngay" ? <NgayDoc ngay={ngay} id={`${id}-ngay`} /> : null}
       <div className="mt-4 rounded-[14px] bg-raised px-3 py-2 text-[14px] so" aria-live="polite">
         {mot ? (
           mot.den ? `${mot.mon.join(", ") || "Môn thử"}: ${ddmm(mot.den)} → ${denMoi(mot) ? ddmm(denMoi(mot)) : "…"}` : `Thử lại ${ddmm(homNay)} → ${denMoi(mot) ? ddmm(denMoi(mot)) : "…"} (không mở lại các ngày đã qua)`

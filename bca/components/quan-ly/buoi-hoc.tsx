@@ -1,5 +1,5 @@
 "use client";
-// Phần tương tác của màn Buổi học (man-buoi-hoc.md): dán link record + nội dung buổi (chủ + GV môn, qua hàng đợi),
+// Phần tương tác của màn Buổi học (man-buoi-hoc.md): dán link record + nội dung buổi + ghi chú nội bộ (chủ + GV môn, qua hàng đợi),
 // huỷ / bỏ huỷ / xoá buổi và thêm học bù (chỉ chủ, lý do bắt buộc, Hoàn tác 5 giây).
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
@@ -9,6 +9,7 @@ import { ddmm, thuNgay } from "../dinh-dang";
 import { IconCong, IconMoNgoai } from "../bieu-tuong";
 import { ToTruot } from "../ui/to-truot";
 import { nhan, nutChinh, nutNguy, nutPhu, oNhap } from "../ui/nut";
+import { NgayDoc } from "../ui/ngay-doc";
 import { useHoanTac } from "../khung/hoan-tac";
 import { datViec, dangKyXuLy, useHangDoi, viecCuaNhom } from "../khung/hang-doi";
 
@@ -22,17 +23,18 @@ export function CuonToi({ id }: { id: string }) {
   return null;
 }
 
-export function SuaBuoi({ id, linkRecord, noiDung, dan }: { id: number; linkRecord: string | null; noiDung: string | null; dan: boolean }) {
+export function SuaBuoi({ id, linkRecord, noiDung, ghiChu, dan }: { id: number; linkRecord: string | null; noiDung: string | null; ghiChu: string | null; dan: boolean }) {
   const nhom = `buoi:${id}`;
   const [link, setLink] = useState(linkRecord ?? "");
   const [daLuu, setDaLuu] = useState(linkRecord);
   const [loi, setLoi] = useState("");
   const [nd, setNd] = useState(noiDung ?? "");
+  const [gc, setGc] = useState(ghiChu ?? "");
   const [coDan, setCoDan] = useState(false);
   const router = useRouter();
   useHangDoi();
   const cho = viecCuaNhom(nhom);
-  const idLink = useId(), idNd = useId();
+  const idLink = useId(), idNd = useId(), idGc = useId();
   const o = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setCoDan(typeof navigator !== "undefined" && !!navigator.clipboard?.readText); }, []);
@@ -58,6 +60,11 @@ export function SuaBuoi({ id, linkRecord, noiDung, dan }: { id: number; linkReco
   function luuNd(v: string) {
     if (v.trim() === (noiDung ?? "")) return;
     datViec({ khoa: `buoi:${id}:noi-dung`, nhom, url: `/api/buoi-hoc/${id}`, method: "PATCH", body: { noiDung: v.trim() || null } });
+  }
+  // Ghi chú nội bộ (PATCH /api/buoi-hoc/[id] { ghiChu }, ≤ 500 ký tự, học sinh không thấy) — cùng hàng đợi, khoá riêng.
+  function luuGc(v: string) {
+    if (v.trim() === (ghiChu ?? "")) return;
+    datViec({ khoa: `buoi:${id}:ghi-chu`, nhom, url: `/api/buoi-hoc/${id}`, method: "PATCH", body: { ghiChu: v.trim() || null } });
   }
   const host = (() => { try { return link ? new URL(link).hostname : ""; } catch { return ""; } })();
   const lacMien = !!host && !loi && !MIEN_QUEN.includes(host);
@@ -103,6 +110,14 @@ export function SuaBuoi({ id, linkRecord, noiDung, dan }: { id: number; linkReco
         <p className="text-[13px] text-text-3">
           {cho.some((v) => v.khoa.endsWith(":noi-dung")) ? "Đang lưu…" : "Lưu khi rời ô. Học sinh thấy nội dung ngay khi ghi."}
           {2000 - nd.length < 200 ? <span className="so ml-2 text-warn">còn {2000 - nd.length} ký tự</span> : null}
+        </p>
+      </div>
+      <div>
+        <label htmlFor={idGc} className={nhan}>Ghi chú nội bộ</label>
+        <textarea id={idGc} rows={2} maxLength={500} value={gc} onChange={(e) => setGc(e.target.value)} onBlur={(e) => luuGc(e.target.value)} className={`${oNhap} mt-1 py-2`} placeholder="Ví dụ: Thiếu 10 phút cuối do mất điện" aria-describedby={`${idGc}-tt`} />
+        <p id={`${idGc}-tt`} className="text-[13px] text-text-3">
+          {cho.some((v) => v.khoa.endsWith(":ghi-chu")) ? "Đang lưu…" : "Chỉ chủ lớp và giáo viên thấy. Lưu khi rời ô."}
+          {500 - gc.length < 50 ? <span className="so ml-2 text-warn">còn {500 - gc.length} ký tự</span> : null}
         </p>
       </div>
     </div>
@@ -176,7 +191,7 @@ export function HanhDongBuoi({ b, daDiem, coDuLieu, mon, ds, homNay }: { b: Buoi
         <label className="mt-4 block" htmlFor={id}><span className={nhan}>Lý do (bắt buộc)</span></label>
         <input id={id} value={lyDo} onChange={(e) => { setLyDo(e.target.value); setLoi(""); }} placeholder="GV ốm, Nghỉ lễ…" className={`${oNhap} mt-1`} aria-invalid={!!loi} autoComplete="off" />
         <label className="mt-3 flex min-h-11 items-center gap-3">
-          <input type="checkbox" className="size-5 accent-gold" checked={buNgay} onChange={(e) => setBuNgay(e.target.checked)} />
+          <input type="checkbox" className="o-tich size-5" checked={buNgay} onChange={(e) => setBuNgay(e.target.checked)} />
           Thêm buổi học bù ngay
         </label>
         {loi ? <p role="alert" className="mt-2 text-danger">{loi}</p> : null}
@@ -212,6 +227,7 @@ function HocBu({ mon, ds, homNay, buCho, dong }: { mon: Mon[]; ds: BuoiNho[]; ho
   const cungGio = ds.filter((b) => b.mon.ma !== monMa && b.ngay === ngay && b.gio === gio && b.trang_thai !== "huy");
   const huyCuaMon = ds.filter((b) => b.mon.ma === monMa && b.trang_thai === "huy");
   const tenMon = mon.find((m) => m.ma === monMa)?.ten ?? "";
+  const idNgay = useId();
 
   async function gui() {
     if (trung) return setLoi(`${tenMon} đã có buổi ${gio} ngày ${ddmm(ngay)}. Chọn giờ hoặc ngày khác.`);
@@ -257,8 +273,8 @@ function HocBu({ mon, ds, homNay, buCho, dong }: { mon: Mon[]; ds: BuoiNho[]; ho
           ))}
         </div>
       </fieldset>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <label className="block"><span className={nhan}>Ngày</span><input type="date" value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} /></label>
+      <div className="mt-3 grid grid-cols-2 items-start gap-3">
+        <div><label className="block"><span className={nhan}>Ngày</span><input type="date" value={ngay} onChange={(e) => setNgay(e.target.value)} className={`${oNhap} mt-1 so`} aria-describedby={idNgay} /></label><NgayDoc ngay={ngay} id={idNgay} /></div>
         <label className="block"><span className={nhan}>Giờ</span><input type="time" value={gio} onChange={(e) => setGio(e.target.value)} className={`${oNhap} mt-1 so`} /></label>
       </div>
       <label className="mt-3 block"><span className={nhan}>Thời lượng (phút)</span><input type="number" min={15} max={300} step={15} value={soPhut} onChange={(e) => setSoPhut(Number(e.target.value))} className={`${oNhap} mt-1 so`} /></label>

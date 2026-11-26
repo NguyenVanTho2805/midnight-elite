@@ -5,7 +5,6 @@ import { napMon } from "@/server/du-lieu";
 import { congNgay, ngayVN } from "@/lib/ngay";
 import { layNguoiQuanLy, tai } from "@/components/khung/nguoi";
 import { DauTrang, NoiDung } from "@/components/khung/dau-trang";
-import { KhongCoQuyen } from "@/components/ui/trang-thai";
 import { IconDau, IconQuayLai, IconTiep } from "@/components/bieu-tuong";
 import { nutBieuTuong } from "@/components/ui/nut";
 import { MaTran } from "@/components/quan-ly/ma-tran";
@@ -17,8 +16,7 @@ export default async function TrangMaTran({ searchParams }: { searchParams: Prom
   const mons = (await napMon()).filter((m) => u.vai === "chu" || u.monIds.includes(m.id));
   const mon = mons.find((m) => m.ma === sp.mon)?.ma ?? sp.mon ?? mons[0]?.ma ?? "toan";
   const thang = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.thang ?? "") ? sp.thang! : ngayVN(new Date()).slice(0, 7);
-  const r = await tai(() => maTranThang(u, mon, thang));
-  if (r.cam) return <KhongCoQuyen thongDiep="Bạn chỉ xem được ma trận của môn mình dạy." />;
+  const r = { d: await tai(() => maTranThang(u, mon, thang)) };
   const dang = sp.dang === "1";
   const url = (p: { mon?: string; thang?: string; dang?: boolean }) => {
     const q = new URLSearchParams({ mon: p.mon ?? mon, thang: p.thang ?? thang });

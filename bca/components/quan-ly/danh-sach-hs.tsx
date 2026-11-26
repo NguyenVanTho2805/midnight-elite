@@ -155,7 +155,7 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
                 <li key={x.ma} className="hang-dai border-b border-border last:border-b-0">
                   {chonMo ? (
                     <label className="flex min-h-16 cursor-pointer items-start gap-3 px-4 py-3">
-                      <input type="checkbox" checked={chon.has(x.ma)} onChange={() => doiChon(x.ma)} className="mt-0.5 size-6 shrink-0 accent-gold" aria-label={`Chọn ${x.ten}`} />
+                      <input type="checkbox" checked={chon.has(x.ma)} onChange={() => doiChon(x.ma)} className="o-tich mt-0.5 size-6" aria-label={`Chọn ${x.ten}`} />
                       <span className="min-w-0 flex-1">{noi}</span>
                     </label>
                   ) : (
@@ -168,45 +168,55 @@ export function DanhSachHs({ ds, mon, chu, homNay }: { ds: HsDong[]; mon: Mon[];
 
           {/* Máy tính: bảng */}
           <div className="hidden rounded-[14px] border border-border bg-surface lg:block">
-            <table className="w-full text-left text-sm">
+            {/* table-fixed + colgroup: cột không nhảy khi lọc; hàng 48px (56 khi chip môn xuống dòng). */}
+            <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">Danh sách học sinh</caption>
-              <thead className="bong-dinh sticky top-16 z-10 bg-surface text-[13px] font-semibold text-text-2">
+              <colgroup>
+                {chu ? <col className="w-12" /> : null}
+                <col className={chu ? "w-[28%]" : "w-[34%]"} />
+                <col className={chu ? "w-[30%]" : "w-[36%]"} />
+                <col className={chu ? "w-[16%]" : "w-[18%]"} />
+                <col className={chu ? "w-[8%]" : "w-[9%]"} />
+                {chu ? <col className="w-[13%]" /> : null}
+                <col className="w-8" />
+              </colgroup>
+              <thead className="bong-dinh sticky top-16 z-10 whitespace-nowrap bg-surface text-[13px] font-semibold text-text-2">
                 <tr className="border-b border-border">
                   {chu ? (
-                    <th scope="col" className="w-12 px-2">
-                      <label className="flex size-11 items-center justify-center">
+                    <th scope="col" className="px-0.5 py-0">
+                      <label className="flex size-11 cursor-pointer items-center justify-center">
                         <span className="sr-only">Chọn tất cả em đang hiện</span>
-                        <input type="checkbox" className="size-5 accent-gold" checked={hien.length > 0 && hien.every((x) => chon.has(x.ma))} onChange={(e) => setChon(e.target.checked ? new Set(hien.map((x) => x.ma)) : new Set())} />
+                        <input type="checkbox" className="o-tich size-5" checked={hien.length > 0 && hien.every((x) => chon.has(x.ma))} onChange={(e) => setChon(e.target.checked ? new Set(hien.map((x) => x.ma)) : new Set())} />
                       </label>
                     </th>
                   ) : null}
                   <ThSap k="ten" sap={p.sap} href={href("sap", "ten")}>Học sinh</ThSap>
-                  <th scope="col" className="px-3 py-2">Môn</th>
+                  <th scope="col" className="px-3 py-1">Môn</th>
                   <ThSap k="het" sap={p.sap} href={href("sap", "het")}>Hạn thử</ThSap>
                   <ThSap k="moi" sap={p.sap} href={href("sap", "moi")}>Đăng ký</ThSap>
-                  {chu ? <th scope="col" className="px-3 py-2">SĐT HS</th> : null}
-                  <th scope="col" className="w-8"><span className="sr-only">Mở</span></th>
+                  {chu ? <th scope="col" className="px-3 py-1">SĐT HS</th> : null}
+                  <th scope="col"><span className="sr-only">Mở</span></th>
                 </tr>
               </thead>
               <tbody>
                 {hien.map((x) => (
-                  <tr key={x.ma} className="hang-dai relative border-b border-border last:border-b-0 hover:bg-row-hover">
+                  <tr key={x.ma} className="hang-dai relative h-12 border-b border-border last:border-b-0 hover:bg-row-hover">
                     {chu ? (
-                      <td className="relative z-[1] px-2">
-                        <label className="flex size-11 items-center justify-center">
+                      <td className="relative z-[1] px-0.5 py-0">
+                        <label className="flex size-11 cursor-pointer items-center justify-center">
                           <span className="sr-only">Chọn {x.ten}</span>
-                          <input type="checkbox" className="size-5 accent-gold" checked={chon.has(x.ma)} onChange={() => doiChon(x.ma)} />
+                          <input type="checkbox" className="o-tich size-5" checked={chon.has(x.ma)} onChange={() => doiChon(x.ma)} />
                         </label>
                       </td>
                     ) : null}
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1.5">
                       <Link href={`/quan-ly/hoc-sinh/${x.ma}`} className="font-semibold after:absolute after:inset-0 hover:underline" translate="no">{x.ten}</Link>
-                      <span className="so ml-2 text-[13px] text-text-3" translate="no">{x.ma}{x.lua ? ` · ${x.lua}` : ""}</span>
+                      <span className="so ml-2 whitespace-nowrap text-[13px] text-text-3" translate="no">{x.ma}{x.lua ? ` · ${x.lua}` : ""}</span>
                     </td>
-                    <td className="px-3 py-2"><span className="flex flex-wrap gap-1.5">{x.mon.map((m) => <MonChip key={m.ma} ten={m.ten} o={m.o} />)}</span></td>
-                    <td className="so px-3 py-2">{hetThu(x) || x.thu ? <span className="flex flex-wrap items-center gap-1.5">{hanThu(x)}{x.thu ? <span className="text-text-3">{ddmm(x.thu.den)}</span> : null}</span> : <span className="text-text-3">—</span>}</td>
-                    <td className="so px-3 py-2 text-text-2">{x.dangKy ? ddmm(x.dangKy) : "—"}</td>
-                    {chu ? <td className="so relative z-[1] whitespace-nowrap px-3 py-2">{x.sdt ? <a href={`tel:${x.sdt}`} translate="no" className="inline-flex min-h-11 items-center hover:underline">{sdt(x.sdt)}</a> : <span className="text-text-3">—</span>}</td> : null}
+                    <td className="px-3 py-1.5"><span className="flex flex-wrap gap-1.5">{x.mon.map((m) => <MonChip key={m.ma} ten={m.ten} o={m.o} />)}</span></td>
+                    <td className="so px-3 py-1.5">{hetThu(x) || x.thu ? <span className="flex flex-nowrap items-center gap-1.5 whitespace-nowrap">{hanThu(x)}{x.thu ? <span className="text-text-3">{ddmm(x.thu.den)}</span> : null}</span> : <span className="text-text-3">—</span>}</td>
+                    <td className="so px-3 py-1.5 text-text-2">{x.dangKy ? ddmm(x.dangKy) : "—"}</td>
+                    {chu ? <td className="so relative z-[1] whitespace-nowrap px-3 py-0">{x.sdt ? <a href={`tel:${x.sdt}`} translate="no" className="inline-flex min-h-11 items-center hover:underline">{sdt(x.sdt)}</a> : <span className="text-text-3">—</span>}</td> : null}
                     <td aria-hidden="true" className="px-2 text-text-3">›</td>
                   </tr>
                 ))}
