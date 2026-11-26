@@ -17,6 +17,17 @@ Từ BCA-D1-VAI-HS (vai học sinh, ĐẠT):
 9. `soNguyen` chỉ nhận `^-?\d+$` (server/api.ts) — hiện `0x2` được hiểu là 2.
 10. Giới hạn tần suất / gộp dòng nhật ký "từ chối" (server/api.ts:17).
 
+Từ BCA-D1-VAI-GV (vai giáo viên, ĐẠT — 7 chạm, ~10 s máy đo / ~25 s người thật cho 5 em vắng):
+11. Nút "Đã điểm đủ · Xong" phải khoá khi mất mạng hoặc còn thay đổi chưa gửi (bấm vào là trình duyệt báo lỗi mạng) — diem-danh-buoi.tsx:305-306. **Ưu tiên cao nhất trong nhóm P3.**
+12. Ma trận: phím 1/2/3 trên cột quá 48 giờ phải mở hỏi xác nhận như Enter (ma-tran.tsx:118).
+13. Buổi quá 48 giờ trên điện thoại: sau "Mở sửa cả buổi" áp luôn lựa chọn vừa chạm; câu cảnh báo cho GV không nhắc học phí (diem-danh-buoi.tsx:140, 279, 449).
+14. PATCH /api/buoi-hoc/[id] không có trường hợp lệ ⇒ 400, không ghi nhật ký rỗng.
+15. Điểm danh điện thoại: thêm nút Tìm cạnh "Đánh tất cả" ở đáy (tầm ngón cái).
+16. Chip "Thử · còn N ngày" không xuống dòng khi hiện chấm "chưa gửi".
+17. "Dán link record" hiện cả dưới 1024px trên màn Điểm danh (diem-danh-buoi.tsx:263-267).
+18. Bỏ chữ "GV" lặp trước tên hiển thị.
+19. Chặn đồng nhất: buổi môn khác cũng hiện "Không tìm thấy" như hồ sơ (không lộ việc buổi tồn tại).
+
 ## Đợt 2 — ghi chú đầu vào
 - Khu học sinh thay trang /hoc tạm: chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
 - T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.
