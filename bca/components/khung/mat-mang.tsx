@@ -12,8 +12,10 @@ export function MatMang() {
     <>
       <div aria-live="polite" className="fixed inset-x-0 top-14 z-20 sm:left-[72px] sm:top-16 lg:left-60">
         {t.matMang ? (
-          <p className="flex min-h-10 items-center bg-warn-bg px-4 py-2 text-[14px] text-text sm:px-6 lg:px-8">
-            Đang mất mạng — thay đổi được giữ trên máy và tự gửi khi có mạng.{t.cho > 0 ? <span className="so ml-1 font-semibold"> {t.cho} thay đổi chưa gửi.</span> : null}
+          <p className="dai-mat-mang flex h-10 items-center whitespace-nowrap overflow-hidden bg-warn-bg px-4 py-2 text-[14px] text-text sm:px-6 lg:px-8">
+            <span className="sm:hidden">Mất mạng · tự gửi khi có mạng.</span>
+            <span className="hidden sm:inline">Đang mất mạng — thay đổi được giữ trên máy và tự gửi khi có mạng.</span>
+            {t.cho > 0 ? <span className="so ml-1 font-semibold">{t.cho}<span className="hidden sm:inline"> thay đổi</span> chưa gửi.</span> : null}
           </p>
         ) : null}
       </div>

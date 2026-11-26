@@ -75,3 +75,7 @@ dialog.to-truot[open] { animation: bca-truot-len var(--dur-sheet) var(--ease-out
 .vach-dem { transform-origin: left; }
 .hang-dai { content-visibility: auto; contain-intrinsic-size: auto 72px; }
 @media (prefers-reduced-motion: reduce) { .nhan:active { transform: none; } }
+/* Dải mất mạng (cố định dưới đầu trang): đẩy nội dung và thanh lọc dính xuống để không bị che */
+body:has(.dai-mat-mang) main > header { margin-bottom: 40px; }
+body:has(.dai-mat-mang) .dinh-duoi-dau { top: 96px; }
+@media (min-width: 640px) { body:has(.dai-mat-mang) .dinh-duoi-dau { top: 104px; } }

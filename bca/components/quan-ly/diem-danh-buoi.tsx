@@ -282,10 +282,10 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
             {d.trang_thai_ghi === "chua_mo" ? <p className="mt-2 rounded-[14px] bg-raised px-4 py-3 so">Điểm danh mở lúc {gio(batDau - 30 * 60_000)}. Danh sách dưới đây chỉ để xem trước.</p> : null}
             {d.trang_thai_ghi === "tuong_lai" ? <p className="mt-2 rounded-[14px] bg-raised px-4 py-3">Buổi chưa diễn ra. Danh sách dưới đây chỉ để xem trước.</p> : null}
 
-            <div className="sticky top-14 z-10 -mx-4 mt-2 bg-bg px-4 py-2 sm:top-16 lg:static lg:mx-0 lg:mt-4 lg:flex lg:items-center lg:gap-3 lg:px-0">
-              <div role="group" aria-label="Lọc theo trạng thái" className="flex gap-2 overflow-x-auto">
+            <div className="dinh-duoi-dau sticky top-14 z-10 -mx-4 mt-2 bg-bg px-4 py-2 sm:top-16 lg:static lg:mx-0 lg:mt-4 lg:flex lg:items-center lg:gap-3 lg:px-0">
+              <div role="group" aria-label="Lọc theo trạng thái" className="flex gap-1.5 overflow-x-auto">
                 {([["chua", "Chưa điểm", dem.chua], ["co", "Có", dem.co], ["phep", "Phép", dem.phep], ["vang", "Vắng", dem.vang]] as const).map(([k, t, n]) => (
-                  <button key={k} type="button" aria-pressed={loc === k} onClick={() => chonLoc(k)} className={`nhan inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-semibold ${loc === k ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2"}`}>
+                  <button key={k} type="button" aria-pressed={loc === k} onClick={() => chonLoc(k)} className={`nhan inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[14px] font-semibold ${loc === k ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2"}`}>
                     {loc === k ? <IconDau size={14} /> : null}{t} <span className={`so ${k === "chua" && n > 0 ? "text-warn" : ""}`}>{n}</span>
                   </button>
                 ))}
@@ -343,14 +343,16 @@ export function DiemDanhBuoi({ d: d0, toi, chu }: { d: D; toi: string; chu: bool
                     const choGui = !!layViec(`dd:${buoiId}:${id}`);
                     const loi = loiHang[id];
                     return (
-                      <tr key={id} className={`hang-dai grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-3 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
+                      <tr key={id} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 border-b border-border py-3 max-[339px]:grid-cols-1 max-[339px]:gap-y-2 lg:table-row lg:py-0 lg:hover:bg-row-hover ${loi ? "border-l-[3px] border-l-danger pl-2" : ""} ${vuaDoi.has(id) ? "vua-doi" : ""}`}>
                         <td className="so hidden px-3 text-text-3 lg:table-cell">{r + 1}</td>
                         <td className="min-w-0 lg:px-3 lg:py-1.5">
-                          <button type="button" onClick={() => setEmMo(id)} className="block min-h-11 text-left text-base font-semibold leading-snug hover:underline lg:inline lg:min-h-0" translate="no">
-                            {e.ho_ten}
-                          </button>
-                          {choGui ? <span role="img" aria-label="Chưa gửi" className="ml-2 inline-block size-2 rounded-full border border-text-3 align-middle" /> : null}
-                          <span className="ml-2 hidden text-[13px] text-text-3 lg:inline" translate="no">{e.ma_hs}</span>
+                          <span className="flex items-center gap-2">
+                            <button type="button" onClick={() => setEmMo(id)} className="min-h-11 text-left text-base font-semibold leading-snug hover:underline lg:min-h-0" translate="no">
+                              {e.ho_ten}
+                            </button>
+                            {choGui ? <span role="img" aria-label="Chưa gửi" className="inline-block size-2 shrink-0 rounded-full border border-text-3" /> : null}
+                            <span className="hidden text-[13px] text-text-3 lg:inline" translate="no">{e.ma_hs}</span>
+                          </span>
                           <div className="mt-0.5 lg:hidden">{e.loai === "thu" ? <TrialChip con={e.thu_con_ngay} /> : <span className="text-[13px] text-text-3">Chính thức</span>}</div>
                           {h?.ghiChu ? <p className="mt-0.5 text-[13px] text-text-2 lg:hidden">{h.ghiChu}</p> : null}
                           {h?.ghiBoi && h.ghiBoi !== toi && h.ghiLuc ? <p className="text-[12px] text-text-3">Lần sửa cuối: {h.ghiBoi} lúc {gio(h.ghiLuc)}</p> : null}
