@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const thuMuc = path.dirname(fileURLToPath(import.meta.url));
-const NHOM = ["chu-lop", "gv-toan", "gv-anh", "khach", "do-dac"];
+const NHOM = ["chu-lop", "gv-toan", "gv-anh", "khach", "do-dac", "dang-nhap"];
 const chon = process.argv.slice(2);
 const kq = path.join(os.tmpdir(), `bca-tests-ui-${process.pid}.jsonl`);
 fs.rmSync(kq, { force: true });

@@ -18,7 +18,8 @@ export async function GET(req: Request) {
   const state = q.get("state"), code = q.get("code");
   // State sai/thiếu/cookie hết hạn ⇒ không tin bất kỳ tham số nào khác (chống CSRF đăng nhập).
   if (!tam || typeof tam.state !== "string" || !state || state !== tam.state) return loi("het_han");
-  if (q.get("error")) return loi("huy");
+  // access_denied = người dùng bấm Huỷ; lỗi khác (cấu hình client sai…) không đổ cho người dùng.
+  if (q.get("error")) return loi(q.get("error") === "access_denied" ? "huy" : "google_loi");
   if (!code) return loi("google_loi");
   try {
     const email = await doiCodeLayEmail(code, String(tam.verifier), String(tam.nonce), String(tam.redirect), cfg);

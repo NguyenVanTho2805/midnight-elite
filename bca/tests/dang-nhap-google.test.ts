@@ -233,11 +233,13 @@ describe("Callback — từ chối (không cấp phiên)", () => {
     tuChoi(await veTu({ code: "c", state: "x" }, `bca_google=${phien}`), "het_han");
     expect(goiToken).toHaveLength(0);
   });
-  it("người dùng bấm Huỷ ở Google (error=access_denied, state đúng) → huy; thiếu code → google_loi", async () => {
+  it("người dùng bấm Huỷ ở Google (error=access_denied, state đúng) → huy; thiếu code / lỗi khác của Google → google_loi", async () => {
     let b = await batDau();
     tuChoi(await veTu({ error: "access_denied", state: b.tam.state }, b.cookie), "huy");
     b = await batDau();
     tuChoi(await veTu({ state: b.tam.state }, b.cookie), "google_loi");
+    b = await batDau();
+    tuChoi(await veTu({ error: "unauthorized_client", state: b.tam.state }, b.cookie), "google_loi");
     expect(goiToken).toHaveLength(0);
   });
   it("thiếu biến lúc Google gọi về → chua_cau_hinh", async () => {
@@ -316,7 +318,14 @@ describe("scripts/them-nguoi-dung — tạo tài khoản chủ đầu tiên / th
     expect(g2).toMatchObject({ ket_qua: "da_cap_nhat", id: g1.id, them_mon: ["su"] });
     expect(await db.phan_cong.count({ where: { nguoi_dung_id: g1.id } })).toBe(2);
     await db.nguoi_dung.update({ where: { id: g1.id }, data: { khoa_luc: new Date() } });
-    expect(await themNguoiDung(db as never, { gmail: "co.hoa@gmail.com", ten: "Cô Hoa", vai: "giao_vien", mon: [] })).toMatchObject({ dang_khoa: true });
+    expect(await themNguoiDung(db as never, { gmail: "co.hoa@gmail.com", ten: "Cô Hoa", vai: "giao_vien", mon: [] })).toMatchObject({ dang_khoa: true, canh_bao: [] });
+    // cảnh báo trùng hộp Gmail (T48/T49), không in Gmail
+    await db.hoc_sinh.update({ where: { ma_hs: "HS0013" }, data: { gmail: "cohoa@gmail.com" } });
+    const g3 = await themNguoiDung(db as never, { gmail: "C.O.Hoa@gmail.com", ten: "Cô Hoa 2", vai: "giao_vien", mon: [] });
+    expect(g3.canh_bao).toHaveLength(2);
+    expect(g3.canh_bao.join(" ")).toContain("HS0013");
+    expect(g3.canh_bao.join(" ")).not.toContain("@");
+    await db.hoc_sinh.update({ where: { ma_hs: "HS0013" }, data: { gmail: "hs13@example.com" } });
   });
   it("đầu vào sai → lỗi rõ, không ghi gì", async () => {
     const n = await db.nguoi_dung.count();

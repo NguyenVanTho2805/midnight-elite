@@ -100,8 +100,7 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
             {chu ? (
               <Khoi tieuDe="Liên hệ" mo>
                 <Dong nhan="SĐT học sinh">{hs.sdt_hs ? <a href={`tel:${hs.sdt_hs}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_hs)}</a> : "—"}</Dong>
-                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="min-w-0 [overflow-wrap:anywhere]">{hs.gmail}</span><SaoChep chu={hs.gmail} /></span> : "—"}</Dong>
-                {hs.gmail && !hs.an_luc ? <div className="pb-1.5 pl-[7rem]"><DangXuatHs ma={hs.ma_hs} ten={hs.ho_ten} /></div> : null}
+                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="min-w-0 [overflow-wrap:anywhere]">{hs.gmail}</span><SaoChep chu={hs.gmail} />{!hs.an_luc ? <DangXuatHs ma={hs.ma_hs} ten={hs.ho_ten} /> : null}</span> : "—"}</Dong>
                 <Dong nhan="Phụ huynh">{hs.ho_ten_ph ?? "—"}</Dong>
                 <Dong nhan="SĐT phụ huynh">{hs.sdt_ph ? <a href={`tel:${hs.sdt_ph}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_ph)}</a> : "—"}</Dong>
               </Khoi>

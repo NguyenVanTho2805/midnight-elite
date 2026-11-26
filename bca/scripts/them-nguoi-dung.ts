@@ -5,7 +5,7 @@
 //   BCA_DATABASE_URL=<chuỗi Neon> npx tsx scripts/them-nguoi-dung.ts --gmail gv@gmail.com --ten "Cô Hoa" --vai giao_vien --mon toan
 // Lặp lại an toàn: Gmail đã có ⇒ cập nhật tên/vai, THÊM môn còn thiếu (không bỏ môn cũ, không mở khoá tài khoản đã khoá).
 // Không xoá gì. Nhật ký ghi vai "he_thong" (không tính là "web đã vận hành" với chuyen-tu-sheet).
-import { chuanHoaGmail, gmailHopLe } from "../lib/chuan-hoa";
+import { chuanHoaGmail, gmailGoc, gmailHopLe } from "../lib/chuan-hoa";
 import type { PrismaClient } from "../generated/prisma/client";
 
 export type NguoiMoi = { gmail: string; ten: string; vai: "chu" | "giao_vien"; mon: string[] };
@@ -34,7 +34,15 @@ export async function themNguoiDung(db: PrismaClient, v: NguoiMoi) {
         sau: { ten_hien_thi: ten, vai_tro: v.vai, them_mon: them.map((m) => m.ma) },
       },
     });
-    return { ket_qua: cu ? "da_cap_nhat" : "da_tao", id: nd.id, vai: v.vai, them_mon: them.map((m) => m.ma), dang_khoa: !!nd.khoa_luc };
+    // Cùng hộp Gmail (khác dấu chấm / chữ hoa) ở tài khoản khác ⇒ đăng nhập sẽ bị từ chối "trung_gmail" (T48); hồ sơ học sinh trùng ⇒ vào vai GV (T49).
+    const goc = gmailGoc(gmail);
+    const ndKhac = (await tx.nguoi_dung.findMany({ where: { id: { not: nd.id } }, select: { gmail: true } })).filter((x) => gmailGoc(x.gmail) === goc).length;
+    const hsTrung = (await tx.hoc_sinh.findMany({ where: { gmail: { not: null } }, select: { ma_hs: true, gmail: true } })).filter((x) => gmailGoc(x.gmail) === goc).map((x) => x.ma_hs);
+    const canh_bao = [
+      ...(ndKhac ? [`Có ${ndKhac} tài khoản khác cùng hộp Gmail này — đăng nhập sẽ bị từ chối tới khi gộp`] : []),
+      ...(hsTrung.length ? [`Gmail này cũng ghi trên hồ sơ học sinh ${hsTrung.join(", ")} — đăng nhập sẽ vào vai ${v.vai}`] : []),
+    ];
+    return { ket_qua: cu ? "da_cap_nhat" : "da_tao", id: nd.id, vai: v.vai, them_mon: them.map((m) => m.ma), dang_khoa: !!nd.khoa_luc, canh_bao };
   });
 }
 
