@@ -78,14 +78,19 @@ export type Viec =
 
 export class LoiQuyTac extends Error {}
 
-/** Điều 5.4: gia hạn thử (áp mọi môn đang thử — T4). */
+/** Thanh Hoàn tác hiện 5 giây (man-hoc-sinh.md 9.2); máy chủ nhận thêm 5 giây cho mạng chậm. Tính từ lúc thao tác gốc. */
+export const HAN_HOAN_TAC_MS = 10_000;
+/** Còn trong hạn hoàn tác không. `lucGoc` thiếu/hỏng ⇒ coi như quá hạn. */
+export const conHanHoanTac = (lucGoc: unknown, luc: Date) => luc.getTime() - Date.parse(String(lucGoc)) <= HAN_HOAN_TAC_MS;
+
+/** Điều 5.4: gia hạn thử — chỉ các môn đang thử (T4); môn chủ đã cho nghỉ (nghi_luc, T34) không được gia hạn lại. */
 export function keHoachGiaHan(gds: GD[], h: string, opt: { soNgay?: number; denNgay?: string }): { viec: Viec[]; denMoi: string; doanMoi: boolean } {
-  const dangThu = gds.filter((g) => g.loai === "thu" && !g.huy && g.den! >= h);
+  const dangThu = gds.filter((g) => g.loai === "thu" && !g.huy && !g.nghi && g.den! >= h);
   if (dangThu.length) {
     // Còn trong hạn (kể cả đoạn thử đã hẹn trước): dời ngày hết của cửa sổ chung.
     const denCu = dangThu.map((g) => g.den!).sort().at(-1)!;
     const denMoi = opt.denNgay ?? congNgay(denCu, soNgayHopLe(opt.soNgay));
-    if (denMoi < h) throw new LoiQuyTac("Ngày hết mới phải từ hôm nay trở đi");
+    if (denMoi <= denCu) throw new LoiQuyTac(`Ngày hết mới phải sau ngày hết hiện tại ${ddmm(denCu)}`);
     const ctMo = (m: number) => gds.find((g) => g.mon_id === m && g.loai === "chinh_thuc" && conMo(g, h));
     const viec: Viec[] = [];
     for (const g of dangThu) {
@@ -100,7 +105,7 @@ export function keHoachGiaHan(gds: GD[], h: string, opt: { soNgay?: number; denN
   // Đã hết hạn: đoạn thử mới từ hôm nay, không phủ ngược.
   const denMoi = opt.denNgay ?? congNgay(h, soNgayHopLe(opt.soNgay) - 1);
   if (denMoi < h) throw new LoiQuyTac("Ngày hết mới phải từ hôm nay trở đi");
-  const mons = [...new Set(gds.filter((g) => !g.huy && g.loai === "thu" && g.den === het).map((g) => g.mon_id))];
+  const mons = [...new Set(gds.filter((g) => !g.huy && !g.nghi && g.loai === "thu" && g.den === het).map((g) => g.mon_id))];
   return { viec: mons.map((mon_id) => ({ kieu: "tao", mon_id, loai: "thu", tu: h, den: denMoi, ghi_chu: `Gia hạn sau khi hết thử ${ddmm(het)}` })), denMoi, doanMoi: true };
 }
 function soNgayHopLe(n?: number) {

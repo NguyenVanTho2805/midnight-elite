@@ -47,6 +47,8 @@ export async function seedGia(db: PrismaClient) {
       { khoa: "NGAY_BAT_DAU_TINH_PHI", gia_tri: "2026-11-16" },
       { khoa: "GIA_1_MON", gia_tri: 65000 },
       { khoa: "GIA_TU_2_MON", gia_tri: 55000 },
+      // T40: dấu "DB này là dữ liệu giả" — chỉ khi có dấu này, đăng nhập thử mới bật trên địa chỉ xem thử Vercel.
+      { khoa: "DU_LIEU_GIA", gia_tri: true, ghi_chu: "seed-gia.ts — không bao giờ có trên DB dữ liệu thật" },
     ],
   });
   for (const n of NGUOI_THU) {

@@ -1,9 +1,9 @@
-import { phienThu, VAI_THU, type VaiThu } from "@/server/dang-nhap-thu";
-import { cookieOpt, devLoginBat, kyPhien, TEN_COOKIE } from "@/server/token";
+import { dangNhapThuBat, phienThu, VAI_THU, type VaiThu } from "@/server/dang-nhap-thu";
+import { cookieOpt, kyPhien, TEN_COOKIE } from "@/server/token";
 
-/** POST { vai } — chỉ tồn tại khi BCA_DEV_LOGIN=1 (ngoài production). */
+/** POST { vai } — T40: chỉ cục bộ, hoặc preview với DB dữ liệu giả (BCA_DEV_LOGIN=1). Còn lại 404. */
 export async function POST(req: Request) {
-  if (!devLoginBat()) return new Response("Not found", { status: 404 });
+  if (!(await dangNhapThuBat())) return new Response("Not found", { status: 404 });
   const { vai } = (await req.json().catch(() => ({}))) as { vai?: string };
   if (!vai || !(vai in VAI_THU)) return Response.json({ loi: "Vai không hợp lệ" }, { status: 400 });
   const p = await phienThu(vai as VaiThu);

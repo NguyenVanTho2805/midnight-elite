@@ -1,8 +1,8 @@
 import { docJson, route, soNguyen } from "@/server/api";
 import { hoanTacTatCa } from "@/server/diem-danh";
 
-/** { ids: number[], luc: string } — đúng giá trị trả về từ /tat-ca. */
+/** { luc: string } — đúng giá trị `luc` trả về từ /tat-ca (trường `ids` cũ được bỏ qua: máy chủ lấy danh sách em từ nhật ký). */
 export const POST = route<{ buoiId: string }>(async (u, req, p) => {
   const b = await docJson(req);
-  return hoanTacTatCa(u, soNguyen(p.buoiId, "buoiId"), Array.isArray(b.ids) ? b.ids.map(Number) : [], String(b.luc ?? ""));
+  return hoanTacTatCa(u, soNguyen(p.buoiId, "buoiId"), String(b.luc ?? ""));
 });

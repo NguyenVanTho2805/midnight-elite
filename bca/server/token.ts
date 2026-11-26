@@ -6,11 +6,17 @@ export const TEN_COOKIE = "bca_phien";
 export const HAN_GIAY = 30 * 24 * 3600;
 export type Phien = { sub: string; vai: "nd" | "hs"; bd: number }; // bd = giây bắt đầu phiên (giữ nguyên khi gia hạn)
 
-export const devLoginBat = () => process.env.BCA_DEV_LOGIN === "1" && process.env.VERCEL_ENV !== "production";
+/** Máy cục bộ = không chạy trên Vercel (VERCEL_ENV chưa đặt). */
+export const mayCucBo = () => !process.env.VERCEL_ENV;
+/**
+ * Điều kiện cần của đăng nhập thử (chỉ đọc env). T40: cục bộ + BCA_DEV_LOGIN=1, hoặc preview + BCA_DEV_LOGIN=1;
+ * preview còn phải có dấu DU_LIEU_GIA trong DB — route kiểm bằng dang-nhap-thu.dangNhapThuBat().
+ */
+export const devLoginBat = () => process.env.BCA_DEV_LOGIN === "1" && (mayCucBo() || process.env.VERCEL_ENV === "preview");
 
 function khoa() {
-  const s = process.env.BCA_SESSION_SECRET ?? (devLoginBat() ? "chi-dung-tren-may-dev-khong-phai-bi-mat" : "");
-  if (s.length < 16) throw new Error("Thiếu BCA_SESSION_SECRET (≥ 16 ký tự)");
+  const s = process.env.BCA_SESSION_SECRET ?? (mayCucBo() && process.env.NODE_ENV !== "production" ? "chi-dung-tren-may-cuc-bo-khong-phai-bi-mat" : "");
+  if (s.length < 16) throw new Error("Thiếu BCA_SESSION_SECRET (≥ 16 ký tự) — bắt buộc ở mọi nơi trừ máy cục bộ");
   return new TextEncoder().encode(s);
 }
 
@@ -19,8 +25,9 @@ export const kyPhien = (p: Phien) =>
 
 export async function docPhien(token?: string | null): Promise<(Phien & { iat: number }) | null> {
   if (!token) return null;
+  const k = khoa(); // thiếu khoá là lỗi cấu hình — ném ra, không nuốt thành "chưa đăng nhập"
   try {
-    const { payload: p } = await jwtVerify(token, khoa(), { algorithms: ["HS256"] });
+    const { payload: p } = await jwtVerify(token, k, { algorithms: ["HS256"] });
     if ((p.vai !== "nd" && p.vai !== "hs") || !p.sub || typeof p.bd !== "number") return null;
     return { sub: p.sub, vai: p.vai, bd: p.bd, iat: p.iat ?? 0 };
   } catch {
@@ -33,7 +40,12 @@ export const cookieOpt = { httpOnly: true, sameSite: "lax" as const, path: "/", 
 export function docCookie(header: string | null, ten = TEN_COOKIE) {
   for (const p of (header ?? "").split(";")) {
     const i = p.indexOf("=");
-    if (p.slice(0, i).trim() === ten) return decodeURIComponent(p.slice(i + 1).trim());
+    if (p.slice(0, i).trim() !== ten) continue;
+    try {
+      return decodeURIComponent(p.slice(i + 1).trim());
+    } catch {
+      return null; // % hỏng ⇒ coi như không có phiên (401), không 500
+    }
   }
   return null;
 }

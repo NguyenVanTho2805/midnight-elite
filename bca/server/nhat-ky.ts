@@ -15,12 +15,15 @@ export function ghiNhatKy(u: Nguoi | null, hanh_dong: string, doi_tuong: string,
   });
 }
 
+/** Khoá dòng nhật ký của thao tác gốc tới hết transaction: hai lần hoàn tác cùng lúc ⇒ lần sau thấy lần trước đã xong ⇒ 409. */
+export const khoaNhatKy = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM nhat_ky WHERE id = ${id} FOR UPDATE`;
+
 /** Chủ xem tất cả; GV chỉ thay đổi của chính mình (phan-quyen.md Điều 3). */
 export async function xemNhatKy(u: Nguoi, opt: { doiTuong?: string; id?: string; gioiHan?: number }) {
   if (u.vai === "hoc_sinh") throw new LoiQuyen("Học sinh không xem nhật ký");
   return db.nhat_ky.findMany({
     where: { ...(opt.doiTuong ? { doi_tuong: opt.doiTuong } : {}), ...(opt.id ? { doi_tuong_id: opt.id } : {}), ...(u.vai === "chu" ? {} : { nguoi_dung_id: u.id }) },
     orderBy: { luc: "desc" },
-    take: Math.min(opt.gioiHan ?? 100, 500),
+    take: Math.min(Math.max(opt.gioiHan ?? 100, 1), 500),
   });
 }

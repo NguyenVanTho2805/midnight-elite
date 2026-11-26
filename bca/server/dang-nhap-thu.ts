@@ -1,9 +1,18 @@
-// Đăng nhập thử theo vai — CHỈ khi BCA_DEV_LOGIN=1 và không phải production (Đợt 2 thay bằng Google).
+// Đăng nhập thử theo vai (Đợt 2 thay bằng Google). T40: chỉ máy cục bộ, hoặc địa chỉ xem thử Vercel với DB dữ liệu giả.
 import { ngayVN } from "@/lib/ngay";
 import { conMo, hetThu, hieuLuc } from "@/lib/quy-tac";
 import { db } from "./db";
 import { napGD } from "./du-lieu";
-import { devLoginBat, type Phien } from "./token";
+import { devLoginBat, mayCucBo, type Phien } from "./token";
+
+/** Khoá cai_dat do seed-gia.ts ghi. chuyen-tu-sheet.ts không bao giờ ghi khoá này (và xoá nó khi --apply). */
+export const DAU_DU_LIEU_GIA = "DU_LIEU_GIA";
+
+/** T40: (a) cục bộ + BCA_DEV_LOGIN=1; (b) VERCEL_ENV=preview + BCA_DEV_LOGIN=1 + DB có dấu DU_LIEU_GIA. Production: không bao giờ. */
+export async function dangNhapThuBat() {
+  if (!devLoginBat()) return false;
+  return mayCucBo() || !!(await db.cai_dat.findUnique({ where: { khoa: DAU_DU_LIEU_GIA }, select: { khoa: true } }));
+}
 
 export const VAI_THU = {
   chu: "Chủ lớp",
@@ -25,7 +34,7 @@ async function nguoiDungThu(gmail: string, ten: string, vai: "chu" | "giao_vien"
 }
 
 export async function phienThu(vai: VaiThu, luc = new Date()): Promise<Phien | null> {
-  if (!devLoginBat()) return null;
+  if (!(await dangNhapThuBat())) return null;
   const bd = Math.floor(luc.getTime() / 1000);
   if (vai === "chu") return { sub: await nguoiDungThu("chu.thu@bca.invalid", "Chủ lớp (thử)", "chu"), vai: "nd", bd };
   if (vai === "gv_toan") return { sub: await nguoiDungThu("gv.toan@bca.invalid", "GV Toán (thử)", "giao_vien", "toan"), vai: "nd", bd };

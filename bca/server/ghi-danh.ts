@@ -1,12 +1,12 @@
 // Thao tác ghi danh — CHỈ CHỦ LỚP (QUYET-DINH 16, phan-quyen.md Điều 3).
-import { ngayVN, s2d, d2sOrNull } from "@/lib/ngay";
+import { congNgay, ngayVN, s2d, d2sOrNull } from "@/lib/ngay";
 import { canChu, LoiDuLieu, type Nguoi } from "@/lib/quyen";
 import {
-  donGiaKy, conMo, keHoachChinhThuc, keHoachGiaHan, keHoachNghi, keHoachThemThu, ngayChinhThucMacDinh, ngayNghiMacDinh, LoiQuyTac, type Viec,
+  conHanHoanTac, donGiaKy, conMo, keHoachChinhThuc, keHoachGiaHan, keHoachNghi, keHoachThemThu, ngayChinhThucMacDinh, ngayNghiMacDinh, LoiQuyTac, type Viec,
 } from "@/lib/quy-tac";
 import { db, type Tx } from "./db";
 import { caiDat, capMa, napGD } from "./du-lieu";
-import { ghiNhatKy } from "./nhat-ky";
+import { ghiNhatKy, khoaNhatKy } from "./nhat-ky";
 
 async function timHs(tx: Tx, maHs: string) {
   const hs = await tx.hoc_sinh.findUnique({ where: { ma_hs: maHs }, select: { id: true, ma_hs: true, an_luc: true } });
@@ -70,23 +70,33 @@ export async function giaHanThu(u: Nguoi, maHsList: string[], opt: { soNgay?: nu
       tatCa.push(...td.map((t) => ({ ...t, hoc_sinh_id: hs.id })));
       ketQua.push({ ma_hs: ma, den_moi: kh.denMoi, doan_moi: kh.doanMoi });
     }
-    const nk = await ghiNhatKy(u, "gia_han_thu", "nhom_gia_han", null, null, { ly_do: lyDo.trim(), opt, thay_doi: tatCa }, tx);
+    const nk = await ghiNhatKy(u, "gia_han_thu", "nhom_gia_han", null, null, { luc: luc.toISOString(), ly_do: lyDo.trim(), opt, thay_doi: tatCa }, tx);
     return { nhatKyId: nk.id, ketQua };
   });
 }
 
-/** Hoàn tác một lần gia hạn (T29): chỉ trả lại các dòng chưa bị sửa sau đó. */
-export async function hoanTacGiaHan(u: Nguoi, nhatKyId: number) {
+/**
+ * Hoàn tác một lần gia hạn (T29): chỉ chủ, một lần, trong HAN_HOAN_TAC_MS tính từ lúc gia hạn; chỉ trả lại các dòng chưa bị sửa sau đó.
+ * Đoạn thử sắp bị xoá/cắt đã có điểm danh ⇒ 409, không đổi gì (không để điểm danh mồ côi).
+ */
+export async function hoanTacGiaHan(u: Nguoi, nhatKyId: number, luc = new Date()) {
   canChu(u);
   return db.$transaction(async (tx) => {
+    await khoaNhatKy(tx, nhatKyId);
     const nk = await tx.nhat_ky.findUnique({ where: { id: nhatKyId } });
     if (!nk || nk.hanh_dong !== "gia_han_thu" || nk.doi_tuong !== "nhom_gia_han") throw new LoiDuLieu("Không có lần gia hạn này", 404);
-    if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_gia_han", doi_tuong_id: String(nhatKyId) } })) throw new LoiDuLieu("Lần gia hạn này đã được hoàn tác", 409);
-    const thayDoi = (nk.sau as { thay_doi: (ThayDoi & { hoc_sinh_id: number })[] }).thay_doi;
+    const sau = nk.sau as { luc?: string; thay_doi: (ThayDoi & { hoc_sinh_id: number })[] };
+    if (!conHanHoanTac(sau.luc, luc)) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
+    if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_gia_han", doi_tuong: "nhom_gia_han", doi_tuong_id: String(nhatKyId) } }))
+      throw new LoiDuLieu("Lần gia hạn này đã được hoàn tác", 409, "da_hoan_tac");
     let traLai = 0, boQua = 0;
-    for (const t of thayDoi) {
+    for (const t of sau.thay_doi) {
       const g = await tx.ghi_danh.findUnique({ where: { id: t.id } });
       if (!g || d2sOrNull(g.den_ngay) !== t.den_moi || g.huy_luc) { boQua++; continue; }
+      // Ngày em sẽ mất tên: cả đoạn mới (tao) hoặc phần đã dời thêm (sua_den).
+      const tu = t.kieu === "tao" ? g.tu_ngay : s2d(congNgay(t.den_cu!, 1));
+      const coDD = await tx.diem_danh.count({ where: { hoc_sinh_id: g.hoc_sinh_id, buoi: { mon_id: g.mon_id, ngay: { gte: tu, lte: g.den_ngay! } } } });
+      if (coDD) throw new LoiDuLieu(`Đoạn thử gia hạn của ${g.ma_gd} đã có ${coDD} điểm danh — không hoàn tác được`, 409, "co_diem_danh");
       if (t.kieu === "tao") {
         await tx.ghi_danh.delete({ where: { id: t.id } }); // đoạn thử mới chưa gắn dữ liệu nào (điểm danh gắn theo buổi + em)
       } else {
@@ -125,7 +135,8 @@ export async function chuyenChinhThuc(u: Nguoi, maHs: string, monMas: string[], 
     const soMonCT = new Set(sau.filter((g) => g.loai === "chinh_thuc" && conMo(g, h)).map((g) => g.mon_id)).size;
     const gia = await caiDat(tx);
     const nk = await ghiNhatKy(u, "chuyen_chinh_thuc", "nhom_chuyen_chinh_thuc", hs.ma_hs, null, { luc: luc.toISOString(), mon: monMas, thay_doi: thayDoi }, tx);
-    return { nhatKyId: nk.id, thayDoi, donGiaDuKien: donGiaKy(soMonCT, gia), soMonChinhThuc: soMonCT };
+    // Ước tính theo số môn chính thức đang mở; tiền thật theo số môn có buổi > 0 trong từng kỳ (T5) — tính ở Đợt 3.
+    return { nhatKyId: nk.id, thayDoi, donGiaDuKien: donGiaKy(soMonCT, gia), donGiaLaUocTinh: true, soMonChinhThuc: soMonCT };
   });
 }
 
@@ -146,17 +157,15 @@ async function traLai(tx: Tx, u: Nguoi, thayDoi: ThayDoi[], hanh_dong: string) {
   return true;
 }
 
-/** Thanh Hoàn tác hiện 5 giây (man-hoc-sinh.md 9.2); máy chủ nhận thêm 5 giây cho mạng chậm. */
-export const HAN_HOAN_TAC_CT_MS = 10_000;
-
 /** Hoàn tác một lần chuyển chính thức: chỉ chủ, một lần, trong hạn, và chỉ khi chưa ai sửa các dòng đó (tất cả hoặc không). */
 export async function hoanTacChuyenChinhThuc(u: Nguoi, maHs: string, nhatKyId: number, luc = new Date()) {
   canChu(u);
   return db.$transaction(async (tx) => {
+    await khoaNhatKy(tx, nhatKyId);
     const nk = await tx.nhat_ky.findUnique({ where: { id: nhatKyId } });
     if (!nk || nk.doi_tuong !== "nhom_chuyen_chinh_thuc" || nk.doi_tuong_id !== maHs) throw new LoiDuLieu("Không có lần chuyển chính thức này", 404);
     const sau = nk.sau as { luc: string; thay_doi: ThayDoi[] };
-    if (luc.getTime() - Date.parse(sau.luc) > HAN_HOAN_TAC_CT_MS) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
+    if (!conHanHoanTac(sau.luc, luc)) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
     if (await tx.nhat_ky.findFirst({ where: { hanh_dong: "hoan_tac_chuyen_chinh_thuc", doi_tuong: "nhom_chuyen_chinh_thuc", doi_tuong_id: String(nhatKyId) } }))
       throw new LoiDuLieu("Lần chuyển này đã được hoàn tác", 409, "da_hoan_tac");
     if (!(await traLai(tx, u, sau.thay_doi, "hoan_tac_chuyen_chinh_thuc")))
@@ -207,7 +216,8 @@ export async function anHocSinh(u: Nguoi, maHs: string, denNgay?: string, luc = 
     for (const m of new Set(gds.filter((g) => conMo(g, cat)).map((g) => g.mon_id)))
       thayDoi.push(...(await apDung(tx, u, hs.id, keHoachNghi(gds, m, cat), "an_hoc_sinh", null, luc)));
     await tx.hoc_sinh.update({ where: { id: hs.id }, data: { an_luc: luc } });
-    await ghiNhatKy(u, "an_hoc_sinh", "hoc_sinh", maHs, { an_luc: null }, { an_luc: luc.toISOString(), den_ngay: cat, thay_doi: thayDoi }, tx);
+    const gdIdToiDa = (await tx.ghi_danh.aggregate({ _max: { id: true } }))._max.id ?? 0; // ghi danh id lớn hơn = ghi danh lại sau khi ẩn
+    await ghiNhatKy(u, "an_hoc_sinh", "hoc_sinh", maHs, { an_luc: null }, { an_luc: luc.toISOString(), den_ngay: cat, thay_doi: thayDoi, gd_id_toi_da: gdIdToiDa }, tx);
     return { ma_hs: maHs, an_luc: luc, denNgay: cat, thayDoi };
   });
 }
@@ -219,8 +229,10 @@ export async function boAnHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
     const hs = await timHs(tx, maHs);
     if (!hs.an_luc) throw new LoiDuLieu("Hồ sơ không bị ẩn", 409);
     const nk = await tx.nhat_ky.findFirst({ where: { hanh_dong: "an_hoc_sinh", doi_tuong: "hoc_sinh", doi_tuong_id: maHs }, orderBy: { id: "desc" } });
-    const thayDoi = (nk?.sau as { thay_doi?: ThayDoi[] } | null)?.thay_doi ?? [];
-    const coGdMoi = await tx.ghi_danh.count({ where: { hoc_sinh_id: hs.id, tao_luc: { gt: hs.an_luc } } });
+    const sauAn = nk?.sau as { thay_doi?: ThayDoi[]; gd_id_toi_da?: number } | null;
+    const thayDoi = sauAn?.thay_doi ?? [];
+    // So theo id (không theo đồng hồ CSDL): ghi danh tạo sau lúc ẩn có id lớn hơn mốc ghi lúc ẩn.
+    const coGdMoi = await tx.ghi_danh.count({ where: { hoc_sinh_id: hs.id, ...(sauAn?.gd_id_toi_da !== undefined ? { id: { gt: sauAn.gd_id_toi_da } } : { tao_luc: { gt: hs.an_luc } }) } });
     const khoiPhuc = ngayVN(hs.an_luc) === ngayVN(luc) && !coGdMoi && thayDoi.length > 0 && (await traLai(tx, u, thayDoi, "bo_an_hoc_sinh"));
     await tx.hoc_sinh.update({ where: { id: hs.id }, data: { an_luc: null } });
     await ghiNhatKy(u, "bo_an_hoc_sinh", "hoc_sinh", maHs, { an_luc: hs.an_luc.toISOString() }, { an_luc: null, khoi_phuc_ghi_danh: khoiPhuc }, tx);

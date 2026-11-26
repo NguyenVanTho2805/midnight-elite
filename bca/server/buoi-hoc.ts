@@ -1,8 +1,8 @@
 // Buổi học (buoi-hoc.md). Sinh / huỷ / học bù: chỉ chủ (T9). Nội dung + record: chủ + GV môn.
-import { d2s, gioVN, lucVN, ngayTrongThang, ngayVN, s2d, thangCua } from "@/lib/ngay";
+import { congNgay, d2s, gioVN, lucVN, ngayTrongThang, ngayVN, s2d, thangCua } from "@/lib/ngay";
 import { canChu, canMon, canQuanLy, LoiDuLieu, monXemDuoc, type Nguoi } from "@/lib/quyen";
 import { buoiTheoLich, chuanHoaLink, conMo, hieuLuc } from "@/lib/quy-tac";
-import { db } from "./db";
+import { db, type Tx } from "./db";
 import { caiDat, napGD } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 import { tienDo } from "./diem-danh";
@@ -35,33 +35,41 @@ export async function sinhBuoiThang(u: Nguoi, thang: string) {
   canChu(u);
   const [mons, cd] = await Promise.all([db.mon.findMany(), caiDat()]);
   const ds = buoiTheoLich(mons, thang, cd.NGAY_BAT_DAU_TINH_PHI);
-  const r = await db.buoi_hoc.createMany({ data: ds.map((b) => ({ ...b, ngay: s2d(b.ngay) })), skipDuplicates: true });
-  await ghiNhatKy(u, "sinh_buoi", "thang", thang, null, { theo_lich: ds.length, tao_moi: r.count });
-  return { theo_lich: ds.length, tao_moi: r.count };
+  return db.$transaction(async (tx) => {
+    const r = await tx.buoi_hoc.createMany({ data: ds.map((b) => ({ ...b, ngay: s2d(b.ngay) })), skipDuplicates: true });
+    await ghiNhatKy(u, "sinh_buoi", "thang", thang, null, { theo_lich: ds.length, tao_moi: r.count }, tx);
+    return { theo_lich: ds.length, tao_moi: r.count };
+  });
 }
 
 /** buoi-hoc.md Điều 6: huỷ có lý do; buổi đã có điểm danh phải xác nhận lần nữa. */
 export async function huyBuoi(u: Nguoi, id: number, lyDo: string, xacNhan = false) {
   canChu(u);
   if (!lyDo?.trim()) throw new LoiDuLieu("Cần ghi lý do huỷ buổi");
-  const b = await db.buoi_hoc.findUnique({ where: { id }, include: { _count: { select: { diem_danh: true } } } });
-  if (!b) throw new LoiDuLieu("Không có buổi này", 404);
-  if (b.trang_thai === "huy") throw new LoiDuLieu("Buổi đã huỷ", 409);
-  if (b._count.diem_danh > 0 && !xacNhan)
-    throw new LoiDuLieu(`Buổi đã có ${b._count.diem_danh} bản ghi điểm danh — cần xác nhận để huỷ (điểm danh vẫn giữ)`, 409, "can_xac_nhan");
-  const r = await db.buoi_hoc.update({ where: { id }, data: { trang_thai: "huy", ly_do_huy: lyDo.trim() } });
-  await ghiNhatKy(u, "huy_buoi", "buoi_hoc", id, { trang_thai: b.trang_thai }, { trang_thai: "huy", ly_do_huy: r.ly_do_huy });
-  return { id, trang_thai: r.trang_thai };
+  return db.$transaction(async (tx) => {
+    await khoaBuoi(tx, id);
+    const b = await tx.buoi_hoc.findUnique({ where: { id }, include: { _count: { select: { diem_danh: true } } } });
+    if (!b) throw new LoiDuLieu("Không có buổi này", 404);
+    if (b.trang_thai === "huy") throw new LoiDuLieu("Buổi đã huỷ", 409);
+    if (b._count.diem_danh > 0 && !xacNhan)
+      throw new LoiDuLieu(`Buổi đã có ${b._count.diem_danh} bản ghi điểm danh — cần xác nhận để huỷ (điểm danh vẫn giữ)`, 409, "can_xac_nhan");
+    const r = await tx.buoi_hoc.update({ where: { id }, data: { trang_thai: "huy", ly_do_huy: lyDo.trim() } });
+    await ghiNhatKy(u, "huy_buoi", "buoi_hoc", id, { trang_thai: b.trang_thai }, { trang_thai: "huy", ly_do_huy: r.ly_do_huy }, tx);
+    return { id, trang_thai: r.trang_thai };
+  });
 }
 
 export async function boHuyBuoi(u: Nguoi, id: number) {
   canChu(u);
-  const b = await db.buoi_hoc.findUnique({ where: { id } });
-  if (!b) throw new LoiDuLieu("Không có buổi này", 404);
-  if (b.trang_thai !== "huy") throw new LoiDuLieu("Buổi không ở trạng thái huỷ", 409);
-  await db.buoi_hoc.update({ where: { id }, data: { trang_thai: "binh_thuong", ly_do_huy: null } });
-  await ghiNhatKy(u, "bo_huy_buoi", "buoi_hoc", id, { trang_thai: "huy", ly_do_huy: b.ly_do_huy }, { trang_thai: "binh_thuong" });
-  return { id, trang_thai: "binh_thuong" };
+  return db.$transaction(async (tx) => {
+    await khoaBuoi(tx, id);
+    const b = await tx.buoi_hoc.findUnique({ where: { id } });
+    if (!b) throw new LoiDuLieu("Không có buổi này", 404);
+    if (b.trang_thai !== "huy") throw new LoiDuLieu("Buổi không ở trạng thái huỷ", 409);
+    await tx.buoi_hoc.update({ where: { id }, data: { trang_thai: "binh_thuong", ly_do_huy: null } });
+    await ghiNhatKy(u, "bo_huy_buoi", "buoi_hoc", id, { trang_thai: "huy", ly_do_huy: b.ly_do_huy }, { trang_thai: "binh_thuong" }, tx);
+    return { id, trang_thai: "binh_thuong" };
+  });
 }
 
 /** buoi-hoc.md Điều 7: học bù; chồng giờ thì cảnh báo (không chặn) kèm số em học cả hai môn. */
@@ -80,10 +88,13 @@ export async function themHocBu(u: Nguoi, v: { mon: string; ngay: string; gio?: 
   const batDau = lucVN(v.ngay, gio);
   if (await db.buoi_hoc.findUnique({ where: { mon_id_bat_dau_luc: { mon_id: mon.id, bat_dau_luc: batDau } } }))
     throw new LoiDuLieu("Đã có buổi môn này đúng giờ đó", 409);
-  const b = await db.buoi_hoc.create({
-    data: { mon_id: mon.id, ngay: s2d(v.ngay), bat_dau_luc: batDau, so_phut: soPhut, loai: "hoc_bu", bu_cho_buoi_id: v.buChoBuoiId ?? null, ghi_chu: v.ghiChu?.trim() || null },
+  const b = await db.$transaction(async (tx) => {
+    const b = await tx.buoi_hoc.create({
+      data: { mon_id: mon.id, ngay: s2d(v.ngay), bat_dau_luc: batDau, so_phut: soPhut, loai: "hoc_bu", bu_cho_buoi_id: v.buChoBuoiId ?? null, ghi_chu: v.ghiChu?.trim() || null },
+    });
+    await ghiNhatKy(u, "them_hoc_bu", "buoi_hoc", b.id, null, { mon: v.mon, ngay: v.ngay, gio, so_phut: soPhut, bu_cho_buoi_id: v.buChoBuoiId ?? null }, tx);
+    return b;
   });
-  await ghiNhatKy(u, "them_hoc_bu", "buoi_hoc", b.id, null, { mon: v.mon, ngay: v.ngay, gio, so_phut: soPhut, bu_cho_buoi_id: v.buChoBuoiId ?? null });
   // Cảnh báo chồng giờ (7.3)
   const ketThuc = batDau.getTime() + soPhut * 60_000;
   const cungNgay = await db.buoi_hoc.findMany({ where: { ngay: s2d(v.ngay), trang_thai: "binh_thuong", id: { not: b.id } }, include: { mon: true } });
@@ -120,10 +131,14 @@ export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string
       data.link_record = l;
     } else data.link_record = null;
   }
-  const r = await db.buoi_hoc.update({ where: { id }, data });
-  await ghiNhatKy(u, "sua_noi_dung_buoi", "buoi_hoc", id, { noi_dung: b.noi_dung, link_record: b.link_record }, { noi_dung: r.noi_dung, link_record: r.link_record });
-  return { id, noi_dung: r.noi_dung, link_record: r.link_record };
+  return db.$transaction(async (tx) => {
+    const r = await tx.buoi_hoc.update({ where: { id }, data });
+    await ghiNhatKy(u, "sua_noi_dung_buoi", "buoi_hoc", id, { noi_dung: b.noi_dung, link_record: b.link_record }, { noi_dung: r.noi_dung, link_record: r.link_record }, tx);
+    return { id, noi_dung: r.noi_dung, link_record: r.link_record };
+  });
 }
+
+const khoaBuoi = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM buoi_hoc WHERE id = ${id} FOR UPDATE`;
 
 // ── Buổi "có dữ liệu" (buoi-hoc.md 6.3): điểm danh, nội dung, record, ghi chú, đã huỷ (có lý do cho học sinh) hoặc có buổi bù trỏ tới ──
 const DEM_DU_LIEU = { _count: { select: { diem_danh: true, buoi_bu: true } } } as const;
@@ -135,13 +150,16 @@ const duLieuBuoi = (b: BuoiDem) =>
 /** buoi-hoc.md 6.3 — chủ xoá buổi chưa có dữ liệu (vd. sinh nhầm). Có dữ liệu thì chỉ được huỷ. */
 export async function xoaBuoi(u: Nguoi, id: number) {
   canChu(u);
-  const b = await db.buoi_hoc.findUnique({ where: { id }, include: DEM_DU_LIEU });
-  if (!b) throw new LoiDuLieu("Không có buổi này", 404);
-  const co = duLieuBuoi(b);
-  if (co.length) throw new LoiDuLieu(`Buổi đã có dữ liệu (${co.join(", ")}) — chỉ huỷ được, không xoá`, 409, "co_du_lieu");
-  await db.buoi_hoc.delete({ where: { id } });
-  await ghiNhatKy(u, "xoa_buoi", "buoi_hoc", id, { mon_id: b.mon_id, ngay: d2s(b.ngay), bat_dau_luc: b.bat_dau_luc.toISOString(), so_phut: b.so_phut, loai: b.loai }, null);
-  return { id, da_xoa: true };
+  return db.$transaction(async (tx) => {
+    await khoaBuoi(tx, id); // không để một lượt điểm danh chen vào giữa lúc kiểm "chưa có dữ liệu" và lúc xoá
+    const b = await tx.buoi_hoc.findUnique({ where: { id }, include: DEM_DU_LIEU });
+    if (!b) throw new LoiDuLieu("Không có buổi này", 404);
+    const co = duLieuBuoi(b);
+    if (co.length) throw new LoiDuLieu(`Buổi đã có dữ liệu (${co.join(", ")}) — chỉ huỷ được, không xoá`, 409, "co_du_lieu");
+    await tx.buoi_hoc.delete({ where: { id } });
+    await ghiNhatKy(u, "xoa_buoi", "buoi_hoc", id, { mon_id: b.mon_id, ngay: d2s(b.ngay), bat_dau_luc: b.bat_dau_luc.toISOString(), so_phut: b.so_phut, loai: b.loai }, null, tx);
+    return { id, da_xoa: true };
+  });
 }
 
 const TEN_THU = (t: number) => (t === 7 ? "CN" : `T${t + 1}`);
@@ -164,6 +182,10 @@ export async function doiLichMon(u: Nguoi, ma: string, v: { thu?: number[]; gio?
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(gio)) throw new LoiDuLieu("Giờ phải dạng HH:MM");
   const soPhut = v.soPhut ?? mon.so_phut;
   if (!Number.isInteger(soPhut) || soPhut < 15 || soPhut > 300) throw new LoiDuLieu("Số phút 15–300");
+  // Lịch mới lưu ngay vào môn và các tháng sinh sau sẽ theo lịch mới ⇒ mọi ngày trước tuNgay phải đã được sinh theo lịch cũ.
+  const cuoi = await db.buoi_hoc.findFirst({ where: { mon_id: mon.id, loai: "theo_lich" }, orderBy: { ngay: "desc" }, select: { ngay: true } });
+  if (cuoi && thangCua(congNgay(tu, -1)) > thangCua(d2s(cuoi.ngay)))
+    throw new LoiDuLieu(`Tháng ${thangCua(congNgay(tu, -1))} chưa sinh buổi theo lịch cũ — sinh buổi tới hết ngày trước ngày hiệu lực rồi mới đổi lịch`, 400, "thang_chua_sinh");
 
   const kq = await db.$transaction(async (tx) => {
     await tx.mon.update({ where: { id: mon.id }, data: { thu, gio_bat_dau: gio, so_phut: soPhut } });

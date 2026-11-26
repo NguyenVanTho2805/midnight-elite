@@ -1,6 +1,8 @@
 // Ngày giờ theo Asia/Ho_Chi_Minh. Việt Nam cố định UTC+7, không đổi giờ theo mùa,
 // nên cộng 7 giờ là đúng và không phụ thuộc múi giờ của máy chủ (Vercel/Neon chạy UTC).
 // Ngày trong mã luôn là chuỗi "YYYY-MM-DD".
+import { LoiDuLieu } from "./quyen";
+
 const LECH = 7 * 3600_000;
 const NGAY_MS = 86400_000;
 
@@ -25,7 +27,7 @@ export const thuISO = (d: string) => s2d(d).getUTCDay() || 7;
 export const lucVN = (d: string, hhmm: string) => new Date(Date.parse(`${d}T${hhmm}:00+07:00`));
 
 export function ngayTrongThang(thang: string): string[] {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(thang)) throw new Error(`Tháng không hợp lệ: ${thang}`);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(thang)) throw new LoiDuLieu("Tháng phải dạng YYYY-MM"); // 400, không 500
   const ra: string[] = [];
   for (let d = `${thang}-01`; d.startsWith(thang); d = congNgay(d, 1)) ra.push(d);
   return ra;

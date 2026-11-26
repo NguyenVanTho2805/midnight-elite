@@ -1,6 +1,7 @@
 // Bao mọi route handler: đọc phiên từ cookie của request, bắt lỗi quyền → 403 (+ nhật ký "từ chối").
 import { LoiDuLieu, LoiQuyen, type Nguoi } from "@/lib/quyen";
 import { LoiQuyTac } from "@/lib/quy-tac";
+import { d2s, s2d } from "@/lib/ngay";
 import { nguoiTuToken } from "./phien";
 import { docCookie } from "./token";
 import { ghiNhatKy } from "./nhat-ky";
@@ -22,6 +23,10 @@ export function route<P = Record<string, string>>(fn: (u: Nguoi, req: Request, p
       if (e instanceof LoiDuLieu) return Response.json({ loi: e.message, ma: e.ma }, { status: e.status });
       if (e instanceof LoiQuyTac) return Response.json({ loi: e.message }, { status: 409 });
       if (isExclusion(e)) return Response.json({ loi: "Ghi danh bị chồng ngày với một ghi danh khác cùng môn" }, { status: 409 });
+      // Hai thao tác cùng lúc: trùng khoá duy nhất (P2002) hoặc dòng vừa bị người khác xoá/sửa (P2025) ⇒ 409, không 500.
+      const ma = (e as { code?: unknown })?.code;
+      if (ma === "P2002") return Response.json({ loi: "Dữ liệu vừa được tạo trùng (có thể do thao tác cùng lúc) — tải lại rồi thử lại", ma: "trung" }, { status: 409 });
+      if (ma === "P2025") return Response.json({ loi: "Dữ liệu vừa bị thay đổi bởi thao tác khác — tải lại rồi thử lại", ma: "da_doi" }, { status: 409 });
       throw e;
     }
   };
@@ -36,12 +41,15 @@ export async function docJson(req: Request): Promise<Record<string, unknown>> {
   } catch {}
   throw new LoiDuLieu("Thân request phải là JSON object");
 }
+/** Số nguyên vừa cột int4 của Postgres (id vượt int32 / NaN / số lẻ ⇒ 400, không 500). */
 export const soNguyen = (v: unknown, ten: string) => {
-  const n = Number(v);
-  if (!Number.isInteger(n)) throw new LoiDuLieu(`${ten} không hợp lệ`);
+  const n = typeof v === "string" && v.trim() === "" ? NaN : Number(v);
+  if (!Number.isInteger(n) || n < -2147483648 || n > 2147483647) throw new LoiDuLieu(`${ten} không hợp lệ`);
   return n;
 };
+/** Ngày có thật dạng YYYY-MM-DD (2026-02-30 ⇒ 400). */
 export const ngayHopLe = (v: unknown, ten: string) => {
-  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v))) throw new LoiDuLieu(`${ten} phải dạng YYYY-MM-DD`);
-  return v;
+  const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? s2d(v) : null;
+  if (!d || isNaN(d.getTime()) || d2s(d) !== v) throw new LoiDuLieu(`${ten} phải là ngày có thật dạng YYYY-MM-DD`);
+  return v as string;
 };
