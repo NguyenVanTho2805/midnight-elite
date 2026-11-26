@@ -81,3 +81,5 @@ cookies*.txt
 # video tải lên cục bộ (ghi trên đĩa máy dev, KHÔNG commit)
 /.kin-media/
 tools/local-e2e/mathtype-golden.json
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

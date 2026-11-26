@@ -23,9 +23,11 @@
     "exceljs": "^4.4.0",
     "framer-motion": "^12.40.0",
     "griddy-icons": "^0.2.0",
+    "gsap": "^3.15.1",
     "jose": "^6.2.3",
     "jszip": "^3.10.1",
     "katex": "^0.17.0",
+    "lenis": "^1.3.23",
     "mammoth": "^1.12.0",
     "next": "16.2.6",
     "nodemailer": "^9.0.5",
@@ -41,6 +43,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@playwright/cli": "^0.1.25",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
