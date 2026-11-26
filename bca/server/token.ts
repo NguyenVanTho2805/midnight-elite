@@ -6,16 +6,16 @@ export const TEN_COOKIE = "bca_phien";
 export const HAN_GIAY = 30 * 24 * 3600;
 export type Phien = { sub: string; vai: "nd" | "hs"; bd: number }; // bd = giây bắt đầu phiên (giữ nguyên khi gia hạn)
 
-/** Máy cục bộ = không chạy trên Vercel (VERCEL_ENV chưa đặt). */
-export const mayCucBo = () => !process.env.VERCEL_ENV;
+/** Máy cục bộ = không chạy trên Vercel (VERCEL_ENV chưa đặt) và không phải bản build production (`next start`). */
+export const mayCucBo = () => !process.env.VERCEL_ENV && process.env.NODE_ENV !== "production";
 /**
- * Điều kiện cần của đăng nhập thử (chỉ đọc env). T40: cục bộ + BCA_DEV_LOGIN=1, hoặc preview + BCA_DEV_LOGIN=1;
- * preview còn phải có dấu DU_LIEU_GIA trong DB — route kiểm bằng dang-nhap-thu.dangNhapThuBat().
+ * Điều kiện cần của đăng nhập thử (chỉ đọc env): BCA_DEV_LOGIN=1 và không phải Vercel production.
+ * Mọi nơi (kể cả máy cục bộ) còn phải có dấu DU_LIEU_GIA trong DB — route kiểm bằng dang-nhap-thu.dangNhapThuBat().
  */
-export const devLoginBat = () => process.env.BCA_DEV_LOGIN === "1" && (mayCucBo() || process.env.VERCEL_ENV === "preview");
+export const devLoginBat = () => process.env.BCA_DEV_LOGIN === "1" && process.env.VERCEL_ENV !== "production";
 
 function khoa() {
-  const s = process.env.BCA_SESSION_SECRET ?? (mayCucBo() && process.env.NODE_ENV !== "production" ? "chi-dung-tren-may-cuc-bo-khong-phai-bi-mat" : "");
+  const s = process.env.BCA_SESSION_SECRET ?? (mayCucBo() ? "chi-dung-tren-may-cuc-bo-khong-phai-bi-mat" : "");
   if (s.length < 16) throw new Error("Thiếu BCA_SESSION_SECRET (≥ 16 ký tự) — bắt buộc ở mọi nơi trừ máy cục bộ");
   return new TextEncoder().encode(s);
 }

@@ -3,7 +3,7 @@ import { congNgay, d2s, ngayTrongThang, ngayVN, s2d, soNgayGiua } from "@/lib/ng
 import { canMon, canQuanLy, LoiDuLieu, type Nguoi } from "@/lib/quyen";
 import { chuoi, conHanHoanTac, demDD, hieuLuc, loaiVaoNgay, moDiemDanh, qua48Gio, type GD, type TrangThaiDD } from "@/lib/quy-tac";
 import { soTenViet } from "@/lib/chuan-hoa";
-import { db, type Tx } from "./db";
+import { db, khoaBuoi, type Tx } from "./db";
 import { napGD } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 import { tenNguoiDung } from "./hoc-sinh";
@@ -53,8 +53,13 @@ async function napBuoi(u: Nguoi, buoiId: number, tx: Tx = db) {
   return b;
 }
 
-/** Khoá dòng buổi đầu transaction ghi: hai người điểm cùng lúc chạy lần lượt ⇒ da_diem_danh_luc tính đúng. */
-const khoaBuoi = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM buoi_hoc WHERE id = ${id} FOR UPDATE`;
+/** Kiểm quyền (chủ / GV môn đó) rồi mới khoá dòng buổi và nạp lại: người không có quyền không giữ khoá;
+ *  hai người điểm cùng lúc chạy lần lượt ⇒ da_diem_danh_luc tính đúng. */
+async function napBuoiKhoa(u: Nguoi, buoiId: number, tx: Tx) {
+  await napBuoi(u, buoiId, tx);
+  await khoaBuoi(tx, buoiId);
+  return napBuoi(u, buoiId, tx);
+}
 
 async function emCuaBuoi(b: BuoiMin, tx: Tx) {
   const [gdMap, an, dd] = await Promise.all([
@@ -125,8 +130,7 @@ export async function datDiemDanh(u: Nguoi, buoiId: number, hocSinhId: number, v
   const ghiChu = v.ghiChu === undefined ? undefined : v.ghiChu?.trim() || null;
   if (ghiChu && ghiChu.length > 500) throw new LoiDuLieu("Ghi chú tối đa 500 ký tự");
   return db.$transaction(async (tx) => {
-    await khoaBuoi(tx, buoiId);
-    const b = await napBuoi(u, buoiId, tx);
+    const b = await napBuoiKhoa(u, buoiId, tx);
     kiemGhi(b, luc, v.xacNhan);
     const { ds, dd } = await emCuaBuoi(b, tx);
     if (!ds.some((e) => e.hoc_sinh_id === hocSinhId)) throw new LoiDuLieu("Em không có tên trong buổi này", 409, "khong_trong_buoi");
@@ -154,8 +158,7 @@ export async function datDiemDanh(u: Nguoi, buoiId: number, hocSinhId: number, v
 /** diem-danh.md 3.2: đặt Có cho mọi em CHƯA có bản ghi; trả {ids, luc} để hoàn tác. */
 export async function danhTatCaCoMat(u: Nguoi, buoiId: number, opt: { xacNhan?: boolean } = {}, luc = new Date()) {
   return db.$transaction(async (tx) => {
-    await khoaBuoi(tx, buoiId);
-    const b = await napBuoi(u, buoiId, tx);
+    const b = await napBuoiKhoa(u, buoiId, tx);
     kiemGhi(b, luc, opt.xacNhan);
     const { ds, dd } = await emCuaBuoi(b, tx);
     const co = new Set(dd.map((d) => d.hoc_sinh_id));
@@ -176,8 +179,7 @@ export async function hoanTacTatCa(u: Nguoi, buoiId: number, lucStr: string, luc
   const lucDanh = new Date(lucStr);
   if (isNaN(lucDanh.getTime())) throw new LoiDuLieu("Thiếu luc (giá trị trả về từ /tat-ca)");
   return db.$transaction(async (tx) => {
-    await khoaBuoi(tx, buoiId);
-    const b = await napBuoi(u, buoiId, tx);
+    const b = await napBuoiKhoa(u, buoiId, tx);
     const nk = await tx.nhat_ky.findFirst({
       where: { hanh_dong: "danh_tat_ca_co_mat", doi_tuong: "buoi_hoc", doi_tuong_id: String(buoiId), nguoi_dung_id: u.id, sau: { path: ["luc"], equals: lucDanh.toISOString() } },
     });

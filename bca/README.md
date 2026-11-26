@@ -8,7 +8,7 @@ Quy tắc nghiệp vụ: `docs/bca/nghiep-vu/*.md`. Quyết định của chủ:
 |---|---|
 | `BCA_DATABASE_URL` | Chuỗi kết nối Postgres (KHÔNG dùng `DATABASE_URL` — tên đó của app KiN) |
 | `BCA_SESSION_SECRET` | Khoá ký cookie phiên (≥ 16 ký tự). Bắt buộc ở mọi nơi trừ máy cục bộ (`VERCEL_ENV` chưa đặt và không `NODE_ENV=production`); thiếu thì ký/đọc phiên ném lỗi rõ, không dùng khoá mặc định |
-| `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai (T40): máy cục bộ; hoặc `VERCEL_ENV=preview` **và** DB có dấu `cai_dat.DU_LIEU_GIA` (do `seed-gia.ts` ghi; `chuyen-tu-sheet.ts` không bao giờ ghi và xoá nó khi `--apply`). Production: luôn 404. Preview còn phải bật Deployment Protection của Vercel |
+| `BCA_DEV_LOGIN=1` | Bật đăng nhập thử theo vai (T40) — ở **mọi nơi, kể cả máy cục bộ**, còn phải có dấu `cai_dat.DU_LIEU_GIA` trong DB (do `seed-gia.ts` ghi; `chuyen-tu-sheet.ts` không bao giờ ghi và xoá nó khi `--apply`). `VERCEL_ENV=production`: luôn 404. Preview còn phải bật Deployment Protection của Vercel |
 
 ## Cài và chạy dev
 ```bash

@@ -7,6 +7,7 @@ import { TEN_COOKIE, kyPhien } from "@/server/token";
 import { chuyenChinhThuc, giaHanThu, hoanTacChuyenChinhThuc, hoanTacGiaHan, nghiMon } from "@/server/ghi-danh";
 import { danhTatCaCoMat, datDiemDanh, hoanTacTatCa } from "@/server/diem-danh";
 import { doiLichMon } from "@/server/buoi-hoc";
+import { khoaBuoi } from "@/server/db";
 import * as devLogin from "@/app/api/dev/dang-nhap/route";
 import * as toi from "@/app/api/toi/route";
 import * as thuHoi from "@/app/api/nguoi-dung/[id]/thu-hoi-phien/route";
@@ -48,7 +49,7 @@ beforeAll(async () => {
 describe("P2-1 — đăng nhập thử theo môi trường (T40); khoá ký bắt buộc ngoài máy cục bộ", () => {
   const goc = { ...process.env };
   afterEach(() => {
-    for (const k of ["BCA_DEV_LOGIN", "VERCEL_ENV", "BCA_SESSION_SECRET"]) if (goc[k] === undefined) delete process.env[k]; else process.env[k] = goc[k];
+    for (const k of ["BCA_DEV_LOGIN", "VERCEL_ENV", "BCA_SESSION_SECRET", "NODE_ENV"]) if (goc[k] === undefined) delete process.env[k]; else process.env[k] = goc[k];
   });
   const dangNhap = () => devLogin.POST(new Request("http://x/api/dev/dang-nhap", { method: "POST", body: '{"vai":"chu"}' }));
   const moiTruong = (vercel: string | undefined, dev: string | undefined) => {
@@ -70,13 +71,16 @@ describe("P2-1 — đăng nhập thử theo môi trường (T40); khoá ký bắ
     expect(r.status).toBe(200);
     expect((await goi(toi.GET, { cookie: r.headers.get("set-cookie")!.split(";")[0] })).json).toMatchObject({ vai: "chu" });
   });
-  it("preview không đặt BCA_DEV_LOGIN → 404; máy cục bộ (không VERCEL_ENV) + BCA_DEV_LOGIN=1 → 200 kể cả không có dấu", async () => {
+  it("preview không đặt BCA_DEV_LOGIN → 404; máy cục bộ + BCA_DEV_LOGIN=1 cũng phải có dấu: không dấu → 404, có dấu → 200", async () => {
     moiTruong("preview", undefined);
     expect((await dangNhap()).status).toBe(404);
     moiTruong(undefined, "1");
     await db.cai_dat.delete({ where: { khoa: "DU_LIEU_GIA" } });
-    expect((await dangNhap()).status).toBe(200);
+    expect((await dangNhap()).status).toBe(404);
     await db.cai_dat.create({ data: { khoa: "DU_LIEU_GIA", gia_tri: true } });
+    expect((await dangNhap()).status).toBe(200);
+    moiTruong(undefined, undefined);
+    expect((await dangNhap()).status).toBe(404);
   });
   it("thiếu BCA_SESSION_SECRET ngoài máy cục bộ → lỗi rõ (ký và đọc phiên), không dùng khoá mặc định; cục bộ thì chạy", async () => {
     const cookie = cChu;
@@ -88,6 +92,8 @@ describe("P2-1 — đăng nhập thử theo môi trường (T40); khoá ký bắ
     }
     moiTruong(undefined, undefined);
     await expect(kyPhien({ sub: "x", vai: "nd", bd: 0 })).resolves.toBeTypeOf("string");
+    (process.env as Record<string, string>).NODE_ENV = "production"; // `next start` trên máy không Vercel: vẫn đòi khoá thật
+    await expect(kyPhien({ sub: "x", vai: "nd", bd: 0 })).rejects.toThrow(/BCA_SESSION_SECRET/);
   });
 });
 
@@ -251,7 +257,7 @@ describe("Bổ sung cho phòng Giao diện (Điều hành, BCA-D1-MC3)", () => {
     expect(t3.json.mon.find((m: { ma: string }) => m.ma === "toan")).toEqual({ ma: "toan", ten: "Toán", theo_lich: 9, da_co: 0, se_tao: 9 });
     expect(await db.buoi_hoc.count()).toBe(dem);
     expect((await goi(sinhR.GET, { cookie: cGvAnh, path: "/api/buoi-hoc/sinh?thang=2027-03&xem=1" })).status).toBe(403);
-    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=3-2027" })).status).toBe(400);
+    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=3-2027&xem=1" })).status).toBe(400);
   });
   it("4. Hôm nay + danh sách buổi trả tên đầy đủ, link Meet, tên GV phụ trách; GV chỉ môn mình", async () => {
     await db.mon.update({ where: { ma: "anh" }, data: { link_meet: "https://meet.google.com/gia-anh" } });
@@ -283,5 +289,64 @@ describe("Phiên ký đúng vẫn vào được sau các thay đổi khoá ký",
     const nd = await db.nguoi_dung.findUniqueOrThrow({ where: { gmail: CHU } });
     expect((await goi(toi.GET, { cookie: `${TEN_COOKIE}=${await kyPhien({ sub: nd.id, vai: "nd", bd: Math.floor(Date.now() / 1000) })}` })).status).toBe(200);
     expect(s2d("2026-11-26")).toBeInstanceOf(Date);
+  });
+});
+
+describe("BCA-D1-MC4 — sửa P3 của rà soát BCA-D1-RS-MC2", () => {
+  const goc = { ...process.env };
+  afterEach(() => {
+    for (const k of ["BCA_DEV_LOGIN", "VERCEL_ENV"]) if (goc[k] === undefined) delete process.env[k]; else process.env[k] = goc[k];
+  });
+  it("P3-2: vai là khoá kế thừa của Object (constructor, toString, __proto__) → 400, không cấp phiên", async () => {
+    process.env.BCA_DEV_LOGIN = "1";
+    delete process.env.VERCEL_ENV;
+    for (const vai of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      const r = await devLogin.POST(new Request("http://x/api/dev/dang-nhap", { method: "POST", body: JSON.stringify({ vai }) }));
+      expect([vai, r.status, r.headers.get("set-cookie")]).toEqual([vai, 400, null]);
+    }
+    const r = await devLogin.POST(new Request("http://x/api/dev/dang-nhap", { method: "POST", body: '{"vai":"gv_anh"}' }));
+    expect(r.status).toBe(200);
+  });
+  it("P3-3: chủ được phân công Sử ⇒ hiện trong giao_vien của buổi Sử; tài khoản khoá thì không", async () => {
+    const nd = await db.nguoi_dung.findUniqueOrThrow({ where: { gmail: CHU } });
+    await db.phan_cong.create({ data: { nguoi_dung_id: nd.id, mon_id: 2 } });
+    const gv = async () => (await goi(buoiHoc.GET, { cookie: cChu, path: "/api/buoi-hoc?thang=2026-11&mon=su" })).json.buoi[0].mon.giao_vien;
+    expect(await gv()).toEqual(["Chủ lớp (thử)"]);
+    const toan = await goi(buoiHoc.GET, { cookie: cChu, path: "/api/buoi-hoc?thang=2026-11&mon=toan" });
+    expect(toan.json.buoi[0].mon.giao_vien).toEqual(["GV Toán (thử)"]); // chưa phân công Toán ⇒ không hiện
+    await db.phan_cong.delete({ where: { nguoi_dung_id_mon_id: { nguoi_dung_id: nd.id, mon_id: 2 } } });
+    expect(await gv()).toEqual([]);
+  });
+  it("P3-4: GV môn khác bị 403 ngay khi dòng buổi đang bị khoá — kiểm quyền trước, không chờ khoá", async () => {
+    const id = await buoi(1, "2026-11-17"); // buổi Toán; GV Anh không có quyền
+    const hs = (await db.ghi_danh.findFirstOrThrow({ where: { mon_id: 1 } })).hoc_sinh_id;
+    let tha!: () => void, daKhoa!: () => void;
+    const cho = new Promise<void>((r) => (tha = r)), khoaXong = new Promise<void>((r) => (daKhoa = r));
+    const giu = db.$transaction(async (tx) => { await khoaBuoi(tx, id); daKhoa(); await cho; }, { timeout: 20_000 });
+    await khoaXong;
+    const het = (ms: number) => new Promise((r) => setTimeout(() => r("cho_khoa"), ms));
+    const loi = (p: Promise<unknown>) => p.then(() => "ok", (e) => (e as { status?: number }).status);
+    try {
+      const kq = await Promise.all([
+        Promise.race([loi(datDiemDanh(gvAnh, id, hs, { trangThai: "co" }, T22)), het(1500)]),
+        Promise.race([loi(danhTatCaCoMat(gvAnh, id, {}, T22)), het(1500)]),
+        Promise.race([loi(hoanTacTatCa(gvAnh, id, T22.toISOString(), T22)), het(1500)]),
+      ]);
+      expect(kq).toEqual([403, 403, 403]);
+    } finally {
+      tha();
+      await giu;
+    }
+  });
+  it("P3-5: lọc đơn nhận đúng mọi giá trị enum trang_thai_don của Prisma; giá trị lạ 400", async () => {
+    for (const t of ["moi", "cho_duyet", "da_nhan", "trung", "bo_qua", "lead_cu"])
+      expect([t, (await goi(don.GET, { cookie: cChu, path: `/api/don?trang_thai=${t}` })).status]).toEqual([t, 200]);
+    expect((await goi(don.GET, { cookie: cChu, path: "/api/don?trang_thai=constructor" })).status).toBe(400);
+  });
+  it("P3-6: GET /api/buoi-hoc/sinh thiếu xem=1 → 400 (chủ); GV vẫn 403; có xem=1 → 200", async () => {
+    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=2027-03" })).status).toBe(400);
+    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=2027-03&xem=0" })).status).toBe(400);
+    expect((await goi(sinhR.GET, { cookie: cGvAnh, path: "/api/buoi-hoc/sinh?thang=2027-03" })).status).toBe(403);
+    expect((await goi(sinhR.GET, { cookie: cChu, path: "/api/buoi-hoc/sinh?thang=2027-03&xem=1" })).status).toBe(200);
   });
 });

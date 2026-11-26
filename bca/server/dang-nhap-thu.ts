@@ -1,17 +1,16 @@
-// Đăng nhập thử theo vai (Đợt 2 thay bằng Google). T40: chỉ máy cục bộ, hoặc địa chỉ xem thử Vercel với DB dữ liệu giả.
+// Đăng nhập thử theo vai (Đợt 2 thay bằng Google). T40: chỉ khi DB là dữ liệu giả (dấu DU_LIEU_GIA), không bao giờ ở production.
 import { ngayVN } from "@/lib/ngay";
 import { conMo, hetThu, hieuLuc } from "@/lib/quy-tac";
 import { db } from "./db";
 import { napGD } from "./du-lieu";
-import { devLoginBat, mayCucBo, type Phien } from "./token";
+import { devLoginBat, type Phien } from "./token";
 
 /** Khoá cai_dat do seed-gia.ts ghi. chuyen-tu-sheet.ts không bao giờ ghi khoá này (và xoá nó khi --apply). */
 export const DAU_DU_LIEU_GIA = "DU_LIEU_GIA";
 
-/** T40: (a) cục bộ + BCA_DEV_LOGIN=1; (b) VERCEL_ENV=preview + BCA_DEV_LOGIN=1 + DB có dấu DU_LIEU_GIA. Production: không bao giờ. */
+/** T40: BCA_DEV_LOGIN=1 + không phải Vercel production + DB có dấu DU_LIEU_GIA — ở mọi nơi, kể cả máy cục bộ. */
 export async function dangNhapThuBat() {
-  if (!devLoginBat()) return false;
-  return mayCucBo() || !!(await db.cai_dat.findUnique({ where: { khoa: DAU_DU_LIEU_GIA }, select: { khoa: true } }));
+  return devLoginBat() && !!(await db.cai_dat.findUnique({ where: { khoa: DAU_DU_LIEU_GIA }, select: { khoa: true } }));
 }
 
 export const VAI_THU = {

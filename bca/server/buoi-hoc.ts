@@ -2,7 +2,7 @@
 import { congNgay, d2s, gioVN, lucVN, ngayTrongThang, ngayVN, s2d, thangCua } from "@/lib/ngay";
 import { canChu, canMon, canQuanLy, LoiDuLieu, monXemDuoc, type Nguoi } from "@/lib/quyen";
 import { buoiTheoLich, chuanHoaLink, conMo, hieuLuc } from "@/lib/quy-tac";
-import { db, type Tx } from "./db";
+import { db, khoaBuoi, type Tx } from "./db";
 import { caiDat, giaoVienTheoMon, napGD } from "./du-lieu";
 import { ghiNhatKy } from "./nhat-ky";
 import { tienDo } from "./diem-danh";
@@ -158,8 +158,6 @@ export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string
     return { id, noi_dung: r.noi_dung, link_record: r.link_record, ghi_chu: r.ghi_chu };
   });
 }
-
-const khoaBuoi = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM buoi_hoc WHERE id = ${id} FOR UPDATE`;
 
 // ── Buổi "có dữ liệu" (buoi-hoc.md 6.3): điểm danh, nội dung, record, ghi chú, đã huỷ (có lý do cho học sinh) hoặc có buổi bù trỏ tới ──
 const DEM_DU_LIEU = { _count: { select: { diem_danh: true, buoi_bu: true } } } as const;
