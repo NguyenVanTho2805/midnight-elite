@@ -113,7 +113,7 @@ export function GiaHan({ em, homNay, mo, dong, xong }: { em: EmGiaHan[]; homNay:
       <label className="mt-4 block" htmlFor={id}>
         <span className={nhan}>Lý do (bắt buộc)</span>
       </label>
-      <input id={id} value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="Em bận thi giữa kỳ" className={`${oNhap} mt-1`} aria-invalid={!!loi && !lyDo.trim()} aria-describedby={loi ? `${id}-loi` : undefined} autoComplete="off" />
+      <input id={id} value={lyDo} onChange={(e) => { setLyDo(e.target.value); setLoi(""); }} placeholder="Em bận thi giữa kỳ" className={`${oNhap} mt-1`} aria-invalid={!!loi && !lyDo.trim()} aria-describedby={loi ? `${id}-loi` : undefined} autoComplete="off" />
       {loi ? <p id={`${id}-loi`} role="alert" className="mt-2 text-danger">{loi}</p> : null}
     </ToTruot>
   );

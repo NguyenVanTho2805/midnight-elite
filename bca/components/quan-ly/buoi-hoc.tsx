@@ -174,7 +174,7 @@ export function HanhDongBuoi({ b, daDiem, coDuLieu, mon, ds, homNay }: { b: Buoi
         <p className="text-text-2">Buổi nghỉ không tính học phí và chuyên cần.</p>
         {daDiem > 0 ? <p className="mt-2 text-text-2">Buổi đã có <span className="so">{daDiem}</span> lượt điểm danh. Điểm danh được giữ lại và hiện lại nếu đổi về Có học.</p> : null}
         <label className="mt-4 block" htmlFor={id}><span className={nhan}>Lý do (bắt buộc)</span></label>
-        <input id={id} value={lyDo} onChange={(e) => setLyDo(e.target.value)} placeholder="GV ốm, Nghỉ lễ…" className={`${oNhap} mt-1`} aria-invalid={!!loi} autoComplete="off" />
+        <input id={id} value={lyDo} onChange={(e) => { setLyDo(e.target.value); setLoi(""); }} placeholder="GV ốm, Nghỉ lễ…" className={`${oNhap} mt-1`} aria-invalid={!!loi} autoComplete="off" />
         <label className="mt-3 flex min-h-11 items-center gap-3">
           <input type="checkbox" className="size-5 accent-gold" checked={buNgay} onChange={(e) => setBuNgay(e.target.checked)} />
           Thêm buổi học bù ngay

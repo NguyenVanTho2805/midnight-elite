@@ -12,6 +12,7 @@ export function ChiBaoLuu({ choRieng }: { choRieng?: number }) {
   const truoc = useRef(cho);
   useEffect(() => {
     if (truoc.current > 0 && cho === 0 && t.daLuuLuc) setBaoDoc(`Đã lưu ${gio(t.daLuuLuc)}`);
+    else if (cho > 0) setBaoDoc("");
     truoc.current = cho;
   }, [cho, t.daLuuLuc]);
   const cham = (mau: string) => <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${mau}`} />;
