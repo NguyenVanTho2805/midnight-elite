@@ -238,6 +238,11 @@ export function mayBlockRoute(pathname: string, env: FeatureEnv = readFeatureEnv
 // lịch sử nạp). Từ LOI-01 đọc cờ NEXT_PUBLIC_KIN_MO_COIN (mặc định ẩn); bật lại phần hiển thị: đặt =1.
 export const COIN_VISIBLE = featureOn("COIN");
 
+// LOP_ON (KiN lớp bước 1, 27/11/2026, docs/kin/lop/README.md mục 2): quản lý lớp (bảng bca_*) gộp vào KiN. Mặc định TẮT; chỉ đúng "1" mới mở.
+// Cố ý KHÔNG nằm trong FEATURES: đó là danh sách phần đang ẨN của LOI-01/DG (menu, sitemap, chốt 307); phần lớp chưa có route nào để ẩn.
+// Viết nguyên văn process.env.NEXT_PUBLIC_… để Next nhúng được vào mã máy khách.
+export const LOP_ON = process.env.NEXT_PUBLIC_KIN_MO_LOP_ON === "1";
+
 // COIN_LOGIC_ON (rà soát LOI-01, COO 11/11/2026): phần LOGIC Coin — trừ xu khi hỏi (src/app/api/questions/route.ts) và hàng chờ duyệt nạp Coin — TÁCH khỏi cờ hiển thị,
 // giữ đúng hành vi của main (tắt, như hằng `false` cũ). Là HẰNG, cố ý không đọc biến môi trường: bật trừ xu phải qua sửa mã có rà, không bật bằng cấu hình.
 export const COIN_LOGIC_ON = false;
