@@ -20,7 +20,7 @@ Thứ tự đưa lên từng phần (mỗi bước một PR, sau cờ):
 
 | # | Việc | Ghi |
 |---|---|---|
-| 1 | Schema `bca_*` + SQL ràng buộc (CHECK, EXCLUDE gist) | thử trên nhánh Neon: `db push` có xoá ràng buộc tay không |
+| 1 | Schema `bca_*` + SQL ràng buộc (CHECK, EXCLUDE gist) | ✅ 27/11 mã xong (13 model, 7 enum, `prisma/sql/bca-rang-buoc.sql`, cờ `LOP_ON` tắt). Đã thử trên Postgres 17 cục bộ (DB trống + `vector`): `db push` tạo đủ 13 bảng + 7 enum; tệp ràng buộc chạy được và chạy lại an toàn (14 CHECK + 1 EXCLUDE); `db push` lần hai KHÔNG xoá ràng buộc. Chưa thử trên Neon. Sau khi vào `main`, phải chạy tay tệp SQL một lần trên DB production (chưa có bước tự động). |
 | 2 | Lớp quyền + phiên (ánh xạ `getSession` của KiN sang vai chủ / GV / học sinh) | |
 | 3 | Script chuyển dữ liệu từ DB Neon "Kin Class" | xem trước → hỏi chủ → ghi |
 | 4 | Hôm nay + Học sinh (chỉ đọc) | |
