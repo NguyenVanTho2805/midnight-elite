@@ -70,6 +70,8 @@ export async function nguoiLopBca(tao = false): Promise<NguoiQuanLy | null> {
   if (!tao) return { ...u, id: ID_RONG };
   if (!goc || !user) return null;
   const gmail = chuanHoaGmail(user.email)!;
-  const moi = await prisma.bcaNguoiDung.upsert({ where: { gmail }, update: {}, create: { gmail, ten_hien_thi: user.name, vai_tro: "chu" }, select: { id: true } });
+  // Hai request GHI đầu tiên của chủ tới cùng lúc: lần thua khoá duy nhất (P2002) đọc lại dòng lần thắng vừa tạo — không 500.
+  const moi = await prisma.bcaNguoiDung.upsert({ where: { gmail }, update: {}, create: { gmail, ten_hien_thi: user.name, vai_tro: "chu" }, select: { id: true } })
+    .catch(() => prisma.bcaNguoiDung.findUniqueOrThrow({ where: { gmail }, select: { id: true } }));
   return { ...u, id: moi.id };
 }

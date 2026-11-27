@@ -193,7 +193,7 @@ export async function suaHoSoHocSinh(u: Nguoi, maHs: string, v: SuaHoSo) {
     if (!cu) throw new LoiDuLieu(`Không có học sinh ${maHs}`, 404);
     for (const [cot, ten, ma] of [["gmail", "Gmail", "trung_gmail"], ["username_azota", "Username Azota", "trung_azota"]] as const) {
       const trung = data[cot] ? await tx.bcaHocSinh.findFirst({ where: { [cot]: data[cot], id: { not: cu.id } }, select: { ma_hs: true } }) : null;
-      if (trung) throw new LoiDuLieu(`${ten} đã có ở ${trung.ma_hs}`, 409, ma);
+      if (trung) throw new LoiDuLieu(`${ten} đã có ở ${trung.ma_hs} — dùng ${ten} khác, hoặc sửa ở hồ sơ ${trung.ma_hs} trước`, 409, ma);
     }
     const { id: _id, ...truoc } = cu;
     await tx.bcaHocSinh.update({ where: { id: cu.id }, data });

@@ -27,7 +27,8 @@ export async function manGiaoVien(u: Nguoi) {
     return { userId: k.id as string | null, ten: k.name, email: k.email, trang_thai, lop: dong ? lop(dong) : null };
   });
   const moCoi = nd.filter((x) => !daKhop.has(x.id)).map((x) => ({ userId: null as string | null, ten: x.ten_hien_thi, email: x.gmail, trang_thai: "chua_co_tk" as TrangThaiGv, lop: lop(x) }));
-  return { mon, giao_vien: [...coTk, ...moCoi] };
+  // Người đã ở trong lớp lên đầu (sort ổn định: giữ thứ tự tên trong từng nhóm).
+  return { mon, giao_vien: [...coTk, ...moCoi].sort((a, b) => Number(!a.lop) - Number(!b.lop)) };
 }
 
 async function monIds(tx: Tx, v: unknown) {
@@ -51,7 +52,7 @@ const layGv = async (tx: Tx, id: string) => {
 export async function themGiaoVien(u: Nguoi, v: { userId?: unknown; mon?: unknown }) {
   canChu(u);
   const kin = typeof v.userId === "string" && v.userId ? await db.user.findUnique({ where: { id: v.userId }, select: { name: true, email: true, role: true, adminRole: true, emailVerified: true, banned: true } }) : null;
-  if (!kin || kin.role !== "admin" || kin.adminRole !== "teacher") throw new LoiDuLieu("Không có tài khoản giáo viên KiN này — tạo ở Con người › Tài khoản hệ thống trước", 404, "chua_co_tk");
+  if (!kin || kin.role !== "admin" || kin.adminRole !== "teacher") throw new LoiDuLieu("Không có tài khoản giáo viên KiN này — tạo tài khoản giáo viên ở khu quản trị KiN (Con người) trước", 404, "chua_co_tk");
   if (kin.banned) throw new LoiDuLieu("Tài khoản KiN của giáo viên này đang bị khoá — mở khoá ở khu quản trị KiN trước", 409, "bi_cam");
   if (!kin.emailVerified) throw new LoiDuLieu("Email của giáo viên này chưa xác minh — nhờ giáo viên bấm liên kết xác minh trong thư KiN rồi thử lại", 409, "chua_xac_minh");
   const gmail = chuanHoaGmail(kin.email)!, goc = gmailGoc(gmail);
