@@ -3,7 +3,8 @@
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-lop-buoi-api.ts   (dev server PHẢI đang chạy; bài tự nhận cờ: bật ⇒ chạy đủ, tắt ⇒ chỉ kiểm mọi route trả 404).
 // Dữ liệu: nạp lại bca_* từ `bca_gia` trước và sau (lop-db.ts), tài khoản KiN thử tạo bằng upsert — không wipe(). Giờ là giờ THẬT của máy chủ nên mọi lần ghi gửi kèm xacNhan
 // (buổi Anh 26/11 của dữ liệu giả sẽ quá 48 giờ kể từ 28/11/2026); luật 48 giờ / chưa mở với giờ cố định nằm ở t-lop-diem-danh.
-// Ca phá cố ý (đã chạy 27/11/2026): api.ts bỏ `if (!LOP_ON)` → ca cờ tắt đỏ; route DELETE bỏ `canChu(u)` trước soNguyen → ca "GV + id sai vẫn 403" đỏ; nguoiLopBca trả id rỗng khi ghi → ca "chủ có dòng bca_nguoi_dung" đỏ.
+// Ca phá cố ý (đã chạy 27/11/2026, phá → đỏ → trả lại): api.ts bỏ `if (!LOP_ON)` rồi chạy với máy chủ cờ tắt → bài đỏ (route trả 403 thay vì 404 — còn lớp chặn thứ hai là nguoiLopBca);
+// route DELETE bỏ `canChu(u)` trước soNguyen → ca "GV gọi 7 thao tác chỉ-chủ" đỏ (400 thay vì 403); nguoiLopBca không tạo dòng chủ khi ghi → 4 ca "danh tính người ghi" đỏ.
 import bcrypt from "bcryptjs";
 import { api, check, section, done, type TUser } from "./h";
 import { GV_ANH, buoiId, db, hsId, napLaiBca } from "./lop-db";
