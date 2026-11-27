@@ -21,7 +21,7 @@ Thứ tự đưa lên từng phần (mỗi bước một PR, sau cờ):
 | # | Việc | Ghi |
 |---|---|---|
 | 1 | Schema `bca_*` + SQL ràng buộc (CHECK, EXCLUDE gist) | ✅ 27/11 mã xong (13 model, 7 enum, `prisma/sql/bca-rang-buoc.sql`, cờ `LOP_ON` tắt). Đã thử trên Postgres 17 cục bộ (DB trống + `vector`): `db push` tạo đủ 13 bảng + 7 enum; tệp ràng buộc chạy được và chạy lại an toàn (14 CHECK + 1 EXCLUDE); `db push` lần hai KHÔNG xoá ràng buộc. Chưa thử trên Neon. Sau khi vào `main`, phải chạy tay tệp SQL một lần trên DB production (chưa có bước tự động). |
-| 2 | Lớp quyền + phiên (ánh xạ `getSession` của KiN sang vai chủ / GV / học sinh) | |
+| 2 | Lớp quyền + phiên (ánh xạ `getSession` của KiN sang vai chủ / GV / học sinh) | ✅ 27/11 mã xong: `src/lib/lop/` (`ngay`, `quy-tac`, `chuan-hoa`, `quyen` chép nguyên byte từ bca; `phien.ts` có `nguoiLop()`), bài `t-lop-quy-tac-lib` 35/35, `t-lop-phien-lib` 22/22. Chưa có route nào gọi. Còn mở: `Nguoi.id` là `User.id` (cuid) trong khi `tao_boi` / `nghi_boi` là cột uuid — xử ở bước 5; `admin_content` chưa được vào lớp; `tienKy` 65/55 mới chỉ chép, chưa nối (mục 6.4). |
 | 3 | Script chuyển dữ liệu từ DB Neon "Kin Class" | xem trước → hỏi chủ → ghi |
 | 4 | Hôm nay + Học sinh (chỉ đọc) | |
 | 5 | Buổi học + Điểm danh (ghi) | |
