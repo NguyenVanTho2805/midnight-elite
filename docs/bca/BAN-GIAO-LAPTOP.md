@@ -77,7 +77,7 @@ Việc nhỏ còn tồn (P3, không chặn): [`viec-con-lai.md`](viec-con-lai.md
 | `BCA_GOOGLE_CLIENT_SECRET` (Sensitive) | Production | ✅ có (27/11) |
 
 Build Command của project hiện là `npm run build:xem-thu` (= prisma generate && prisma migrate deploy && nạp dữ liệu giả CHỈ khi không phải production và `BCA_SEED_GIA=1` && next build).
-Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể cả production) — tắt cho Production sau khi thử đăng nhập Google xong.
+Bảo vệ (từ 27/11): Vercel Authentication ở mức Standard — chỉ địa chỉ chính thức mở công khai; Preview và địa chỉ riêng từng bản dựng vẫn khoá.
 
 ---
 
@@ -116,7 +116,7 @@ Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể c
 | 3 | Client ID + secret trên Vercel (Production; secret Sensitive) | ✅ 27/11. `/api/dang-nhap/google` trên Production trả 302 sang Google đúng client, redirect, PKCE. Secret chỉ hiện một lần lúc tạo — mất thì tạo secret mới ở Google Cloud. |
 | 4 | `BCA_GMAIL_CHU` | ✅ xong 27/11 |
 | 5 | Chuyển dữ liệu sheet → Neon | ✅ 27/11 14:5x (phiên laptop, chủ đồng ý): xem trước KHỚP rồi `--apply` với bản xuất tải 14:44 và `--ngay-chot=2026-11-27` — 72 HS, 195 ghi danh, 46 buổi, 303 điểm danh, 155 đơn, 0 lỗi. Script nhắc xem lại: tên chữ thường ở dòng sheet 23 và 63, Gmail của HS0074, 17 đơn không còn hồ sơ. **Từ giờ sheet chỉ lưu trữ** — có nhập thêm trên sheet thì phải chạy lại trước khi web có dữ liệu người dùng nhập. Bản xuất nằm ở `~/Downloads` máy chủ lớp (không commit). |
-| 6 | Redeploy Production, đăng nhập Google bằng Gmail chủ, ổn thì tắt Vercel Authentication cho Production | ❌ |
+| 6 | Mở web cho người dùng | ⏳ 27/11: Production READY (sin1). Vercel Authentication đổi từ "all" sang **Standard** (`prod_deployment_urls_and_all_previews`) theo lời chủ: `bca-midnight.vercel.app` mở công khai (trang đăng nhập + `/chinh-sach`), bản xem thử và địa chỉ riêng từng bản dựng vẫn khoá. Đã kiểm từ ngoài: `/dang-nhap` 200 có nút Google, không có đăng nhập thử; `/quan-ly` chuyển về đăng nhập; API 401. **Còn lại:** chủ đăng nhập Google lần đầu bằng `aod.tsix@gmail.com` (tự tạo tài khoản chủ), rồi làm mục 11. |
 
 Vì sao mọi bản dựng đang đỏ: thiếu `BCA_DATABASE_URL` → `prisma migrate deploy` báo "Connection url is empty". Có DB là hết.
 
