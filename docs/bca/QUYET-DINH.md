@@ -36,6 +36,8 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 22. **Trang giới thiệu theo cài đặt sáng/tối của máy** (`prefers-color-scheme`); khu học sinh và quản lý giữ nền tối.
 23. **Thứ tự đợt:** Đợt 1 quản lý lớp (học sinh + ghi danh, buổi học + điểm danh, màn Hôm nay, chuyển dữ liệu từ sheet) → Đợt 2 khu học sinh + đăng nhập Google → Đợt 3 sổ điểm, học phí → Đợt 4 trang giới thiệu + form, email, Meet.
 24. **Chủ duyệt cuối mỗi đợt.** Trong đợt đội tự làm, tự kiểm, tự rà; câu hỏi nghiệp vụ gửi chủ ngay khi gặp.
+25. **Đợt 1 chủ đã thử trên máy và duyệt (26/11).** Bước tiếp chạy song song: (a) đưa bản thử lên mạng, (b) đội làm đăng nhập Google (Đợt 2) để lên chính thức.
+26. **Chỗ đặt web (26/11):** project Vercel riêng `bca-midnight` (thư mục gốc `bca/`), địa chỉ riêng; web KiN (project `midnight-elite`) và `DATABASE_URL` của nó giữ nguyên. Tạm bật Vercel Authentication cho **mọi** địa chỉ của `bca-midnight` (kể cả production) tới khi đăng nhập Google xong. Biến đã đặt: `BCA_SESSION_SECRET` (Preview + Production), `BCA_DEV_LOGIN=1` (chỉ Preview). Lệnh dựng chạy `prisma migrate deploy` vào DB riêng của BCA.
 
 ## Tạm chọn, chờ chủ duyệt (26/11, chủ vắng 5 giờ — đội chọn phương án khuyên dùng; chủ đổi được)
 Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "Câu hỏi cho chủ".
@@ -87,5 +89,20 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T47. Gắn đơn vào hồ sơ cũ mà SĐT (phụ huynh / học sinh) trong đơn khác số đang lưu ⇒ giữ số cũ, báo cho chủ để gọi xác minh.
 - T34. "Chủ cho nghỉ môn" ghi bằng cột riêng `nghi_luc` trên ghi danh, không dựa vào chữ trong ghi chú.
 
+### Đợt 2 — đăng nhập Google (26/11, phiếu BCA-D2-DN; chi tiết `bca/README.md` mục "Đăng nhập Google")
+- T48. So Gmail khi đăng nhập theo "hộp thư": `@gmail.com` / `@googlemail.com` bỏ dấu chấm và phần `+…`, không phân biệt hoa thường (Gmail coi là cùng một hộp); địa chỉ khác so nguyên văn, không phân biệt hoa thường. Hai tài khoản/hồ sơ trỏ cùng một hộp ⇒ từ chối, báo nhắn chủ gộp (không đoán).
+- T49. Một Gmail vừa là tài khoản chủ/GV vừa ghi trên hồ sơ học sinh ⇒ vào vai chủ/GV.
+- ~~T50. Tài khoản chủ đầu tiên (và GV, khi chưa có màn Tài khoản) tạo bằng `bca/scripts/them-nguoi-dung.ts` chạy từ máy chủ với chuỗi Neon; không dùng biến môi trường "Gmail chủ".~~ → T54 (script giữ làm dự phòng).
+- T51. Hồ sơ đang ẩn không đăng nhập được và phiên đang mở hết hiệu lực (T41). Em nghỉ mà chủ muốn em vẫn xem điểm/điểm danh cũ (T16) ⇒ chủ chỉ "cho nghỉ môn", không ẩn hồ sơ.
+- T52. Không ghi nhật ký mỗi lần đăng nhập (chuyen-tu-sheet coi nhật ký có người dùng là "web đã vận hành" và chặn `--apply`). Gmail không bao giờ nằm trong địa chỉ trang hay nhật ký.
+- T53. Preview không dùng đăng nhập Google (địa chỉ preview đổi mỗi lần đẩy nên Google không nhận); preview vẫn dùng đăng nhập thử trên DB giả (T40). Google chỉ bật ở Production (và máy chủ lớp nếu tự thêm redirect URI localhost).
+- T54. (27/11, phiên chính quyết thay theo uỷ quyền của chủ — mục tiêu: chủ mở web là dùng được, không chạy lệnh) Biến `BCA_GMAIL_CHU`: chỉ khi DB chưa có tài khoản chủ nào còn hoạt động, Gmail đó (dạng gốc T48) đăng nhập Google lần đầu ⇒ tạo tài khoản chủ; đã có chủ còn hoạt động ⇒ biến bị bỏ qua. Một dòng nhật ký `tao_chu_dau_tien` vai `he_thong` (không chặn `chuyen-tu-sheet --apply`).
+- T55. (27/11, như trên) Có màn **Tài khoản** ngay Đợt 2: chủ thêm giáo viên (Gmail, tên, môn), sửa tên/môn, khoá/mở khoá, đăng xuất mọi máy; chỉ chủ thấy, quyền kiểm ở máy chủ; không khoá được chủ còn hoạt động cuối cùng (kể cả tự khoá mình).
+- T51 giữ nguyên (27/11, như trên): hồ sơ đã ẩn không đăng nhập được.
+- T56. (27/11, đội tạm chọn — khu học sinh) "Liên hệ gia hạn" ở màn khoá mở link `ZALO_CHUNG`, không có thì `ZALO_HOC_THU`, không có cả hai thì câu "Nhắn chủ lớp qua Zalo để gia hạn". Nút Meet chỉ hiện khi môn có `link_meet` (Đợt 4 mới đồng bộ Meet); chưa có thì chỉ "Link Meet gửi trong nhóm Zalo của môn" + nút nhóm Zalo môn nếu có.
+- T57. (27/11, đội tạm chọn) Nút "Vào lớp ngay" bật từ 15 phút trước giờ học; trước đó nút vẫn bấm được và ghi "còn N phút".
+
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
+- ~~3 câu hỏi Đợt 2 ngày 26/11 (chủ đầu tiên, màn Tài khoản, hồ sơ ẩn)~~ — đã quyết 27/11: T54, T55, T51.
+

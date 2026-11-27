@@ -12,6 +12,15 @@ export function chuanHoaGmail(v: unknown): string | null {
   const s = String(v ?? "").replace(/\s+/g, "").toLowerCase();
   return s || null;
 }
+/**
+ * Dạng gốc để so Gmail khi đăng nhập Google (T48): @gmail.com / @googlemail.com bỏ dấu chấm và phần "+…" ở trước @
+ * (Gmail coi là cùng một hộp thư); địa chỉ khác chỉ so chữ thường.
+ */
+export function gmailGoc(v: unknown): string | null {
+  const g = chuanHoaGmail(v);
+  const m = g?.match(/^([^@]+)@(?:gmail|googlemail)\.com$/);
+  return m ? `${m[1].split("+")[0].replace(/\./g, "")}@gmail.com` : g;
+}
 const DUOI_NHAM = ["gamil.com", "gmai.com", "gmail.con", "gmial.com", "gmail.co", "gmail.cm", "gmal.com", "gnail.com", "gmail.vn"];
 /** Trả gợi ý địa chỉ đúng nếu nghi gõ nhầm đuôi; không tự sửa. */
 export function goiYGmail(g: string | null): string | null {

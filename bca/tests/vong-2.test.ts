@@ -1,6 +1,6 @@
 // Vòng 2 phần máy chủ (BCA-D1-MC2): T33 việc xong, T34 nghi_luc, hoàn tác chuyển chính thức,
 // tạo/ẩn hồ sơ, đổi lịch môn (T8), xoá buổi chưa có dữ liệu. Dữ liệu giả, "hôm nay" = 26/11/2026.
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { d2s, lucVN, ngayVN } from "@/lib/ngay";
 import { CHU, GV_ANH, cookieNd, db, goi, napSeed, nguoi } from "./chung";
 import { homNay } from "@/server/hom-nay";
@@ -28,6 +28,9 @@ beforeAll(async () => {
 });
 
 describe("T33 — đánh dấu xong ở màn Hôm nay", () => {
+  // Route dùng giờ thật ⇒ cố định đồng hồ (chỉ Date) ở 22:00 26/11 cho khớp dữ liệu giả; chạy ngày khác không đỏ oan.
+  beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(T22); });
+  afterAll(() => vi.useRealTimers());
   const coViec = async (luc: Date, loai: string, khoa: string) => (await homNay(chu, luc)).viec.some((v) => v.loai === loai && v.khoa === khoa);
 
   it("thử sắp hết: ẩn 3 ngày (26–28/11), thẻ số vẫn đếm 8; bỏ đánh dấu thì hiện lại", async () => {

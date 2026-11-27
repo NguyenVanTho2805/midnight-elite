@@ -11,6 +11,7 @@ import { ddmm, gio, sdt } from "@/components/dinh-dang";
 import { NutAnHoSo, NutChinhHs, NutMon, ThaoTacHs, type MonHs } from "@/components/quan-ly/thao-tac-hs";
 import { SaoChep } from "@/components/quan-ly/sao-chep";
 import { GhiChuHs } from "@/components/quan-ly/ghi-chu-hs";
+import { DangXuatHs } from "@/components/quan-ly/dang-xuat-hs";
 
 type D = Awaited<ReturnType<typeof chiTietHocSinh>>;
 type MonD = D["mon"][number];
@@ -99,7 +100,7 @@ export default async function TrangMotEm({ params }: { params: Promise<{ maHs: s
             {chu ? (
               <Khoi tieuDe="Liên hệ" mo>
                 <Dong nhan="SĐT học sinh">{hs.sdt_hs ? <a href={`tel:${hs.sdt_hs}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_hs)}</a> : "—"}</Dong>
-                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="min-w-0 [overflow-wrap:anywhere]">{hs.gmail}</span><SaoChep chu={hs.gmail} /></span> : "—"}</Dong>
+                <Dong nhan="Gmail">{hs.gmail ? <span className="flex flex-wrap items-center gap-2"><span translate="no" className="min-w-0 [overflow-wrap:anywhere]">{hs.gmail}</span><SaoChep chu={hs.gmail} />{!hs.an_luc ? <DangXuatHs ma={hs.ma_hs} ten={hs.ho_ten} /> : null}</span> : "—"}</Dong>
                 <Dong nhan="Phụ huynh">{hs.ho_ten_ph ?? "—"}</Dong>
                 <Dong nhan="SĐT phụ huynh">{hs.sdt_ph ? <a href={`tel:${hs.sdt_ph}`} className="so inline-flex min-h-11 items-center hover:underline" translate="no">{sdt(hs.sdt_ph)}</a> : "—"}</Dong>
               </Khoi>

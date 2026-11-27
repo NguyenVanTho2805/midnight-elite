@@ -133,6 +133,7 @@ model hoc_sinh {
   ngay_tao         DateTime    @db.Date
   so_du_dau_ky     Int         @default(0) // đồng
   an_luc           DateTime?   @db.Timestamptz
+  phien_huy_luc    DateTime?   @db.Timestamptz // T41: phiên học sinh cấp trước mốc này hết hiệu lực
   tao_luc          DateTime    @default(now()) @db.Timestamptz
   cap_nhat_luc     DateTime    @default(now()) @updatedAt @db.Timestamptz
   lua              lua?        @relation(fields: [lua_id], references: [id])
