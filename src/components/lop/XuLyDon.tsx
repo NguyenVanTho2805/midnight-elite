@@ -37,11 +37,12 @@ export function XuLyDon({ id, ten, tenMon }: { id: number; ten: string; tenMon: 
     setXem(k.d as unknown as Xem);
   }
   const trung = xem?.trung ?? [];
+  const trungGmail = trung.some((t) => t.khop.includes("gmail"));
   const canChon = trung.length > 0 && !chon;
   const khoang = (chon && chon !== "moi" ? trung.find((t) => t.ma_hs === chon)?.thu_du_kien : undefined) ?? xem?.thu_du_kien;
 
   async function tao(capThuMoi = false) {
-    if (canChon) return setLoi("Chọn gắn đơn vào hồ sơ cũ hay tạo hồ sơ mới.");
+    if (canChon) return setLoi(trungGmail ? "Chọn hồ sơ để gắn đơn vào. Không phải cùng một em thì đóng hộp và bấm “Bỏ qua”." : "Chọn gắn đơn vào hồ sơ cũ hay tạo hồ sơ mới.");
     setDang(true); setLoi(null);
     const k = await goi("POST", `/api/lop/don/${id}/tao-ho-so`, { ...(chon && chon !== "moi" ? { maHs: chon } : { taoMoi: true }), ...(capThuMoi ? { capThuMoi: true } : {}) });
     setDang(false);
@@ -105,7 +106,10 @@ export function XuLyDon({ id, ten, tenMon }: { id: number; ten: string; tenMon: 
                   <label key={t.ma_hs} className="flex min-h-11 items-center gap-3 text-[length:var(--kin-co-goc)]"><input type="radio" name={`don-${id}`} disabled={t.an} checked={chon === t.ma_hs} onChange={() => { setChon(t.ma_hs); setLoi(null); }} className="size-5 shrink-0" />
                     <span className="min-w-0 [overflow-wrap:anywhere]">Gắn vào <span translate="no" className="font-medium">{t.ma_hs} · {t.ho_ten}</span> <span className="text-[var(--kin-chu-mo)]">({[...t.khop.map((k) => KHOP[k] ?? k), t.ten_giong ? "tên giống" : "tên khác", t.an ? "hồ sơ đang ẩn — bỏ ẩn trước" : ""].filter(Boolean).join(", ")})</span></span></label>
                 ))}
-                <label className="flex min-h-11 items-center gap-3 text-[length:var(--kin-co-goc)]"><input type="radio" name={`don-${id}`} checked={chon === "moi"} onChange={() => { setChon("moi"); setLoi(null); }} className="size-5 shrink-0" /><span>Tạo hồ sơ mới (đây là em khác)</span></label>
+                {/* Gmail là duy nhất: đơn trùng Gmail thì "tạo hồ sơ mới" luôn bị 409 ⇒ không bày lựa chọn đó, chỉ còn gắn hoặc bỏ qua. */}
+                {trungGmail
+                  ? <p className="py-2 text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)]">Gmail của đơn đã thuộc hồ sơ trên, và mỗi Gmail chỉ thuộc một hồ sơ nên không tạo hồ sơ mới được. Nếu đây là em khác hoặc đơn gửi nhầm: đóng hộp này rồi bấm “Bỏ qua”.</p>
+                  : <label className="flex min-h-11 items-center gap-3 text-[length:var(--kin-co-goc)]"><input type="radio" name={`don-${id}`} checked={chon === "moi"} onChange={() => { setChon("moi"); setLoi(null); }} className="size-5 shrink-0" /><span>Tạo hồ sơ mới (đây là em khác)</span></label>}
               </fieldset>
             ) : null}
             <Loi chu={loi} />
