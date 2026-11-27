@@ -60,7 +60,7 @@ export async function chiTietHocSinh(u: Nguoi, maHs: string, luc = new Date()) {
   const mons = (await napMon()).filter((m) => !monIds || monIds.includes(m.id));
   const gds = (await napGD({ hoc_sinh_id: hs.id, ...(monIds ? { mon_id: { in: monIds } } : {}) })).get(hs.id) ?? [];
 
-  // shortcut: nhánh giáo viên lọc theo u.id (User.id cuid) trong khi nguoi_dung_id là uuid — bước 4 chỉ chủ vào; nối id ở bước 5 (README bước 2 "còn mở").
+  // GV chỉ thấy thay đổi của chính mình (phan-quyen.md Điều 3): u.id là bca_nguoi_dung.id (nguoiLopBca) nên so được với cột uuid.
   const lichSu = await db.bcaNhatKy.findMany({
     where: { doi_tuong: "ghi_danh", doi_tuong_id: { in: gds.map((g) => String(g.id)) }, ...(laChu(u) ? {} : { nguoi_dung_id: u.id }) },
     orderBy: { luc: "asc" },

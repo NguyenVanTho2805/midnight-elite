@@ -1,7 +1,17 @@
-// Nạp dữ liệu dùng chung của lớp (chép từ bca/server/du-lieu.ts, đổi sang client Prisma của KiN + model Bca*). Bước 4: chỉ phần ĐỌC.
+// Nạp dữ liệu dùng chung của lớp (chép từ bca/server/du-lieu.ts, đổi sang client Prisma của KiN + model Bca*).
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { d2s, d2sOrNull } from "../ngay";
-import type { GD } from "../quy-tac";
+import { MAC_DINH, type GD } from "../quy-tac";
+
+export type Tx = Prisma.TransactionClient;
+/** Khoá dòng buổi (FOR UPDATE) trong transaction ghi: hai thao tác cùng buổi chạy lần lượt. Gọi SAU khi đã kiểm quyền. */
+export const khoaBuoi = (tx: Tx, id: number) => tx.$queryRaw`SELECT id FROM bca_buoi_hoc WHERE id = ${id} FOR UPDATE`;
+/** Chỉ mốc sinh buổi; đơn giá KHÔNG đọc ở đây (học phí chờ chủ, README mục 6.4). */
+export async function ngayBatDauLop() {
+  const r = await prisma.bcaCaiDat.findUnique({ where: { khoa: "NGAY_BAT_DAU_TINH_PHI" } });
+  return String(r?.gia_tri ?? MAC_DINH.NGAY_BAT_DAU_TINH_PHI);
+}
 
 type GDRow = { id: number; ma_gd: string; hoc_sinh_id: number; mon_id: number; loai: GD["loai"]; tu_ngay: Date; den_ngay: Date | null; huy_luc: Date | null; nghi_luc: Date | null };
 export const toGD = (r: GDRow): GD & { hoc_sinh_id: number } => ({
@@ -11,8 +21,8 @@ export const toGD = (r: GDRow): GD & { hoc_sinh_id: number } => ({
 
 /** Chỉ cột cần cho quy tắc — không kéo đơn giá riêng, miễn phí, ghi chú (GV dùng chung hàm này). */
 const COT_GD = { id: true, ma_gd: true, hoc_sinh_id: true, mon_id: true, loai: true, tu_ngay: true, den_ngay: true, huy_luc: true, nghi_luc: true } as const;
-export async function napGD(where: { hoc_sinh_id?: number | { in: number[] }; mon_id?: { in: number[] } } = {}) {
-  const rows = await prisma.bcaGhiDanh.findMany({ where, select: COT_GD, orderBy: [{ tu_ngay: "asc" }, { id: "asc" }] });
+export async function napGD(where: { hoc_sinh_id?: number | { in: number[] }; mon_id?: { in: number[] } } = {}, tx: Tx = prisma) {
+  const rows = await tx.bcaGhiDanh.findMany({ where, select: COT_GD, orderBy: [{ tu_ngay: "asc" }, { id: "asc" }] });
   const theoHs = new Map<number, (GD & { hoc_sinh_id: number })[]>();
   for (const r of rows) {
     const g = toGD(r);
