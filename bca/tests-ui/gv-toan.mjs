@@ -20,7 +20,7 @@ for (const kich of [W.dt, W.mt]) {
     await viec.waitFor();
     const chu = await page.locator("main").innerText();
     for (const cam of [/Thử sắp hết/, /Hết thử – hỏi em/, /Gia hạn cả nhóm/, /Đơn chờ duyệt/, /Thử hết trong 3 ngày/, /Lên chính thức tháng này/, /học phí/i, /\d{2,3}\.000\s?đ/]) ok(!cam.test(chu), `GV Toán thấy "${cam.source}" ở Hôm nay`);
-    ok(!(await viec.locator("a", { hasText: /^Đơn\s*\d+$/ }).count()), "GV thấy chip Đơn");
+    ok(!(await viec.getByRole("tab", { name: /^(Đơn|Học thử)\s*\d+$/ }).count()), "GV thấy tab Đơn / Học thử");
     const siSo = await page.locator("h3", { hasText: "Sĩ số theo môn" }).locator("xpath=following-sibling::ul[1]").locator("li span.font-semibold").allInnerTexts();
     bang(JSON.stringify(siSo), JSON.stringify(["Toán"]), "Sĩ số theo môn của GV Toán");
     const lich = await page.getByRole("region", { name: "7 ngày tới" }).locator("a").allInnerTexts();

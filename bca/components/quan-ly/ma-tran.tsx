@@ -33,6 +33,8 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
   const [moCot, setMoCot] = useState<Set<number>>(new Set());
   const [loi, setLoi] = useState("");
   const [goiY, setGoiY] = useState(false);
+  const [vangTruoc, setVangTruoc] = useState(false); // sắp em vắng nhiều lên đầu
+  const [chiVang, setChiVang] = useState(false); // chỉ em vắng từ 2 buổi
   const khung = useRef<HTMLDivElement>(null);
   const luc = Date.now();
   // Cột hôm nay, hoặc buổi gần nhất đã qua.
@@ -75,7 +77,9 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
     if (!localStorage.getItem("bca-goi-y-vuot")) { setGoiY(true); localStorage.setItem("bca-goi-y-vuot", "1"); }
   }, [cotNay]);
 
-  const hienThi = hang.map((h, r) => ({ h, r })).filter(({ h }) => !chiDangHoc || h.dang_hoc);
+  const soVang = (h: (typeof hang)[number]) => h.o.filter((v) => v === "vang").length;
+  const hienThi = hang.map((h, r) => ({ h, r })).filter(({ h }) => (!chiDangHoc || h.dang_hoc) && (!chiVang || soVang(h) >= 2));
+  if (vangTruoc) hienThi.sort((a, b) => soVang(b.h) - soVang(a.h)); // sort ổn định: cùng số vắng giữ thứ tự tên
   const suaDuoc = (c: number, o: O) => {
     const b = d.buoi[c];
     return b.trang_thai !== "huy" && o !== "-" && o !== "huy" && moDiemDanh(new Date(b.bat_dau_luc), new Date(luc));
@@ -130,13 +134,20 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
     <>
       {loi ? <p role="alert" className="mb-3 rounded-[14px] bg-danger-bg px-4 py-3">{loi}</p> : null}
       {goiY ? <p className="mb-2 text-[13px] text-text-3 sm:hidden">Vuốt ngang để xem các buổi khác.</p> : null}
+      {d.buoi.length ? (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {([["Vắng nhiều lên đầu", vangTruoc, setVangTruoc], ["Chỉ em vắng từ 2 buổi", chiVang, setChiVang]] as const).map(([nhan, bat, dat2]) => (
+            <button key={nhan} type="button" aria-pressed={bat} onClick={() => dat2(!bat)} className={`nhan inline-flex min-h-11 items-center rounded-full border px-4 text-[14px] font-semibold ${bat ? "border-gold bg-nav-active text-gold" : "border-border bg-surface text-text-2 hover:bg-row-hover"}`}>{nhan}</button>
+          ))}
+        </div>
+      ) : null}
       {!d.buoi.length ? (
         <p className="rounded-[14px] border border-border bg-surface px-4 py-6 text-text-2">Tháng này chưa có buổi {d.mon.ten}. — <Link className="font-semibold text-gold hover:underline" href="/quan-ly/buoi-hoc">Mở Buổi học</Link></p>
       ) : !hienThi.length ? (
-        <p className="rounded-[14px] border border-border bg-surface px-4 py-6 text-text-2">Chưa có em nào học {d.mon.ten} trong tháng này.</p>
+        <p className="rounded-[14px] border border-border bg-surface px-4 py-6 text-text-2">{chiVang ? <>Không có em nào vắng từ 2 buổi. <button type="button" className="min-h-11 font-semibold text-gold hover:underline" onClick={() => setChiVang(false)}>Hiện tất cả</button></> : `Chưa có em nào học ${d.mon.ten} trong tháng này.`}</p>
       ) : (
-        <div ref={khung} className="max-h-[calc(100dvh-220px)] w-fit max-w-full overflow-auto rounded-[14px] border border-border bg-surface">
-          <table role="grid" className="border-separate border-spacing-0 text-[15px]">
+        <div ref={khung} className="max-h-[calc(100dvh-280px)] w-full overflow-auto rounded-[14px] border border-border bg-surface">
+          <table role="grid" className="w-full border-separate border-spacing-0 text-[15px]">
             <caption className="sr-only">Ma trận điểm danh {d.mon.ten} tháng {d.thang.slice(5)}/{d.thang.slice(0, 4)}</caption>
             <thead>
               <tr>
@@ -180,18 +191,18 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
                       return (
                         <td key={b.id} className={`border-b border-r border-border p-0 text-center ${ky.nen || (b.ngay === d.hom_nay ? "bg-today-col" : "")}`}>
                           {sua ? (
-                            <button type="button" {...roving(vr, col)} aria-label={`${nhanO}${choGui ? ", chưa gửi" : ""}`} onClick={() => setMo({ r, c: col })} className={`so relative flex h-12 w-11 items-center justify-center font-semibold hover:brightness-95 lg:h-11 ${ky.mau}`}>
+                            <button type="button" {...roving(vr, col)} aria-label={`${nhanO}${choGui ? ", chưa gửi" : ""}`} onClick={() => setMo({ r, c: col })} className={`so relative flex h-12 w-full min-w-11 items-center justify-center font-semibold hover:brightness-95 lg:h-11 ${ky.mau}`}>
                               <span aria-hidden="true">{ky.k}</span>
                               {choGui ? <span aria-hidden="true" className="absolute right-1 top-1 size-1.5 rounded-full border border-text-3" /> : null}
                             </button>
                           ) : (
-                            <span role="img" {...roving(vr, col)} aria-label={nhanO} className={`so flex h-12 w-11 items-center justify-center font-semibold lg:h-11 ${ky.mau}`}>{ky.k}</span>
+                            <span role="img" {...roving(vr, col)} aria-label={nhanO} className={`so flex h-12 w-full min-w-11 items-center justify-center font-semibold lg:h-11 ${ky.mau}`}>{ky.k}</span>
                           )}
                         </td>
                       );
                     })}
                     <td className="so border-b border-border px-2 text-center leading-tight">{c.co}/{c.co + c.phep + c.vang}{c.co + c.phep + c.vang ? <span className={`block text-[12px] font-semibold ${c.vang >= 2 ? "text-danger" : "text-text-3"}`}>{Math.round((c.co / (c.co + c.phep + c.vang)) * 100)}%</span> : null}</td>
-                    <td className="so border-b border-border px-2 text-center">{chuoi(tt)}</td>
+                    <td className="so w-16 border-b border-border px-2 text-center">{chuoi(tt)}</td>
                   </tr>
                 );
               })}

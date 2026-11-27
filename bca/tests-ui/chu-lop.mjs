@@ -10,35 +10,35 @@ for (const [k, kich] of Object.entries(W)) {
     await page.getByRole("region", { name: "Lớp tối nay" }).waitFor();
     for (const h of ["Việc cần làm", "Số liệu lớp", "7 ngày tới"]) ok(await page.getByRole("heading", { name: h, exact: true }).isVisible(), `Thiếu khối "${h}"`);
     ok(await page.getByRole("region", { name: "Lớp tối nay" }).locator("h2").first().isVisible(), "Thẻ lớp tối nay không có tiêu đề");
-    // Chip việc cần làm của chủ: Đơn · Thử sắp hết · Chưa điểm · Thiếu record
-    const chip = async (nhan) => {
-      const l = page.getByRole("region", { name: "Việc cần làm" }).locator("a", { hasText: new RegExp(`^${nhan}\\s*\\d+$`) }).first();
-      ok(await l.isVisible(), `Thiếu chip "${nhan}"`);
-      return Number((await l.innerText()).match(/(\d+)\s*$/)[1]);
+    // Hộp việc chia tab (QĐ 27): Chưa điểm · Học thử · Đơn · Thiếu record — mỗi tab có số đếm
+    const viec = page.getByRole("region", { name: "Việc cần làm" });
+    const tab = async (nhan) => {
+      const l = viec.getByRole("tab", { name: new RegExp(`^${nhan}\\s*\\d+$`) });
+      ok(await l.isVisible(), `Thiếu tab "${nhan}"`);
+      return { l, so: Number((await l.innerText()).match(/(\d+)\s*$/)[1]) };
     };
-    const soDon = await chip("Đơn");
-    const soSap = await chip("Thử sắp hết");
-    await chip("Chưa điểm");
-    await chip("Thiếu record");
-    ok(soDon >= 1, "Dữ liệu giả có 1 đơn chờ duyệt mà chip Đơn = 0");
-    // Tổng "· N em" của các nhóm "Thử sắp hết · Hết …" phải bằng số trên chip
-    const nhom = await page.locator("h3", { hasText: /^Thử sắp hết · Hết/ }).allInnerTexts();
-    const tong = nhom.reduce((s, x) => s + Number(x.match(/· (\d+) em/)[1]), 0);
-    bang(tong, soSap, "Tổng em trong các nhóm Thử sắp hết khác số trên chip");
-    // Thẻ số "Thử hết trong 3 ngày" = chip
+    await tab("Chưa điểm");
+    await tab("Thiếu record");
+    ok((await tab("Đơn")).so >= 1, "Dữ liệu giả có 1 đơn chờ duyệt mà tab Đơn = 0");
+    const thu = await tab("Học thử");
+    await thu.l.click();
+    // Tổng "· N em" của các nhóm "Thử sắp hết · Hết …" = thẻ số "Thử hết trong 3 ngày"; cộng nhóm hết thử = số trên tab
+    const dem = async (re) => (await page.locator("h3", { hasText: re }).allInnerTexts()).reduce((s, x) => s + Number(x.match(/· (\d+) em/)[1]), 0);
+    const soSap = await dem(/^Thử sắp hết · Hết/);
     const the = page.locator("a", { hasText: "Thử hết trong 3 ngày" });
-    bang(Number((await the.innerText()).match(/\d+/)[0]), soSap, "Thẻ số Thử hết trong 3 ngày khác chip");
+    bang(Number((await the.innerText()).match(/\d+/)[0]), soSap, "Thẻ số Thử hết trong 3 ngày khác tổng các nhóm");
+    bang(soSap + (await dem(/^Hết thử – hỏi em/)), thu.so, "Số trên tab Học thử khác tổng em trong các nhóm");
     ok(await page.getByRole("heading", { name: /^Hết thử – hỏi em/ }).isVisible(), "Thiếu nhóm Hết thử – hỏi em");
     await khongTranNgang(page, "Hôm nay");
     await t.chup(page, `chu-hom-nay-${kich.width}`);
   });
 }
 
-test(N, "Chip Thử sắp hết → danh sách lọc đúng số em, URL het=3, F5 giữ lọc (390)", async (t) => {
+test(N, "Thẻ số Thử hết trong 3 ngày → danh sách lọc đúng số em, URL het=3, F5 giữ lọc (390)", async (t) => {
   const { page } = await t.trang("chu", W.dt);
   await moTrang(page, "/quan-ly");
-  const chip = page.getByRole("region", { name: "Việc cần làm" }).locator("a", { hasText: /^Thử sắp hết\s*\d+$/ }).first();
-  const so = Number((await chip.innerText()).match(/(\d+)\s*$/)[1]);
+  const chip = page.locator("a", { hasText: "Thử hết trong 3 ngày" });
+  const so = Number((await chip.innerText()).match(/\d+/)[0]);
   await chip.click();
   await page.waitForURL(/\/quan-ly\/hoc-sinh\?het=3/);
   const dem = page.locator("p[aria-live=polite] span.so", { hasText: / em$/ });
