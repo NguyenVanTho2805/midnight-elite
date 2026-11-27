@@ -1,34 +1,43 @@
 @import "tailwindcss";
 
-/* Token BCA Midnight — docs/bca/thiet-ke/token.md. Tối là mặc định. */
+/* Token BCA Midnight — docs/bca/thiet-ke/token.md. QĐ 27 (27/11): sáng + tối, tự theo máy, có nút đổi (data-theme trên <html>, đặt bởi script đầu trang). */
 :root {
   color-scheme: dark;
-  --bg: #0A0F1E; --surface: #121A2E; --raised: #18223D;
-  --text: #EEF1F8; --text-2: #B8C2DB; --text-3: #9AA5C0;
-  --gold: #F5B544; --on-gold: #1A1305; --gold-hover: #FFD27A;
-  --ok: #7BD3A8; --warn: #FFB199; --danger: #FF8A80;
-  --trial-fg: #F5D38A; --trial-bg: #1A1608;
-  --border: #26304A; --border-input: #66729A; --focus: #F5B544;
-  /* Bổ sung khu quản lý */
+  --bg: #0C1226; --surface: #18223F; --raised: #212D52;
+  --text: #F2F4FA; --text-2: #C3CBE0; --text-3: #9DA8C6;
+  --gold: #F5B544; --gold-chu: #F5B544; --on-gold: #1A1305; --gold-hover: #FFD27A;
+  --ok: #7BD3A8; --warn: #FFB86B; --danger: #FF8A80;
+  --trial-fg: #F5D38A; --trial-bg: #2B2410;
+  --border: #36436C; --border-input: #7682AA; --focus: #F5B544;
   --on-ok: #06140D; --excused: #A9C7FF; --on-excused: #0A1A3A; --on-danger: #2A0805;
-  --ok-bg: #13281E; --excused-bg: #152038; --danger-bg: #2E1517; --warn-bg: #2E1C14;
-  --row-hover: #1B2336; --today-col: #242630; --nav-active: #1A2340; --sidebar: #0D1324; --skeleton: #1C2640;
-  --shadow-overlay: 0 12px 32px rgba(0,0,0,.45), 0 0 0 1px #26304A;
-  --shadow-sticky: 0 1px 0 #26304A;
+  --ok-bg: #143326; --excused-bg: #1A2A4D; --danger-bg: #3A1A1D; --warn-bg: #3A2814;
+  --row-hover: #222D50; --today-col: #2C2F3F; --nav-active: #24305A; --sidebar: #0F1730; --skeleton: #25305A;
+  --mon-toan: #8AB4FF; --mon-su: #E3A6FF; --mon-dia: #5CC8E0; --mon-anh: #FF9FC0;
+  --shadow-overlay: 0 12px 32px rgba(0,0,0,.45), 0 0 0 1px var(--border);
+  --shadow-sticky: 0 1px 0 var(--border);
   --dur-press: 80ms; --dur-fast: 150ms; --dur-sheet: 240ms; --dur-undo: 5000ms;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
-/* Bảng sáng: phiếu học phí, ảnh tin nhắn Zalo, bản in */
-.sang {
+/* Bảng sáng: cả web khi chọn/theo máy sáng; .sang giữ cho phiếu học phí, ảnh tin nhắn Zalo, bản in. Vàng tươi chỉ làm NỀN nút (--gold); chữ/viền vàng dùng --gold-chu đậm. */
+:root[data-theme="light"], .sang {
   color-scheme: light;
-  --bg: #F7F8FB; --surface: #FFFFFF; --text: #0F1629; --text-2: #4A5470; --text-3: #5F6A85;
-  --accent: #8A5A00; --ok: #0B6B47; --danger: #B42318; --border-input: #8A93AB;
+  --bg: #F1F4FA; --surface: #FFFFFF; --raised: #E9EDF6;
+  --text: #0F1A3A; --text-2: #46507A; --text-3: #5F6A8A;
+  --gold-chu: #8A5A00; --gold-hover: #E9A52E;
+  --ok: #0B6B47; --warn: #8A4500; --danger: #B42318; --accent: #8A5A00;
+  --trial-fg: #7A4D00; --trial-bg: #FFF1CF;
+  --border: #D0D7E8; --border-input: #8A93AB; --focus: #1D4ED8;
+  --on-ok: #FFFFFF; --excused: #1D4ED8; --on-excused: #FFFFFF; --on-danger: #FFFFFF;
+  --ok-bg: #DDF2E7; --excused-bg: #E1EAFF; --danger-bg: #FCE3E0; --warn-bg: #FFEFD6;
+  --row-hover: #EEF1F8; --today-col: #FFF4D6; --nav-active: #E6ECFA; --sidebar: #FFFFFF; --skeleton: #E1E6F1;
+  --mon-toan: #1D5FD0; --mon-su: #8A3FC0; --mon-dia: #0B7A90; --mon-anh: #C2356E;
+  --shadow-overlay: 0 12px 32px rgba(15,26,58,.18), 0 0 0 1px var(--border);
 }
 
 @theme inline {
   --color-bg: var(--bg); --color-surface: var(--surface); --color-raised: var(--raised);
   --color-text: var(--text); --color-text-2: var(--text-2); --color-text-3: var(--text-3);
-  --color-gold: var(--gold); --color-on-gold: var(--on-gold); --color-ok: var(--ok); --color-warn: var(--warn);
+  --color-gold: var(--gold); --text-color-gold: var(--gold-chu); --border-color-gold: var(--gold-chu); --color-on-gold: var(--on-gold); --color-ok: var(--ok); --color-warn: var(--warn);
   --color-danger: var(--danger); --color-excused: var(--excused); --color-border: var(--border); --color-border-input: var(--border-input);
   --font-sans: var(--font-be-vietnam), system-ui, sans-serif;
 }
@@ -46,6 +55,7 @@ body { font-family: var(--font-sans); }
   --color-ok-bg: var(--ok-bg); --color-excused-bg: var(--excused-bg); --color-danger-bg: var(--danger-bg); --color-warn-bg: var(--warn-bg);
   --color-row-hover: var(--row-hover); --color-today-col: var(--today-col); --color-nav-active: var(--nav-active);
   --color-sidebar: var(--sidebar); --color-skeleton: var(--skeleton);
+  --color-mon-toan: var(--mon-toan); --color-mon-su: var(--mon-su); --color-mon-dia: var(--mon-dia); --color-mon-anh: var(--mon-anh);
 }
 html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; scroll-padding-top: 72px; }
 /* Nhấn nút: scale(.97) 80ms (token dur-press) */

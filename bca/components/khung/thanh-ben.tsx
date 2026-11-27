@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { IconTrang } from "../bieu-tuong";
 import { dangMo, MUC, type ThongTinKhung } from "./muc-dieu-huong";
 import { NutDangXuat } from "./dang-xuat";
+import { NutDoiGiaoDien } from "./doi-giao-dien";
 
 export function ThanhBen({ chu, soDon, soHs, ten, vaiNhan }: ThongTinKhung) {
   const path = usePathname();
@@ -42,6 +43,7 @@ export function ThanhBen({ chu, soDon, soHs, ten, vaiNhan }: ThongTinKhung) {
           <span className="block font-semibold text-text" translate="no">{ten}</span>
           <span className="block text-[13px] text-text-3">{vaiNhan}</span>
         </p>
+        <NutDoiGiaoDien coNhan className="w-full justify-center lg:justify-start [&>span]:hidden lg:[&>span]:inline" />
         <NutDangXuat className="justify-center lg:justify-start [&>span]:hidden lg:[&>span]:inline" />
       </div>
     </nav>

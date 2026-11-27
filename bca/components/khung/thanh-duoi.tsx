@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { IconDon, IconTaiKhoan, IconThem } from "../bieu-tuong";
 import { ToTruot } from "../ui/to-truot";
 import { NutDangXuat } from "./dang-xuat";
+import { NutDoiGiaoDien } from "./doi-giao-dien";
 import { dangMo, MUC, type ThongTinKhung } from "./muc-dieu-huong";
 
 function useBanPhimMo() {
@@ -77,6 +78,7 @@ export function ThanhDuoi({ chu, soDon, ten, vaiNhan }: ThongTinKhung) {
             <IconTaiKhoan size={20} />
             <span><span className="font-semibold text-text" translate="no">{ten}</span> · {vaiNhan}</span>
           </li>
+          <li><NutDoiGiaoDien coNhan className="min-h-12 w-full justify-start" /></li>
           <li><NutDangXuat className="min-h-12" /></li>
         </ul>
       </ToTruot>

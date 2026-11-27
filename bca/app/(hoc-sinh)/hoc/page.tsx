@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { nguoiHienTai } from "@/server/phien";
 import { cuaToi } from "@/server/hs";
 import { DangXuat } from "@/app/dang-nhap/dang-xuat";
+import { NutDoiGiaoDien } from "@/components/khung/doi-giao-dien";
 import { ddmm, thuDay, thuNganNgay, tenMonDayDu } from "@/components/dinh-dang";
 import { Chip } from "@/components/ui/chip";
 import { nutChinhTo, nutPhu } from "@/components/ui/nut";
@@ -73,7 +74,7 @@ export default async function Hoc() {
     <main className="mx-auto min-h-dvh max-w-[560px] pb-10">
       <header className="flex h-14 items-center justify-between px-4">
         <p className="font-extrabold">BCA Midnight</p>
-        <DangXuat />
+        <span className="flex items-center gap-1"><NutDoiGiaoDien /><DangXuat /></span>
       </header>
 
       <section aria-labelledby="toi-nay" className="hien-nhanh px-4 pt-2">

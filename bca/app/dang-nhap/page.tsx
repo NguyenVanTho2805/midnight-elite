@@ -5,6 +5,7 @@ import { dangNhapThuBat, VAI_THU } from "@/server/dang-nhap-thu";
 import { cauHinhGoogle, type MaLoi } from "@/server/google";
 import { nguoiHienTai } from "@/server/phien";
 import { DangXuat } from "./dang-xuat";
+import { NutDoiGiaoDien } from "@/components/khung/doi-giao-dien";
 import { NutVai } from "./nut-vai";
 
 const LOI: Record<MaLoi, string> = {
@@ -42,7 +43,7 @@ export default async function DangNhap({ searchParams }: { searchParams: Promise
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
-      <h1 className="text-[28px] font-extrabold leading-tight">BCA Midnight</h1>
+      <div className="flex items-start justify-between gap-2"><h1 className="text-[28px] font-extrabold leading-tight">BCA Midnight</h1><NutDoiGiaoDien className="-mr-3 -mt-1" /></div>
       <p className="mt-1 text-text-2">Lớp ôn BCA · ĐGNL — học Google Meet lúc 22:15.</p>
 
       {u ? (

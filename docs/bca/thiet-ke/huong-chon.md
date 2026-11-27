@@ -1,5 +1,7 @@
 # Hướng giao diện đã chọn — 26/11/2026
 
+> **27/11/2026:** chủ quyết lại (QĐ 27 trong `QUYET-DINH.md`): có cả sáng và tối cho mọi khu, thiết kế lại từng màn. Các mục "một ngôn ngữ tối duy nhất" và "biến thể sáng chỉ cho phiếu" bên dưới không còn hiệu lực; phần còn lại giữ tới khi màn tương ứng được dựng lại.
+
 3 giám khảo độc lập (`bca-giam-khao`) chấm 3 mẫu A "Midnight" (tối navy + vàng), B "Sổ tay" (sáng, Inter), C "Sân trường" (trắng, Lexend, chữ to).
 
 | Góc chấm | A | B | C | Kết luận của giám khảo |

@@ -38,6 +38,7 @@ Nguồn sự thật cho đội `bca-*`. Chỉ thêm dòng mới (ghi ngày); quy
 24. **Chủ duyệt cuối mỗi đợt.** Trong đợt đội tự làm, tự kiểm, tự rà; câu hỏi nghiệp vụ gửi chủ ngay khi gặp.
 25. **Đợt 1 chủ đã thử trên máy và duyệt (26/11).** Bước tiếp chạy song song: (a) đưa bản thử lên mạng, (b) đội làm đăng nhập Google (Đợt 2) để lên chính thức.
 26. **Chỗ đặt web (26/11):** project Vercel riêng `bca-midnight` (thư mục gốc `bca/`), địa chỉ riêng; web KiN (project `midnight-elite`) và `DATABASE_URL` của nó giữ nguyên. Tạm bật Vercel Authentication cho **mọi** địa chỉ của `bca-midnight` (kể cả production) tới khi đăng nhập Google xong. Biến đã đặt: `BCA_SESSION_SECRET` (Preview + Production), `BCA_DEV_LOGIN=1` (chỉ Preview). Lệnh dựng chạy `prisma migrate deploy` vào DB riêng của BCA.
+27. **Giao diện sáng + tối, thiết kế lại từng màn (27/11, chủ quyết — thay phần "nền tối cho mọi khu" của QĐ 20 và QĐ 22):** chủ xem bản dựng và chê "nền tối quá, mọi thứ một màu, quá nhiều thứ, mờ mắt". Chốt: (a) mọi khu có cả sáng và tối, tự theo máy, có nút đổi tay (lưu ở máy đó); (b) thiết kế lại từng màn, cả khu quản lý và khu học sinh, theo 4 bước: nền móng màu → khu học sinh + đăng nhập → Hôm nay + ma trận tháng → Học sinh (bảng dữ liệu) + Buổi học (lịch tuần) + tìm nhanh; (c) khu học sinh tham khảo web học tập, khu quản lý ưu tiên mẫu công cụ nhiều dữ liệu; (d) vàng tươi chỉ làm nền nút chính và dấu "hôm nay", mỗi vùng một nút vàng; mỗi môn một màu. Bước 1 (bảng màu, nút đổi) làm 27/11. Chưa quyết: thêm shadcn cho bước 4; chuyển động khu quản lý (đang giữ "gần như không").
 
 ## Tạm chọn, chờ chủ duyệt (26/11, chủ vắng 5 giờ — đội chọn phương án khuyên dùng; chủ đổi được)
 Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "Câu hỏi cho chủ".
@@ -104,6 +105,7 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T58. (27/11, đội tạm chọn — chuyển dữ liệu) Em đã ẩn trên sheet vẫn thuộc danh sách các buổi **trước** ngày ẩn (đọc từ ghi chú ghi danh "(ẩn dd/MM|…)") ⇒ giữ điểm danh cũ, khớp sĩ số ma trận tháng; buổi từ ngày ẩn trở đi thì không. Ô Tình trạng có biểu tượng đầu ô (✅ 🧪 ⏹, sheet thêm 26/11) được bỏ biểu tượng khi đối soát. Chạy thử bản xuất 27/11 với `--ngay-chot=2026-11-27`: KHỚP (72 HS, 195 ghi danh, 46 buổi, 303 điểm danh, 155 đơn; 0/284 ô lệch).
 
 ## Câu hỏi đang mở
-- Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
+- ~~Khoá API 21st.dev~~ — chủ đã nối 21st.dev vào Claude trên laptop 27/11 (gói miễn phí: 2 lượt cài/ngày).
+- Bước 4 thiết kế lại: có thêm shadcn (bảng dữ liệu, hộp tìm nhanh) không? Khuyên: có.
 - ~~3 câu hỏi Đợt 2 ngày 26/11 (chủ đầu tiên, màn Tài khoản, hồ sơ ẩn)~~ — đã quyết 27/11: T54, T55, T51.
 

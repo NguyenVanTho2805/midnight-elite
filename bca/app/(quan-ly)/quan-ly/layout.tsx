@@ -1,6 +1,6 @@
 // Khung khu quản lý (khung-quan-ly.md): thanh bên ≥ 640px, thanh dưới 5 mục trên điện thoại,
 // liên kết bỏ qua tới nội dung, dải mất mạng, thanh Hoàn tác dùng chung.
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { layNguoiQuanLy } from "@/components/khung/nguoi";
 import { ThanhBen } from "@/components/khung/thanh-ben";
@@ -11,7 +11,6 @@ import { danhSachDon } from "@/server/don";
 import { demHocSinhDangHien } from "@/server/hoc-sinh";
 
 export const metadata: Metadata = { title: { default: "Quản lý lớp · BCA Midnight", template: "%s · BCA Midnight" } };
-export const viewport: Viewport = { themeColor: "#0A0F1E", colorScheme: "dark", viewportFit: "cover" };
 
 export default async function KhungQuanLy({ children }: { children: ReactNode }) {
   const u = await layNguoiQuanLy();

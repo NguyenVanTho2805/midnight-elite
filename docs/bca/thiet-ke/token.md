@@ -2,6 +2,12 @@
 
 Tỉ lệ tương phản đã tính (WCAG 2.x). Tối là mặc định.
 
+> **Cập nhật 27/11/2026 (QĐ 27):** web có cả sáng và tối, tự theo máy + nút đổi (`data-theme` trên `<html>`, khoá lưu `bca-giao-dien`). Giá trị đang dùng là trong `bca/app/globals.css` — hai bảng dưới đây là bản 26/11, đã đổi:
+> - Tối: tách tầng rõ hơn — `bg` #0C1226 · `surface` #18223F · `raised` #212D52 · `border` #36436C · `border-input` #7682AA · `warn` #FFB86B.
+> - Sáng (cả web, không chỉ phiếu): `bg` #F1F4FA · `surface` #FFFFFF · `raised` #E9EDF6 · `border` #D0D7E8 · chữ #0F1A3A / #46507A / #5F6A8A · `ok` #0B6B47 · `warn` #8A4500 · `danger` #B42318 · `excused` #1D4ED8 · `focus` #1D4ED8; nút trạng thái đang chọn chữ trắng.
+> - Vàng tách hai vai: `--gold` #F5B544 chỉ làm NỀN (nút chính, chấm, huy hiệu); chữ và viền vàng (`text-gold`, `border-gold`) dùng `--gold-chu` = #F5B544 ở tối, #8A5A00 ở sáng (5.9:1 trên trắng).
+> - Màu môn `--mon-toan|su|dia|anh`: tối #8AB4FF · #E3A6FF · #5CC8E0 · #FF9FC0; sáng #1D5FD0 · #8A3FC0 · #0B7A90 · #C2356E. Đã khai, bắt đầu dùng từ bước 2. Tương phản các màu mới CHƯA đo bằng máy.
+
 ## Tối (mặc định)
 | Token | Hex | Dùng cho · tương phản |
 |---|---|---|
