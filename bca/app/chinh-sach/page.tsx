@@ -1,5 +1,5 @@
 // Chính sách quyền riêng tư — trang công khai (không cần đăng nhập). Google yêu cầu có trang này mới cho
-// "Publish" màn đăng nhập Google. BẢN NHÁP 27/11/2026, chờ chủ lớp duyệt nội dung trước khi đưa lên chính thức.
+// "Publish" màn đăng nhập Google. Chủ lớp duyệt nội dung 27/11/2026 — đổi nội dung thì hỏi chủ lớp trước (cam kết với học sinh, phụ huynh).
 import type { Metadata } from "next";
 import Link from "next/link";
 
