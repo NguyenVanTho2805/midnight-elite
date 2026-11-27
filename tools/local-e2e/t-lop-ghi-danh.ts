@@ -159,7 +159,9 @@ async function main() {
     check("GV → LoiQuyen và không đổi; mã lạ → 404; không có gì để lưu → 400; quá 2.000 ký tự → 400", (await loi(() => suaGhiChuHocSinh(gvAnh, "HS0002", { ghiChuRieng: "đổi" }))) instanceof LoiQuyen && (await db.bcaHocSinh.findUniqueOrThrow({ where: { ma_hs: "HS0002" } })).ghi_chu_rieng === "PH khó tính"
       && (await loi(() => suaGhiChuHocSinh(chu, "HS9999", { ghiChu: "x" })))?.status === 404 && (await loi(() => suaGhiChuHocSinh(chu, "HS0002", {})))?.status === 400 && (await loi(() => suaGhiChuHocSinh(chu, "HS0002", { ghiChu: "x".repeat(2001) })))?.status === 400);
     const s = await suaHoSoHocSinh(chu, "HS0002", { hoTen: "  Nguyễn Hoàng   Bảo Ngọc Phương Anh ", sdtPh: "+84 812 345 678", truong: "" });
+    const sdtSai = [await loi(() => suaHoSoHocSinh(chu, "HS0002", { sdtHs: "abc" })), await loi(() => suaHoSoHocSinh(chu, "HS0002", { sdtHs: "09123" }))];
     const hs = await db.bcaHocSinh.findUniqueOrThrow({ where: { ma_hs: "HS0002" } });
+    check("SĐT gõ 'abc' / thiếu số → 400 mã sdt, số cũ KHÔNG bị xoá", sdtSai.every((e) => e?.status === 400 && e?.ma === "sdt") && hs.sdt_hs === "0910000001", sdtSai.map((e) => e?.message));
     const nk = await db.bcaNhatKy.findFirstOrThrow({ where: { hanh_dong: "sua_ho_so_hoc_sinh", doi_tuong_id: "HS0002" } });
     check("sửa hồ sơ: chuẩn hoá tên / SĐT, chuỗi rỗng xoá ô, ô không gửi giữ nguyên, nhật ký có trước / sau", hs.ho_ten === "Nguyễn Hoàng Bảo Ngọc Phương Anh" && hs.sdt_ph === "0812345678" && hs.truong === null && hs.sdt_hs === "0910000001" && s.ma_hs === "HS0002"
       && nk.nguoi_dung_id === chu.id && "ho_ten" in (nk.truoc as object) && (nk.sau as { sdt_ph?: string }).sdt_ph === "0812345678", [hs.ho_ten, hs.sdt_ph, hs.truong, nk.truoc]);

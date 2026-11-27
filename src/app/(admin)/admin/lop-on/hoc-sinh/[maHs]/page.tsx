@@ -4,6 +4,7 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { KinPanel, KinPageHeader } from "@/components/kin";
+import { prisma } from "@/lib/prisma";
 import { chuLop } from "@/lib/lop/server/cua";
 import { chiTietHocSinh } from "@/lib/lop/server/hoc-sinh";
 import { LoiDuLieu } from "@/lib/lop/quyen";
@@ -46,6 +47,8 @@ export default async function LopOnMotEm({ params, searchParams }: { params: Pro
     return <div className="max-w-5xl"><KinPageHeader title="Học sinh" back={{ href: GOC, label: "‹ Danh sách học sinh" }} /><KhoiLoi ten="hồ sơ học sinh" href={`${GOC}/${encodeURIComponent(maHs)}`} /></div>;
   }
   const hs = d.hoc_sinh as typeof d.hoc_sinh & Partial<Record<"sdt_hs" | "sdt_ph" | "gmail" | "ho_ten_ph" | "truong" | "khoi" | "muc_tieu" | "nguon" | "ghi_chu" | "ghi_chu_rieng", string | null>> & { ngay_tao?: Date; dong_y_vinh_danh?: boolean };
+  // Gmail trên hồ sơ là chữ gõ tay: hiện tài khoản KiN đang nối để chủ thấy nếu nối nhầm người (sửa Gmail là gỡ nối).
+  const noi = (await prisma.bcaHocSinh.findUnique({ where: { ma_hs: hs.ma_hs }, select: { user: { select: { email: true } } } }))?.user;
   const het = d.tinh_trang.startsWith("Hết thử") ? (d.mon.flatMap((m) => m.ghi_danh).filter((g) => g.loai === "thu" && !g.huy).map((g) => g.den_ngay ?? "").sort().at(-1) ?? null) : null;
   const thu = d.thu;
   const hetThu = d.tinh_trang.startsWith("Hết thử");
@@ -107,6 +110,7 @@ export default async function LopOnMotEm({ params, searchParams }: { params: Pro
           <Khoi tieuDe="Liên hệ">
             <Dong nhan="SĐT học sinh">{hs.sdt_hs ? <a href={`tel:${hs.sdt_hs}`} className="inline-flex min-h-11 items-center tabular-nums text-[var(--kin-nhan-link)] hover:underline" translate="no">{sdt(hs.sdt_hs)}</a> : "—"}</Dong>
             <Dong nhan="Gmail"><span translate="no" className="[overflow-wrap:anywhere]">{hs.gmail ?? "—"}</span></Dong>
+            <Dong nhan="Tài khoản KiN"><span translate="no" className="[overflow-wrap:anywhere]">{noi ? `Đã nối · ${noi.email}` : "Chưa nối"}</span></Dong>
             <Dong nhan="Phụ huynh">{hs.ho_ten_ph ?? "—"}</Dong>
             <Dong nhan="SĐT phụ huynh">{hs.sdt_ph ? <a href={`tel:${hs.sdt_ph}`} className="inline-flex min-h-11 items-center tabular-nums text-[var(--kin-nhan-link)] hover:underline" translate="no">{sdt(hs.sdt_ph)}</a> : "—"}</Dong>
             <div className="border-t border-[var(--kin-vien-nhat)] pt-3"><SuaHoSo maHs={hs.ma_hs} hs={hs as unknown as Record<string, unknown>} /></div>

@@ -17,9 +17,10 @@ export function ghiNhatKy(u: Nguoi | null, hanh_dong: string, doi_tuong: string,
   });
 }
 
-/** Nhật ký "từ chối" (phan-quyen.md 4.1), tối đa 1 dòng / người / route (phương thức + đường dẫn) / phút: lần lặp trong phút đó tăng `sau.so_lan`. */
+/** Nhật ký "từ chối" (phan-quyen.md 4.1), tối đa 1 dòng / người / mẫu route (phương thức + đường dẫn, id gộp thành :id) / phút: lần lặp trong phút đó tăng `sau.so_lan`. */
 export async function ghiTuChoi(u: Nguoi, phuongThuc: string, duongDan: string, lyDo: string, luc = new Date()) {
-  const khoa = `${phuongThuc} ${duongDan}`;
+  // Số trong đường dẫn gộp thành :id — vòng lặp dò /buoi/1..N chỉ sinh MỘT dòng mỗi phút (đường dẫn thật vẫn nằm ở sau.duong_dan của lần đầu).
+  const khoa = `${phuongThuc} ${duongDan.replace(/\/\d+(?=\/|$)/g, "/:id")}`;
   const gan = await db.bcaNhatKy.findFirst({
     where: { hanh_dong: "tu_choi", doi_tuong: "request", doi_tuong_id: khoa, luc: { gt: new Date(luc.getTime() - 60_000) }, ...(u.vai === "hoc_sinh" ? { vai_tro: `hoc_sinh:${u.hocSinhId}` } : { nguoi_dung_id: u.id }) },
     orderBy: { id: "desc" },

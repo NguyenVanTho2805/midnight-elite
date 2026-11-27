@@ -175,7 +175,7 @@ export default async function LopOnHocSinh() {
               <h2 id="khoa" className="text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-tt-chu-loi-dam)]">
                 {d.trang_thai === "het_thu" && d.het_thu ? <>Thời gian học thử đã hết từ <span className="tabular-nums">{ddmm(d.het_thu)}</span></> : "Em đã nghỉ các môn"}
               </h2>
-              <p className={`${phu} mt-1`}>Em vẫn xem được điểm danh của mình. Nội dung buổi và record đã khoá.</p>
+              <p className={`${phu} mt-1`}>Lịch học, nội dung buổi và record đã khoá. Gia hạn xong là mở lại ngay.</p>
             </div>
             {lienHe
               ? <a href={lienHe} {...ngoai} className={`${kinButtonClass("primary", "lg")} mt-3 min-h-14 w-full`}>Liên hệ gia hạn</a>

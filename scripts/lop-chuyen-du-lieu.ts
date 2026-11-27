@@ -64,6 +64,9 @@ async function chay() {
         const daCo: string[] = [];
         for (const b of BANG) if ((await dst.unsafe(`select 1 from ${q("bca_" + b)} limit 1`)).length) daCo.push("bca_" + b);
         if (daCo.length && !ghiDe) throw new TuChoi(`Đích đã có dữ liệu ở: ${daCo.join(", ")} (muốn xoá rồi chép lại thì thêm --ghi-de)`);
+        // Sau khi bật cờ, hồ sơ đã nối tài khoản KiN (userId) chỉ có ở đích: ghi đè là mất hết lần nối.
+        if (daCo.length && (await dst`select 1 from bca_hoc_sinh where "userId" is not null limit 1`).length && process.env.LOP_GHI_DE_DA_NOI !== "1")
+          throw new TuChoi("Đích đã có hồ sơ nối tài khoản KiN: --ghi-de sẽ xoá các lần nối đó (chủ quyết thì thêm LOP_GHI_DE_DA_NOI=1)");
         // Không CASCADE: bảng ngoài nhóm bca_* mà trỏ vào thì Postgres chặn, không xoá lan.
         if (daCo.length) await dst.unsafe(`truncate ${BANG.map((b) => q("bca_" + b)).join(", ")}`);
 

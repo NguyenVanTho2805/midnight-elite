@@ -8,7 +8,7 @@ import type { NguoiQuanLy } from "@/lib/lop/quyen";
 export function napLaiBca() {
   const url = process.env.DATABASE_URL ?? "";
   if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) throw new Error("Bài này ghi đè bảng bca_*: chỉ chạy với DATABASE_URL ở localhost");
-  const ra = execFileSync("npx", ["tsx", "scripts/lop-chuyen-du-lieu.ts", "--apply", "--ghi-de"], { env: { ...process.env, LOP_NGUON_URL: url.replace(/\/[^/?]+(\?.*)?$/, "/bca_gia"), LOP_DICH_URL: url }, encoding: "utf8" });
+  const ra = execFileSync("npx", ["tsx", "scripts/lop-chuyen-du-lieu.ts", "--apply", "--ghi-de"], { env: { ...process.env, LOP_GHI_DE_DA_NOI: "1", LOP_NGUON_URL: url.replace(/\/[^/?]+(\?.*)?$/, "/bca_gia"), LOP_DICH_URL: url }, encoding: "utf8" });
   if (!/"ket_qua": "KHỚP"/.test(ra)) throw new Error("Nạp lại bca_* không khớp:\n" + ra.slice(-600));
 }
 

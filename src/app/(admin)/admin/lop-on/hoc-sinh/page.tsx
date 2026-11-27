@@ -115,7 +115,7 @@ function Chon({ ten, nhan, giaTri, luaChon }: { ten: string; nhan: string; giaTr
   return (
     <label className="min-w-0 flex-1 basis-[calc(50%-0.375rem)] sm:flex-none sm:basis-auto">
       <span className="sr-only">{nhan}</span>
-      <KinSelect name={ten} defaultValue={giaTri ?? ""} className={`${KIN_FIELD} sm:w-auto sm:min-w-32`}>
+      <KinSelect name={ten} defaultValue={giaTri ?? ""} className="sm:w-auto sm:min-w-32">
         <option value="">{nhan}: tất cả</option>
         {luaChon.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
       </KinSelect>

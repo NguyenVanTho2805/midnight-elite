@@ -175,7 +175,7 @@ export function HoSoThaoTac(p: HoSo) {
 
       <KinDialog open={mo === "them"} onClose={dong} title={`Ghi danh môn · ${p.ten}`} footer={<Chan dong={dong} dang={g.dang} nhan="Ghi danh" id="lop-them" />}>
         <form id="lop-them" onSubmit={them} className="grid gap-4">
-          <label className={KIN_LABEL}>Môn<KinSelect name="mon" required className={`${KIN_FIELD} mt-1`}>{chua.map((m) => <option key={m.ma} value={m.ma}>{m.ten} ({TEN_O(m)})</option>)}</KinSelect></label>
+          <label className={KIN_LABEL}>Môn<KinSelect name="mon" required className="mt-1">{chua.map((m) => <option key={m.ma} value={m.ma}>{m.ten} ({TEN_O(m)})</option>)}</KinSelect></label>
           <fieldset><legend className={KIN_LABEL}>Loại</legend>
             <label className={O_TICH}><input type="radio" name="loai" value="thu" defaultChecked className="size-5" /><span>Học thử <span className="text-[var(--kin-chu-mo)]">· từ hôm nay, hết cùng ngày với các môn đang thử (nếu có)</span></span></label>
             <label className={O_TICH}><input type="radio" name="loai" value="chinh_thuc" className="size-5" /><span>Chính thức</span></label>

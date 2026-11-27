@@ -182,6 +182,8 @@ export async function suaHoSoHocSinh(u: Nguoi, maHs: string, v: SuaHoSo) {
   for (const [k, cot] of Object.entries(O_SUA) as [keyof typeof O_SUA, string][]) {
     if (v[k] === undefined) continue;
     const t = k === "gmail" ? chuanHoaGmail(v[k]) : k === "sdtHs" || k === "sdtPh" ? chuanHoaSdt(v[k]) : catKhoangTrang(v[k]);
+    // Gõ "abc" hay thiếu số: báo lỗi, không lặng lẽ xoá số cũ (ô để trống mới là xoá).
+    if ((k === "sdtHs" || k === "sdtPh") && String(v[k] ?? "").trim() && (!t || t.length < 10 || t.length > 11)) throw new LoiDuLieu(`${k === "sdtHs" ? "SĐT học sinh" : "SĐT phụ huynh"} cần 10 chữ số — sửa lại, hoặc để trống nếu muốn xoá`, 400, "sdt");
     if (t && t.length > 200) throw new LoiDuLieu("Mỗi ô tối đa 200 ký tự");
     data[cot] = t;
   }

@@ -75,3 +75,18 @@ Tệp: https://www.figma.com/design/FyUkgGJHrhXo0u4gnREyfk — trang `00 Nền m
 7. Gộp PR vào `main` của KiN (web có tiền và người dùng thật): chỉ Thanh / Thọ bấm.
 
 Mặc định cho tới khi chủ trả lời: không đổi luật đăng nhập và tên miền của KiN; không làm phần học phí; chuyển dữ liệu nguyên trạng, không thu thêm trường mới.
+
+## 9. Đợt kiểm thử 28/11/2026 (hai agent: rà bảo mật + đóng vai ba người dùng)
+
+Rà bảo mật: 0 P1, 4 P2, 8 P3. Đóng vai: 0 P1, 5 P2, 14 P3; không màn nào tràn ngang ở 390 / 1440, không lọt quyền ca nào.
+
+Đã sửa (kèm ca test): giới hạn 600 yêu cầu/phút mỗi người ở `/api/lop/*` (đếm trong bộ nhớ từng instance); nhật ký "từ chối" gộp theo mẫu route (`:id`);
+`--ghi-de` từ chối khi đích có hồ sơ đã nối tài khoản (trừ `LOP_GHI_DE_DA_NOI=1`); log lỗi chỉ in tên + mã; trang hồ sơ hiện "Tài khoản KiN" đang nối;
+SĐT gõ sai báo 400 thay vì lặng lẽ xoá số cũ; bỏ khung đôi ở 3 ô KinSelect; "Lớp ôn" lên đầu nhóm "Dạy học" của giáo viên; dòng "Thiếu record" bấm được, mở đúng tuần + môn;
+sửa câu ở thẻ khoá của học sinh hết hạn.
+
+Cố ý KHÔNG sửa: giáo viên mở buổi môn khác vẫn 403 (không đổi 404) để giữ nhật ký "từ chối" theo phan-quyen.md 4.1.
+
+Còn lại (chưa làm): giáo viên trên điện thoại vẫn phải vào "Tôi" mới thấy "Lớp ôn" (thanh dưới và trang chủ là vỏ KiN — cần chủ quyết); kiểm `Origin` cho request ghi; `userId` chưa `@unique`;
+giới hạn độ dài ở vài route chỉ chủ; hàng đợi ngoại tuyến không gắn người dùng; 14 lỗi P3 giao diện trong phiếu đóng vai; 3 lỗi eslint có sẵn ở `DiemDanhBuoi.tsx`, `NutToiNay.tsx`.
+Ba chỗ KinSelect sau khi bỏ khung đôi CHƯA được chụp lại.

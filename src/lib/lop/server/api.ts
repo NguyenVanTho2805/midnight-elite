@@ -2,6 +2,7 @@
 // lỗi quyền ⇒ 403 + nhật ký "từ chối". Thân lỗi theo quy ước KiN: { error, ma? }.
 import { NextResponse } from "next/server";
 import { LOP_ON } from "@/lib/features";
+import { rateLimit } from "@/lib/rate-limit";
 import { getSession } from "@/lib/session";
 import { d2s, s2d } from "../ngay";
 import { nguoiLop, nguoiLopBca } from "../phien";
@@ -17,6 +18,8 @@ function bao<U extends Nguoi, P>(lay: (req: Request) => Promise<U | null>, khong
     if (!LOP_ON) return loi("Không tìm thấy", 404);
     const u = await lay(req);
     if (!u) return (await getSession()) ? loi(khongQuyen, 403) : loi("Chưa đăng nhập", 401);
+    // shortcut: đếm trong bộ nhớ của từng instance (như các route KiN khác), chặn vòng lặp dò id; cần chặn chắc thì chuyển sang kho dùng chung.
+    if (!rateLimit(`lop:${u.vai === "hoc_sinh" ? `hs${u.hocSinhId}` : u.id}`, 600, 60_000)) return loi("Quá nhiều yêu cầu — thử lại sau một phút", 429);
     try {
       return NextResponse.json(await fn(u, req, await ctx.params));
     } catch (e) {
@@ -30,7 +33,8 @@ function bao<U extends Nguoi, P>(lay: (req: Request) => Promise<U | null>, khong
       const ma = (e as { code?: unknown })?.code;
       if (ma === "P2002") return loi("Dữ liệu vừa được tạo trùng (có thể do thao tác cùng lúc) — tải lại rồi thử lại", 409, "trung");
       if (ma === "P2025") return loi("Dữ liệu vừa bị thay đổi bởi thao tác khác — tải lại rồi thử lại", 409, "da_doi");
-      console.error(`[${req.method} ${new URL(req.url).pathname}]`, e);
+      // Chỉ in tên + mã lỗi: thông báo lỗi Prisma có thể kèm giá trị (tên, SĐT, Gmail) vào log.
+      console.error(`[${req.method} ${new URL(req.url).pathname}]`, (e as Error)?.name, ma ?? "");
       return loi("Máy chủ gặp lỗi", 500);
     }
   };

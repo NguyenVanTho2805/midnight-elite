@@ -119,7 +119,7 @@ export function BuoiCongCu({ thang, mon }: { thang: string; mon: { ma: string; t
         <details className="min-w-0 flex-1 basis-72">
           <summary className={TOM}>Thêm học bù</summary>
           <form onSubmit={(e) => void hocBu(e)} className="mt-2 flex flex-wrap items-end gap-3 rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-bang)] p-4">
-            <label className={KIN_LABEL}>Môn<KinSelect name="mon" required className={`${KIN_FIELD} mt-1`}>{mon.map((m) => <option key={m.ma} value={m.ma}>{m.ten}</option>)}</KinSelect></label>
+            <label className={KIN_LABEL}>Môn<KinSelect name="mon" required className="mt-1 min-w-32">{mon.map((m) => <option key={m.ma} value={m.ma}>{m.ten}</option>)}</KinSelect></label>
             <label className={KIN_LABEL}>Ngày<input type="date" name="ngay" required className={`${KIN_FIELD} mt-1`} /></label>
             <label className={KIN_LABEL}>Giờ bắt đầu<input type="time" name="gio" defaultValue="22:15" className={`${KIN_FIELD} mt-1`} /></label>
             <label className={KIN_LABEL}>Số phút<input type="number" name="soPhut" defaultValue={90} min={15} max={300} className={`${KIN_FIELD} mt-1 w-24`} /></label>

@@ -12,6 +12,7 @@ import { LoiQuyen } from "@/lib/lop/quyen";
 import { chiTietDiemDanh, danhTatCaCoMat, datDiemDanh, hoanTacTatCa, maTranThang } from "@/lib/lop/server/diem-danh";
 import { boHuyBuoi, danhSachBuoi, hoanTacXoaBuoi, huyBuoi, sinhBuoiConThieu, suaNoiDungBuoi, themHocBu, xemTruocBuoiConThieu, xoaBuoi } from "@/lib/lop/server/buoi-hoc";
 import { homNay } from "@/lib/lop/server/hom-nay";
+import { ghiTuChoi } from "@/lib/lop/server/nhat-ky";
 
 const T22 = lucVN("2026-11-26", "22:00");
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -154,6 +155,14 @@ async function main() {
     const t11 = await xemTruocBuoiConThieu(chu, "2026-11", T22);
     check("tháng 11: ngày thiếu đã qua không sinh lại (bo_qua_da_qua = 1)", t11.se_tao === 0 && t11.bo_qua_da_qua === 1, t11);
     check("GV xem trước / sinh buổi còn thiếu → LoiQuyen; tháng sai dạng → 400", (await loi(async () => xemTruocBuoiConThieu(gvAnh, "2026-12", T22))) instanceof LoiQuyen && (await loi(async () => sinhBuoiConThieu(gvAnh, "2026-12", T22))) instanceof LoiQuyen && (await loi(async () => xemTruocBuoiConThieu(chu, "2026-13", T22)))?.status === 400);
+  }
+
+  section("Nhật ký từ chối: dò id không làm phình bảng");
+  {
+    const n0 = await db.bcaNhatKy.count({ where: { hanh_dong: "tu_choi" } });
+    for (const id of [1, 2, 3]) await ghiTuChoi(gvAnh, "GET", `/api/lop/diem-danh/${id}`, "Bạn không dạy môn này");
+    const d = await db.bcaNhatKy.findFirst({ where: { hanh_dong: "tu_choi" }, orderBy: { id: "desc" } });
+    check("3 lần bị chặn ở 3 id khác nhau trong một phút → MỘT dòng, so_lan = 3, khoá gộp :id", (await db.bcaNhatKy.count({ where: { hanh_dong: "tu_choi" } })) === n0 + 1 && d?.doi_tuong_id === "GET /api/lop/diem-danh/:id" && (d?.sau as { so_lan?: number })?.so_lan === 3, d);
   }
 }
 

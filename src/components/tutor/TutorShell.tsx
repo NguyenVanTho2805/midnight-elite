@@ -109,7 +109,7 @@ export default function TutorShell({
     // DG: "Tổng quan" đi cùng cờ HOP_VIEC (route /lop-cua-toi/tong-quan chặn khi cờ tắt) — chỉ thêm khi gia sư TỰ tắt module Hộp việc lúc cờ đang mở.
     ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn && !isLinkHidden("/lop-cua-toi/tong-quan")
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
-      : g).map((g, i) => i === 0 && lopOn ? { ...g, links: [...g.links, { label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich" }] } : g),
+      : g).map((g, i) => i === 0 && lopOn ? { ...g, links: [{ label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich" }, ...g.links] } : g),
     { title: "Tài khoản", links: visibleLinks([
       { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },

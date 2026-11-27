@@ -238,7 +238,7 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
     {
       id: "record", nhan: "Thiếu record", so: dem(thieu),
       noiDung: thieu.length ? thieu.map((v) => (
-        <KinListRow key={`thieu-${(v.mon as Mon)?.ma}`} title={<span className="font-medium">Buổi thiếu record · {(v.mon as Mon)?.ten}</span>}
+        <KinListRow key={`thieu-${(v.mon as Mon)?.ma}`} href={`${LOP_GOC}/buoi-hoc?tuan=${(v.buoi as { ngay: string }[])[0]?.ngay}&mon=${(v.mon as Mon)?.ma}`} title={<span className="font-medium">Buổi thiếu record · {(v.mon as Mon)?.ten}</span>}
           sub={<span className="tabular-nums">{(v.buoi as { id: number; ngay: string }[]).map((b) => thuNganNgay(b.ngay)).join(", ")}</span>} />
       )) : rong("Buổi nào đã điểm xong quá 24 giờ cũng đã có record."),
     },
