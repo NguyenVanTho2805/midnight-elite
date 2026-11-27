@@ -60,3 +60,14 @@ Test: vitest 209/209, Playwright 54/54. Còn lại (P3):
 - ~~Khu học sinh thay trang /hoc tạm~~ (đã làm 27/11, BCA-D2-HS): chữ có dấu thay mã máy ("thu", "nghi", "co"…), ngày dd/mm, "Tối nay học gì" + nút Meet, số ngày thử còn lại, link Zalo học thử, nội dung + record buổi, màn khoá khi hết hạn kèm "Liên hệ gia hạn" (phan-quyen.md 4.3); không hiện câu "hỏi em" (dành cho chủ); buổi đã qua chưa có dấu không ghi "chưa điểm" kiểu gây lo.
 - ~~T41: khoá phiên học sinh (server/phien.ts:11-13) cùng đăng nhập Google.~~ Đã làm (BCA-D2-DN).
 - Dữ liệu `/api/hs/toi` đã đủ cho màn thật.
+
+## Thiết kế lại giao diện (QĐ 27) — tiến độ
+- Bước 1 (27/11, xong): sáng + tối tự theo máy, nút đổi, tách tầng nền.
+- Bước 2 (27/11, xong): khu học sinh `/hoc` (thẻ Tối nay nền đêm, tuần này theo màu môn, chuỗi dạng chấm, danh sách buổi gập còn 3 dòng, em sắp hết thử có việc để bấm) và trang đăng nhập (không còn lộ tên biến môi trường). Test trình duyệt 54/54.
+- Bước 3 (chưa): Hôm nay (thẻ số liệu, hộp việc chia tab, "Chưa điểm danh" lên đầu) + ma trận tháng tô nền ô.
+- Bước 4 (chưa): Học sinh thành bảng dữ liệu, Buổi học thành lịch tuần, tìm nhanh ⌘K (chờ chủ quyết có thêm shadcn không).
+Còn lại của bước 2 (P3):
+1. Máy tính: khu học sinh vẫn một cột 560px (chưa làm bố cục hai cột).
+2. Em hết hạn / sắp hết thử mà lớp chưa cấu hình `ZALO_CHUNG` / `ZALO_HOC_THU`: chỉ có câu chữ, không có nút — cần màn Cài đặt (mục 4 phần Đợt 2 ở trên) hoặc thêm tên/SĐT chủ lớp.
+3. Chuyển động khu học sinh (hiện dần so le, số chuỗi đếm lên) chưa làm.
+4. Tương phản màu môn và bảng màu mới chưa đo bằng máy.

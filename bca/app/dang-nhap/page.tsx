@@ -7,6 +7,7 @@ import { nguoiHienTai } from "@/server/phien";
 import { DangXuat } from "./dang-xuat";
 import { NutDoiGiaoDien } from "@/components/khung/doi-giao-dien";
 import { NutVai } from "./nut-vai";
+import { IconTrang } from "@/components/bieu-tuong";
 
 const LOI: Record<MaLoi, string> = {
   chua_cau_hinh: "Đăng nhập Google chưa được bật trên bản này. Báo chủ lớp.",
@@ -42,12 +43,17 @@ export default async function DangNhap({ searchParams }: { searchParams: Promise
   const thongBao = ma ? (Object.hasOwn(LOI, ma) ? LOI[ma as MaLoi] : "Đăng nhập chưa thành công. Thử lại.") : null;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-6">
-      <div className="flex items-start justify-between gap-2"><h1 className="text-[28px] font-extrabold leading-tight">BCA Midnight</h1><NutDoiGiaoDien className="-mr-3 -mt-1" /></div>
-      <p className="mt-1 text-text-2">Lớp ôn BCA · ĐGNL — học Google Meet lúc 22:15.</p>
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-4 sm:p-6">
+      <div className="flex justify-end"><NutDoiGiaoDien /></div>
+      {/* Thẻ nhận diện "nền đêm": trăng + giờ học, giống thẻ Tối nay của khu học sinh. */}
+      <div className="nen-dem rounded-[20px] p-6">
+        <IconTrang size={28} className="text-gold" />
+        <h1 className="mt-3 text-[28px] font-extrabold leading-tight">Kin Class</h1>
+        <p className="mt-1 text-text-2">Lớp ôn BCA · ĐGNL. Học Google Meet lúc <span className="so font-semibold text-text">22:15</span>.</p>
+      </div>
 
       {u ? (
-        <section className="mt-8 rounded-[14px] border border-border bg-surface p-4">
+        <section className="rounded-[20px] border border-border bg-surface p-5">
           <p>
             Bạn đang đăng nhập là <b>{u.ten}</b>.
           </p>
@@ -59,7 +65,7 @@ export default async function DangNhap({ searchParams }: { searchParams: Promise
           </div>
         </section>
       ) : (
-        <section className="mt-8">
+        <section className="rounded-[20px] border border-border bg-surface p-5">
           {thongBao && (
             <p role="alert" className="mb-4 rounded-[14px] border border-danger bg-danger-bg p-3 text-sm">
               {thongBao}
@@ -77,18 +83,16 @@ export default async function DangNhap({ searchParams }: { searchParams: Promise
               </p>
             </>
           ) : (
-            <p className="rounded-[14px] border border-border bg-surface p-3 text-sm text-text-2">
-              Đăng nhập Google chưa được bật trên bản này (thiếu <code>BCA_GOOGLE_CLIENT_ID</code> / <code>BCA_GOOGLE_CLIENT_SECRET</code>). Báo chủ lớp.
-            </p>
+            <p className="text-text-2">Đăng nhập chưa mở trên bản này. Báo chủ lớp.</p>
           )}
         </section>
       )}
 
       {dev && (
-        <section className="mt-10 border-t border-border pt-6">
+        <section className="rounded-[20px] border border-dashed border-border-input p-5">
           <h2 className="font-semibold">Đăng nhập thử theo vai</h2>
-          <p className="mt-1 text-sm text-text-2">Chỉ có trên dữ liệu giả (BCA_DEV_LOGIN=1), không bao giờ ở bản chính thức.</p>
-          <div className="mt-4 grid gap-3">
+          <p className="mt-1 text-sm text-text-2">Chỉ có trên dữ liệu giả, không bao giờ ở bản chính thức.</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {Object.entries(VAI_THU).map(([vai, ten]) => (
               <NutVai key={vai} vai={vai} ten={ten} />
             ))}

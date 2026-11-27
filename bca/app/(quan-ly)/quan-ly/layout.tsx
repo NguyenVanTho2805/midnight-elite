@@ -10,7 +10,7 @@ import { KhungClient } from "@/components/khung/khung-client";
 import { danhSachDon } from "@/server/don";
 import { demHocSinhDangHien } from "@/server/hoc-sinh";
 
-export const metadata: Metadata = { title: { default: "Quản lý lớp · BCA Midnight", template: "%s · BCA Midnight" } };
+export const metadata: Metadata = { title: { default: "Quản lý lớp · Kin Class", template: "%s · Kin Class" } };
 
 export default async function KhungQuanLy({ children }: { children: ReactNode }) {
   const u = await layNguoiQuanLy();

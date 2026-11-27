@@ -13,8 +13,8 @@ export function ThanhBen({ chu, soDon, soHs, ten, vaiNhan }: ThongTinKhung) {
     <nav aria-label="Điều hướng chính" className="sticky top-0 z-30 hidden h-dvh w-[72px] shrink-0 flex-col border-r border-border bg-sidebar sm:flex lg:w-60">
       <Link href="/quan-ly" className="flex h-16 items-center justify-center gap-2 px-3 font-extrabold text-text lg:justify-start lg:px-5">
         <IconTrang className="text-gold" />
-        <span className="hidden leading-tight lg:block">BCA <span className="font-semibold text-text-2">Midnight</span></span>
-        <span className="sr-only lg:hidden">BCA Midnight — Hôm nay</span>
+        <span className="hidden leading-tight lg:block">Kin <span className="font-semibold text-text-2">Class</span></span>
+        <span className="sr-only lg:hidden">Kin Class — Hôm nay</span>
       </Link>
       <ul className="flex flex-1 flex-col gap-1 px-2 pt-2 lg:px-3">
         {MUC.filter((m) => chu || !m.chiChu).map(({ href, nhan, Icon }) => {

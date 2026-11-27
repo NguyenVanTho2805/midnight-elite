@@ -12,7 +12,7 @@
   --on-ok: #06140D; --excused: #A9C7FF; --on-excused: #0A1A3A; --on-danger: #2A0805;
   --ok-bg: #143326; --excused-bg: #1A2A4D; --danger-bg: #3A1A1D; --warn-bg: #3A2814;
   --row-hover: #222D50; --today-col: #2C2F3F; --nav-active: #24305A; --sidebar: #0F1730; --skeleton: #25305A;
-  --mon-toan: #8AB4FF; --mon-su: #E3A6FF; --mon-dia: #5CC8E0; --mon-anh: #FF9FC0;
+  --hero: #1F2F66; --mon-toan: #8AB4FF; --mon-su: #E3A6FF; --mon-dia: #5CC8E0; --mon-anh: #FF9FC0;
   --shadow-overlay: 0 12px 32px rgba(0,0,0,.45), 0 0 0 1px var(--border);
   --shadow-sticky: 0 1px 0 var(--border);
   --dur-press: 80ms; --dur-fast: 150ms; --dur-sheet: 240ms; --dur-undo: 5000ms;
@@ -30,7 +30,7 @@
   --on-ok: #FFFFFF; --excused: #1D4ED8; --on-excused: #FFFFFF; --on-danger: #FFFFFF;
   --ok-bg: #DDF2E7; --excused-bg: #E1EAFF; --danger-bg: #FCE3E0; --warn-bg: #FFEFD6;
   --row-hover: #EEF1F8; --today-col: #FFF4D6; --nav-active: #E6ECFA; --sidebar: #FFFFFF; --skeleton: #E1E6F1;
-  --mon-toan: #1D5FD0; --mon-su: #8A3FC0; --mon-dia: #0B7A90; --mon-anh: #C2356E;
+  --hero: #14204A; --mon-toan: #1D5FD0; --mon-su: #8A3FC0; --mon-dia: #0B7A90; --mon-anh: #C2356E;
   --shadow-overlay: 0 12px 32px rgba(15,26,58,.18), 0 0 0 1px var(--border);
 }
 
@@ -40,6 +40,13 @@
   --color-gold: var(--gold); --text-color-gold: var(--gold-chu); --border-color-gold: var(--gold-chu); --color-on-gold: var(--on-gold); --color-ok: var(--ok); --color-warn: var(--warn);
   --color-danger: var(--danger); --color-excused: var(--excused); --color-border: var(--border); --color-border-input: var(--border-input);
   --font-sans: var(--font-be-vietnam), system-ui, sans-serif;
+}
+
+/* Thẻ "nền đêm" (thẻ Tối nay, nhận diện Midnight): luôn navy + chữ sáng ở cả hai giao diện; linh kiện bên trong dùng token như thường. */
+.nen-dem {
+  background: var(--hero); color: #F2F4FA;
+  --text: #F2F4FA; --text-2: #C3CBE0; --text-3: #9DA8C6; --gold-chu: #F5B544; --gold-hover: #FFD27A;
+  --border: #36436C; --border-input: #8793BD; --row-hover: #2A3A75; --focus: #F5B544;
 }
 
 html { background: var(--bg); color: var(--text); }
