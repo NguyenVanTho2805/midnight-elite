@@ -3,8 +3,8 @@
 // học sinh gọi route của chủ → 403, hồ sơ ẩn / đổi Gmail ⇒ mất quyền ngay ở request kế tiếp, mở trang lần đầu ⇒ nối userId, HTML không lộ SĐT phụ huynh / ghi chú nội bộ / mã máy.
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-lop-hoc-sinh-khu-api.ts   (dev server PHẢI đang chạy; bài tự nhận cờ: bật ⇒ chạy đủ, tắt ⇒ route 404, trang không mở, menu không hiện, không nối).
 // Dữ liệu: nạp lại bca_* từ `bca_gia` trước và sau (lop-db.ts); tài khoản KiN thử tạo bằng upsert — không wipe(). Giờ là giờ THẬT của máy chủ nên không so ngày cụ thể.
-// Ca phá cố ý (đã chạy 27/11/2026, phá → đỏ → trả lại): routeHs bỏ `u?.vai === "hoc_sinh"` (nhận mọi người của lớp) → ca "chủ / GV → 403" đỏ; buoiCuaToi bỏ kiểm loaiVaoNgay → ca "A mở buổi của B" đỏ;
-// StudentShell bỏ điều kiện `lopOn` → ca "học sinh không có hồ sơ: không có mục Lớp ôn" đỏ.
+// Ca phá cố ý (đã chạy 27/11/2026 với cờ bật, phá → đỏ → trả lại): routeHs bỏ `u?.vai === "hoc_sinh"` → 3 ca "giáo viên / chủ lớp / gia sư → 403" đỏ; buoiCuaToi bỏ kiểm loaiVaoNgay → ca nhật ký 'tu_choi' đỏ
+// (mã HTTP vẫn 403 vì còn lớp chặn thứ hai là hạn môn); StudentShell đổi `lopOn ?` thành luôn hiện → 2 ca menu đỏ.
 import bcrypt from "bcryptjs";
 import { api, check, section, done, type TUser } from "./h";
 import { GV_ANH, buoiId, db, napLaiBca } from "./lop-db";
@@ -25,7 +25,7 @@ async function main() {
   const gvAnh = await tk(GV_ANH, "GV Anh KiN", "admin", "teacher");
   const gvLa = await tk("gv-la-api@kin.local", "GV chưa có tài khoản lớp", "admin", "teacher");
   const hsLa = await tk("hs-lop-api@kin.local", "Học sinh", "student");
-  const a = await tk("hs-a-b7@kin.local", "Em A (HS0021)", "student"), b = await tk("hs-b-b7@kin.local", "Em B (HS0024)", "student"), c = await tk("hs-c-b7@kin.local", "Em C (HS0034)", "student");
+  const a = await tk("hs-a-b7@kin.local", "Em A", "student"), b = await tk("hs-b-b7@kin.local", "Em B", "student"), c = await tk("hs-c-b7@kin.local", "Em C", "student");
   // A, B: nối sẵn (như sau lần mở đầu). C: chỉ đặt Gmail hồ sơ trùng email tài khoản — để kiểm việc nối khi mở trang.
   await db.bcaHocSinh.update({ where: { ma_hs: "HS0021" }, data: { userId: a.id } });
   await db.bcaHocSinh.update({ where: { ma_hs: "HS0024" }, data: { userId: b.id, sdt_ph: "0987650024", ghi_chu: "GHI-CHU-NOI-BO-B7", ghi_chu_rieng: "GHI-CHU-RIENG-B7" } });
