@@ -1,5 +1,6 @@
-// Lớp ôn · hồ sơ một em (KiN lớp bước 4). CHỈ ĐỌC, chỉ chủ lớp, sau cờ LOP_ON. Chép bố cục bca/app/(quan-ly)/quan-ly/hoc-sinh/[maHs]/page.tsx,
-// bỏ mọi nút ghi (gia hạn, chuyển chính thức, cho nghỉ, ẩn hồ sơ, sửa ghi chú, đăng xuất em) và phần đơn giá — để bước sau.
+// Lớp ôn · hồ sơ một em (KiN lớp bước 4 + 6). Chỉ chủ lớp, sau cờ LOP_ON. Chép bố cục bca/app/(quan-ly)/quan-ly/hoc-sinh/[maHs]/page.tsx.
+// Bước 6: hàng nút ghi (lên chính thức, gia hạn, thêm môn, cho nghỉ, ẩn / bỏ ẩn), sửa thông tin, sửa ghi chú — src/components/lop/ThaoTacHs.tsx. ?mo=chinh-thuc|nghi|gia-han mở sẵn hộp (từ Hôm nay).
+// Chưa có: đơn giá (học phí — README mục 6.4), đăng xuất em khỏi mọi máy (phiên là của KiN).
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { KinPanel, KinPageHeader } from "@/components/kin";
@@ -9,6 +10,7 @@ import { LoiDuLieu } from "@/lib/lop/quyen";
 import { congNgay, ddmm, gioVN, ngayVN, soNgayGiua } from "@/lib/lop/ngay";
 import { ngayDayDu, sdt } from "@/lib/lop/dinh-dang";
 import { KhoiLoi, LOP_GOC, MonCham, Nhan, NhanTinhTrang } from "@/components/lop/hien-thi";
+import { HoSoThaoTac, SuaGhiChu, SuaHoSo, type MonHs } from "@/components/lop/ThaoTacHs";
 
 export const dynamic = "force-dynamic";
 type D = Awaited<ReturnType<typeof chiTietHocSinh>>;
@@ -17,7 +19,7 @@ type MonD = D["mon"][number];
 const GOC = `${LOP_GOC}/hoc-sinh`;
 const HANH_DONG: Record<string, string> = {
   tao_tu_don: "Ghi danh từ đơn", them_mon: "Thêm môn", gia_han_thu: "Gia hạn thử", hoan_tac_gia_han: "Hoàn tác gia hạn", chuyen_chinh_thuc: "Chuyển chính thức",
-  hoan_tac_chuyen_chinh_thuc: "Hoàn tác chuyển chính thức", nghi_mon: "Cho nghỉ", an_hoc_sinh: "Ẩn hồ sơ", bo_an_hoc_sinh: "Bỏ ẩn hồ sơ", chuyen_tu_sheet: "Chuyển từ sheet",
+  hoan_tac_chuyen_chinh_thuc: "Hoàn tác chuyển chính thức", nghi_mon: "Cho nghỉ", tao_ho_so_tu_don: "Ghi danh từ đơn", hoan_tac_tao_ho_so_tu_don: "Hoàn tác nhận đơn", an_hoc_sinh: "Ẩn hồ sơ", bo_an_hoc_sinh: "Bỏ ẩn hồ sơ", chuyen_tu_sheet: "Chuyển từ sheet",
 };
 const DD = {
   co: { chu: "✓", doc: "có mặt", style: { background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" } },
@@ -31,8 +33,9 @@ export async function generateMetadata({ params }: { params: Promise<{ maHs: str
   return { title: `Lớp ôn · Học sinh ${(await params).maHs}` };
 }
 
-export default async function LopOnMotEm({ params }: { params: Promise<{ maHs: string }> }) {
+export default async function LopOnMotEm({ params, searchParams }: { params: Promise<{ maHs: string }>; searchParams: Promise<{ mo?: string }> }) {
   const u = await chuLop();
+  const mo = (await searchParams).mo;
   const maHs = decodeURIComponent((await params).maHs);
   let d: D;
   try {
@@ -45,6 +48,11 @@ export default async function LopOnMotEm({ params }: { params: Promise<{ maHs: s
   const hs = d.hoc_sinh as typeof d.hoc_sinh & Partial<Record<"sdt_hs" | "sdt_ph" | "gmail" | "ho_ten_ph" | "truong" | "khoi" | "muc_tieu" | "nguon" | "ghi_chu" | "ghi_chu_rieng", string | null>> & { ngay_tao?: Date; dong_y_vinh_danh?: boolean };
   const het = d.tinh_trang.startsWith("Hết thử") ? (d.mon.flatMap((m) => m.ghi_danh).filter((g) => g.loai === "thu" && !g.huy).map((g) => g.den_ngay ?? "").sort().at(-1) ?? null) : null;
   const thu = d.thu;
+  const hetThu = d.tinh_trang.startsWith("Hết thử");
+  const monHs: MonHs[] = d.mon.map((m) => {
+    const cuoi = m.ghi_danh.filter((g) => !g.huy).at(-1);
+    return { ma: m.ma, ten: m.ten, o: m.o, vuaHetThu: hetThu && m.o === "nghi" && cuoi?.loai === "thu" && !cuoi.nghi, macDinhCT: (m as { mac_dinh_chinh_thuc?: string }).mac_dinh_chinh_thuc };
+  });
   const coBuoi = d.mon.filter((m) => m.chuyen_can.buoi.some((b) => b.co_ten));
 
   return (
@@ -52,6 +60,9 @@ export default async function LopOnMotEm({ params }: { params: Promise<{ maHs: s
       <KinPageHeader title={<span translate="no" className="[overflow-wrap:anywhere]">{hs.ho_ten}</span>} back={{ href: GOC, label: "‹ Danh sách học sinh" }}
         sub={<span className="tabular-nums"><span translate="no">{hs.ma_hs}</span>{hs.lua ? ` · ${hs.lua.ten}` : ""}{hs.an_luc ? " · Đã ẩn hồ sơ" : ""}</span>}
         actions={<NhanTinhTrang tinhTrang={d.tinh_trang} thu={thu} />} />
+      <div className="mb-6">
+        <HoSoThaoTac key={mo ?? ""} maHs={hs.ma_hs} ten={hs.ho_ten} an={!!hs.an_luc} mon={monHs} macDinhNghi={(d as { mac_dinh_nghi?: string }).mac_dinh_nghi ?? d.hom_nay} mo={["chinh-thuc", "nghi", "gia-han"].includes(mo ?? "") ? mo : undefined} />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="grid min-w-0 content-start gap-6 lg:col-span-2">
@@ -98,6 +109,7 @@ export default async function LopOnMotEm({ params }: { params: Promise<{ maHs: s
             <Dong nhan="Gmail"><span translate="no" className="[overflow-wrap:anywhere]">{hs.gmail ?? "—"}</span></Dong>
             <Dong nhan="Phụ huynh">{hs.ho_ten_ph ?? "—"}</Dong>
             <Dong nhan="SĐT phụ huynh">{hs.sdt_ph ? <a href={`tel:${hs.sdt_ph}`} className="inline-flex min-h-11 items-center tabular-nums text-[var(--kin-nhan-link)] hover:underline" translate="no">{sdt(hs.sdt_ph)}</a> : "—"}</Dong>
+            <div className="border-t border-[var(--kin-vien-nhat)] pt-3"><SuaHoSo maHs={hs.ma_hs} hs={hs as unknown as Record<string, unknown>} /></div>
           </Khoi>
           <Khoi tieuDe="Thông tin đăng ký">
             <Dong nhan="Trường">{hs.truong ?? "—"}</Dong>
@@ -113,6 +125,7 @@ export default async function LopOnMotEm({ params }: { params: Promise<{ maHs: s
           <Khoi tieuDe="Ghi chú">
             <Dong nhan="Chung"><span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{hs.ghi_chu ?? "—"}</span></Dong>
             <Dong nhan="Riêng của chủ"><span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{hs.ghi_chu_rieng ?? "—"}</span></Dong>
+            <div className="border-t border-[var(--kin-vien-nhat)] pt-3"><SuaGhiChu maHs={hs.ma_hs} ghiChu={hs.ghi_chu ?? null} ghiChuRieng={hs.ghi_chu_rieng ?? null} /></div>
           </Khoi>
         </div>
       </div>

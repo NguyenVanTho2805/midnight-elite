@@ -1,5 +1,5 @@
 // Lớp ôn · Hôm nay (KiN lớp bước 4–5, Figma FyUkgGJHrhXo0u4gnREyfk 7:5 / 7:168 / 8:119). Chỉ chủ lớp, sau cờ LOP_ON.
-// Bước 5: nút vàng "Điểm danh" ở thẻ Tối nay, nút "Điểm danh" ở từng buổi chưa điểm (hàng đầu nút chính), liên kết "Ma trận". Gia hạn / Xử lý đơn / Thêm record còn ẨN (bước 6).
+// Bước 5: nút vàng "Điểm danh" ở thẻ Tối nay, nút "Điểm danh" ở từng buổi chưa điểm (hàng đầu nút chính), liên kết "Ma trận". Bước 6: tab Học thử nhóm theo ngày hết, có Gia hạn cả nhóm / Lên chính thức / Gia hạn / Cho nghỉ / Ẩn 3 ngày; đơn chờ dẫn tới đúng đơn ở trang Đơn. Thêm record còn ẨN.
 // "Sĩ số theo môn" của bản gốc không có trong Figma ⇒ bỏ (lọc theo môn có ở trang Học sinh).
 // Mỗi khối một truy vấn riêng: khối lỗi tự báo, không sập cả trang. Tab của "Việc cần làm" nằm trên URL (?viec=).
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { lich7Ngay, lopToiNay, theSo, viecCanLam } from "@/lib/lop/server/hom-na
 import { ddmm, lucVN, ngayVN, gioVN } from "@/lib/lop/ngay";
 import { khoangThoiGian, sdt, tenMonDayDu, thuNgay, thuNganNgay } from "@/lib/lop/dinh-dang";
 import { KhoiLoi, LOP_GOC, MonCham, lienKet, mauMon, thuTai } from "@/components/lop/hien-thi";
+import { AnViec, GiaHan } from "@/components/lop/ThaoTacHs";
 
 export const metadata = { title: "Lớp ôn · Hôm nay" };
 export const dynamic = "force-dynamic";
@@ -165,10 +166,34 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
   const don = theo("don_cho_duyet"), sap = theo("thu_sap_het"), het = theo("het_thu"), chua = theo("buoi_chua_diem_danh"), thieu = theo("buoi_thieu_record"), vang = theo("em_vang_nhieu"), sua = theo("sua_du_lieu");
   const dem = (vs: Viec[]) => vs.reduce((s, v) => s + ((v.buoi as unknown[] | undefined)?.length ?? 0), 0);
   const tenCacMon = (v: Viec) => ((v.mon as Mon[]) ?? []).map((m) => m?.ten).filter(Boolean).join(", ");
+  // Một em học thử: tên dẫn tới hồ sơ; bốn việc của chủ ngay trên hàng (không nút nào nổi bật — nút chính của trang là Điểm danh).
   const emThu = (v: Viec, phu: string) => (
-    <KinListRow key={`${v.loai}-${v.ma_hs}`} href={`${HS}/${v.ma_hs}`} title={<span translate="no" className="font-medium">{String(v.ho_ten)}</span>}
-      sub={<span className="tabular-nums">{[tenCacMon(v), phu, v.lua as string | null, sdt(v.sdt_hs as string | null)].filter(Boolean).join(" · ")}</span>} />
+    <li key={`${v.loai}-${v.ma_hs}`} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-2 last:border-b-0">
+      <div className="min-w-48 flex-1">
+        <Link href={`${HS}/${v.ma_hs}`} translate="no" className="inline-flex min-h-11 items-center font-medium text-[length:var(--kin-co-goc)] text-[var(--kin-chu-chinh)] hover:underline [overflow-wrap:anywhere]">{String(v.ho_ten)}</Link>
+        <p className="-mt-2 pb-1 text-[length:var(--kin-co-goc)] leading-5 tabular-nums text-[var(--kin-chu-mo)] [overflow-wrap:anywhere]">{[tenCacMon(v), phu, v.lua as string | null].filter(Boolean).join(" · ")}{v.sdt_hs ? <> · <span translate="no" className="whitespace-nowrap">{sdt(v.sdt_hs as string)}</span></> : null}</p>
+      </div>
+      <div className="flex flex-wrap items-start gap-2">
+        <Link href={`${HS}/${v.ma_hs}?mo=chinh-thuc`} className={kinButtonClass("secondary")}>Lên chính thức</Link>
+        <GiaHan em={[{ ma_hs: String(v.ma_hs), ho_ten: String(v.ho_ten) }]} nhan="Gia hạn" />
+        <Link href={`${HS}/${v.ma_hs}?mo=nghi`} className={kinButtonClass("ghost")}>Cho nghỉ</Link>
+        <AnViec loai={v.loai} khoa={String(v.khoa)} ten={String(v.ho_ten)} />
+      </div>
+    </li>
   );
+  // Nhóm theo ngày hết (hom-nay.md mức 2–3): cả nhóm cùng hạn thì gia hạn một lần.
+  const nhomThu = (vs: Viec[], tieuDe: (ngay: string) => string, phu: (v: Viec) => string) => [...new Set(vs.map((v) => String(v.ngay ?? "")))].sort().map((ngay) => {
+    const em = vs.filter((v) => String(v.ngay ?? "") === ngay);
+    return (
+      <section key={`${vs[0]?.loai}-${ngay}`} aria-label={tieuDe(ngay)}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-bang)] px-[var(--kin-kc-6)] py-2">
+          <h3 className="text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{tieuDe(ngay)} <span className="font-normal tabular-nums text-[var(--kin-chu-mo)]">· {em.length} em</span></h3>
+          {em.length > 1 ? <GiaHan em={em.map((v) => ({ ma_hs: String(v.ma_hs), ho_ten: String(v.ho_ten) }))} nhan="Gia hạn cả nhóm" /> : null}
+        </div>
+        <ul>{em.map((v) => emThu(v, phu(v)))}</ul>
+      </section>
+    );
+  });
   const rong = (chu: string) => <KinEmptyState title="Không còn việc ở mục này">{chu}</KinEmptyState>;
 
   const tabs: { id: string; nhan: string; so: number; noiDung: ReactNode }[] = [
@@ -195,8 +220,8 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
       id: "thu", nhan: "Học thử", so: sap.length + het.length,
       noiDung: sap.length || het.length ? (
         <>
-          {het.map((v) => emThu(v, `hết thử ${v.ngay ? ddmm(v.ngay) : ""}`))}
-          {sap.map((v) => emThu(v, `hết ${v.ngay ? thuNganNgay(v.ngay) : ""} · còn ${v.con_ngay} ngày`))}
+          {nhomThu(het, (n) => `Hết thử – hỏi em · hết ${n ? ddmm(n) : ""}`, () => "đang không vào được lớp")}
+          {nhomThu(sap, (n) => `Thử sắp hết · hết ${n ? thuNganNgay(n) : ""}`, (v) => `còn ${v.con_ngay} ngày`)}
           <p className="flex flex-wrap justify-end gap-x-6 px-[var(--kin-kc-6)]">
             {het.length ? <Link href={`${HS}?het=da-het`} className={lienKet}>Xem em đã hết thử ›</Link> : null}
             <Link href={`${HS}?het=3`} className={lienKet}>Xem em sắp hết thử ›</Link>
@@ -207,7 +232,7 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
     {
       id: "don", nhan: "Đơn", so: don.length,
       noiDung: don.length ? don.map((v) => (
-        <KinListRow key={String(v.don_id)} title={<><span className="font-medium">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span></>} sub={v.ngay ? `Gửi ngày ${ddmm(v.ngay)}` : undefined} />
+        <KinListRow key={String(v.don_id)} href={`${LOP_GOC}/don?don=${v.don_id}#don-${v.don_id}`} title={<><span className="font-medium">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span></>} sub={v.ngay ? `Gửi ngày ${ddmm(v.ngay)}` : undefined} />
       )) : rong("Không có đơn nào chờ duyệt."),
     },
     {

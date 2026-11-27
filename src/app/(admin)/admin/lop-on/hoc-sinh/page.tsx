@@ -1,5 +1,5 @@
-// Lớp ôn · Học sinh (KiN lớp bước 4, Figma FyUkgGJHrhXo0u4gnREyfk 9:1044). CHỈ ĐỌC, chỉ chủ lớp, sau cờ LOP_ON.
-// Mọi bộ lọc nằm trên URL (?q=&mon=&loai=&lua=&het=&sap=&trang=), lọc ở máy chủ, 50 em một trang. Ô chọn nhiều em + "Gia hạn thử" (ghi) để bước 5.
+// Lớp ôn · Học sinh (KiN lớp bước 4 + 6, Figma FyUkgGJHrhXo0u4gnREyfk 9:1044). Chỉ chủ lớp, sau cờ LOP_ON.
+// Mọi bộ lọc nằm trên URL (?q=&mon=&loai=&lua=&het=&sap=&trang=), lọc ở máy chủ, 50 em một trang. Bước 6: ô chọn nhiều em + thanh "Gia hạn thử", nút "Thêm học sinh" (src/components/lop/ThaoTacHs.tsx).
 import Link from "next/link";
 import { KinPanel, KinEmptyState, KIN_FIELD, KIN_TABLE_HEAD, kinButtonClass } from "@/components/kin";
 import { chuLop } from "@/lib/lop/server/cua";
@@ -8,12 +8,13 @@ import { docLoc, hrefLoc, locHocSinh, TEN_HET, TEN_LOAI, type DongHs, type LocHs
 import { ddmm } from "@/lib/lop/ngay";
 import { ngayDayDu, sdt } from "@/lib/lop/dinh-dang";
 import { KhoiLoi, LOP_GOC, MonHuyHieu, NhanTinhTrang, lienKet, thuTai } from "@/components/lop/hien-thi";
+import { ChonNhieu, OChon, OChonTatCa, ThemHocSinh } from "@/components/lop/ThaoTacHs";
 
 export const metadata = { title: "Lớp ôn · Học sinh" };
 export const dynamic = "force-dynamic";
 
 const GOC = `${LOP_GOC}/hoc-sinh`;
-const COT = "md:grid md:grid-cols-[minmax(0,2.2fr)_7rem_minmax(0,1.3fr)_5rem_6.5rem_7.5rem] md:gap-4";
+const COT = "md:grid md:grid-cols-[2.75rem_minmax(0,2.2fr)_7rem_minmax(0,1.3fr)_5rem_6.5rem_7.5rem] md:gap-4";
 
 export default async function LopOnHocSinh({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const u = await chuLop();
@@ -56,6 +57,7 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
         <p className="ml-auto text-[length:var(--kin-co-goc)] tabular-nums text-[var(--kin-chu-phu)]" aria-live="polite">{r.tong} em{dangLoc ? ` · trong ${ds.length}` : ""}</p>
       </div>
 
+      <ChonNhieu em={r.hien.map((x) => ({ ma_hs: x.ma_hs, ho_ten: x.ho_ten }))}>
       <KinPanel flush className="mt-4">
         {!ds.length ? (
           <KinEmptyState title="Chưa có học sinh">Danh sách có sau khi dữ liệu lớp được chuyển sang KiN.</KinEmptyState>
@@ -66,11 +68,12 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
         ) : (
           <>
             <div className={`hidden ${COT} ${KIN_TABLE_HEAD}`}>
-              <span>{sap("ten", "Học sinh")}</span><span>Môn</span><span>Trạng thái</span><span>{sap("het", "Hạn thử")}</span><span>{sap("moi", "Đăng ký")}</span><span>SĐT</span>
+              <OChonTatCa ma={r.hien.map((x) => x.ma_hs)} /><span>{sap("ten", "Học sinh")}</span><span>Môn</span><span>Trạng thái</span><span>{sap("het", "Hạn thử")}</span><span>{sap("moi", "Đăng ký")}</span><span>SĐT</span>
             </div>
             <ul>
               {r.hien.map((x) => (
-                <li key={x.ma_hs} className={`${COT} items-center border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-2 text-[length:var(--kin-co-goc)] last:border-b-0 hover:bg-[var(--kin-nen-re-chuot)] max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-1`}>
+                <li key={x.ma_hs} className={`${COT} items-center border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-2 text-[length:var(--kin-co-goc)] last:border-b-0 hover:bg-[var(--kin-nen-re-chuot)] has-[:checked]:bg-[var(--kin-nhan-nen-nhat)] max-md:grid max-md:grid-cols-[2.75rem_minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-1`}>
+                  <span className="max-md:row-span-4 max-md:self-start"><OChon ma={x.ma_hs} ten={x.ho_ten} /></span>
                   <Link href={`${GOC}/${x.ma_hs}`} className="flex min-h-11 min-w-0 flex-col justify-center hover:underline max-md:col-span-2">
                     <span translate="no" className="font-medium text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{x.ho_ten}</span>
                     <span translate="no" className="text-[length:var(--kin-co-phu)] tabular-nums text-[var(--kin-chu-mo)]">{x.ma_hs}{x.lua?.ma ? ` · ${x.lua.ma}` : ""}</span>
@@ -93,12 +96,18 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
           </>
         )}
       </KinPanel>
+      </ChonNhieu>
     </div>
   );
 }
 
 function TieuDe() {
-  return <h1 className="pb-6 text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Học sinh</h1>;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 pb-6">
+      <h1 className="text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Học sinh</h1>
+      <ThemHocSinh />
+    </div>
+  );
 }
 
 function Chon({ ten, nhan, giaTri, luaChon }: { ten: string; nhan: string; giaTri: string | null; luaChon: (readonly [string, string])[] | [string, string][] }) {

@@ -4,17 +4,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { KIN_FIELD, KIN_LABEL, kinButtonClass, useKinConfirm } from "@/components/kin";
+import { goi, Loi, TOM, type Kq } from "./goi";
 
-type Kq = { ok: boolean; status: number; d: Record<string, unknown> & { error?: string; ma?: string } };
-/** `url` luôn viết đủ từ /api/… ở chỗ gọi (t-links đọc được đường dẫn thật). */
-async function goi(method: string, url: string, body?: unknown): Promise<Kq> {
-  try {
-    const r = await fetch(url, { method, ...(body === undefined ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }) });
-    return { ok: r.ok, status: r.status, d: await r.json().catch(() => ({})) };
-  } catch { return { ok: false, status: 0, d: { error: "Mất mạng — chưa lưu được, thử lại khi có mạng." } }; }
-}
-const Loi = ({ chu }: { chu: string | null }) => (chu ? <p role="alert" className="mt-2 text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-loi-dam)]">{chu}</p> : null);
-const TOM = "inline-flex min-h-11 cursor-pointer items-center rounded-[var(--kin-bo-md)] px-3 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-nhan-link)] hover:bg-[var(--kin-nen-re-chuot)]";
 
 export type BuoiSua = { id: number; ten: string; huy: boolean; tuong_lai: boolean; noi_dung: string | null; link_record: string | null; ghi_chu: string | null };
 

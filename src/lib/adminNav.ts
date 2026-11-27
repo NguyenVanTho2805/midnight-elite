@@ -78,6 +78,8 @@ export const ADMIN_LOP_ON: AdminModuleDef = {
     { label: "Điểm danh", href: "/admin/lop-on/diem-danh", permission: PERMISSIONS.MANAGE_ADMINS },
     { label: "Học sinh", href: "/admin/lop-on/hoc-sinh", permission: PERMISSIONS.MANAGE_ADMINS },
     { label: "Buổi học", href: "/admin/lop-on/buoi-hoc", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Đơn", href: "/admin/lop-on/don", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Giáo viên", href: "/admin/lop-on/giao-vien", permission: PERMISSIONS.MANAGE_ADMINS },
   ],
 };
 
