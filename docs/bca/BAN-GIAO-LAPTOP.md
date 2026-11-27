@@ -11,7 +11,7 @@
 - **Là gì:** web quản lý lớp **BCA Midnight Class** (ôn thi BCA/ĐGNL, 4 môn Toán · Sử · Địa · Anh, học Google Meet 22:15), **thay hẳn** Google Sheet + Apps Script đang dùng.
 - **Mã ở đâu:** kho `NguyenVanTho2805/midnight-elite`, nhánh **`claude/optimistic-clarke-cbddza`**, thư mục **`bca/`** (app Next.js độc lập, không dùng chung gì với app KiN ở gốc kho).
 - **Chạy ở đâu:** project Vercel **`bca-midnight`** → https://bca-midnight.vercel.app
-- **Trạng thái 27/11:** Đợt 1 (quản lý lớp) chủ đã duyệt; Đợt 2 (đăng nhập Google, màn Tài khoản, khu học sinh) mã xong, 210/210 test. **Web chưa chạy được** vì chưa có DB Neon và chưa có khoá Google — xem mục 6.
+- **Trạng thái 27/11 (cập nhật chiều):** Đợt 1–2 xong; đang thiết kế lại giao diện (QĐ 27, bước 1–3 xong); tên hiển thị "Kin Class" (QĐ 28). **Web chính thức đã lên** (có DB Neon, chưa có dữ liệu) nhưng **chưa đăng nhập được** vì chưa có khoá Google và chưa chuyển dữ liệu — xem mục 6.
 - **Việc tiếp theo trên laptop:** mục 10 (cài đặt) rồi dán lệnh ở mục 12.
 
 ---
@@ -72,7 +72,7 @@ Việc nhỏ còn tồn (P3, không chặn): [`viec-con-lai.md`](viec-con-lai.md
 | `BCA_DEV_LOGIN=1` | chỉ Preview | ✅ có (production luôn tắt) |
 | `BCA_GMAIL_CHU` = aod.tsix@gmail.com | Production | ✅ có (đặt 27/11) |
 | `BCA_SEED_GIA=1` | chỉ Preview | ✅ có (phiên khác đặt 27/11 — xem bẫy 4) |
-| `BCA_DATABASE_URL` | Production (+ Development) | ❌ **thiếu** — có khi tạo DB Neon với prefix `BCA` |
+| `BCA_DATABASE_URL` | chỉ Production | ✅ có (27/11, Neon tổ chức "Kin Class") |
 | `BCA_GOOGLE_CLIENT_ID` | Production | ❌ **thiếu** |
 | `BCA_GOOGLE_CLIENT_SECRET` (Sensitive) | Production | ❌ **thiếu** |
 
@@ -111,7 +111,7 @@ Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể c
 
 | # | Việc | Trạng thái |
 |---|---|---|
-| 1 | DB Neon | ✅ 27/11 (phiên laptop) — KHÁC kế hoạch: tạo thẳng trên Neon bằng tài khoản `aod.tsix@gmail.com` (Chrome của chủ không vào được Vercel của Thọ), tổ chức Neon "Kin Class" gói Free, project `bca-midnight` (id `bitter-shadow-91580230`), Singapore, Postgres 17. Đã `prisma migrate deploy` (có đủ bảng, chưa có dữ liệu). Chuỗi kết nối TRỰC TIẾP (không pooler — một biến dùng cho cả migrate lẫn chạy) cất trong Keychain máy chủ lớp: `security find-generic-password -a bca-midnight -s bca-neon-url -w`. **Còn thiếu:** đặt `BCA_DATABASE_URL` (Production) trên Vercel — phiên Claude không được đọc chuỗi ra để chép; chờ chủ quyết cách. Tổ chức Neon "Vercel: KiN" (DB `kin-db` của web KiN) cùng tài khoản — KHÔNG ĐỤNG. |
+| 1 | DB Neon | ✅ 27/11 (phiên laptop) — KHÁC kế hoạch: tạo thẳng trên Neon bằng tài khoản `aod.tsix@gmail.com` (Chrome của chủ không vào được Vercel của Thọ), tổ chức Neon "Kin Class" gói Free, project `bca-midnight` (id `bitter-shadow-91580230`), Singapore, Postgres 17. Đã `prisma migrate deploy` (có đủ bảng, chưa có dữ liệu). Chuỗi kết nối TRỰC TIẾP (không pooler — một biến dùng cho cả migrate lẫn chạy) cất trong Keychain máy chủ lớp: `security find-generic-password -a bca-midnight -s bca-neon-url -w`. `BCA_DATABASE_URL` đã đặt trên Vercel 27/11 (chỉ Production, Sensitive — chủ cho phép Claude chép qua kết nối Vercel). Production dựng lại READY, `https://bca-midnight.vercel.app/dang-nhap` trả 200 (chưa có nút Google vì chưa có khoá). Hàm chạy ở `sin1` (`bca/vercel.json`) cho gần DB. Tổ chức Neon "Vercel: KiN" (DB `kin-db` của web KiN) cùng tài khoản — KHÔNG ĐỤNG. |
 | 2 | Google Cloud: app đã Publish; chỉ quyền `openid` + `userinfo.email`; client Web application có redirect URI đúng | ❌ cần trình duyệt (chưa ai kiểm) |
 | 3 | Chép Client ID + secret vào Vercel (Production, secret để Sensitive) | ❌ cần trình duyệt |
 | 4 | `BCA_GMAIL_CHU` | ✅ xong 27/11 |
