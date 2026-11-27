@@ -63,7 +63,7 @@ check("matchSub nhận ra ba trang (kể cả khi cờ tắt): Hôm nay / Học 
   matchSub("/admin/lop-on")?.sub.label === "Hôm nay" && matchSub("/admin/lop-on")?.moduleKey === "lop-on" && matchSub("/admin/lop-on/hoc-sinh")?.sub.label === "Học sinh" && matchSub("/admin/lop-on/hoc-sinh/HS0001")?.sub.label === "Học sinh");
 check("không khớp nhầm tiền tố: /admin/lop-onx", matchSub("/admin/lop-onx") === null);
 check("quản trị nội dung, gia sư, chưa biết vai: KHÔNG bao giờ thấy Lớp ôn", ["admin_content", "teacher", null].every((r) => !hrefs(r as "teacher").some((h) => h.startsWith("/admin/lop-on"))));
-if (LOP_ON) check("cờ bật: quản trị cấp 1 thấy module Lớp ôn ở CUỐI, vào bằng Hôm nay", (() => { const m = visibleModules("admin_super", FE).at(-1); return m?.key === "lop-on" && m.href === "/admin/lop-on" && m.subs.length === 2; })());
+if (LOP_ON) check("cờ bật: quản trị cấp 1 thấy module Lớp ôn ở CUỐI, vào bằng Hôm nay", (() => { const m = visibleModules("admin_super", FE).at(-1); return m?.key === "lop-on" && m.href === "/admin/lop-on" && m.subs.length === 4; })());
 else check("cờ tắt: quản trị cấp 1 cũng không thấy Lớp ôn", !hrefs("admin_super").some((h) => h.startsWith("/admin/lop-on")), hrefs("admin_super"));
 
 done();
