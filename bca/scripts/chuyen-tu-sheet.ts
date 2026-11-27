@@ -239,9 +239,21 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
   const gdTheoHs = new Map<string, GD[]>();
   for (const g of gd) gdTheoHs.set(g.ma_hs, [...(gdTheoHs.get(g.ma_hs) ?? []), { mon_id: g.mon_id, loai: g.loai, tu: g.tu, den: g.den, huy: g.huy }]);
   const anHs = new Set(hs.filter((x) => x.an).map((x) => x.ma_hs));
+  // Em đã ẩn vẫn thuộc danh sách các buổi TRƯỚC ngày ẩn (giữ điểm danh cũ, khớp ma trận tháng). Ngày ẩn đọc từ ghi chú
+  // ghi danh do script sheet viết "(ẩn dd/MM|...)"; không đọc được ngày ⇒ như cũ: không thuộc buổi nào.
+  const anTu = new Map<string, string>();
+  for (const g of gd) {
+    const m = anHs.has(g.ma_hs) ? /ẩn (\d{1,2})\/(\d{1,2})/.exec(g.ghi_chu ?? "") : null;
+    if (!m) continue;
+    let y = Number(g.tu.slice(0, 4));
+    const d = () => `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    if (d() < g.tu) y++;
+    const cu = anTu.get(g.ma_hs);
+    if (!cu || d() < cu) anTu.set(g.ma_hs, d());
+  }
   const maDungLai = new Set(mo);
   const dsBuoi = (b: (typeof buoi)[number]) =>
-    b.trang_thai === "huy" ? [] : hs.filter((x) => !anHs.has(x.ma_hs) && (gdTheoHs.get(x.ma_hs) ?? []).some((g) => g.mon_id === b.mon_id && hieuLuc(g, b.ngay))).map((x) => x.ma_hs);
+    b.trang_thai === "huy" ? [] : hs.filter((x) => (!anHs.has(x.ma_hs) || b.ngay < (anTu.get(x.ma_hs) ?? "")) && (gdTheoHs.get(x.ma_hs) ?? []).some((g) => g.mon_id === b.mon_id && hieuLuc(g, b.ngay))).map((x) => x.ma_hs);
   const diem: { buoi: (typeof buoi)[number]; ma_hs: string; trang_thai: "co" | "phep" | "vang" }[] = [];
   const t20: string[] = [];
   const bangBuoi: { buoi: string; ds: number; co: number; phep: number; vang: number; tick: boolean }[] = [];
@@ -405,7 +417,7 @@ export async function chuyen(db: PrismaClient, tep: string, opt: { apply: boolea
       const lechDong = Object.entries(doiSoat).filter(([, [a, b]]) => a !== b).map(([k, [a, b]]) => `${k} sheet ${a} ≠ CSDL ${b}`);
       // Phân bố tình trạng (chỉ hồ sơ có dòng ở tab Học sinh) so với cột Tình trạng của sheet.
       const gom = (ds: string[]) => ds.reduce<Record<string, number>>((m, t) => ({ ...m, [t]: (m[t] ?? 0) + 1 }), {});
-      const rut = (t: string) => t.replace(/^Thử → CT.*/, "Thử → CT");
+      const rut = (t: string) => t.replace(/^[^\p{L}(]+/u, "").replace(/^Thử → CT.*/, "Thử → CT"); // sheet có thể thêm biểu tượng đầu ô (✅ 🧪 ⏹)
       const tuSheet = hs.filter((x) => x.so > 0);
       const ttSheet = gom(tuSheet.map((x) => rut(x.tinh_trang ?? "(trống)")));
       const ttTinh = gom(tuSheet.map((x) => rut(tinhTrang(gdMap.get(hsId.get(x.ma_hs)!) ?? [], h))));

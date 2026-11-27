@@ -13,7 +13,7 @@ type Bao = Record<string, unknown>;
 const OPT = { apply: false, ngayChot: "2026-11-26" };
 
 /** Bảng tính giả 2 em: HS9001 sheet "Đã nghỉ", HS9002 "Hết thử 14/11 – hỏi em" (ghi chú "Cho nghỉ…" không được đọc). */
-async function tepGia(sua: { tinhTrang2?: string; buoi?: unknown[][] } = {}) {
+async function tepGia(sua: { tinhTrang2?: string; buoi?: unknown[][]; emAn?: boolean } = {}) {
   const wb = new ExcelJS.Workbook();
   const bang = (ten: string, cot: string[], dong: unknown[][] = []) => { const ws = wb.addWorksheet(ten); ws.addRow(cot); for (const d of dong) ws.addRow(d); };
   bang("📚 Lứa", ["Mã lứa", "Tên lứa", "Nhận từ ngày", "Đến ngày", "Ghi chú"], [["L9", "Lứa thử", "01/11/2026", null, null]]);
@@ -25,15 +25,18 @@ async function tepGia(sua: { tinhTrang2?: string; buoi?: unknown[][] } = {}) {
   ]);
   const cotHs = ["Mã HS", "Họ tên", "Lứa", "SĐT HS", "SĐT PH", "Gmail", "Trường", "Khối", "Họ tên PH", "Mục tiêu", "Nguồn", "Username Azota", "Đồng ý vinh danh", "Đã nhắn chào", "Ghi chú", "Note", "Ngày tạo", "Số dư đầu kỳ", "Nghỉ/ẩn", "Tình trạng", "Toán", "Sử", "Địa", "Anh"];
   const em = (ma: string, tt: string) => [ma, `Em ${ma}`, "L9", "0900000901", null, `${ma.toLowerCase()}@sheet.invalid`, null, null, null, null, "Web", `az${ma}`, false, true, null, null, "01/11/2026", 0, false, tt, "Nghỉ", null, null, null];
-  bang("👥 Học sinh", cotHs, [em("HS9001", "Đã nghỉ"), em("HS9002", sua.tinhTrang2 ?? "Hết thử 14/11 – hỏi em")]);
+  // emAn: HS9003 chính thức Toán, đã ẩn 20/11 (ô Tình trạng có biểu tượng như sheet thật), có dấu V buổi 17/11 ở ma trận
+  const an = [...em("HS9003", "⏹ Đã nghỉ")]; an[18] = true;
+  bang("👥 Học sinh", cotHs, [em("HS9001", "Đã nghỉ"), em("HS9002", sua.tinhTrang2 ?? "Hết thử 14/11 – hỏi em"), ...(sua.emAn ? [an] : [])]);
   bang("📝 Ghi danh", ["Mã GD", "Mã HS", "Họ tên", "Môn", "Loại", "Từ ngày", "Học đến hết ngày", "Miễn phí", "Đơn giá riêng", "Ghi chú"], [
     ["GD90001", "HS9001", null, "Toán", "Thử", "01/11/2026", "14/11/2026", false, null, null],
     ["GD90002", "HS9002", null, "Toán", "Thử", "01/11/2026", "14/11/2026", false, null, "Cho nghỉ đến hết 14/11"],
+    ...(sua.emAn ? [["GD90003", "HS9003", null, "Toán", "Chính thức", "01/11/2026", "19/11/2026", false, null, "Không theo học (ẩn 20/11|)"]] : []),
   ]);
   bang("📥 Đăng ký", ["Thời gian"]);
   bang("📅 Buổi học", ["Ngày", "Môn", "Trạng thái", "Đã điểm danh", "Nội dung buổi", "Link record", "Ghi chú"], sua.buoi ?? []);
   bang("__DiemDanh", ["Ngày", "Môn", "Mã HS", "Ký hiệu"]);
-  bang("Điểm danh", [""]);
+  bang("Điểm danh", [""], sua.emAn ? [["Khối", "Toán"], ["Mã HS", "Họ tên", "", new Date(Date.UTC(2026, 10, 17))], ["HS9003", "Em HS9003", "", "V"]] : []);
   const tep = `${await mkdtemp(`${tmpdir()}/bca-chuyen-`)}/gia.xlsx`;
   await wb.xlsx.writeFile(tep);
   return tep;
@@ -52,6 +55,17 @@ describe("T34 — sheet 'Đã nghỉ' ⇒ nghi_luc (xem trước, rollback)", ()
     expect(bao.tinh_trang).toEqual({ "Đã nghỉ": 1, "Hết thử 14/11 – hỏi em": 1 });
     expect(bao.doi_soat_so_dong).toMatchObject({ hoc_sinh: { sheet: 2, csdl: 2 }, ghi_danh: { sheet: 2, csdl: 2 }, mon: { sheet: 4, csdl: 4 } });
     expect(await db.hoc_sinh.count()).toBe(0); // đã rollback
+  });
+});
+
+describe("Em đã ẩn + ô Tình trạng có biểu tượng (sheet 26/11)", () => {
+  it("em ẩn 20/11 vẫn thuộc buổi 17/11 (giữ dấu V, sĩ số ma trận khớp); '⏹ Đã nghỉ' so khớp 'Đã nghỉ'", async () => {
+    const bao = (await chuyen(db as never, await tepGia({ emAn: true, buoi: [["17/11/2026", "Toán", "Có học", true, null, null, null]] }), OPT)) as Bao;
+    expect(bao.ket_qua).toBe("KHỚP (đã rollback vì đang xem trước)");
+    expect(bao.loi).toEqual([]);
+    expect(bao.si_so_thang_ma_tran).toContainEqual({ mon: "Toán", tinh: 1, ma_tran: 1 });
+    expect(bao.diem_danh_theo_buoi).toEqual([{ buoi: "Toán 2026-11-17", ds: 1, co: 0, phep: 0, vang: 1, tick: true }]);
+    expect(await db.hoc_sinh.count()).toBe(0);
   });
 });
 

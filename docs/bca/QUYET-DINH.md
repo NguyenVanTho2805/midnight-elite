@@ -101,6 +101,7 @@ Nguồn: phiếu BCA-D1-NV, chi tiết từng câu ở `nghiep-vu/*.md` mục "C
 - T51 giữ nguyên (27/11, như trên): hồ sơ đã ẩn không đăng nhập được.
 - T56. (27/11, đội tạm chọn — khu học sinh) "Liên hệ gia hạn" ở màn khoá mở link `ZALO_CHUNG`, không có thì `ZALO_HOC_THU`, không có cả hai thì câu "Nhắn chủ lớp qua Zalo để gia hạn". Nút Meet chỉ hiện khi môn có `link_meet` (Đợt 4 mới đồng bộ Meet); chưa có thì chỉ "Link Meet gửi trong nhóm Zalo của môn" + nút nhóm Zalo môn nếu có.
 - T57. (27/11, đội tạm chọn) Nút "Vào lớp ngay" bật từ 15 phút trước giờ học; trước đó nút vẫn bấm được và ghi "còn N phút".
+- T58. (27/11, đội tạm chọn — chuyển dữ liệu) Em đã ẩn trên sheet vẫn thuộc danh sách các buổi **trước** ngày ẩn (đọc từ ghi chú ghi danh "(ẩn dd/MM|…)") ⇒ giữ điểm danh cũ, khớp sĩ số ma trận tháng; buổi từ ngày ẩn trở đi thì không. Ô Tình trạng có biểu tượng đầu ô (✅ 🧪 ⏹, sheet thêm 26/11) được bỏ biểu tượng khi đối soát. Chạy thử bản xuất 27/11 với `--ngay-chot=2026-11-27`: KHỚP (72 HS, 195 ghi danh, 46 buổi, 303 điểm danh, 155 đơn; 0/284 ô lệch).
 
 ## Câu hỏi đang mở
 - Khoá API 21st.dev (nếu muốn cài linh kiện từ 21st.dev).
