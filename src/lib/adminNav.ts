@@ -75,7 +75,9 @@ export const ADMIN_LOP_ON: AdminModuleDef = {
   key: "lop-on", label: "Lớp ôn", icon: "lich",
   subs: [
     { label: "Hôm nay", href: "/admin/lop-on", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Điểm danh", href: "/admin/lop-on/diem-danh", permission: PERMISSIONS.MANAGE_ADMINS },
     { label: "Học sinh", href: "/admin/lop-on/hoc-sinh", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Buổi học", href: "/admin/lop-on/buoi-hoc", permission: PERMISSIONS.MANAGE_ADMINS },
   ],
 };
 

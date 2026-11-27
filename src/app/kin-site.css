@@ -272,6 +272,11 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
   --kin-lop-dem-chu-phu: #c3cbe0;
   --kin-lop-dem-nut: #f5b544;
   --kin-lop-dem-chu-tren-nut: #14204a;
+  /* Bước 5: nút Có / Phép / Vắng đang chọn (nền đặc, chữ trắng ≥ 5,4:1) — cùng một bộ cho sáng và tối. */
+  --kin-lop-dd-co: #047857;
+  --kin-lop-dd-phep: #1d4ed8;
+  --kin-lop-dd-vang: #b91c1c;
+  --kin-lop-dd-chu: #ffffff;
 }
 :root[data-che-do="toi"] {
   --kin-lop-mon-toan: #8ab4ff;

@@ -1,5 +1,5 @@
-// Lớp ôn · Hôm nay (KiN lớp bước 4, Figma FyUkgGJHrhXo0u4gnREyfk 7:5 / 7:168 / 8:119). CHỈ ĐỌC, chỉ chủ lớp, sau cờ LOP_ON.
-// Nút ghi (Điểm danh, Thêm nội dung / record, Gia hạn, Xử lý đơn) chưa có trang đích ⇒ ẩn hẳn ở bước này; chỉ điều hướng sang Học sinh.
+// Lớp ôn · Hôm nay (KiN lớp bước 4–5, Figma FyUkgGJHrhXo0u4gnREyfk 7:5 / 7:168 / 8:119). Chỉ chủ lớp, sau cờ LOP_ON.
+// Bước 5: nút vàng "Điểm danh" ở thẻ Tối nay, nút "Điểm danh" ở từng buổi chưa điểm (hàng đầu nút chính), liên kết "Ma trận". Gia hạn / Xử lý đơn / Thêm record còn ẨN (bước 6).
 // "Sĩ số theo môn" của bản gốc không có trong Figma ⇒ bỏ (lọc theo môn có ở trang Học sinh).
 // Mỗi khối một truy vấn riêng: khối lỗi tự báo, không sập cả trang. Tab của "Việc cần làm" nằm trên URL (?viec=).
 import Link from "next/link";
@@ -64,7 +64,7 @@ export default async function LopOnHomNay({ searchParams }: { searchParams: Prom
         <section aria-labelledby="co-mat" className="order-4 lg:order-none lg:col-span-4">
           {so ? (
             <KinPanel className="h-full">
-              <h2 id="co-mat" className={tieuDeKhoi}>Có mặt tháng này</h2>
+              <div className="flex items-center justify-between gap-3"><h2 id="co-mat" className={tieuDeKhoi}>Có mặt tháng này</h2><Link href={`${LOP_GOC}/diem-danh/thang`} className={lienKet}>Ma trận ›</Link></div>
               <ul className="mt-3 grid gap-1">
                 {so.co_mat_thang.map((s) => {
                   const pt = s.tong ? Math.round((s.co / s.tong) * 100) : null;
@@ -111,7 +111,7 @@ function TheSo({ so, nhan, href, bao = false }: { so: number | null; nhan: strin
   );
 }
 
-// Thẻ tối nay: nền đêm (Figma dem/*). Bước 4 chỉ đọc nên không có nút vàng; mốc mở điểm danh hiện bằng chữ.
+// Thẻ tối nay: nền đêm (Figma dem/*). Nút vàng hiện khi điểm danh đã mở (30 phút trước giờ học); trước đó mốc mở hiện bằng chữ.
 const theDem = "flex flex-col justify-center rounded-[var(--kin-bo-the)] bg-[var(--kin-lop-dem-nen)] px-5 py-6 sm:px-6 sm:py-8 text-[var(--kin-lop-dem-chu)]";
 const demPhu = "text-[length:var(--kin-co-goc)] leading-5 text-[var(--kin-lop-dem-chu-phu)]";
 const demH2 = "mt-2 text-[length:var(--kin-co-so)] leading-7 font-semibold text-balance [overflow-wrap:anywhere]";
@@ -142,6 +142,9 @@ function TheToiNay({ b, luc }: { b: Buoi; luc: number }) {
       <p className={`${demPhu} tabular-nums`}>{tren}{gv}</p>
       <h2 className={demH2}>{h2}</h2>
       {duoi ? <p className="mt-3 text-[length:var(--kin-co-body)] font-medium tabular-nums text-[var(--kin-lop-dem-nut)]">{duoi}</p> : null}
+      {b.mo_diem_danh ? (
+        <p className="mt-4"><Link href={`${LOP_GOC}/diem-danh/${b.id}`} className="inline-flex min-h-12 items-center justify-center rounded-[var(--kin-bo-md)] bg-[var(--kin-lop-dem-nut)] px-6 text-[length:var(--kin-co-body)] font-semibold text-[var(--kin-lop-dem-chu-tren-nut)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--kin-lop-dem-chu)]">{conThieu > 0 ? "Điểm danh" : "Xem điểm danh"}</Link></p>
+      ) : null}
     </article>
   );
 }
@@ -173,9 +176,10 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
       id: "chua", nhan: "Chưa điểm", so: dem(chua),
       noiDung: chua.length || vang.length ? (
         <>
-          {chua.flatMap((v) => (v.buoi as { id: number; ngay: string; thieu: number }[]).map((b) => (
-            <KinListRow key={b.id} title={<span className="font-medium">Buổi chưa điểm danh</span>} sub={<span className="tabular-nums">{(v.mon as Mon)?.ten} {thuNganNgay(b.ngay)} · còn {b.thieu} em</span>} />
-          )))}
+          {chua.flatMap((v) => (v.buoi as { id: number; ngay: string; thieu: number }[]).map((b) => ({ ...b, mon: v.mon as Mon }))).map((b, i) => (
+            <KinListRow key={b.id} title={<span className="font-medium">Buổi chưa điểm danh</span>} sub={<span className="tabular-nums">{b.mon?.ten} {thuNganNgay(b.ngay)} · còn {b.thieu} em</span>}
+              trailing={<Link href={`${LOP_GOC}/diem-danh/${b.id}`} className={kinButtonClass(i === 0 ? "primary" : "secondary")}>Điểm danh</Link>} />
+          ))}
           {vang.map((v) => {
             const em = v.em as { ma_hs: string; ho_ten: string; so_vang: number }[];
             return (
