@@ -111,7 +111,7 @@ Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể c
 
 | # | Việc | Trạng thái |
 |---|---|---|
-| 1 | Vercel ▸ bca-midnight ▸ Storage ▸ Create Database ▸ Neon ▸ Free, tên `bca-midnight`, prefix `BCA` | ❌ cần trình duyệt |
+| 1 | DB Neon | ✅ 27/11 (phiên laptop) — KHÁC kế hoạch: tạo thẳng trên Neon bằng tài khoản `aod.tsix@gmail.com` (Chrome của chủ không vào được Vercel của Thọ), tổ chức Neon "Kin Class" gói Free, project `bca-midnight` (id `bitter-shadow-91580230`), Singapore, Postgres 17. Đã `prisma migrate deploy` (có đủ bảng, chưa có dữ liệu). Chuỗi kết nối TRỰC TIẾP (không pooler — một biến dùng cho cả migrate lẫn chạy) cất trong Keychain máy chủ lớp: `security find-generic-password -a bca-midnight -s bca-neon-url -w`. **Còn thiếu:** đặt `BCA_DATABASE_URL` (Production) trên Vercel — phiên Claude không được đọc chuỗi ra để chép; chờ chủ quyết cách. Tổ chức Neon "Vercel: KiN" (DB `kin-db` của web KiN) cùng tài khoản — KHÔNG ĐỤNG. |
 | 2 | Google Cloud: app đã Publish; chỉ quyền `openid` + `userinfo.email`; client Web application có redirect URI đúng | ❌ cần trình duyệt (chưa ai kiểm) |
 | 3 | Chép Client ID + secret vào Vercel (Production, secret để Sensitive) | ❌ cần trình duyệt |
 | 4 | `BCA_GMAIL_CHU` | ✅ xong 27/11 |
