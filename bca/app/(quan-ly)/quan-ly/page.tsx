@@ -107,7 +107,8 @@ async function KhoiLich({ u, luc }: P) {
   return <Lich7 lich={await layLich(u, luc)} hom={ngayVN(new Date(luc))} />;
 }
 
-const theLon = "rounded-[20px] bg-raised p-4 sm:p-6";
+// Thẻ tối nay: nền đêm (cùng nhận diện với khu học sinh), mỗi trạng thái đúng MỘT nút vàng (QĐ 27).
+const theLon = "nen-dem rounded-[20px] p-4 sm:p-6";
 
 function TheToiNay({ b, luc, chu }: { b: Buoi; luc: number; chu: boolean }) {
   const mon = b.mon?.ten_day_du || tenMonDayDu(b.mon?.ma, b.mon?.ten);
@@ -134,7 +135,7 @@ function TheToiNay({ b, luc, chu }: { b: Buoi; luc: number; chu: boolean }) {
     h1 = `Tối nay học ${mon} lúc ${gioBd}`;
     phu = <>{b.chinh_thuc} chính thức · {b.thu} thử · còn <DemNguoc den={batDau} luc={luc} /></>;
     // Trang để nguyên tới 21:45: làm mới một lần để nút đổi thành nút vàng "Điểm danh".
-    chinh = <><Link href={ddHref} prefetch className={`${nutPhu} min-h-14 w-full sm:w-auto`}>Điểm danh mở lúc {gio(moLuc)}</Link><HenLamMoi luc={moLuc} /></>;
+    chinh = <><Link href={ddHref} prefetch className={`${nutChinhTo} w-full sm:w-auto`}>Điểm danh mở lúc {gio(moLuc)}</Link><HenLamMoi luc={moLuc} /></>;
     phuNut = <Link href={ndHref} className={nutPhu}>Thêm nội dung / record</Link>;
   } else if (luc <= ketThuc) {
     h1 = luc < batDau ? `Tối nay học ${mon} lúc ${gioBd}` : `Đang học ${mon}`;
@@ -210,28 +211,13 @@ function ViecCanLam({ viec, chu, hom }: { viec: DsViec; chu: boolean; hom: strin
         ))}
       </ul>
       {!coViec ? <p className="rounded-[14px] border border-border bg-surface px-4 py-4 text-text-2">Không còn việc gì cần làm hôm nay.</p> : null}
-      {don.length ? (
-        <ul className="rounded-[14px] border border-border bg-surface">
-          {don.map((v) => (
-            <li key={String(v.don_id)} className={hangViec}>
-              <span aria-hidden="true" className="size-2 rounded-full bg-gold" />
-              <p className="min-w-0 flex-1"><span className="font-semibold">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span>{v.ngay ? <span className="so text-text-3"> · {ddmm(v.ngay)}</span> : null}</p>
-              <Link href={`/quan-ly/don?don=${v.don_id}`} className={nutNho}>Mở</Link>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {het.length ? <NhomThu loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={hom} /> : null}
-      {nhomTheoNgay(sap).map(([ngay, vs]) => (
-        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa={`/quan-ly/hoc-sinh?het_ngay=${ngay}`} homNay={hom} />
-      ))}
       {chua.length || thieu.length || vang.length ? (
         <ul className="rounded-[14px] border border-border bg-surface">
           {chua.map((v) => {
             const bs = v.buoi as { id: number; ngay: string; thieu: number }[];
             return (
               <li key={`chua-${(v.mon as Mon)?.ma}`} className={hangViec}>
-                <p className={chuNhieuNut}><span className="font-semibold">Buổi chưa điểm danh</span> · {(v.mon as Mon)?.ten} · {bs.length} buổi</p>
+                <p className={chuNhieuNut}><span aria-hidden="true" className="mr-2 inline-block size-2 rounded-full bg-danger align-middle" /><span className="font-semibold">Buổi chưa điểm danh</span> · {(v.mon as Mon)?.ten} · {bs.length} buổi</p>
                 <span className="flex flex-wrap gap-2">
                   {bs.map((b) => <Link key={b.id} href={`/quan-ly/diem-danh/${b.id}`} className={`${nutNho} so`} aria-label={`Điểm danh ${(v.mon as Mon)?.ten} ${thuNgay(b.ngay)}, còn ${b.thieu} em`}>{thuNganNgay(b.ngay)}</Link>)}
                 </span>
@@ -258,6 +244,21 @@ function ViecCanLam({ viec, chu, hom }: { viec: DsViec; chu: boolean; hom: strin
           ))}
         </ul>
       ) : null}
+      {don.length ? (
+        <ul className="rounded-[14px] border border-border bg-surface">
+          {don.map((v) => (
+            <li key={String(v.don_id)} className={hangViec}>
+              <span aria-hidden="true" className="size-2 rounded-full bg-gold" />
+              <p className="min-w-0 flex-1"><span className="font-semibold">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span>{v.ngay ? <span className="so text-text-3"> · {ddmm(v.ngay)}</span> : null}</p>
+              <Link href={`/quan-ly/don?don=${v.don_id}`} className={nutNho}>Mở</Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {het.length ? <NhomThu mo loai="het_thu" tieuDe="Hết thử – hỏi em" em={het.map(emThu)} xemTatCa="/quan-ly/hoc-sinh?het=da-het" homNay={hom} /> : null}
+      {nhomTheoNgay(sap).map(([ngay, vs]) => (
+        <NhomThu loai="thu_sap_het" key={`sap-${ngay}`} tieuDe={`Thử sắp hết · Hết ${thuNgay(ngay)}`} em={vs.map(emThu)} xemTatCa={`/quan-ly/hoc-sinh?het_ngay=${ngay}`} homNay={hom} />
+      ))}
       {sua.length ? (
         <ul className="rounded-[14px] border border-border bg-surface">
           {sua.map((v) => (
@@ -283,10 +284,10 @@ function SoLieu({ t: t0, chu }: { t: TheSo; chu: boolean }) {
           {[
             { so: t.dang_hoc_chinh_thuc ?? 0, nhan: "Chính thức", href: "/quan-ly/hoc-sinh?loai=chinh-thuc" },
             { so: t.dang_thu ?? 0, nhan: "Đang thử", href: "/quan-ly/hoc-sinh?loai=thu" },
-            { so: t.thu_het_3_ngay ?? 0, nhan: "Thử hết trong 3 ngày", href: "/quan-ly/hoc-sinh?het=3" },
+            { so: t.thu_het_3_ngay ?? 0, nhan: "Thử hết trong 3 ngày", href: "/quan-ly/hoc-sinh?het=3", bao: true },
             { so: t.len_chinh_thuc_thang_nay ?? 0, nhan: "Lên chính thức tháng này", href: "/quan-ly/hoc-sinh?loai=chinh-thuc" },
           ].map((x) => (
-            <li key={x.nhan}><Link href={x.href} className={the}><span className="so text-2xl font-extrabold">{x.so}</span><span className="text-[13px] text-text-2">{x.nhan}</span></Link></li>
+            <li key={x.nhan}><Link href={x.href} className={`${the} ${x.bao && x.so > 0 ? "border-warn" : ""}`}><span className={`so text-2xl font-extrabold ${x.bao && x.so > 0 ? "text-warn" : ""}`}>{x.so}</span><span className="text-[13px] text-text-2">{x.nhan}</span></Link></li>
           ))}
         </ul>
       ) : null}
@@ -306,9 +307,13 @@ function SoLieu({ t: t0, chu }: { t: TheSo; chu: boolean }) {
         <ul className="py-1">
           {t.co_mat_thang.map((s) => (
             <li key={s.mon?.ma}>
-              <Link href={`/quan-ly/diem-danh/thang?mon=${s.mon?.ma}`} className="flex min-h-11 items-center justify-between gap-3 px-4 hover:bg-row-hover">
-                <span className="font-semibold">{s.mon?.ten}</span>
-                <span className="so text-text-2">{s.co}/{s.tong}</span>
+              <Link href={`/quan-ly/diem-danh/thang?mon=${s.mon?.ma}`} className="block px-4 py-2 hover:bg-row-hover">
+                <span className="flex min-h-7 items-center justify-between gap-3">
+                  <span className="font-semibold">{s.mon?.ten}</span>
+                  <span className="so text-text-2">{s.tong ? <><span className="font-semibold text-text">{Math.round((s.co / s.tong) * 100)}%</span> · </> : null}{s.co}/{s.tong}</span>
+                </span>
+                {/* Thanh chỉ để nhìn nhanh; số ở trên là thông tin chính. Dưới 70% đổi màu cảnh báo. */}
+                <span aria-hidden="true" className="mt-1 block h-1.5 overflow-hidden rounded-full bg-raised"><span className={`block h-full rounded-full ${s.tong && s.co / s.tong < 0.7 ? "bg-warn" : "bg-ok"}`} style={{ width: `${s.tong ? (s.co / s.tong) * 100 : 0}%` }} /></span>
               </Link>
             </li>
           ))}

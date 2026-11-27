@@ -64,7 +64,8 @@ Test: vitest 209/209, Playwright 54/54. Còn lại (P3):
 ## Thiết kế lại giao diện (QĐ 27) — tiến độ
 - Bước 1 (27/11, xong): sáng + tối tự theo máy, nút đổi, tách tầng nền.
 - Bước 2 (27/11, xong): khu học sinh `/hoc` (thẻ Tối nay nền đêm, tuần này theo màu môn, chuỗi dạng chấm, danh sách buổi gập còn 3 dòng, em sắp hết thử có việc để bấm) và trang đăng nhập (không còn lộ tên biến môi trường). Test trình duyệt 54/54.
-- Bước 3 (chưa): Hôm nay (thẻ số liệu, hộp việc chia tab, "Chưa điểm danh" lên đầu) + ma trận tháng tô nền ô.
+- Bước 3 (27/11, xong): Hôm nay — thẻ tối nay nền đêm với đúng một nút vàng, "Buổi chưa điểm danh" lên đầu danh sách việc, nhóm thử gập danh sách từng em (chỉ "Hết thử – hỏi em" mở sẵn), thẻ "Thử hết trong 3 ngày" đổi màu khi > 0, "Có mặt tháng này" có % và thanh. Ma trận tháng — tô nền ô theo trạng thái, thêm % có mặt (đỏ khi vắng từ 2 buổi), chỉ tô vàng cột đúng hôm nay. Test 210/210 + 54/54.
+  Không làm (khác đề xuất của agent): hộp việc chia tab (chip việc đang là link sang danh sách đã lọc — giữ), 4 thẻ số liệu lên hàng trên cùng, ma trận rộng hết khung, sắp xếp theo % và lọc "vắng ≥ 2".
 - Bước 4 (chưa): Học sinh thành bảng dữ liệu, Buổi học thành lịch tuần, tìm nhanh ⌘K (chờ chủ quyết có thêm shadcn không).
 Còn lại của bước 2 (P3):
 1. Máy tính: khu học sinh vẫn một cột 560px (chưa làm bố cục hai cột).

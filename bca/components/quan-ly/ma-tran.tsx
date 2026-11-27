@@ -18,12 +18,13 @@ import { NUT_DD } from "./diem-danh-buoi";
 
 type D = Awaited<ReturnType<typeof maTranThang>>;
 type O = D["hang"][number]["o"][number];
-const KY: Record<string, { k: string; mau: string; ten: string }> = {
-  co: { k: "✓", mau: "text-ok", ten: "có mặt" },
-  phep: { k: "P", mau: "text-excused", ten: "vắng có phép" },
-  vang: { k: "K", mau: "text-danger", ten: "vắng không phép" },
-  null: { k: "·", mau: "text-text-3", ten: "chưa điểm" },
-  "-": { k: "–", mau: "text-text-3", ten: "không học ngày này" },
+// nen: tô nền ô theo trạng thái để nhìn ra ngay ai hay vắng (QĐ 27); ký hiệu vẫn là thông tin chính, màu chỉ bổ trợ.
+const KY: Record<string, { k: string; mau: string; ten: string; nen: string }> = {
+  co: { k: "✓", mau: "text-ok", ten: "có mặt", nen: "bg-ok-bg" },
+  phep: { k: "P", mau: "text-excused", ten: "vắng có phép", nen: "bg-excused-bg" },
+  vang: { k: "K", mau: "text-danger", ten: "vắng không phép", nen: "bg-danger-bg" },
+  null: { k: "·", mau: "text-text-3", ten: "chưa điểm", nen: "" },
+  "-": { k: "–", mau: "text-text-3", ten: "không học ngày này", nen: "" },
 };
 
 export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu: boolean }) {
@@ -141,7 +142,7 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
               <tr>
                 <th scope="col" className="sticky left-0 top-0 z-20 w-32 min-w-32 border-b border-r border-border bg-surface px-3 text-left text-[13px] font-semibold text-text-2 lg:w-[220px] lg:min-w-[220px]">Học sinh</th>
                 {d.buoi.map((b, c) => {
-                  const nay = c === cotNay;
+                  const nay = b.ngay === d.hom_nay; // chỉ tô vàng khi buổi đúng là hôm nay (cột gần nhất vẫn được cuộn tới)
                   if (b.trang_thai === "huy") {
                     return <th key={b.id} scope="col" data-cot={c} aria-label={`Lớp nghỉ ${thuDay(b.ngay)} ${ddmm(b.ngay)}`} className="sticky top-0 z-10 w-7 min-w-7 border-b border-border bg-surface text-[11px] font-semibold text-text-3"><span aria-hidden="true">Nghỉ</span></th>;
                   }
@@ -177,9 +178,9 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
                       const sua = suaDuoc(col, v);
                       const choGui = !!layViec(`dd:${b.id}:${h.hoc_sinh_id}`);
                       return (
-                        <td key={b.id} className={`border-b border-border p-0 text-center ${col === cotNay ? "bg-today-col" : ""}`}>
+                        <td key={b.id} className={`border-b border-r border-border p-0 text-center ${ky.nen || (b.ngay === d.hom_nay ? "bg-today-col" : "")}`}>
                           {sua ? (
-                            <button type="button" {...roving(vr, col)} aria-label={`${nhanO}${choGui ? ", chưa gửi" : ""}`} onClick={() => setMo({ r, c: col })} className={`so relative flex h-12 w-11 items-center justify-center font-semibold hover:bg-raised lg:h-11 ${ky.mau}`}>
+                            <button type="button" {...roving(vr, col)} aria-label={`${nhanO}${choGui ? ", chưa gửi" : ""}`} onClick={() => setMo({ r, c: col })} className={`so relative flex h-12 w-11 items-center justify-center font-semibold hover:brightness-95 lg:h-11 ${ky.mau}`}>
                               <span aria-hidden="true">{ky.k}</span>
                               {choGui ? <span aria-hidden="true" className="absolute right-1 top-1 size-1.5 rounded-full border border-text-3" /> : null}
                             </button>
@@ -189,7 +190,7 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
                         </td>
                       );
                     })}
-                    <td className="so border-b border-l border-border px-2 text-center">{c.co}/{c.co + c.phep + c.vang}</td>
+                    <td className="so border-b border-border px-2 text-center leading-tight">{c.co}/{c.co + c.phep + c.vang}{c.co + c.phep + c.vang ? <span className={`block text-[12px] font-semibold ${c.vang >= 2 ? "text-danger" : "text-text-3"}`}>{Math.round((c.co / (c.co + c.phep + c.vang)) * 100)}%</span> : null}</td>
                     <td className="so border-b border-border px-2 text-center">{chuoi(tt)}</td>
                   </tr>
                 );
@@ -198,7 +199,10 @@ export function MaTran({ d, chiDangHoc, chu }: { d: D; chiDangHoc: boolean; chu:
           </table>
         </div>
       )}
-      <p className="mt-3 text-[13px] text-text-2"><span className="text-ok">✓</span> có mặt · <span className="text-excused">P</span> vắng có phép · <span className="text-danger">K</span> vắng không phép · · chưa điểm · – không học ngày này</p>
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-text-2">
+        {(["co", "phep", "vang"] as const).map((k) => <span key={k} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`inline-flex size-5 items-center justify-center rounded-[4px] font-semibold ${KY[k].nen} ${KY[k].mau}`}>{KY[k].k}</span>{KY[k].ten}</span>)}
+        <span>· chưa điểm</span><span>– không học ngày này</span><span>% đỏ: vắng từ 2 buổi</span>
+      </p>
 
       <ToTruot mo={!!oMo} dong={() => setMo(null)} tieuDe={oMo ? <><span translate="no">{oMo.h.ho_ten}</span> · <span className="so">{thuNgan(oMo.b.ngay)} {ddmm(oMo.b.ngay)}</span></> : ""}>
         {oMo && mo ? (

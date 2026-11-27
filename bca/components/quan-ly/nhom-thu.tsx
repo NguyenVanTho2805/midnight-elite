@@ -19,7 +19,8 @@ export type EmThu = EmGiaHan & { con_ngay?: number | null; lua?: string | null; 
 
 const nho = "nhan inline-flex min-h-11 items-center justify-center rounded-[10px] border border-border-input px-3 text-[14px] font-semibold text-text hover:bg-row-hover";
 
-export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string; em: EmThu[]; xemTatCa: string; homNay: string; loai: "thu_sap_het" | "het_thu" }) {
+/** mo: mở sẵn danh sách từng em (nhóm gấp nhất); các nhóm khác gập lại để Hôm nay gọn trong một màn (QĐ 27). */
+export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai, mo = false }: { tieuDe: string; em: EmThu[]; xemTatCa: string; homNay: string; loai: "thu_sap_het" | "het_thu"; mo?: boolean }) {
   const [giaHan, setGiaHan] = useState<EmThu[] | null>(null);
   const [xuLy, setXuLy] = useState<EmThu | null>(null);
   const router = useRouter();
@@ -49,6 +50,8 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
           <Link href={xemTatCa} className={nho}>Xem {em.length} em ›</Link>
         </div>
       </div>
+      <details open={mo} className="border-t border-border">
+      <summary className="nhan flex min-h-11 cursor-pointer items-center px-4 text-[14px] font-semibold text-text-2 hover:text-text">Từng em</summary>
       <ul className={`border-t border-border @min-[560px]:grid @min-[560px]:grid-cols-[minmax(0,1fr)_auto_auto_auto] @min-[560px]:gap-x-3`}>
         <li aria-hidden="true" className={`hidden px-4 pt-2 text-[13px] font-semibold text-text-2 @min-[560px]:col-span-4 @min-[560px]:grid @min-[560px]:grid-cols-subgrid`}>
           <span>Học sinh</span><span>Lứa</span><span>SĐT HS</span><span />
@@ -82,6 +85,7 @@ export function NhomThu({ tieuDe, em, xemTatCa, homNay, loai }: { tieuDe: string
           <li className={`px-4 py-2 text-[14px] text-text-3 @min-[560px]:col-span-4`}><Link href={xemTatCa} className="inline-flex min-h-11 items-center hover:text-text hover:underline">+ {em.length - 3} em nữa</Link></li>
         ) : null}
       </ul>
+      </details>
       <ToTruot mo={!!xuLy} dong={() => setXuLy(null)} tieuDe={xuLy ? xuLy.ho_ten : ""}>
         {xuLy ? (
           <div className="grid gap-3">

@@ -47,6 +47,7 @@
   background: var(--hero); color: #F2F4FA;
   --text: #F2F4FA; --text-2: #C3CBE0; --text-3: #9DA8C6; --gold-chu: #F5B544; --gold-hover: #FFD27A;
   --border: #36436C; --border-input: #8793BD; --row-hover: #2A3A75; --focus: #F5B544;
+  --ok: #7BD3A8; --warn: #FFB86B; --danger: #FF8A80;
 }
 
 html { background: var(--bg); color: var(--text); }
