@@ -73,8 +73,8 @@ Việc nhỏ còn tồn (P3, không chặn): [`viec-con-lai.md`](viec-con-lai.md
 | `BCA_GMAIL_CHU` = aod.tsix@gmail.com | Production | ✅ có (đặt 27/11) |
 | `BCA_SEED_GIA=1` | chỉ Preview | ✅ có (phiên khác đặt 27/11 — xem bẫy 4) |
 | `BCA_DATABASE_URL` | chỉ Production | ✅ có (27/11, Neon tổ chức "Kin Class") |
-| `BCA_GOOGLE_CLIENT_ID` | Production | ❌ **thiếu** |
-| `BCA_GOOGLE_CLIENT_SECRET` (Sensitive) | Production | ❌ **thiếu** |
+| `BCA_GOOGLE_CLIENT_ID` | Production | ✅ có (27/11) |
+| `BCA_GOOGLE_CLIENT_SECRET` (Sensitive) | Production | ✅ có (27/11) |
 
 Build Command của project hiện là `npm run build:xem-thu` (= prisma generate && prisma migrate deploy && nạp dữ liệu giả CHỈ khi không phải production và `BCA_SEED_GIA=1` && next build).
 Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể cả production) — tắt cho Production sau khi thử đăng nhập Google xong.
@@ -112,8 +112,8 @@ Bảo vệ: Vercel Authentication đang bật cho **mọi** địa chỉ (kể c
 | # | Việc | Trạng thái |
 |---|---|---|
 | 1 | DB Neon | ✅ 27/11 (phiên laptop) — KHÁC kế hoạch: tạo thẳng trên Neon bằng tài khoản `aod.tsix@gmail.com` (Chrome của chủ không vào được Vercel của Thọ), tổ chức Neon "Kin Class" gói Free, project `bca-midnight` (id `bitter-shadow-91580230`), Singapore, Postgres 17. Đã `prisma migrate deploy` (có đủ bảng, chưa có dữ liệu). Chuỗi kết nối TRỰC TIẾP (không pooler — một biến dùng cho cả migrate lẫn chạy) cất trong Keychain máy chủ lớp: `security find-generic-password -a bca-midnight -s bca-neon-url -w`. `BCA_DATABASE_URL` đã đặt trên Vercel 27/11 (chỉ Production, Sensitive — chủ cho phép Claude chép qua kết nối Vercel). Production dựng lại READY, `https://bca-midnight.vercel.app/dang-nhap` trả 200 (chưa có nút Google vì chưa có khoá). Hàm chạy ở `sin1` (`bca/vercel.json`) cho gần DB. Tổ chức Neon "Vercel: KiN" (DB `kin-db` của web KiN) cùng tài khoản — KHÔNG ĐỤNG. |
-| 2 | Google Cloud: app đã Publish; chỉ quyền `openid` + `userinfo.email`; client Web application có redirect URI đúng | ❌ cần trình duyệt (chưa ai kiểm) |
-| 3 | Chép Client ID + secret vào Vercel (Production, secret để Sensitive) | ❌ cần trình duyệt |
+| 2 | Google Cloud (project `bca-midnight`, tài khoản `aod.tsix`) | ⏳ 27/11: trước đó CHƯA cấu hình gì. Đã tạo: ứng dụng "Kin Class" (Bên ngoài), OAuth client "Kin Class web" loại Web, redirect `https://bca-midnight.vercel.app/api/dang-nhap/google/callback`, trang chủ ứng dụng = địa chỉ web. **Chưa Publish được**: Google bắt có URL chính sách quyền riêng tư → đã viết nháp `/chinh-sach` (chờ chủ duyệt nội dung, rồi dựng Production, điền URL ở trang Branding, bấm Publish). Đang ở chế độ thử nghiệm, người dùng thử: `aod.tsix@gmail.com` (tối đa 100). |
+| 3 | Client ID + secret trên Vercel (Production; secret Sensitive) | ✅ 27/11. `/api/dang-nhap/google` trên Production trả 302 sang Google đúng client, redirect, PKCE. Secret chỉ hiện một lần lúc tạo — mất thì tạo secret mới ở Google Cloud. |
 | 4 | `BCA_GMAIL_CHU` | ✅ xong 27/11 |
 | 5 | Chuyển dữ liệu sheet → Neon (xem trước → hỏi chủ → `--apply`) | ⏳ đã xem trước trên DB tạm: **KHỚP** (72 HS, 195 ghi danh, 46 buổi, 303 điểm danh, 155 đơn, 0/284 ô lệch) với bản xuất 27/11 và `--ngay-chot=2026-11-27`. Chạy lại trên Neon với bản xuất mới |
 | 6 | Redeploy Production, đăng nhập Google bằng Gmail chủ, ổn thì tắt Vercel Authentication cho Production | ❌ |
