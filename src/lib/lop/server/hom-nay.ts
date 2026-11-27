@@ -1,9 +1,10 @@
-// Màn Hôm nay (hom-nay.md), lọc theo vai ở máy chủ (Điều 6). Chép phần ĐỌC từ bca/server/hom-nay.ts; đánh dấu xong / hoàn tác (ghi) để bước 5.
+// Màn Hôm nay (hom-nay.md), lọc theo vai ở máy chủ (Điều 6). Chép phần ĐỌC từ bca/server/hom-nay.ts.
 import { congNgay, d2s, gioVN, ngayTrongThang, ngayVN, s2d, soNgayGiua, thangCua } from "../ngay";
-import { canQuanLy, laChu, monXemDuoc, type Nguoi, type NguoiQuanLy } from "../quyen";
+import { canChu, canQuanLy, laChu, LoiDuLieu, monXemDuoc, type Nguoi, type NguoiQuanLy } from "../quyen";
 import { conGioBuoiToiQua, hetThu, hieuLuc, moDiemDanh, thuSapHet, type GD } from "../quy-tac";
 import { chuanHoaGmail, gmailHopLe, sdtHopLe } from "../chuan-hoa";
 import { prisma as db } from "@/lib/prisma";
+import { ghiNhatKy } from "./nhat-ky";
 import { giaoVienTheoMon, napGD, napMon } from "./du-lieu";
 import { tienDo } from "./diem-danh";
 
@@ -186,3 +187,25 @@ function monCua<T>(gds: { mon_id: number }[], ten: Map<number, T>) {
   return [...new Set(gds.map((g) => g.mon_id))].map((id) => ten.get(id)).filter(Boolean);
 }
 
+/** T33: chủ đánh dấu một việc là xong (ghi đè lần trước). */
+export async function danhDauXong(u: Nguoi, loai: string, khoa: string, luc = new Date()) {
+  canChu(u);
+  if (!(loai in NGAY_AN_VIEC)) throw new LoiDuLieu(`Loại việc không hợp lệ: ${loai}`);
+  if (!khoa || khoa.length > 100) throw new LoiDuLieu("Thiếu khoá việc");
+  return db.$transaction(async (tx) => {
+    const r = await tx.bcaViecXong.upsert({ where: { loai_khoa: { loai, khoa } }, create: { loai, khoa, nguoi_dung_id: u.id, luc }, update: { nguoi_dung_id: u.id, luc } });
+    await ghiNhatKy(u, "danh_dau_xong", "viec", `${loai}|${khoa}`, null, { luc: r.luc.toISOString() }, tx);
+    return { loai, khoa, an_den: congNgay(ngayVN(luc), NGAY_AN_VIEC[loai] - 1) };
+  });
+}
+
+/** T33: bỏ đánh dấu (Hoàn tác) — việc hiện lại nếu điều kiện vẫn đúng. */
+export async function boDanhDauXong(u: Nguoi, loai: string, khoa: string) {
+  canChu(u);
+  return db.$transaction(async (tx) => {
+    const r = await tx.bcaViecXong.deleteMany({ where: { loai, khoa } });
+    if (!r.count) throw new LoiDuLieu("Việc này chưa được đánh dấu xong", 404);
+    await ghiNhatKy(u, "bo_danh_dau_xong", "viec", `${loai}|${khoa}`, null, null, tx);
+    return { loai, khoa };
+  });
+}

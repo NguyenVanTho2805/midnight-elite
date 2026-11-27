@@ -31,7 +31,17 @@ export async function napGD(where: { hoc_sinh_id?: number | { in: number[] }; mo
   return theoHs;
 }
 
-export const napMon = () => prisma.bcaMon.findMany({ orderBy: { thu_tu: "asc" } });
+export const napMon = (tx: Tx = prisma) => tx.bcaMon.findMany({ orderBy: { thu_tu: "asc" } });
+/** Số ngày học thử (cài đặt lớp). Đơn giá KHÔNG đọc ở đây (README mục 6.4). */
+export async function soNgayHocThu(tx: Tx = prisma) {
+  const r = await tx.bcaCaiDat.findUnique({ where: { khoa: "SO_NGAY_HOC_THU" } });
+  return Number(r?.gia_tri ?? MAC_DINH.SO_NGAY_HOC_THU);
+}
+/** Cấp mã mới không bao giờ cấp lại (bca_bo_dem, UPDATE … RETURNING trong transaction). */
+export async function capMa(tx: Tx, khoa: "hs" | "gd") {
+  const r = await tx.bcaBoDem.update({ where: { khoa }, data: { gia_tri: { increment: 1 } } });
+  return khoa === "hs" ? `HS${String(r.gia_tri).padStart(4, "0")}` : `GD${String(r.gia_tri).padStart(5, "0")}`;
+}
 
 /** Tên người được phân công từng môn (kể cả chủ; chỉ tên hiển thị, tài khoản chưa khoá) — cho chi tiết buổi. */
 export async function giaoVienTheoMon(monIds: number[]) {
