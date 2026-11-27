@@ -13,7 +13,6 @@ export type KhoLop = {
   user(id: string): Promise<{ name: string; email: string; role: string; adminRole: string | null; banned: boolean; emailVerified: boolean } | null>;
   giaoVien(): Promise<{ gmail: string; khoa_luc: Date | null; phan_cong: { mon_id: number }[] }[]>;
   hsTheoUser(userId: string): Promise<HS | null>;
-  hsTheoGmail(gmail: string): Promise<HS | null>;
 };
 
 const COT_HS = { id: true, ho_ten: true, an_luc: true } as const;
@@ -21,7 +20,6 @@ const khoPrisma: KhoLop = {
   user: (id) => prisma.user.findUnique({ where: { id }, select: { name: true, email: true, role: true, adminRole: true, banned: true, emailVerified: true } }),
   giaoVien: () => prisma.bcaNguoiDung.findMany({ select: { gmail: true, khoa_luc: true, phan_cong: { select: { mon_id: true } } } }),
   hsTheoUser: (userId) => prisma.bcaHocSinh.findFirst({ where: { userId }, orderBy: { id: "asc" }, select: COT_HS }),
-  hsTheoGmail: (gmail) => prisma.bcaHocSinh.findUnique({ where: { gmail }, select: COT_HS }),
 };
 
 /** Phần thuần của ánh xạ. Nạp lại User từ CSDL mỗi lần: bị khoá, hoặc vai trong cookie lệch CSDL ⇒ null (đóng, không đoán). */
@@ -29,9 +27,9 @@ export async function nguoiTuPhien(p: SessionPayload | null, kho: KhoLop = khoPr
   if (!lopOn || !p) return null;
   const u = await kho.user(p.userId);
   if (!u || u.banned || u.role !== p.role || (u.adminRole ?? undefined) !== p.adminRole) return null;
-  // Khớp theo email là cấp quyền: chỉ tin email đã xác minh (ai cũng đăng ký KiN được bằng email của người khác).
-  const email = u.emailVerified ? u.email : null;
   if (p.role === "admin") {
+    // Khớp theo email là cấp quyền: chỉ tin email đã xác minh (ai cũng đăng ký KiN được bằng email của người khác).
+    const email = u.emailVerified ? u.email : null;
     if (p.adminRole === "admin_super") return { vai: "chu", id: p.userId, ten: u.name, monIds: [] };
     if (p.adminRole !== "teacher") return null; // admin_content: chưa có quyết định ⇒ không vào lớp
     const goc = gmailGoc(email);
@@ -39,8 +37,8 @@ export async function nguoiTuPhien(p: SessionPayload | null, kho: KhoLop = khoPr
     // Không có dòng bca_nguoi_dung / bị khoá (khoa_luc) / chưa phân công ⇒ không môn nào, không phải toàn quyền.
     return { vai: "giao_vien", id: p.userId, ten: u.name, monIds: gv && !gv.khoa_luc ? gv.phan_cong.map((x) => x.mon_id) : [] };
   }
-  // shortcut: khớp gmail học sinh là so đúng chuỗi chữ thường (không gmailGoc như giáo viên) để khỏi quét cả bảng mỗi request; bỏ được khi bước chuyển dữ liệu đã ghi userId.
-  const hs = (await kho.hsTheoUser(p.userId)) ?? (email ? await kho.hsTheoGmail(chuanHoaGmail(email)!) : null);
+  // Bước 7: học sinh chỉ được nhận qua bca_hoc_sinh.userId. Việc nối theo Gmail (đã xác minh, khớp đúng một hồ sơ) làm MỘT lần ở server/hs.ts noiHoSoLop, có nhật ký.
+  const hs = await kho.hsTheoUser(p.userId);
   // T41: hồ sơ bị ẩn ⇒ hết hiệu lực ngay.
   return hs && !hs.an_luc ? { vai: "hoc_sinh", hocSinhId: hs.id, ten: hs.ho_ten } : null;
 }

@@ -1,6 +1,7 @@
 // KiN lớp bước 2 — ánh xạ phiên KiN → người dùng của lớp (src/lib/lop/phien.ts, hàm thuần nguoiTuPhien). Phiên giả + kho giả: không DB, không mạng, không dev server.
 // Ca phá cố ý (đã chạy 27/11/2026, mỗi cái làm ĐỎ đúng ca tương ứng): bỏ kiểm cờ → 2 đỏ; bỏ kiểm banned → 1; bỏ so vai cookie với CSDL → 1; tin email chưa xác minh → 2;
 // bỏ khoa_luc → 1; so gmail giáo viên bằng chuỗi thô thay gmailGoc → 2; bỏ dòng chặn admin_content → 1; bỏ an_luc → 1; tìm gmail trước userId → 2.
+// Bước 7: học sinh chỉ được nhận qua bca_hoc_sinh.userId (hết khớp Gmail ở đây — việc nối một lần nằm ở server/hs.ts noiHoSoLop, bài t-lop-hoc-sinh-khu.ts). Ca phá: trả lại nhánh khớp Gmail → 2 ca "chưa nối" đỏ.
 import { nguoiTuPhien, type KhoLop } from "@/lib/lop/phien";
 import type { SessionPayload } from "@/lib/session";
 import { check, section, done } from "./h";
@@ -13,13 +14,12 @@ const GV = [
   { gmail: "khoa@gmail.com", khoa_luc: new Date("2026-11-01T00:00:00Z"), phan_cong: [{ mon_id: 2 }] },
   { gmail: "moi@gmail.com", khoa_luc: null, phan_cong: [] },
 ];
-const HS_USER = { id: 7, ho_ten: "Em Bảy", an_luc: null }, HS_GMAIL = { id: 9, ho_ten: "Em Chín", an_luc: null };
+const HS_USER = { id: 7, ho_ten: "Em Bảy", an_luc: null };
 let goi: string[] = [];
 const kho = (u: U | null, o: Partial<KhoLop> = {}): KhoLop => ({
   user: async () => { goi.push("user"); return u; },
   giaoVien: async () => { goi.push("giaoVien"); return GV; },
   hsTheoUser: async (id) => { goi.push("hsTheoUser"); return id === "u-noi" ? HS_USER : null; },
-  hsTheoGmail: async (g) => { goi.push(`hsTheoGmail:${g}`); return g === "em9@gmail.com" ? HS_GMAIL : null; },
   ...o,
 });
 const sup: SessionPayload = { userId: "u1", role: "admin", adminRole: "admin_super" };
@@ -64,16 +64,13 @@ async function main() {
   section("Học sinh ⇒ hoc_sinh");
   goi = [];
   const h1 = await nguoiTuPhien(hs("u-noi"), kho(user({ email: "em9@gmail.com" })), true);
-  check("đã nối userId ⇒ đúng hồ sơ đó, không tìm theo gmail nữa", eq(h1, { vai: "hoc_sinh", hocSinhId: 7, ten: "Em Bảy" }) && !goi.some((x) => x.startsWith("hsTheoGmail")), [h1, goi]);
-  goi = [];
-  const h2 = await nguoiTuPhien(hs(), kho(user({ email: " Em9@Gmail.com" })), true);
-  check("chưa nối ⇒ tìm theo gmail đã chuẩn hoá (chữ thường, bỏ khoảng trắng)", eq(h2, { vai: "hoc_sinh", hocSinhId: 9, ten: "Em Chín" }) && goi.includes("hsTheoGmail:em9@gmail.com"), [h2, goi]);
-  check("không thấy hồ sơ nào ⇒ null", (await nguoiTuPhien(hs(), kho(user({ email: "la@gmail.com" })), true)) === null);
-  goi = [];
-  check("email KiN chưa xác minh ⇒ không tìm theo gmail ⇒ null", (await nguoiTuPhien(hs(), kho(user({ email: "em9@gmail.com", emailVerified: false })), true)) === null && !goi.some((x) => x.startsWith("hsTheoGmail")), goi);
+  check("đã nối userId ⇒ đúng hồ sơ đó", eq(h1, { vai: "hoc_sinh", hocSinhId: 7, ten: "Em Bảy" }) && eq(goi, ["user", "hsTheoUser"]), [h1, goi]);
+  const h2 = await nguoiTuPhien(hs(), kho(user({ email: "em9@gmail.com" })), true);
+  check("chưa nối ⇒ null dù email (đã xác minh) trùng Gmail một hồ sơ — không tự khớp theo Gmail", h2 === null, h2);
+  check("đã nối thì email chưa xác minh / đã đổi vẫn giữ hồ sơ (nối theo userId, không theo email)", eq(await nguoiTuPhien(hs("u-noi"), kho(user({ email: "khac@gmail.com", emailVerified: false })), true), h1));
   const an = { hsTheoUser: async () => ({ ...HS_USER, an_luc: new Date() }) };
   check("hồ sơ bị ẩn (an_luc) ⇒ null, không rơi sang hồ sơ khác theo gmail (T41)", (await nguoiTuPhien(hs("u-noi"), kho(user({ email: "em9@gmail.com" }), an), true)) === null);
-  check("học sinh không bao giờ thành vai quản lý", h1?.vai === "hoc_sinh" && h2?.vai === "hoc_sinh" && !("monIds" in (h1 ?? {})));
+  check("học sinh không bao giờ thành vai quản lý", h1?.vai === "hoc_sinh" && !("monIds" in (h1 ?? {})));
   await done();
 }
 main();

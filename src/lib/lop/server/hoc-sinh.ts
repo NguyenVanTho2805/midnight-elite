@@ -189,15 +189,17 @@ export async function suaHoSoHocSinh(u: Nguoi, maHs: string, v: SuaHoSo) {
   if ("ho_ten" in data && !data.ho_ten) throw new LoiDuLieu("Cần họ tên");
   if (data.gmail && goiYGmail(data.gmail)) throw new LoiDuLieu(`Gmail có vẻ gõ nhầm — có phải ${goiYGmail(data.gmail)}?`, 400, "gmail");
   return db.$transaction(async (tx) => {
-    const cu = await tx.bcaHocSinh.findUnique({ where: { ma_hs: maHs }, select: { id: true, ...Object.fromEntries(Object.keys(data).map((c) => [c, true])) } }) as ({ id: number } & Record<string, string | null>) | null;
+    const cu = await tx.bcaHocSinh.findUnique({ where: { ma_hs: maHs }, select: { id: true, userId: true, ...Object.fromEntries(Object.keys(data).map((c) => [c, true])) } }) as ({ id: number; userId: string | null } & Record<string, string | null>) | null;
     if (!cu) throw new LoiDuLieu(`Không có học sinh ${maHs}`, 404);
     for (const [cot, ten, ma] of [["gmail", "Gmail", "trung_gmail"], ["username_azota", "Username Azota", "trung_azota"]] as const) {
       const trung = data[cot] ? await tx.bcaHocSinh.findFirst({ where: { [cot]: data[cot], id: { not: cu.id } }, select: { ma_hs: true } }) : null;
       if (trung) throw new LoiDuLieu(`${ten} đã có ở ${trung.ma_hs} — dùng ${ten} khác, hoặc sửa ở hồ sơ ${trung.ma_hs} trước`, 409, ma);
     }
-    const { id: _id, ...truoc } = cu;
-    await tx.bcaHocSinh.update({ where: { id: cu.id }, data });
-    await ghiNhatKy(u, "sua_ho_so_hoc_sinh", "hoc_sinh", maHs, truoc, data, tx);
+    const { id: _id, userId, ...truoc } = cu;
+    // Bước 7: đổi Gmail ⇒ gỡ tài khoản KiN đã nối theo Gmail cũ (người giữ Gmail cũ hết quyền xem ngay; Gmail mới tự nối lại ở lần mở đầu tiên).
+    const go = "gmail" in data && data.gmail !== cu.gmail && userId !== null;
+    await tx.bcaHocSinh.update({ where: { id: cu.id }, data: go ? { ...data, userId: null } : data });
+    await ghiNhatKy(u, "sua_ho_so_hoc_sinh", "hoc_sinh", maHs, go ? { ...truoc, userId } : truoc, go ? { ...data, userId: null } : data, tx);
     return { ma_hs: maHs, ...data };
   });
 }

@@ -4,20 +4,19 @@ import { NextResponse } from "next/server";
 import { LOP_ON } from "@/lib/features";
 import { getSession } from "@/lib/session";
 import { d2s, s2d } from "../ngay";
-import { nguoiLopBca } from "../phien";
-import { LoiDuLieu, LoiQuyen, type NguoiQuanLy } from "../quyen";
+import { nguoiLop, nguoiLopBca } from "../phien";
+import { LoiDuLieu, LoiQuyen, type Nguoi, type NguoiHocSinh, type NguoiQuanLy } from "../quyen";
 import { LoiQuyTac } from "../quy-tac";
 import { ghiTuChoi } from "./nhat-ky";
 
 export type Ctx<P = Record<string, string>> = { params: Promise<P> };
 const loi = (error: string, status: number, ma?: string) => NextResponse.json({ error, ma }, { status });
 
-export function route<P = Record<string, string>>(fn: (u: NguoiQuanLy, req: Request, params: P) => Promise<unknown>) {
+function bao<U extends Nguoi, P>(lay: (req: Request) => Promise<U | null>, khongQuyen: string, fn: (u: U, req: Request, params: P) => Promise<unknown>) {
   return async (req: Request, ctx: Ctx<P>) => {
     if (!LOP_ON) return loi("Không tìm thấy", 404);
-    // Chủ lớp chưa có dòng bca_nguoi_dung chỉ được tạo dòng ở request GHI.
-    const u = await nguoiLopBca(req.method !== "GET");
-    if (!u) return (await getSession()) ? loi("Bạn không có quyền vào lớp ôn", 403) : loi("Chưa đăng nhập", 401);
+    const u = await lay(req);
+    if (!u) return (await getSession()) ? loi(khongQuyen, 403) : loi("Chưa đăng nhập", 401);
     try {
       return NextResponse.json(await fn(u, req, await ctx.params));
     } catch (e) {
@@ -36,6 +35,14 @@ export function route<P = Record<string, string>>(fn: (u: NguoiQuanLy, req: Requ
     }
   };
 }
+
+/** Route của chủ lớp / giáo viên. Chủ lớp chưa có dòng bca_nguoi_dung chỉ được tạo dòng ở request GHI. */
+export const route = <P = Record<string, string>>(fn: (u: NguoiQuanLy, req: Request, params: P) => Promise<unknown>) =>
+  bao((req) => nguoiLopBca(req.method !== "GET"), "Bạn không có quyền vào lớp ôn", fn);
+
+/** Route của HỌC SINH (/api/lop/hs/*, bước 7): chỉ người đã nối hồ sơ lớp còn hiệu lực; chủ / giáo viên / học sinh KiN không có hồ sơ ⇒ 403. Không nhận id học sinh từ request. */
+export const routeHs = <P = Record<string, string>>(fn: (u: NguoiHocSinh, req: Request, params: P) => Promise<unknown>) =>
+  bao(async () => { const u = await nguoiLop(); return u?.vai === "hoc_sinh" ? u : null; }, "Khu này dành cho học sinh của lớp ôn", fn);
 
 export async function docJson(req: Request): Promise<Record<string, unknown>> {
   try {
