@@ -88,6 +88,8 @@ export default async function DangNhap({ searchParams }: { searchParams: Promise
         </section>
       )}
 
+      <p className="text-center text-sm"><Link href="/chinh-sach" className="inline-flex min-h-11 items-center text-text-2 hover:text-text hover:underline">Chính sách quyền riêng tư</Link></p>
+
       {dev && (
         <section className="rounded-[20px] border border-dashed border-border-input p-5">
           <h2 className="font-semibold">Đăng nhập thử theo vai</h2>
