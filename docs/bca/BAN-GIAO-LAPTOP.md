@@ -36,7 +36,7 @@ Nguồn sự thật: [`QUYET-DINH.md`](QUYET-DINH.md) (quyết định 1–26 đ
 | 3 | Sổ điểm + báo cáo, học phí + thu tiền (VietQR) | ⏳ Chưa làm |
 | 4 | Trang giới thiệu + form đăng ký, email chào, đồng bộ Google Meet, tin Zalo soạn sẵn | ⏳ Chưa làm |
 
-Việc nhỏ còn tồn (P3, không chặn): [`viec-con-lai.md`](viec-con-lai.md). Hai mục **P2** cần làm trước khi chủ dùng thật lâu dài: xoá buổi theo T42, đơn đăng ký theo T43 (mục 20–21 trong tệp đó).
+Việc nhỏ còn tồn (P3, không chặn): [`viec-con-lai.md`](viec-con-lai.md). Hai mục **P2** (xoá buổi theo T42, đơn đăng ký theo T43 — mục 20–21 trong tệp đó) đã có trong mã từ 26/11; phiên laptop 27/11 kiểm lại: test đạt, nút có trên web.
 
 ---
 
@@ -195,7 +195,7 @@ Bạn không cần tự gõ các lệnh trên — mở Claude Code trong thư m�
 2. Sửa tên tài khoản chủ ("Chủ lớp" → tên thật).
 3. Báo học sinh đăng nhập bằng đúng Gmail đã khai trong phiếu.
 4. Sheet chuyển sang chỉ lưu trữ (quyết định 1). Không nhập thêm trên sheet — nếu có, phải chạy lại chuyển dữ liệu trước khi web có dữ liệu do người dùng nhập.
-5. Làm tiếp: P2 mục 20–21 trong `viec-con-lai.md`, rồi Đợt 3 (sổ điểm, học phí).
+5. Làm tiếp: Đợt 3 (sổ điểm, học phí).
 
 ---
 

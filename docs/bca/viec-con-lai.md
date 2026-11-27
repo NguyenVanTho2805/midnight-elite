@@ -29,8 +29,8 @@ Từ BCA-D1-VAI-GV (vai giáo viên, ĐẠT — 7 chạm, ~10 s máy đo / ~25 s
 19. Chặn đồng nhất: buổi môn khác cũng hiện "Không tìm thấy" như hồ sơ (không lộ việc buổi tồn tại).
 
 Từ BCA-D1-VAI-CL (vai chủ lớp, KHÔNG ĐẠT — 2 P2):
-20. **P2** Xoá buổi: theo T42 (chỉ buổi tương lai, xác nhận + Hoàn tác, nút "Sinh buổi còn thiếu") — components/quan-ly/buoi-hoc.tsx:163-176, server/buoi-hoc.ts.
-21. **P2** Đơn đăng ký: theo T43 ("Tạo hồ sơ từ đơn", "Bỏ qua") — app/(quan-ly)/quan-ly/don/page.tsx, server/don.ts.
+20. ~~**P2** Xoá buổi: theo T42 (chỉ buổi tương lai, xác nhận + Hoàn tác, nút "Sinh buổi còn thiếu") — components/quan-ly/buoi-hoc.tsx:163-176, server/buoi-hoc.ts.~~ — đã làm 26/11 (kiểm lại 27/11: test vong-4 đạt, nút có trên web).
+21. ~~**P2** Đơn đăng ký: theo T43 ("Tạo hồ sơ từ đơn", "Bỏ qua") — app/(quan-ly)/quan-ly/don/page.tsx, server/don.ts.~~ — đã làm 26/11 (kiểm lại 27/11).
 22. Nút "Xem 4 em ›" mở đúng nhóm ngày (lọc theo ngày hết), số trên nút khớp số em hiện.
 23. Ghi chú hồ sơ: báo "Đã lưu HH:MM"; mục Ghi chú không gập khi trống; báo khi chạm giới hạn 2000 ký tự (components/quan-ly/ghi-chu-hs.tsx).
 24. Tờ "Gia hạn cả nhóm" liệt kê tên các em trước khi bấm.
