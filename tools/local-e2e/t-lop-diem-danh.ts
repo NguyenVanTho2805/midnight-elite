@@ -3,8 +3,8 @@
 // Chạy: source tools/local-e2e/env.sh && npx tsx tools/local-e2e/t-lop-diem-danh.ts   (cần cầu nối DB cổng 443 — .local-dev/wt-up.sh tự bật; KHÔNG cần dev server).
 // Dữ liệu: bài tự nạp lại bca_* từ `bca_gia` trước và sau khi chạy (tools/local-e2e/lop-db.ts) — không wipe(), không đụng bảng KiN.
 // KHÔNG chuyển: "sinh buổi tháng lặp lại an toàn" (sinhBuoiThang chưa chép), phần học sinh không thấy ghi chú (khu học sinh — bước 7), đổi lịch môn.
-// Ca phá cố ý (đã chạy 27/11/2026, phá → đỏ đúng ca → trả lại): bỏ `kiemGhi` trong datDiemDanh → 3 ca "chua_mo / 48 giờ" đỏ; bỏ `canMon` trong napBuoi → 2 ca "GV môn khác" đỏ;
-// hoanTacTatCa bỏ điều kiện `ghi_luc: lucDanh` → ca "hoàn tác không đụng em đã sửa tay" đỏ; xoaBuoi bỏ kiểm `bat_dau_luc <= luc` → 2 ca "da_qua" đỏ.
+// Ca phá cố ý (đã chạy 27/11/2026, phá → đỏ → trả lại): bỏ `kiemGhi` trong datDiemDanh → 3 ca đỏ (chua_mo, 48 giờ, buoi_huy); bỏ `canMon` trong napBuoi → 2 ca "GV môn khác" đỏ;
+// hoanTacTatCa bỏ điều kiện `trang_thai: "co", ghi_luc: lucDanh` → 2 ca hoàn tác đỏ (trả cả em đã sửa tay); xoaBuoi bỏ kiểm `bat_dau_luc <= luc` → 2 ca "da_qua" đỏ rồi bài dừng.
 import { check, section, done } from "./h";
 import { CHU, GV_ANH, GV_TOAN, buoiId, db, giay, hsId, loi, napLaiBca, nguoi } from "./lop-db";
 import { lucVN } from "@/lib/lop/ngay";
