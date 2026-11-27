@@ -11,7 +11,7 @@
 - **Là gì:** web quản lý lớp **BCA Midnight Class** (ôn thi BCA/ĐGNL, 4 môn Toán · Sử · Địa · Anh, học Google Meet 22:15), **thay hẳn** Google Sheet + Apps Script đang dùng.
 - **Mã ở đâu:** kho `NguyenVanTho2805/midnight-elite`, nhánh **`claude/optimistic-clarke-cbddza`**, thư mục **`bca/`** (app Next.js độc lập, không dùng chung gì với app KiN ở gốc kho).
 - **Chạy ở đâu:** project Vercel **`bca-midnight`** → https://bca-midnight.vercel.app
-- **Trạng thái 27/11 (cập nhật chiều):** Đợt 1–2 xong; đang thiết kế lại giao diện (QĐ 27, bước 1–3 xong); tên hiển thị "Kin Class" (QĐ 28). **Web chính thức đã lên** (có DB Neon, chưa có dữ liệu) nhưng **chưa đăng nhập được** vì chưa có khoá Google và chưa chuyển dữ liệu — xem mục 6.
+- **Trạng thái 27/11 (cập nhật chiều):** Đợt 1–2 xong; đang thiết kế lại giao diện (QĐ 27, bước 1–3 xong); tên hiển thị "Kin Class" (QĐ 28). **Web chính thức đã dùng được** (DB Neon, dữ liệu thật từ sheet, đăng nhập Google, chủ đã vào) — mục 6 xong hết; việc tiếp ở mục 11 và bước 4 thiết kế lại giao diện.
 - **Việc tiếp theo trên laptop:** mục 10 (cài đặt) rồi dán lệnh ở mục 12.
 
 ---
@@ -116,7 +116,7 @@ Bảo vệ (từ 27/11): Vercel Authentication ở mức Standard — chỉ đ�
 | 3 | Client ID + secret trên Vercel (Production; secret Sensitive) | ✅ 27/11. `/api/dang-nhap/google` trên Production trả 302 sang Google đúng client, redirect, PKCE. Secret chỉ hiện một lần lúc tạo — mất thì tạo secret mới ở Google Cloud. |
 | 4 | `BCA_GMAIL_CHU` | ✅ xong 27/11 |
 | 5 | Chuyển dữ liệu sheet → Neon | ✅ 27/11 14:5x (phiên laptop, chủ đồng ý): xem trước KHỚP rồi `--apply` với bản xuất tải 14:44 và `--ngay-chot=2026-11-27` — 72 HS, 195 ghi danh, 46 buổi, 303 điểm danh, 155 đơn, 0 lỗi. Script nhắc xem lại: tên chữ thường ở dòng sheet 23 và 63, Gmail của HS0074, 17 đơn không còn hồ sơ. **Từ giờ sheet chỉ lưu trữ** — có nhập thêm trên sheet thì phải chạy lại trước khi web có dữ liệu người dùng nhập. Bản xuất nằm ở `~/Downloads` máy chủ lớp (không commit). |
-| 6 | Mở web cho người dùng | ⏳ 27/11: Production READY (sin1). Vercel Authentication đổi từ "all" sang **Standard** (`prod_deployment_urls_and_all_previews`) theo lời chủ: `bca-midnight.vercel.app` mở công khai (trang đăng nhập + `/chinh-sach`), bản xem thử và địa chỉ riêng từng bản dựng vẫn khoá. Đã kiểm từ ngoài: `/dang-nhap` 200 có nút Google, không có đăng nhập thử; `/quan-ly` chuyển về đăng nhập; API 401. **Còn lại:** chủ đăng nhập Google lần đầu bằng `aod.tsix@gmail.com` (tự tạo tài khoản chủ), rồi làm mục 11. |
+| 6 | Mở web cho người dùng | ✅ 27/11: Production READY (sin1). Vercel Authentication đổi từ "all" sang **Standard** (`prod_deployment_urls_and_all_previews`) theo lời chủ: `bca-midnight.vercel.app` mở công khai (trang đăng nhập + `/chinh-sach`), bản xem thử và địa chỉ riêng từng bản dựng vẫn khoá. Đã kiểm từ ngoài: `/dang-nhap` 200 có nút Google, không có đăng nhập thử; `/quan-ly` chuyển về đăng nhập; API 401. Chủ đã đăng nhập Google thành công bằng `aod.tsix@gmail.com` chiều 27/11 (tài khoản chủ tự tạo). ✅ **Web đã dùng được.** Tiếp theo: mục 11. |
 
 Vì sao mọi bản dựng đang đỏ: thiếu `BCA_DATABASE_URL` → `prisma migrate deploy` báo "Connection url is empty". Có DB là hết.
 
