@@ -69,8 +69,10 @@ const PENDING_ITEMS: ModuleItem[] = [
 ];
 
 export default function TutorShell({
-  modules, badges, pending = false, manage, classes, inbox, children,
+  modules, badges, pending = false, manage, classes, inbox, lopOn, children,
 }: {
+  /** KiN lớp bước 7: máy chủ đã kiểm cờ LOP_ON + giáo viên có dòng lớp ôn còn hoạt động (LopCuaToiFrame) ⇒ thêm "Lớp ôn" vào nhóm "Dạy học". */
+  lopOn?: boolean;
   /** SCL-G-GS: lớp cho nhóm "Lớp của bạn" của thanh rộng (Chủ nhiệm: mọi lớp, nhóm theo gia sư). Vắng (trang khách) = không vẽ nhóm. */
   classes?: ShellClass[];
   /** Số việc cần ra tay của Hộp việc (badge). */
@@ -107,7 +109,7 @@ export default function TutorShell({
     // DG: "Tổng quan" đi cùng cờ HOP_VIEC (route /lop-cua-toi/tong-quan chặn khi cờ tắt) — chỉ thêm khi gia sư TỰ tắt module Hộp việc lúc cờ đang mở.
     ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn && !isLinkHidden("/lop-cua-toi/tong-quan")
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
-      : g),
+      : g).map((g, i) => i === 0 && lopOn ? { ...g, links: [...g.links, { label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich" }] } : g),
     { title: "Tài khoản", links: visibleLinks([
       { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },

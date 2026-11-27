@@ -21,6 +21,7 @@ import type { AdminRole } from "@/lib/permissions";
 import TutorShell from "@/components/tutor/TutorShell";
 import { loadInboxTotal, loadRailClasses } from "@/lib/lopViecServer";
 import StudentFrame from "@/components/shell/StudentFrame";
+import { nguoiLopBca } from "@/lib/lop/phien";
 
 export default async function LopCuaToiFrame({ children }: { children: ReactNode }) {
   const session = await getSession();
@@ -56,5 +57,7 @@ export default async function LopCuaToiFrame({ children }: { children: ReactNode
   else if (sched) badges["lich"] = sched.pendingAbsences + sched.remindersDue;
 
   // BU-00: truyền nguyên `prefs.modules` — vắng mặt là đủ module, không ép về `[]` (= chế độ gọn tường minh).
-  return <TutorShell modules={prefs.modules} badges={badges} classes={classes} inbox={lopViec}>{children}</TutorShell>;
+  // KiN lớp bước 7: mục "Lớp ôn" chỉ khi cờ LOP_ON bật (tắt ⇒ nguoiLopBca trả null, không đọc gì) và giáo viên có dòng bca_nguoi_dung chưa khoá.
+  const lopOn = (await nguoiLopBca().catch(() => null))?.vai === "giao_vien";
+  return <TutorShell modules={prefs.modules} badges={badges} classes={classes} inbox={lopViec} lopOn={lopOn}>{children}</TutorShell>;
 }

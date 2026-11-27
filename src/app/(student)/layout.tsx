@@ -4,6 +4,7 @@
 import { getSession } from "@/lib/session";
 import { loadAuthUser } from "@/lib/authUserServer";
 import { expireTrials } from "@/lib/trialServer";
+import { coLopOn } from "@/lib/lop/server/hs";
 import StudentLayoutClient from "./StudentLayoutClient";
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -11,5 +12,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   // SCL đợt 5 (D7): học thử của em đã quá hạn ⇒ lật trial_expired ngay khi em mở vỏ (không chờ cron đêm). Lỗi không chặn vỏ.
   if (session?.role === "student") await expireTrials({ userId: session.userId }).catch(() => undefined);
   const initialUser = session === undefined ? undefined : session ? await loadAuthUser(session.userId).catch(() => undefined) : null;
-  return <StudentLayoutClient initialUser={initialUser}>{children}</StudentLayoutClient>;
+  // KiN lớp bước 7: mục "Lớp ôn" chỉ hiện khi cờ LOP_ON bật VÀ em có hồ sơ lớp (lần đầu mở vỏ thì nối hồ sơ theo Gmail đã xác minh). Cờ tắt ⇒ không đọc gì. Lỗi không chặn vỏ.
+  const lopOn = session ? await coLopOn(session).catch(() => false) : false;
+  return <StudentLayoutClient initialUser={initialUser} lopOn={lopOn}>{children}</StudentLayoutClient>;
 }

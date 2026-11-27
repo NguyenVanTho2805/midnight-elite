@@ -30,13 +30,14 @@ export function MonHuyHieu({ mon, o }: { mon: { ma: string; ten: string }[]; o: 
   );
 }
 
-type Tone = "xong" | "cho" | "loi" | "thu" | "mo";
+type Tone = "xong" | "cho" | "loi" | "thu" | "mo" | "phep";
 const NHAN: Record<Tone, { background: string; color: string }> = {
   xong: { background: "var(--kin-tt-nen-xong)", color: "var(--kin-tt-chu-xong)" },
   cho: { background: "var(--kin-tt-nen-cho)", color: "var(--kin-tt-chu-cho)" },
   loi: { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi-dam)" },
   thu: { background: "var(--kin-nhan-nen-nhat)", color: "var(--kin-nhan-chu-tren-nhat)" },
   mo: { background: "var(--kin-nen-re-chuot)", color: "var(--kin-chu-phu)" },
+  phep: { background: "var(--kin-lop-tt-nen-phep)", color: "var(--kin-lop-tt-chu-phep)" },
 };
 export function Nhan({ tone, children }: { tone: Tone; children: ReactNode }) {
   return <span className="inline-flex min-h-6 items-center whitespace-nowrap rounded-full px-2.5 text-[length:var(--kin-co-phu)] font-medium tabular-nums" style={NHAN[tone]}>{children}</span>;
