@@ -37,25 +37,25 @@ function Content({ children }: { children: React.ReactNode }) {
 // (15/10/2026). Nay gia sư giữ vỏ GIA SƯ ở đúng trang đó; /student/* vẫn là khu học viên (quản trị / gia sư vào xem thử như trước).
 // BU-00 bước 5: gia sư CHỜ DUYỆT (cờ tutorPending) bấm "Cài đặt" ở vỏ chờ duyệt cũng tới đúng trang này → giữ vỏ chờ duyệt. Vào /student/* thì AuthGuard đã đẩy
 // họ về /lop-cua-toi/cho-duyet trước khi tới đây.
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, lopOn }: { children: React.ReactNode; lopOn?: boolean }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const shared = pathname === "/cai-dat/chu-de";
   if (shared && user?.role === "admin" && user.adminRole === "teacher") return <TutorShellClient>{children}</TutorShellClient>;
   if (shared && user?.role === "student" && user.tutorPending) return <TutorShellClient pending>{children}</TutorShellClient>;
-  return <StudentShell>{children}</StudentShell>;
+  return <StudentShell lopOn={lopOn}>{children}</StudentShell>;
 }
 
 // Vỏ học sinh kiểu Outlook (Figma 11:98): thanh module trái / thanh dưới, dải trên có logo + xu + chuông.
 // Phòng thi (/student/thi-thu/<mã đề>) không có vỏ — xem StudentShell.
 // SCL-H (P2-30): `initialUser` do layout.tsx (máy chủ) đọc từ phiên → AuthProvider con có người dùng ngay khi dựng, HTML có sẵn vỏ + trang thay vì khung
 // "Đang tải". Chuyển hướng giữ nguyên AuthGuard (khách → /dang-nhap?redirect=<trang + tham số>, gia sư → Hộp việc…), chỉ là không còn chờ /api/auth/me.
-export default function StudentLayoutClient({ children, initialUser }: { children: React.ReactNode; initialUser?: Record<string, unknown> | null }) {
+export default function StudentLayoutClient({ children, initialUser, lopOn }: { children: React.ReactNode; initialUser?: Record<string, unknown> | null; lopOn?: boolean }) {
   return (
     <AuthProvider initialUser={initialUser}>
       <AuthGuard requiredRole="student">
         <div className="min-h-screen" style={{ background: "var(--kin-nen-trang)" }}>
-          <Shell>
+          <Shell lopOn={lopOn}>
             <Content>{children}</Content>
           </Shell>
         </div>

@@ -256,3 +256,47 @@ html:not([data-kin-host="admin"]) [data-chi-admin] { display: none !important; }
 
 /* SCL5 (P2-14): nút của trình phát video (Plyr, mặc định 32px) đạt vùng chạm 44×44; icon giữ nguyên cỡ, chỉ nới vùng bấm. */
 .plyr .plyr__controls .plyr__control { min-width: 44px; min-height: 44px; justify-content: center; }
+
+/* ── KiN lớp (bước 4, docs/kin/lop/README.md mục 5) ─────────────────────────
+   Token Figma "KiN · màu" mà KiN chưa có: màu môn (mon/*), vắng có phép (tt/*-phep), thẻ "Tối nay" nền đêm (dem/*).
+   Nơi DUY NHẤT của tính năng lớp được viết mã hex; mọi chỗ khác dùng var(--kin-lop-*). */
+:root {
+  --kin-lop-mon-toan: #1d5fd0;
+  --kin-lop-mon-su: #8a3fc0;
+  --kin-lop-mon-dia: #0b7a90;
+  --kin-lop-mon-anh: #c2356e;
+  --kin-lop-tt-chu-phep: #1d4ed8;
+  --kin-lop-tt-nen-phep: #e5edff;
+  --kin-lop-dem-nen: #14204a;
+  --kin-lop-dem-chu: #f2f4fa;
+  --kin-lop-dem-chu-phu: #c3cbe0;
+  --kin-lop-dem-nut: #f5b544;
+  --kin-lop-dem-chu-tren-nut: #14204a;
+  /* Bước 5: nút Có / Phép / Vắng đang chọn (nền đặc, chữ trắng ≥ 5,4:1) — cùng một bộ cho sáng và tối. */
+  --kin-lop-dd-co: #047857;
+  --kin-lop-dd-phep: #1d4ed8;
+  --kin-lop-dd-vang: #b91c1c;
+  --kin-lop-dd-chu: #ffffff;
+}
+:root[data-che-do="toi"] {
+  --kin-lop-mon-toan: #8ab4ff;
+  --kin-lop-mon-su: #e3a6ff;
+  --kin-lop-mon-dia: #5cc8e0;
+  --kin-lop-mon-anh: #ff9fc0;
+  --kin-lop-tt-chu-phep: #93c5fd;
+  --kin-lop-tt-nen-phep: #14203a;
+  --kin-lop-dem-nen: #1f2f66;
+  --kin-lop-dem-chu-tren-nut: #1a1305;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-che-do="sang"]) {
+    --kin-lop-mon-toan: #8ab4ff;
+    --kin-lop-mon-su: #e3a6ff;
+    --kin-lop-mon-dia: #5cc8e0;
+    --kin-lop-mon-anh: #ff9fc0;
+    --kin-lop-tt-chu-phep: #93c5fd;
+    --kin-lop-tt-nen-phep: #14203a;
+    --kin-lop-dem-nen: #1f2f66;
+    --kin-lop-dem-chu-tren-nut: #1a1305;
+  }
+}

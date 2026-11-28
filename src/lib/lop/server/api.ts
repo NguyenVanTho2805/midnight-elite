@@ -1,0 +1,76 @@
+// Bao mọi route handler /api/lop/* (chép từ bca/server/api.ts): cờ tắt ⇒ 404; người lấy từ phiên KiN (nguoiLopBca, id = bca_nguoi_dung.id);
+// lỗi quyền ⇒ 403 + nhật ký "từ chối". Thân lỗi theo quy ước KiN: { error, ma? }.
+import { NextResponse } from "next/server";
+import { LOP_ON } from "@/lib/features";
+import { rateLimit } from "@/lib/rate-limit";
+import { getSession } from "@/lib/session";
+import { d2s, s2d } from "../ngay";
+import { nguoiLop, nguoiLopBca } from "../phien";
+import { LoiDuLieu, LoiQuyen, type Nguoi, type NguoiHocSinh, type NguoiQuanLy } from "../quyen";
+import { LoiQuyTac } from "../quy-tac";
+import { ghiTuChoi } from "./nhat-ky";
+
+export type Ctx<P = Record<string, string>> = { params: Promise<P> };
+const may = (s: string) => { try { return new URL(s).host; } catch { return null; } };
+const loi = (error: string, status: number, ma?: string) => NextResponse.json({ error, ma }, { status });
+
+function bao<U extends Nguoi, P>(lay: (req: Request) => Promise<U | null>, khongQuyen: string, fn: (u: U, req: Request, params: P) => Promise<unknown>) {
+  return async (req: Request, ctx: Ctx<P>) => {
+    if (!LOP_ON) return loi("Không tìm thấy", 404);
+    // Request GHI từ trang khác (CSRF): trình duyệt luôn gửi Origin cho POST/PUT/PATCH/DELETE; lệch tên miền ⇒ chặn. Không có Origin (script, test) thì cookie SameSite=Lax đã chặn.
+    const goc = req.method === "GET" ? null : req.headers.get("origin");
+    if (goc && may(goc) !== (req.headers.get("x-forwarded-host") ?? req.headers.get("host"))) return loi("Yêu cầu đến từ trang khác", 403);
+    const u = await lay(req);
+    if (!u) return (await getSession()) ? loi(khongQuyen, 403) : loi("Chưa đăng nhập", 401);
+    // shortcut: đếm trong bộ nhớ của từng instance (như các route KiN khác), chặn vòng lặp dò id; cần chặn chắc thì chuyển sang kho dùng chung.
+    if (!rateLimit(`lop:${u.vai === "hoc_sinh" ? `hs${u.hocSinhId}` : u.id}`, 600, 60_000)) return loi("Quá nhiều yêu cầu — thử lại sau một phút", 429);
+    try {
+      return NextResponse.json(await fn(u, req, await ctx.params));
+    } catch (e) {
+      if (e instanceof LoiQuyen) {
+        await ghiTuChoi(u, req.method, new URL(req.url).pathname, e.message);
+        return loi(e.message, 403);
+      }
+      if (e instanceof LoiDuLieu) return loi(e.message, e.status, e.ma);
+      if (e instanceof LoiQuyTac) return loi(e.message, 409);
+      // Hai thao tác cùng lúc: trùng khoá duy nhất (P2002) hoặc dòng vừa bị người khác xoá/sửa (P2025) ⇒ 409, không 500.
+      const ma = (e as { code?: unknown })?.code;
+      if (ma === "P2002") return loi("Dữ liệu vừa được tạo trùng (có thể do thao tác cùng lúc) — tải lại rồi thử lại", 409, "trung");
+      if (ma === "P2025") return loi("Dữ liệu vừa bị thay đổi bởi thao tác khác — tải lại rồi thử lại", 409, "da_doi");
+      // Chỉ in tên + mã lỗi: thông báo lỗi Prisma có thể kèm giá trị (tên, SĐT, Gmail) vào log.
+      console.error(`[${req.method} ${new URL(req.url).pathname}]`, (e as Error)?.name, ma ?? "");
+      return loi("Máy chủ gặp lỗi", 500);
+    }
+  };
+}
+
+/** Route của chủ lớp / giáo viên. Chủ lớp chưa có dòng bca_nguoi_dung chỉ được tạo dòng ở request GHI. */
+export const route = <P = Record<string, string>>(fn: (u: NguoiQuanLy, req: Request, params: P) => Promise<unknown>) =>
+  bao((req) => nguoiLopBca(req.method !== "GET"), "Bạn không có quyền vào lớp ôn", fn);
+
+/** Route của HỌC SINH (/api/lop/hs/*, bước 7): chỉ người đã nối hồ sơ lớp còn hiệu lực; chủ / giáo viên / học sinh KiN không có hồ sơ ⇒ 403. Không nhận id học sinh từ request. */
+export const routeHs = <P = Record<string, string>>(fn: (u: NguoiHocSinh, req: Request, params: P) => Promise<unknown>) =>
+  bao(async () => { const u = await nguoiLop(); return u?.vai === "hoc_sinh" ? u : null; }, "Khu này dành cho học sinh của lớp ôn", fn);
+
+export async function docJson(req: Request): Promise<Record<string, unknown>> {
+  try {
+    const t = await req.text();
+    // Chặn chung cho mọi route: không ô nào của lớp cần quá 20 nghìn ký tự (nội dung buổi tối đa 2.000).
+    if (t.length > 20_000) throw new LoiDuLieu("Thân request quá lớn", 413);
+    const v = JSON.parse(t);
+    if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  } catch (e) { if (e instanceof LoiDuLieu) throw e; }
+  throw new LoiDuLieu("Thân request phải là JSON object");
+}
+/** Số nguyên vừa cột int4 của Postgres (id vượt int32 / NaN / số lẻ / "0x2" / "1e3" ⇒ 400, không 500). */
+export const soNguyen = (v: unknown, ten: string) => {
+  const n = typeof v === "number" ? v : typeof v === "string" && /^-?\d+$/.test(v) ? Number(v) : NaN;
+  if (!Number.isInteger(n) || n < -2147483648 || n > 2147483647) throw new LoiDuLieu(`${ten} không hợp lệ`);
+  return n;
+};
+/** Ngày có thật dạng YYYY-MM-DD (2026-02-30 ⇒ 400). */
+export const ngayHopLe = (v: unknown, ten: string) => {
+  const d = typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? s2d(v) : null;
+  if (!d || isNaN(d.getTime()) || d2s(d) !== v) throw new LoiDuLieu(`${ten} phải là ngày có thật dạng YYYY-MM-DD`);
+  return v as string;
+};

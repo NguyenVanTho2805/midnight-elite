@@ -66,6 +66,7 @@ export const CRON_JOBS: readonly CronJobDef[] = [
   { key: "het-han-tep-nop-bai", label: "Dọn tệp nộp bài hết hạn 60 ngày (chạy khô)", path: "/api/cron/het-han-tep-nop-bai", schedule: "Mỗi ngày 01:30 giờ VN", maxGapHours: 36 },
   { key: "nhac-hoc-sang", label: "Tóm tắt sáng Nhắc học của học sinh", path: "/api/cron/nhac-hoc-sang", schedule: "Mỗi ngày 07:05 giờ VN", maxGapHours: 36 }, // LOI-04
   { key: "het-han-hoc-thu", label: "Khoá ghi danh học thử đã hết hạn", path: "/api/cron/het-han-hoc-thu", schedule: "Mỗi ngày 00:10 giờ VN", maxGapHours: 36 }, // SCL đợt 5 (D7)
+  { key: "lop-don-nhat-ky", label: "Dọn nhật ký Lớp ôn quá hạn lưu", path: "/api/cron/lop-don-nhat-ky", schedule: "Mỗi ngày 01:40 giờ VN", maxGapHours: 36 }, // KiN lớp: cờ LOP_ON tắt thì chỉ ghi mốc chạy
 ];
 /** DG-HOC-ONLINE: tác vụ gọi TỪ NGOÀI (cron-job.org, mỗi 15 phút) — không nằm trong vercel.json nên tách khỏi CRON_JOBS (t-adm-003-lib so CRON_JOBS ↔ vercel.json hai chiều).
  *  Trang Triển khai vẫn theo dõi: quá 1 giờ chưa thấy gọi ⇒ "Chậm so với lịch". Hướng dẫn đăng ký: docs/kin/van-hanh/cron-nhac-buoi-hoc.md. */

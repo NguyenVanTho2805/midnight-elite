@@ -58,7 +58,8 @@ export const isExamRoom = (pathname: string) => /^\/student\/thi-thu\/[^/]+/.tes
 
 // `preview` (BU-00 bước 4, 31/10/2026): quản trị cấp 1 / cấp nội dung "xem thử" khu học sinh — băng mỏng trên cùng nói rõ đang xem thử, kèm đường về /admin
 // (proxy đưa sang tên miền quản trị). Không truyền thì tự nhận theo vai: role admin (gia sư không còn tới đây — AuthGuard đẩy về Hộp việc) = đang xem thử.
-export default function StudentShell({ children, preview }: { children: ReactNode; preview?: boolean }) {
+// `lopOn` (KiN lớp bước 7): máy chủ đã kiểm cờ LOP_ON + em có hồ sơ lớp ôn (src/app/(student)/layout.tsx) ⇒ thêm mục "Lớp ôn". Vắng = không hiện.
+export default function StudentShell({ children, preview, lopOn }: { children: ReactNode; preview?: boolean; lopOn?: boolean }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const showPreview = preview ?? user?.role === "admin";
@@ -98,6 +99,7 @@ export default function StudentShell({ children, preview }: { children: ReactNod
     ...(isLinkHidden("/student/lich-hoc") ? [] : [{ key: "lich", label: "Lịch học", href: "/student/lich-hoc", icon: "lich", mobileLabel: "Lịch" } satisfies ModuleItem]),
     // SCL-C (P1-1, HS4): điểm / trạng thái từng bài của các lớp đang học. Lên thanh dưới điện thoại.
     { key: "diem", label: "Điểm", href: "/student/diem", icon: "bai-kt" },
+    ...(lopOn ? [{ key: "lop-on", label: "Lớp ôn", href: "/student/lop-on", icon: "lich" } satisfies ModuleItem] : []),
     // DG (14/11/2026, vòng dạy thật): mọi mục của bảng "Khác" đang ẩn theo cờ ⇒ bảng chỉ còn "Trang chủ KiN" + "Đăng xuất", cả hai đã có sẵn (logo / mục Trang chủ,
     // menu tên ở dải trên). Bỏ hẳn nút "Khác" thay vì để một nút mở bảng gần rỗng; bật lại bất kỳ cờ nào trong nhóm thì nút trở lại như cũ.
     ...(MORE_GROUPS.length ? [{ key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive && !isUnder(pathname, "/student/thi-thu"), controls: "khac-bang", expanded: moreOpen, desktopOnly: true } satisfies ModuleItem] : []),

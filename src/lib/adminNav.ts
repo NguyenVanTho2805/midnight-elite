@@ -3,7 +3,7 @@
 // Quy tắc: trang không đủ quyền thì KHÔNG hiện lối vào; module không còn trang con nào thì ẩn cả module.
 // Trang chủ duy nhất của quản trị là "Hôm nay" (/admin): MỘT lối vào là logo ở đầu thanh bên / dải trên; nó không nằm trong module nào (không lặp ở Vận hành).
 // `group` (BU-08): nhóm con trong module. Vỏ chỉ hiện dải tab của NHÓM đang ở (≤ 6 tab) và đặt tên nhóm làm tiêu đề phụ ở thanh bên rộng.
-import { COIN_VISIBLE, isLinkHidden, type FeatureEnv } from "@/lib/features";
+import { COIN_VISIBLE, LOP_ON, isLinkHidden, type FeatureEnv } from "@/lib/features";
 import { checkPermission, PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
 import { ADMIN_HOST } from "@/lib/hostRouting";
 
@@ -69,6 +69,20 @@ export const ADMIN_MODULES: AdminModuleDef[] = [
   },
 ];
 
+// KiN lớp bước 4 (docs/kin/lop/README.md): module "Lớp ôn" chỉ hiện khi cờ LOP_ON bật và chỉ cho quản trị cấp 1 (= chủ lớp, src/lib/lop/phien.ts).
+// Cố ý NẰM NGOÀI ADMIN_MODULES: bốn module ở trên là bản đồ cố định của vỏ; `matchSub` vẫn nhận ra đường dẫn (cờ tắt thì trang trả 404).
+export const ADMIN_LOP_ON: AdminModuleDef = {
+  key: "lop-on", label: "Lớp ôn", icon: "lich",
+  subs: [
+    { label: "Hôm nay", href: "/admin/lop-on", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Điểm danh", href: "/admin/lop-on/diem-danh", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Học sinh", href: "/admin/lop-on/hoc-sinh", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Buổi học", href: "/admin/lop-on/buoi-hoc", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Đơn", href: "/admin/lop-on/don", permission: PERMISSIONS.MANAGE_ADMINS },
+    { label: "Giáo viên", href: "/admin/lop-on/giao-vien", permission: PERMISSIONS.MANAGE_ADMINS },
+  ],
+};
+
 const allowed = (role: AdminRole | undefined | null, s: AdminSub) => !s.permission || checkPermission(role, s.permission);
 
 // LOI-01 (11/11/2026): trang con của phần đang ẨN (src/lib/features.ts — Tin tức & Blog, Video tham khảo, Cộng đồng, Bảng vinh danh, Điểm chuẩn, Công thức tính điểm)
@@ -86,6 +100,8 @@ export function visibleModules(role: AdminRole | undefined | null, env?: Feature
     const subs = m.subs.filter(s => allowed(role, s) && !isLinkHidden(s.href, env));
     if (subs.length) out.push({ key: m.key, label: m.label, icon: m.icon, href: subs[0].href, subs });
   }
+  const lop = LOP_ON ? ADMIN_LOP_ON.subs.filter(s => allowed(role, s)) : [];
+  if (lop.length) out.push({ key: ADMIN_LOP_ON.key, label: ADMIN_LOP_ON.label, icon: ADMIN_LOP_ON.icon, href: lop[0].href, subs: lop });
   return out;
 }
 
@@ -104,7 +120,7 @@ export function groupSubs(subs: AdminSub[]): { group: string | null; subs: Admin
 export function matchSub(pathname: string): { moduleKey: string; sub: AdminSub } | null {
   if (pathname === ADMIN_HOME.href) return { moduleKey: ADMIN_HOME_MODULE, sub: ADMIN_HOME };
   let best: { moduleKey: string; sub: AdminSub } | null = null;
-  for (const m of ADMIN_MODULES) {
+  for (const m of [...ADMIN_MODULES, ADMIN_LOP_ON]) {
     for (const s of m.subs) {
       const hit = pathname === s.href || pathname.startsWith(s.href + "/");
       if (hit && (!best || s.href.length > best.sub.href.length)) best = { moduleKey: m.key, sub: s };

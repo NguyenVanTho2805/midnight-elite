@@ -1068,6 +1068,8 @@ model User {
   engWritings     EngWriting[]
   engStudyLogs    EngStudyLog[]
   engMocks        EngMock[]
+  // KiN lớp bước 1: chỉ là trường quan hệ ngược của bca_hoc_sinh.userId, không thêm cột nào vào bảng users.
+  bcaHocSinh      BcaHocSinh[]
 
   @@map("users")
 }
@@ -3378,4 +3380,312 @@ model SubmissionFile {
   @@index([submissionId])
   @@index([status, createdAt])
   @@map("submission_files")
+}
+
+// ─── LỚP HỌC (BCA / Kin Class) ────────────────────────────────────────────────
+// KiN lớp bước 1 (27/11/2026, docs/kin/lop/README.md): chép nguyên schema app lớp (bca-midnight/bca/prisma/schema.prisma) vào KiN. CHỈ THÊM:
+// bảng và enum mới đều có tiền tố `bca_`, không sửa bảng cũ nào (riêng User thêm một trường quan hệ ngược, không thêm cột). Tên trường giữ
+// nguyên như gốc để chép mã máy chủ sang không phải đổi tên cột. Ràng buộc Prisma không tả được (CHECK, EXCLUDE gist): prisma/sql/bca-rang-buoc.sql.
+
+enum BcaVaiTro {
+  chu
+  giao_vien
+
+  @@map("bca_vai_tro")
+}
+
+enum BcaLoaiGhiDanh {
+  thu
+  chinh_thuc
+
+  @@map("bca_loai_ghi_danh")
+}
+
+enum BcaLoaiBuoi {
+  theo_lich
+  hoc_bu
+
+  @@map("bca_loai_buoi")
+}
+
+enum BcaTrangThaiBuoi {
+  binh_thuong
+  huy
+
+  @@map("bca_trang_thai_buoi")
+}
+
+enum BcaTrangThaiDd {
+  co
+  phep
+  vang
+
+  @@map("bca_trang_thai_dd")
+}
+
+enum BcaNguonDd {
+  sheet
+  web
+
+  @@map("bca_nguon_dd")
+}
+
+enum BcaTrangThaiDon {
+  moi
+  cho_duyet
+  da_nhan
+  trung
+  bo_qua
+  lead_cu
+
+  @@map("bca_trang_thai_don")
+}
+
+model BcaLua {
+  id           Int        @id @default(autoincrement())
+  ma           String     @unique
+  ten          String
+  tu_ngay      DateTime   @db.Date
+  den_ngay     DateTime?  @db.Date
+  ghi_chu      String?
+  tao_luc      DateTime   @default(now()) @db.Timestamptz
+  cap_nhat_luc DateTime   @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh     BcaHocSinh[]
+
+  @@map("bca_lua")
+}
+
+model BcaMon {
+  id            Int         @id @db.SmallInt
+  ma            String      @unique
+  ten_ngan      String
+  ten_day_du    String
+  thu           Int[]       @db.SmallInt // ISO 1 = T2 … 7 = CN
+  gio_bat_dau   String      @default("22:15") // "HH:MM" giờ Việt Nam
+  so_phut       Int         @default(90) @db.SmallInt
+  thu_tu        Int         @db.SmallInt
+  link_zalo     String?
+  ten_lop_azota String?
+  link_meet     String?
+  si_so_toi_da  Int         @default(0)
+  tao_luc       DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
+  phan_cong     BcaPhanCong[]
+  ghi_danh      BcaGhiDanh[]
+  buoi_hoc      BcaBuoiHoc[]
+
+  @@map("bca_mon")
+}
+
+model BcaCaiDat {
+  khoa         String   @id
+  gia_tri      Json
+  ghi_chu      String?
+  tao_luc      DateTime @default(now()) @db.Timestamptz
+  cap_nhat_luc DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@map("bca_cai_dat")
+}
+
+model BcaNguoiDung {
+  id            String      @id @default(uuid()) @db.Uuid
+  gmail         String      @unique // luôn lưu chữ thường
+  ten_hien_thi  String
+  vai_tro       BcaVaiTro
+  khoa_luc      DateTime?   @db.Timestamptz
+  phien_huy_luc DateTime?   @db.Timestamptz // T23: phiên cấp trước mốc này hết hiệu lực
+  tao_luc       DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
+  phan_cong     BcaPhanCong[]
+  viec_xong     BcaViecXong[]
+  // Người ghi (28/11/2026): khoá ngoại để tên người làm trong nhật ký / điểm danh / ghi danh luôn trỏ tới một tài khoản lớp có thật; xoá tài khoản thì chỉ gỡ tên.
+  nhat_ky       BcaNhatKy[]
+  diem_danh_ghi BcaDiemDanh[]
+  ghi_danh_tao  BcaGhiDanh[] @relation("bca_gd_tao")
+  ghi_danh_nghi BcaGhiDanh[] @relation("bca_gd_nghi")
+
+  @@map("bca_nguoi_dung")
+}
+
+model BcaPhanCong {
+  nguoi_dung_id String     @db.Uuid
+  mon_id        Int        @db.SmallInt
+  tao_luc       DateTime   @default(now()) @db.Timestamptz
+  nguoi_dung    BcaNguoiDung @relation(fields: [nguoi_dung_id], references: [id], onDelete: Cascade)
+  mon           BcaMon        @relation(fields: [mon_id], references: [id])
+
+  @@id([nguoi_dung_id, mon_id])
+  @@map("bca_phan_cong")
+}
+
+model BcaHocSinh {
+  id               Int         @id @default(autoincrement())
+  ma_hs            String      @unique
+  ho_ten           String
+  lua_id           Int?
+  sdt_hs           String?
+  sdt_ph           String?
+  gmail            String?     @unique
+  truong           String?
+  khoi             String?
+  ho_ten_ph        String?
+  muc_tieu         String?
+  nguon            String?
+  username_azota   String?     @unique
+  dong_y_vinh_danh Boolean     @default(false)
+  da_nhan_chao     Boolean     @default(false)
+  ghi_chu          String?
+  ghi_chu_rieng    String?
+  ngay_tao         DateTime    @db.Date
+  so_du_dau_ky     Int         @default(0) // đồng
+  an_luc           DateTime?   @db.Timestamptz
+  phien_huy_luc    DateTime?   @db.Timestamptz // T41: phiên học sinh cấp trước mốc này hết hiệu lực
+  tao_luc          DateTime    @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime    @default(now()) @updatedAt @db.Timestamptz
+  lua              BcaLua?        @relation(fields: [lua_id], references: [id])
+  ghi_danh         BcaGhiDanh[]
+  diem_danh        BcaDiemDanh[]
+  don_dang_ky      BcaDonDangKy[]
+  // KiN: nối danh tính với User của KiN (bước sau mới ghi). Tuỳ chọn, không duy nhất; xoá User thì chỉ gỡ nối.
+  userId           String?
+  user             User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("bca_hoc_sinh")
+}
+
+model BcaGhiDanh {
+  id            Int           @id @default(autoincrement())
+  ma_gd         String        @unique
+  hoc_sinh_id   Int
+  mon_id        Int           @db.SmallInt
+  loai          BcaLoaiGhiDanh
+  tu_ngay       DateTime      @db.Date
+  den_ngay      DateTime?     @db.Date
+  huy_luc       DateTime?     @db.Timestamptz
+  mien_phi      Boolean       @default(false)
+  don_gia_rieng Int?
+  ghi_chu       String?
+  nghi_luc      DateTime?     @db.Timestamptz // T34: chủ cho nghỉ môn (không dựa vào chữ trong ghi chú)
+  nghi_boi      String?       @db.Uuid
+  tao_boi       String?       @db.Uuid
+  tao_luc       DateTime      @default(now()) @db.Timestamptz
+  cap_nhat_luc  DateTime      @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh      BcaHocSinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
+  mon           BcaMon           @relation(fields: [mon_id], references: [id])
+  nguoi_tao     BcaNguoiDung?    @relation("bca_gd_tao", fields: [tao_boi], references: [id], onDelete: SetNull)
+  nguoi_nghi    BcaNguoiDung?    @relation("bca_gd_nghi", fields: [nghi_boi], references: [id], onDelete: SetNull)
+
+  @@index([hoc_sinh_id, mon_id])
+  @@map("bca_ghi_danh")
+}
+
+model BcaBuoiHoc {
+  id               Int             @id @default(autoincrement())
+  mon_id           Int             @db.SmallInt
+  ngay             DateTime        @db.Date
+  bat_dau_luc      DateTime        @db.Timestamptz
+  so_phut          Int             @db.SmallInt
+  loai             BcaLoaiBuoi       @default(theo_lich)
+  trang_thai       BcaTrangThaiBuoi @default(binh_thuong)
+  ly_do_huy        String?
+  bu_cho_buoi_id   Int?
+  noi_dung         String?
+  link_record      String?
+  ghi_chu          String?
+  da_diem_danh_luc DateTime?       @db.Timestamptz
+  tao_luc          DateTime        @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime        @default(now()) @updatedAt @db.Timestamptz
+  mon              BcaMon             @relation(fields: [mon_id], references: [id])
+  bu_cho_buoi      BcaBuoiHoc?       @relation("hoc_bu", fields: [bu_cho_buoi_id], references: [id])
+  buoi_bu          BcaBuoiHoc[]      @relation("hoc_bu")
+  diem_danh        BcaDiemDanh[]
+
+  @@unique([mon_id, bat_dau_luc])
+  @@index([ngay])
+  @@map("bca_buoi_hoc")
+}
+
+model BcaDiemDanh {
+  buoi_id     Int
+  hoc_sinh_id Int
+  trang_thai  BcaTrangThaiDd
+  ghi_chu     String? // T25: GV môn và chủ ghi; học sinh không thấy
+  ghi_luc     DateTime      @db.Timestamptz
+  ghi_boi     String?       @db.Uuid
+  nguon       BcaNguonDd      @default(web)
+  nguoi_ghi   BcaNguoiDung?   @relation(fields: [ghi_boi], references: [id], onDelete: SetNull)
+  buoi        BcaBuoiHoc      @relation(fields: [buoi_id], references: [id], onDelete: Restrict)
+  hoc_sinh    BcaHocSinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
+
+  @@id([buoi_id, hoc_sinh_id])
+  @@index([hoc_sinh_id])
+  @@map("bca_diem_danh")
+}
+
+model BcaDonDangKy {
+  id               Int            @id @default(autoincrement())
+  thoi_gian        DateTime       @db.Timestamptz
+  nguon            String?
+  loai             String?
+  ho_ten           String
+  sdt_hs           String?
+  gmail            String?
+  truong           String?
+  khoi             String?
+  ho_ten_ph        String?
+  sdt_ph           String?
+  mon_ids          Int[]          @db.SmallInt
+  muc_tieu         String?
+  biet_qua         String?
+  da_hoc_thu       String?
+  dong_y           String? // vd "Đồng ý v1-2026-11 · 15/11/2026 10:20" hoặc "Form cũ"
+  dong_y_vinh_danh Boolean        @default(false)
+  ma_yeu_cau       String         @unique
+  trang_thai       BcaTrangThaiDon
+  hoc_sinh_id      Int?
+  ma_hs_cu         String?
+  ghi_chu_xu_ly    String?
+  loi_du_lieu      String[]
+  tao_luc          DateTime       @default(now()) @db.Timestamptz
+  cap_nhat_luc     DateTime       @default(now()) @updatedAt @db.Timestamptz
+  hoc_sinh         BcaHocSinh?      @relation(fields: [hoc_sinh_id], references: [id])
+
+  @@map("bca_don_dang_ky")
+}
+
+model BcaBoDem {
+  khoa    String @id
+  gia_tri Int
+
+  @@map("bca_bo_dem")
+}
+
+/// T33: việc ở màn Hôm nay đã được chủ đánh dấu xong. Ẩn theo hom-nay.md 3.3 (học thử 3 ngày, việc khác hết hôm nay).
+model BcaViecXong {
+  loai          String // het_thu, thu_sap_het, buoi_chua_diem_danh, …
+  khoa          String // ma_hs, mã môn hoặc mã đơn — xem server/hom-nay.ts
+  nguoi_dung_id String   @db.Uuid
+  luc           DateTime @default(now()) @db.Timestamptz
+  nguoi_dung    BcaNguoiDung @relation(fields: [nguoi_dung_id], references: [id], onDelete: Cascade)
+
+  @@id([loai, khoa])
+  @@map("bca_viec_xong")
+}
+
+model BcaNhatKy {
+  id            Int      @id @default(autoincrement())
+  luc           DateTime @default(now()) @db.Timestamptz
+  nguoi_dung_id String?  @db.Uuid
+  vai_tro       String?
+  hanh_dong     String
+  doi_tuong     String
+  doi_tuong_id  String?
+  truoc         Json?
+  sau           Json?
+  nguoi_dung    BcaNguoiDung? @relation(fields: [nguoi_dung_id], references: [id], onDelete: SetNull)
+
+  @@index([doi_tuong, doi_tuong_id])
+  @@index([nguoi_dung_id])
+  @@map("bca_nhat_ky")
 }

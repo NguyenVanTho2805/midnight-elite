@@ -69,8 +69,10 @@ const PENDING_ITEMS: ModuleItem[] = [
 ];
 
 export default function TutorShell({
-  modules, badges, pending = false, manage, classes, inbox, children,
+  modules, badges, pending = false, manage, classes, inbox, lopOn, children,
 }: {
+  /** KiN lớp bước 7: máy chủ đã kiểm cờ LOP_ON + giáo viên có dòng lớp ôn còn hoạt động (LopCuaToiFrame) ⇒ thêm "Lớp ôn" vào nhóm "Dạy học". */
+  lopOn?: boolean;
   /** SCL-G-GS: lớp cho nhóm "Lớp của bạn" của thanh rộng (Chủ nhiệm: mọi lớp, nhóm theo gia sư). Vắng (trang khách) = không vẽ nhóm. */
   classes?: ShellClass[];
   /** Số việc cần ra tay của Hộp việc (badge). */
@@ -107,7 +109,7 @@ export default function TutorShell({
     // DG: "Tổng quan" đi cùng cờ HOP_VIEC (route /lop-cua-toi/tong-quan chặn khi cờ tắt) — chỉ thêm khi gia sư TỰ tắt module Hộp việc lúc cờ đang mở.
     ...MORE_BASE.map((g, i) => i === 0 && !hopViecOn && !isLinkHidden("/lop-cua-toi/tong-quan")
       ? { ...g, links: [{ label: "Tổng quan", href: "/lop-cua-toi/tong-quan", icon: "bao-cao" }, ...g.links] }
-      : g),
+      : g).map((g, i) => i === 0 && lopOn ? { ...g, links: [{ label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich" }, ...g.links] } : g),
     { title: "Tài khoản", links: visibleLinks([
       { label: "Gói của tôi", href: "/lop-cua-toi/goi", icon: "hoc-phi" },
       { label: "Cài đặt", href: "/lop-cua-toi/cai-dat", icon: "cai-dat" },
@@ -164,7 +166,10 @@ export default function TutorShell({
     // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản).
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
     { key: "lop-m", label: "Lớp", href: "/lop-cua-toi/lop", icon: "lop", active: isUnder(pathname, "/lop-cua-toi/lop") || isUnder(pathname, "/lop-cua-toi/quan-lop") || isUnder(pathname, "/lop-cua-toi/so-diem"), mobileOnly: true },
-    { key: "toi", label: "Tôi", icon: "nguoi", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, mobileOnly: true },
+    // KiN lớp (chủ quyết 28/11/2026): giáo viên lớp ôn có mục thứ tư trên thanh dưới — khỏi phải chạm "Tôi" mới thấy buổi tối nay. Gia sư khác vẫn đúng 3 mục.
+    ...(lopOn ? [{ key: "lop-on-m", label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich", active: isUnder(pathname, "/lop-cua-toi/lop-on"), mobileOnly: true } satisfies ModuleItem] : []),
+    { key: "toi", label: "Tôi", icon: "nguoi", onClick: () => setMoreOpen(o => !o), active: moreOpen || (moreActive && !isUnder(pathname, "/lop-cua-toi/lop-on")), // Lớp ôn đã có mục riêng ở trên: không sáng hai mục
+      controls: "khac-bang", expanded: moreOpen, mobileOnly: true },
   ];
   const mobileTeach: MoreGroup[] = [{ title: "Làm việc hằng ngày", links: daily.filter(m => m.key !== "viec-lop" && m.key !== "lop" && m.href).map(m => ({ label: m.label, href: m.href!, icon: m.icon })) }].filter(g => g.links.length > 0);
 
