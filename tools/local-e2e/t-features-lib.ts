@@ -18,11 +18,11 @@
 //  - DG (14/11/2026, đã chạy, 202 ca): bỏ nhánh `r.re` trong `matches` → 9 đỏ (bảng học phí lớp, điểm danh lớp: liên kết + chốt chặn); regex điểm danh không neo cuối
 //    (`diem-danh/`) → 1 đỏ; "/student/thi-thu" thêm `sub: true` → 4 đỏ (phòng thi đề được giao bị chặn); /admin/doanh-thu `route: true` thay vì ["admin"] → 1 đỏ;
 //    bỏ chốt DG ở nhánh tên miền admin của decideRoute → 3 đỏ; bỏ nhánh TUTOR_ROOT → 1 đỏ; landingPath bỏ featureOn("HOP_VIEC") → 4 đỏ.
-import { FEATURES, featureEnvName, featureOn, hiddenLinkFeature, isLinkHidden, visibleLinks, blockedRouteFeature, mayBlockRoute, readFeatureEnv, classScopeOf, COIN_LOGIC_ON, PAUSED_PARAM, pausedSearch, pausedNoticeFrom, blockedApiFeature, type FeatureEnv, type FeatureKey } from "@/lib/features";
+import { FEATURES, featureEnvName, featureOn, LOP_ON, hiddenLinkFeature, isLinkHidden, visibleLinks, blockedRouteFeature, mayBlockRoute, readFeatureEnv, classScopeOf, COIN_LOGIC_ON, PAUSED_PARAM, pausedSearch, pausedNoticeFrom, blockedApiFeature, type FeatureEnv, type FeatureKey } from "@/lib/features";
 import { decideRoute, needsSession, featureViewerOf, ADMIN_HOST, type RouteSession, type RouteDecision } from "@/lib/hostRouting";
 import { landingPath } from "@/lib/landing";
 import { homeNavFor, homeBlocksFor } from "@/lib/homeLayout";
-import { visibleModules, matchSub } from "@/lib/adminNav";
+import { ADMIN_LOP_ON, visibleModules, matchSub } from "@/lib/adminNav";
 import { check, section, done } from "./h";
 
 const OFF: FeatureEnv = {};
@@ -189,7 +189,7 @@ const DG_KEEP_ADMIN = ["/admin/kiem-duyet", "/admin/gia-su", "/admin/hoc-sinh", 
   "/admin/thi-thu/ngan-hang-de-thi", "/admin/nhat-ky", "/admin/trien-khai", "/admin/ho-tro"];
 const DG_HIDDEN_ADMIN = ["/admin/doanh-thu", "/admin/goi-pro", "/admin/pheu", "/admin/so-do", "/admin/danh-gia", "/admin/trang-chu"];
 check("menu quản trị khi tắt: CHỈ còn Hàng chờ, Gia sư, Học sinh, Quản trị viên, Lớp, Danh mục lớp, Đề thi, Ngân hàng câu hỏi, Ngân hàng đề, Nhật ký, Triển khai, Hỗ trợ gia sư",
-  eq(adminHrefs(OFF), DG_KEEP_ADMIN), adminHrefs(OFF));
+  eq(adminHrefs(OFF), [...DG_KEEP_ADMIN, ...(LOP_ON ? ADMIN_LOP_ON.subs.map(s => s.href) : [])]), adminHrefs(OFF)); // LOP_ON là cờ riêng (không thuộc FEATURES): bật thì thêm các trang Lớp ôn
 check("menu quản trị khi tắt: không Doanh thu, Gói KiN Pro, Phễu gia sư, Số đo, Lịch sử đánh giá, Chữ trang chủ", DG_HIDDEN_ADMIN.every(h => !adminHrefs(OFF).includes(h)));
 check("bật mọi cờ → menu quản trị có lại đủ các trang đã ẩn", [...HIDDEN_ADMIN, ...DG_HIDDEN_ADMIN].every(h => adminHrefs(ALL_ON).includes(h)));
 check("bật riêng KINH_DOANH → Doanh thu + Gói KiN Pro trở lại; riêng VAN_HANH_PHU → bốn trang vận hành phụ trở lại", ["/admin/doanh-thu", "/admin/goi-pro"].every(h => adminHrefs(only("KINH_DOANH")).includes(h)) && !adminHrefs(only("KINH_DOANH")).includes("/admin/pheu")

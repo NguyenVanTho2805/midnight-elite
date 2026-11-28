@@ -4,11 +4,11 @@
 // Ca phá cố ý: (1) bỏ dòng `if (role === "teacher") return [];` trong visibleModules → các ca "teacher" đỏ;
 // (2) gỡ `permission` khỏi "Lịch sử nạp Coin" → ca "admin_content không thấy Lịch sử nạp Coin" đỏ;
 // (3) thêm một module thứ năm → ca "đúng 4 module" đỏ.
-import { ADMIN_MODULES, groupSubs, matchSub, visibleModules, tutorShellManageLinks } from "@/lib/adminNav";
+import { ADMIN_LOP_ON, ADMIN_MODULES, groupSubs, matchSub, visibleModules, tutorShellManageLinks } from "@/lib/adminNav";
 import { ADMIN_HOST } from "@/lib/hostRouting";
 import { PERMISSIONS, ROLE_PERMISSIONS, checkPermission, type AdminRole, type Permission } from "@/lib/permissions";
 import { check, section, done } from "./h";
-import { COIN_VISIBLE, FEATURES, type FeatureEnv } from "@/lib/features";
+import { COIN_VISIBLE, FEATURES, LOP_ON, type FeatureEnv } from "@/lib/features";
 // LOI-01 (11/11/2026): trang con của phần đang ẩn (Tin tức, Video tham khảo, Cộng đồng, Vinh danh, Điểm chuẩn) rút khỏi menu theo cờ src/lib/features.ts. Các ca dưới
 // kiểm phân quyền KHI CÁC PHẦN ĐANG MỞ (FE = cả 9 cờ =1, Coin vẫn theo COIN_VISIBLE như cũ); khi tắt: ca "LOI-01" cuối tệp và t-features-lib.ts.
 const FE: FeatureEnv = Object.fromEntries(FEATURES.map(k => [k, "1"])) as FeatureEnv;
@@ -40,8 +40,10 @@ check("permissions.ts KHÔNG bị đụng: teacher vẫn đúng 2 quyền MANAGE
 
 section("Quản trị cấp 1 (admin_super): đủ mọi module");
 const sup = visibleModules("admin_super", FE);
-check("admin_super thấy đủ 4 module theo đúng thứ tự", sup.length === 4 && sup.map(m => m.key).join("|") === ADMIN_MODULES.map(m => m.key).join("|"), sup.map(m => m.key));
-check("admin_super thấy đủ mọi trang con (không trang nào bị lọc)", sup.flatMap(m => m.subs).length === allSubs.length);
+// Cờ LOP_ON bật (NEXT_PUBLIC_KIN_MO_LOP_ON=1) thì quản trị cấp 1 có thêm module "Lớp ôn" ở cuối; tắt (mặc định) thì đúng 4 module như trước.
+const MONG = LOP_ON ? [...ADMIN_MODULES, ADMIN_LOP_ON] : ADMIN_MODULES;
+check(`admin_super thấy đủ ${MONG.length} module theo đúng thứ tự`, ADMIN_MODULES.length === 4 && sup.map(m => m.key).join("|") === MONG.map(m => m.key).join("|"), sup.map(m => m.key));
+check("admin_super thấy đủ mọi trang con (không trang nào bị lọc)", sup.flatMap(m => m.subs).length === MONG.flatMap(m => m.subs).length);
 check("lối vào module = trang con đầu tiên được phép (Con người → /admin/gia-su; Vận hành → /admin/doanh-thu, không còn /admin vì Hôm nay chỉ vào bằng logo)", sup.find(m => m.key === "con-nguoi")?.href === "/admin/gia-su" && sup.find(m => m.key === "van-hanh")?.href === "/admin/doanh-thu");
 
 section("Quản trị nội dung (admin_content)");

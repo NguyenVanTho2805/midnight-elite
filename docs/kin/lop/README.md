@@ -74,6 +74,11 @@ Tệp: https://www.figma.com/design/FyUkgGJHrhXo0u4gnREyfk — trang `00 Nền m
 6. Thời điểm đóng web `bca-midnight.vercel.app` và DB Neon riêng.
 7. Gộp PR vào `main` của KiN (web có tiền và người dùng thật): chỉ Thanh / Thọ bấm.
 
+**Chủ đã quyết 28/11/2026:** (1) giáo viên đứng lớp ở khu gia sư `/lop-cua-toi`, không vào tên miền quản trị; thêm mục "Lớp ôn" vào thanh dưới điện thoại của giáo viên lớp ôn.
+(2) Chủ / giáo viên đăng nhập bằng mật khẩu KiN, không mở Google cho vai này. (3) Hạn thử 14 ngày tính từ ngày đăng ký (luật lớp).
+(7) Mở PR vào `main` với cờ TẮT; Thanh / Thọ tự bấm gộp. Chuyển dữ liệu thật và bật cờ là hai bước sau, hỏi lại từng bước.
+Mục 4, 5, 6 giữ mặc định (chủ chưa phản đối): chưa làm học phí; giữ rào tuổi của KiN, chuyển dữ liệu nguyên trạng; chưa đóng `bca-midnight.vercel.app`, chạy song song.
+
 Mặc định cho tới khi chủ trả lời: không đổi luật đăng nhập và tên miền của KiN; không làm phần học phí; chuyển dữ liệu nguyên trạng, không thu thêm trường mới.
 
 ## 9. Đợt kiểm thử 28/11/2026 (hai agent: rà bảo mật + đóng vai ba người dùng)
@@ -105,3 +110,12 @@ Không sửa: ô dán link record / ghi chú từng em cho giáo viên (tính n�
 học sinh gõ địa chỉ quản trị bị đưa về form đăng nhập (vỏ KiN, không thuộc Lớp ôn).
 
 Kiểm: 10 bài, 474 ca đạt, 0 đỏ (3 ca mới: Origin, cỡ thân request, Gmail trùng); `tsc` sạch; đã chụp lại 18 màn ở 390 / 1440, không màn nào tràn ngang; ba ô KinSelect còn một khung.
+
+Sau quyết định 28/11: thanh dưới điện thoại của giáo viên lớp ôn có mục "Lớp ôn" (gia sư khác vẫn 3 mục); `t-admin-nav-lib` và `t-features-lib` xanh ở cả hai chế độ cờ (35/0, 179/0).
+
+### Việc sau khi gộp (theo thứ tự, mỗi bước hỏi chủ)
+
+1. Chạy tay `prisma/sql/bca-rang-buoc.sql` trên cơ sở dữ liệu thật (sau khi `db push` của lần triển khai tạo bảng `bca_*`).
+2. Tạo tài khoản KiN (email đã xác minh, trùng Gmail khai ở lớp) cho từng giáo viên; chủ lớp là quản trị cấp 1.
+3. Chuyển dữ liệu từ Neon "Kin Class": xem trước → chủ đồng ý → `--apply`.
+4. Đặt `NEXT_PUBLIC_KIN_MO_LOP_ON=1` trên Vercel của KiN rồi triển khai lại.

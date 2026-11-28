@@ -166,7 +166,10 @@ export default function TutorShell({
     // B2: bỏ mục "Cài đặt" lẻ (trùng nhóm Tài khoản của thanh rộng + menu tài khoản).
     { key: "khac", label: "Khác", icon: "khac", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, desktopOnly: true },
     { key: "lop-m", label: "Lớp", href: "/lop-cua-toi/lop", icon: "lop", active: isUnder(pathname, "/lop-cua-toi/lop") || isUnder(pathname, "/lop-cua-toi/quan-lop") || isUnder(pathname, "/lop-cua-toi/so-diem"), mobileOnly: true },
-    { key: "toi", label: "Tôi", icon: "nguoi", onClick: () => setMoreOpen(o => !o), active: moreActive, controls: "khac-bang", expanded: moreOpen, mobileOnly: true },
+    // KiN lớp (chủ quyết 28/11/2026): giáo viên lớp ôn có mục thứ tư trên thanh dưới — khỏi phải chạm "Tôi" mới thấy buổi tối nay. Gia sư khác vẫn đúng 3 mục.
+    ...(lopOn ? [{ key: "lop-on-m", label: "Lớp ôn", href: "/lop-cua-toi/lop-on", icon: "lich", active: isUnder(pathname, "/lop-cua-toi/lop-on"), mobileOnly: true } satisfies ModuleItem] : []),
+    { key: "toi", label: "Tôi", icon: "nguoi", onClick: () => setMoreOpen(o => !o), active: moreOpen || (moreActive && !isUnder(pathname, "/lop-cua-toi/lop-on")), // Lớp ôn đã có mục riêng ở trên: không sáng hai mục
+      controls: "khac-bang", expanded: moreOpen, mobileOnly: true },
   ];
   const mobileTeach: MoreGroup[] = [{ title: "Làm việc hằng ngày", links: daily.filter(m => m.key !== "viec-lop" && m.key !== "lop" && m.href).map(m => ({ label: m.label, href: m.href!, icon: m.icon })) }].filter(g => g.links.length > 0);
 
