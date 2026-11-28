@@ -38,13 +38,15 @@ function dat(p: Partial<TrangThaiHang>) {
 }
 
 // ── IndexedDB (không có thì chỉ giữ trong bộ nhớ) ──
-const TEN_DB = "kin-lop-hang-doi", KHO = "viec";
+// Kho riêng từng người (khoiDongHangDoi đặt tên): máy dùng chung, thay đổi chưa gửi của người A không bị gửi dưới phiên người B.
+let tenDb = "kin-lop-hang-doi";
+const KHO = "viec";
 let dbP: Promise<IDBDatabase | null> | null = null;
 function layDb() {
   if (dbP) return dbP;
   dbP = new Promise((res) => {
     if (typeof indexedDB === "undefined") return res(null);
-    const r = indexedDB.open(TEN_DB, 1);
+    const r = indexedDB.open(tenDb, 1);
     r.onupgradeneeded = () => r.result.createObjectStore(KHO, { keyPath: "khoa" });
     r.onsuccess = () => res(r.result);
     r.onerror = () => res(null);
@@ -142,10 +144,11 @@ export async function gui() {
 }
 
 let daKhoiDong = false;
-/** Gọi một lần ở khung quản lý: nghe online/offline, gửi lại mỗi 15 giây, cảnh báo khi đóng tab còn thay đổi. */
-export function khoiDongHangDoi() {
+/** Gọi một lần, TRƯỚC nap()/datViec (effect đầu của màn điểm danh): nghe online/offline, gửi lại mỗi 15 giây, cảnh báo khi đóng tab còn thay đổi. */
+export function khoiDongHangDoi(nguoi: string) {
   if (daKhoiDong || typeof window === "undefined") return;
   daKhoiDong = true;
+  tenDb += `-${nguoi}`; // shortcut: đổi tài khoản mà không tải lại trang thì vẫn dùng kho cũ; đăng nhập KiN luôn tải lại trang nên chưa cần hơn.
   if (!navigator.onLine) dat({ matMang: true });
   window.addEventListener("online", () => { dat({ matMang: false }); void gui(); });
   window.addEventListener("offline", () => dat({ matMang: true }));

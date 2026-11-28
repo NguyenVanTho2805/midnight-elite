@@ -90,3 +90,18 @@ Cố ý KHÔNG sửa: giáo viên mở buổi môn khác vẫn 403 (không đổ
 Còn lại (chưa làm): giáo viên trên điện thoại vẫn phải vào "Tôi" mới thấy "Lớp ôn" (thanh dưới và trang chủ là vỏ KiN — cần chủ quyết); kiểm `Origin` cho request ghi; `userId` chưa `@unique`;
 giới hạn độ dài ở vài route chỉ chủ; hàng đợi ngoại tuyến không gắn người dùng; 14 lỗi P3 giao diện trong phiếu đóng vai; 3 lỗi eslint có sẵn ở `DiemDanhBuoi.tsx`, `NutToiNay.tsx`.
 Ba chỗ KinSelect sau khi bỏ khung đôi CHƯA được chụp lại.
+
+### Đợt sửa P3 (28/11, sau khi chủ chọn "Sửa tiếp lỗi P3")
+
+Bảo mật (5/7): request GHI có `Origin` lệch tên miền ⇒ 403; thân request trên 20 nghìn ký tự ⇒ 413, thêm giới hạn lý do huỷ / gia hạn 300, ghi chú học bù 500, tối đa 200 em mỗi lần gia hạn, mỗi ô hồ sơ mới 2.000;
+hai dòng giáo viên cùng Gmail gốc ⇒ dòng bị khoá thắng (`timTheoGmail`); `hsTheoUser` bỏ qua hồ sơ ẩn (thay cho `@unique`, không đổi schema); hàng đợi ngoại tuyến dùng kho IndexedDB riêng từng người.
+Không sửa: cột `ghi_boi` không khoá ngoại và hạn lưu nhật ký (đổi schema / chính sách — chủ quyết); script chuyển dữ liệu không kiểm chứng chỉ SSL.
+
+Giao diện (11/14): Sửa buổi — lỗi hiện ngay dưới nút vừa bấm, câu lỗi link nói cách sửa, lưu xong có "Đã lưu."; Buổi học chỉ còn MỘT nút "Điểm danh" nổi bật; nút ‹ › rộng 44px;
+thanh dính đáy màn Điểm danh không còn lộ dải danh sách; không còn "Thử · còn -1 ngày"; giáo viên mở buổi môn khác thấy "Không mở được buổi này" + nút "Về Lớp ôn" (cùng một câu cho buổi không có);
+dòng Đơn / Thiếu record / Sửa dữ liệu có mũi tên ›; điện thoại có ô "Chọn tất cả em trên trang này"; ô "chưa điểm" của ma trận có viền (đọc được ở chế độ tối);
+ngày thử cuối ghi "nhắn chủ lớp ngay hôm nay"; "Thu gọn" nằm cuối danh sách buổi.
+Không sửa: ô dán link record / ghi chú từng em cho giáo viên (tính năng mới); "Cho nghỉ" chưa có Hoàn tác (cần route hoàn tác ở máy chủ); lọc "Toán + Học thử" vẫn hiện nhãn tình trạng chung của em;
+học sinh gõ địa chỉ quản trị bị đưa về form đăng nhập (vỏ KiN, không thuộc Lớp ôn).
+
+Kiểm: 10 bài, 474 ca đạt, 0 đỏ (3 ca mới: Origin, cỡ thân request, Gmail trùng); `tsc` sạch; đã chụp lại 18 màn ở 390 / 1440, không màn nào tràn ngang; ba ô KinSelect còn một khung.

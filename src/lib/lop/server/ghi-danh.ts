@@ -54,6 +54,7 @@ export async function giaHanThu(u: Nguoi, maHsList: string[], opt: { soNgay?: nu
   canChu(u);
   if (!lyDo?.trim()) throw new LoiDuLieu("Cần ghi lý do gia hạn");
   if (!maHsList.length) throw new LoiDuLieu("Chưa chọn học sinh");
+  if (maHsList.length > 200 || lyDo.length > 300) throw new LoiDuLieu("Tối đa 200 em mỗi lần, lý do tối đa 300 ký tự");
   const n = opt.soNgay;
   if ((n !== undefined || opt.denNgay === undefined) && !(Number.isInteger(n) && n! >= 1 && n! <= 60)) throw new LoiDuLieu("Số ngày gia hạn phải là số nguyên 1–60"); // 400, không 409
   const h = ngayVN(luc);

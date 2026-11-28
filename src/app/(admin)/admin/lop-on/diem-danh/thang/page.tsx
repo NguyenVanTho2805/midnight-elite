@@ -37,9 +37,9 @@ export default async function LopOnMaTran({ searchParams }: { searchParams: Prom
         </nav>
         {mon ? (
           <nav aria-label="Chọn tháng" className="flex items-center gap-1 tabular-nums">
-            <Link href={href(mon.ma, doiThang(thang, -1))} aria-label="Tháng trước" className={`${kinButtonClass("secondary")} px-3`}>‹</Link>
+            <Link href={href(mon.ma, doiThang(thang, -1))} aria-label="Tháng trước" className={`${kinButtonClass("secondary")} min-w-11 px-3`}>‹</Link>
             <span className="px-2 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">Tháng {thang.slice(5)}/{thang.slice(0, 4)}</span>
-            <Link href={href(mon.ma, doiThang(thang, 1))} aria-label="Tháng sau" className={`${kinButtonClass("secondary")} px-3`}>›</Link>
+            <Link href={href(mon.ma, doiThang(thang, 1))} aria-label="Tháng sau" className={`${kinButtonClass("secondary")} min-w-11 px-3`}>›</Link>
           </nav>
         ) : null}
       </div>

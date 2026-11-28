@@ -15,5 +15,5 @@ export default async function LopOnDiemDanhBuoi({ params }: { params: Promise<{ 
   if (!/^\d{1,9}$/.test(buoiId)) notFound();
   const d = await chiTietDiemDanh(u, Number(buoiId)).catch((e) => { if (e instanceof LoiDuLieu && e.status === 404) return null; throw e; });
   if (!d) notFound();
-  return <DiemDanhBuoi d={d} chu veHref={`${LOP_GOC}/buoi-hoc?tuan=${d.buoi.ngay}`} />;
+  return <DiemDanhBuoi d={d} chu nguoi={u.id} veHref={`${LOP_GOC}/buoi-hoc?tuan=${d.buoi.ngay}`} />;
 }

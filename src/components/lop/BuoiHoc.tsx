@@ -16,13 +16,15 @@ export function BuoiThaoTac({ b }: { b: BuoiSua }) {
   const { ask, dialog } = useKinConfirm();
   const [dang, setDang] = useState(false);
   const [loi, setLoi] = useState<string | null>(null);
+  const [loiO, setLoiO] = useState<"luu" | "huy">("luu"); // lỗi hiện cạnh nút vừa bấm, không dồn xuống cuối ngăn
+  const [daLuu, setDaLuu] = useState(false);
   const [daXoa, setDaXoa] = useState<number | null>(null); // nhatKyId để hoàn tác
 
   // Sau khi xoá: giữ hàng 10 giây cho Hoàn tác rồi mới tải lại danh sách.
   useEffect(() => { if (daXoa === null) return; const t = setTimeout(() => router.refresh(), 10_000); return () => clearTimeout(t); }, [daXoa, router]);
 
   async function chay(f: () => Promise<Kq>, xong?: (k: Kq) => void) {
-    setDang(true); setLoi(null);
+    setDang(true); setLoi(null); setDaLuu(false); setLoiO("huy");
     const k = await f();
     setDang(false);
     if (!k.ok) return setLoi(k.d.error ?? "Không lưu được");
@@ -31,12 +33,13 @@ export function BuoiThaoTac({ b }: { b: BuoiSua }) {
   function luu(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    void chay(() => goi("PATCH", `/api/lop/buoi-hoc/${b.id}`, { noiDung: f.get("noiDung"), linkRecord: f.get("linkRecord"), ghiChu: f.get("ghiChu") }));
+    void chay(() => goi("PATCH", `/api/lop/buoi-hoc/${b.id}`, { noiDung: f.get("noiDung"), linkRecord: f.get("linkRecord"), ghiChu: f.get("ghiChu") }), () => { setDaLuu(true); router.refresh(); });
+    setLoiO("luu");
   }
   async function huy(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const lyDo = String(new FormData(e.currentTarget).get("lyDo") ?? "");
-    setDang(true); setLoi(null);
+    setDang(true); setLoi(null); setDaLuu(false); setLoiO("huy");
     let k = await goi("POST", `/api/lop/buoi-hoc/${b.id}/huy`, { lyDo });
     // Buổi đã có điểm danh: máy chủ đòi xác nhận lần nữa (điểm danh vẫn giữ).
     if (k.status === 409 && k.d.ma === "can_xac_nhan" && (await ask({ title: "Huỷ buổi đã có điểm danh?", message: k.d.error, confirmLabel: "Vẫn huỷ buổi", cancelLabel: "Để nguyên" }))) k = await goi("POST", `/api/lop/buoi-hoc/${b.id}/huy`, { lyDo, xacNhan: true });
@@ -63,7 +66,9 @@ export function BuoiThaoTac({ b }: { b: BuoiSua }) {
           <label className={KIN_LABEL}>Nội dung buổi học<textarea name="noiDung" defaultValue={b.noi_dung ?? ""} maxLength={2000} rows={2} className={`${KIN_FIELD} mt-1 py-2`} /></label>
           <label className={KIN_LABEL}>Link record<input name="linkRecord" defaultValue={b.link_record ?? ""} inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://…" className={`${KIN_FIELD} mt-1`} /></label>
           <label className={KIN_LABEL}>Ghi chú nội bộ <span className="text-[var(--kin-chu-mo)]">(học sinh không thấy)</span><input name="ghiChu" defaultValue={b.ghi_chu ?? ""} maxLength={500} className={`${KIN_FIELD} mt-1`} /></label>
-          <div><button type="submit" disabled={dang} data-kin-nut className={kinButtonClass("primary")}>Lưu</button></div>
+          <div className="flex flex-wrap items-center gap-3"><button type="submit" disabled={dang} data-kin-nut className={kinButtonClass("primary")}>Lưu</button>
+            {daLuu ? <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-xong)]">Đã lưu.</p> : null}</div>
+          {loiO === "luu" ? <Loi chu={loi} /> : null}
         </form>
         {b.huy ? (
           <div><button type="button" disabled={dang} data-kin-nut className={kinButtonClass("secondary")} onClick={() => void chay(() => goi("POST", `/api/lop/buoi-hoc/${b.id}/bo-huy`))}>Bỏ huỷ buổi</button></div>
@@ -74,7 +79,7 @@ export function BuoiThaoTac({ b }: { b: BuoiSua }) {
             {b.tuong_lai ? <button type="button" disabled={dang} data-kin-nut className={kinButtonClass("danger")} onClick={() => void xoa()}>Xoá buổi</button> : null}
           </form>
         )}
-        <Loi chu={loi} />
+        {loiO === "huy" ? <Loi chu={loi} /> : null}
       </div>
       {dialog}
     </details>

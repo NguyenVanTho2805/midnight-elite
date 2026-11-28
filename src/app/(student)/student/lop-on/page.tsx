@@ -82,11 +82,12 @@ function DanhSachBuoi({ id, ten, ds, d, bayGio }: { id: string; ten: string; ds:
       <KinPanel className="mt-2 !py-1">
         <ul>{ds.slice(0, 3).map((b) => <DongBuoi key={b.id} b={b} d={d} bayGio={bayGio} />)}</ul>
         {ds.length > 3 ? (
-          <details className="group border-t border-[var(--kin-vien-nhat)]">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-nhan-link)] hover:underline [&::-webkit-details-marker]:hidden">
+          // flex-col-reverse: mở ra thì "Thu gọn" nằm CUỐI danh sách (trình duyệt cũ không hỗ trợ thì nút vẫn ở giữa như trước).
+          <details className="group flex flex-col-reverse border-t border-[var(--kin-vien-nhat)]">
+            <summary className="flex min-h-11 group-open:border-t group-open:border-[var(--kin-vien-nhat)] cursor-pointer list-none items-center justify-center text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-nhan-link)] hover:underline [&::-webkit-details-marker]:hidden">
               <span className="group-open:hidden">Xem tất cả <span className="tabular-nums">{ds.length}</span> buổi</span><span className="hidden group-open:inline">Thu gọn</span>
             </summary>
-            <ul className="border-t border-[var(--kin-vien-nhat)]">{ds.slice(3).map((b) => <DongBuoi key={b.id} b={b} d={d} bayGio={bayGio} />)}</ul>
+            <ul>{ds.slice(3).map((b) => <DongBuoi key={b.id} b={b} d={d} bayGio={bayGio} />)}</ul>
           </details>
         ) : null}
       </KinPanel>
@@ -161,7 +162,7 @@ export default async function LopOnHocSinh() {
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--kin-nen-re-chuot)]" role="progressbar" aria-label="Tiến độ học thử" aria-valuemin={0} aria-valuemax={d.thu.tong_ngay} aria-valuenow={Math.min(d.thu.ngay_thu, d.thu.tong_ngay)}>
               <div className="h-full rounded-full" style={{ width: `${Math.min(100, (d.thu.ngay_thu / d.thu.tong_ngay) * 100)}%`, background: sapHet ? "var(--kin-tt-cham-cho)" : "var(--kin-nhan-nen)" }} />
             </div>
-            <p className={`${phu} mt-3`}>Hết hạn <span className="tabular-nums">{ddmm(d.thu.den)}</span>.{sapHet ? " Nhắn chủ lớp trước ngày đó để học tiếp không gián đoạn." : ""}</p>
+            <p className={`${phu} mt-3`}>Hết hạn <span className="tabular-nums">{ddmm(d.thu.den)}</span>.{sapHet ? (d.thu.con_ngay === 0 ? " Nhắn chủ lớp ngay hôm nay để học tiếp không gián đoạn." : " Nhắn chủ lớp trước ngày đó để học tiếp không gián đoạn.") : ""}</p>
             {/* Sắp hết thử: việc bấm được là nhắn chủ lớp (cùng link với màn khoá, T56); nhóm học thử là nút phụ. */}
             {sapHet && lienHe ? <a href={lienHe} {...ngoai} className={`${kinButtonClass("primary", "lg")} mt-3 min-h-14 w-full !whitespace-normal text-center`}>Nhắn chủ lớp để học tiếp</a> : null}
             {sapHet && !lienHe ? <p className="mt-2 text-[length:var(--kin-co-goc)] font-semibold text-[var(--kin-chu-chinh)]">Em nhắn chủ lớp trong nhóm Zalo của lớp để học tiếp.</p> : null}

@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { giaoVienLop } from "@/lib/lop/server/cua";
 import { chiTietDiemDanh } from "@/lib/lop/server/diem-danh";
 import { LoiDuLieu, LoiQuyen } from "@/lib/lop/quyen";
-import { KIN_PAGE } from "@/components/kin";
+import Link from "next/link";
+import { KIN_PAGE, KinEmptyState, KinPanel, kinButtonClass } from "@/components/kin";
 import { DiemDanhBuoi } from "@/components/lop/DiemDanhBuoi";
 
 export const metadata = { title: "Lớp ôn · Điểm danh" };
@@ -17,7 +18,12 @@ export default async function LopOnGiaoVienBuoi({ params }: { params: Promise<{ 
   const u = await giaoVienLop(`${GOC}/${buoiId}`);
   if (!u || !/^\d{1,9}$/.test(buoiId)) notFound();
   const d = await chiTietDiemDanh(u, Number(buoiId)).catch((e) => { if (e instanceof LoiQuyen || (e instanceof LoiDuLieu && e.status === 404)) return null; throw e; });
-  if (!d) notFound();
+  // Cùng một câu cho buổi môn khác và buổi không có (không lộ buổi có tồn tại hay không), nhưng có đường về Lớp ôn thay cho trang 404 chung của KiN.
+  if (!d) return (
+    <div className={`${KIN_PAGE} max-w-2xl`}>
+      <KinPanel><KinEmptyState title="Không mở được buổi này" action={<Link href={GOC} className={kinButtonClass("primary")}>Về Lớp ôn</Link>}>Buổi này không có, hoặc thuộc môn bạn không được phân công. Các buổi của bạn nằm ở trang Lớp ôn.</KinEmptyState></KinPanel>
+    </div>
+  );
   // Vỏ gia sư cuộn cả trang và có thanh tab dưới ở điện thoại: thanh "Đánh tất cả" dính phía trên thanh đó (cùng số đo với components/tutor/DiemDanh.tsx).
-  return <div className={KIN_PAGE}><DiemDanhBuoi d={d} chu={false} veHref={GOC} day="bottom-[68px] md:bottom-4" /></div>;
+  return <div className={KIN_PAGE}><DiemDanhBuoi d={d} chu={false} nguoi={u.id} veHref={GOC} day="bottom-[68px] md:bottom-4" /></div>;
 }

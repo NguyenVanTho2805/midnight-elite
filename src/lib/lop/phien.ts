@@ -15,11 +15,17 @@ export type KhoLop = {
   hsTheoUser(userId: string): Promise<HS | null>;
 };
 
+/** Hai dòng cùng Gmail gốc (dữ liệu chuyển từ sheet): dòng bị khoá thắng — đóng, không đoán. */
+export const timTheoGmail = <T extends { gmail: string; khoa_luc: Date | null }>(ds: T[], goc: string): T | undefined => {
+  const khop = ds.filter((x) => gmailGoc(x.gmail) === goc);
+  return khop.find((x) => x.khoa_luc) ?? khop[0];
+};
+
 const COT_HS = { id: true, ho_ten: true, an_luc: true } as const;
 const khoPrisma: KhoLop = {
   user: (id) => prisma.user.findUnique({ where: { id }, select: { name: true, email: true, role: true, adminRole: true, banned: true, emailVerified: true } }),
   giaoVien: () => prisma.bcaNguoiDung.findMany({ select: { gmail: true, khoa_luc: true, phan_cong: { select: { mon_id: true } } } }),
-  hsTheoUser: (userId) => prisma.bcaHocSinh.findFirst({ where: { userId }, orderBy: { id: "asc" }, select: COT_HS }),
+  hsTheoUser: (userId) => prisma.bcaHocSinh.findFirst({ where: { userId, an_luc: null }, orderBy: { id: "asc" }, select: COT_HS }),
 };
 
 /** Phần thuần của ánh xạ. Nạp lại User từ CSDL mỗi lần: bị khoá, hoặc vai trong cookie lệch CSDL ⇒ null (đóng, không đoán). */
@@ -33,7 +39,7 @@ export async function nguoiTuPhien(p: SessionPayload | null, kho: KhoLop = khoPr
     if (p.adminRole === "admin_super") return { vai: "chu", id: p.userId, ten: u.name, monIds: [] };
     if (p.adminRole !== "teacher") return null; // admin_content: chưa có quyết định ⇒ không vào lớp
     const goc = gmailGoc(email);
-    const gv = goc ? (await kho.giaoVien()).find((x) => gmailGoc(x.gmail) === goc) : undefined;
+    const gv = goc ? timTheoGmail(await kho.giaoVien(), goc) : undefined;
     // Không có dòng bca_nguoi_dung / bị khoá (khoa_luc) / chưa phân công ⇒ không môn nào, không phải toàn quyền.
     return { vai: "giao_vien", id: p.userId, ten: u.name, monIds: gv && !gv.khoa_luc ? gv.phan_cong.map((x) => x.mon_id) : [] };
   }
@@ -62,7 +68,7 @@ export async function nguoiLopBca(tao = false): Promise<NguoiQuanLy | null> {
   if (!p || !u || u.vai === "hoc_sinh") return null;
   const user = await prisma.user.findUnique({ where: { id: p.userId }, select: { name: true, email: true, emailVerified: true } });
   const goc = user?.emailVerified ? gmailGoc(user.email) : null;
-  const nd = goc ? (await prisma.bcaNguoiDung.findMany({ select: { id: true, gmail: true, khoa_luc: true } })).find((x) => gmailGoc(x.gmail) === goc) : undefined;
+  const nd = goc ? timTheoGmail(await prisma.bcaNguoiDung.findMany({ select: { id: true, gmail: true, khoa_luc: true } }), goc) : undefined;
   if (u.vai === "giao_vien") return nd && !nd.khoa_luc ? { ...u, id: nd.id } : null;
   if (nd) return { ...u, id: nd.id };
   if (!tao) return { ...u, id: ID_RONG };

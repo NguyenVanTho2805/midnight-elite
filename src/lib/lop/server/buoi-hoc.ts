@@ -35,6 +35,7 @@ export async function danhSachBuoi(u: Nguoi, opt: { thang: string; mon?: string 
 export async function huyBuoi(u: Nguoi, id: number, lyDo: string, xacNhan = false) {
   canChu(u);
   if (!lyDo?.trim()) throw new LoiDuLieu("Cần ghi lý do huỷ buổi");
+  if (lyDo.length > 300) throw new LoiDuLieu("Lý do huỷ tối đa 300 ký tự");
   return db.$transaction(async (tx) => {
     await khoaBuoi(tx, id);
     const b = await tx.bcaBuoiHoc.findUnique({ where: { id }, include: { _count: { select: { diem_danh: true } } } });
@@ -74,6 +75,7 @@ export async function themHocBu(u: Nguoi, v: { mon: string; ngay: string; gio?: 
     const goc = await db.bcaBuoiHoc.findUnique({ where: { id: v.buChoBuoiId } });
     if (!goc || goc.mon_id !== mon.id) throw new LoiDuLieu("Buổi được bù không cùng môn hoặc không tồn tại");
   }
+  if ((v.ghiChu?.length ?? 0) > 500) throw new LoiDuLieu("Ghi chú buổi tối đa 500 ký tự");
   const batDau = lucVN(v.ngay, gio);
   if (await db.bcaBuoiHoc.findUnique({ where: { mon_id_bat_dau_luc: { mon_id: mon.id, bat_dau_luc: batDau } } }))
     throw new LoiDuLieu("Đã có buổi môn này đúng giờ đó", 409);
@@ -121,7 +123,7 @@ export async function suaNoiDungBuoi(u: Nguoi, id: number, v: { noiDung?: string
     if (v.linkRecord && !v.linkRecord.trim()) data.link_record = null;
     else if (v.linkRecord) {
       const l = chuanHoaLink(v.linkRecord);
-      if (!l) throw new LoiDuLieu("Link record không phải địa chỉ web", 400, "link_sai");
+      if (!l) throw new LoiDuLieu("Link record không phải địa chỉ web — dán cả đường dẫn, bắt đầu bằng https://", 400, "link_sai");
       data.link_record = l;
     } else data.link_record = null;
   }

@@ -71,6 +71,8 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
             <div className={`hidden ${COT} ${KIN_TABLE_HEAD}`}>
               <OChonTatCa ma={r.hien.map((x) => x.ma_hs)} /><span>{sap("ten", "Học sinh")}</span><span>Môn</span><span>Trạng thái</span><span>{sap("het", "Hạn thử")}</span><span>{sap("moi", "Đăng ký")}</span><span>SĐT</span>
             </div>
+            {/* Điện thoại không có hàng tiêu đề bảng: ô "chọn tất cả" nằm ở một dòng riêng. */}
+            <div className="flex items-center gap-3 border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] text-[length:var(--kin-co-goc)] text-[var(--kin-chu-phu)] md:hidden"><OChonTatCa ma={r.hien.map((x) => x.ma_hs)} /><span aria-hidden>Chọn tất cả em trên trang này</span></div>
             <ul>
               {r.hien.map((x) => (
                 <li key={x.ma_hs} className={`${COT} items-center border-b border-[var(--kin-vien-nhat)] px-[var(--kin-kc-6)] py-2 text-[length:var(--kin-co-goc)] last:border-b-0 hover:bg-[var(--kin-nen-re-chuot)] has-[:checked]:bg-[var(--kin-nhan-nen-nhat)] max-md:grid max-md:grid-cols-[2.75rem_minmax(0,1fr)_auto] max-md:gap-x-3 max-md:gap-y-1`}>

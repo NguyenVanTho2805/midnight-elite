@@ -33,6 +33,9 @@ export default async function LopOnBuoiHoc({ searchParams }: { searchParams: Pro
   // Tuần có thể vắt qua hai tháng: nạp cả hai rồi cắt theo ngày.
   const d = await thuTai("buổi học", async () => (await Promise.all([...new Set([thangCua(t2), thangCua(cn)])].map((thang) => danhSachBuoi(u, { thang, mon })))).flatMap((x) => x.buoi).filter((b) => b.ngay >= t2 && b.ngay <= cn));
 
+  // Một nút nổi bật cho cả danh sách: buổi đầu tiên đang mở điểm danh mà chưa điểm đủ.
+  const canDiem = d?.find((b) => b.trang_thai !== "huy" && b.tien_do && b.tien_do.da_diem < b.tien_do.si_so && new Date(b.bat_dau_luc).getTime() - 30 * 60_000 <= luc.getTime())?.id;
+
   return (
     <div className="max-w-5xl">
       <h1 className="pb-4 text-[length:var(--kin-co-h1)] leading-[var(--kin-dong-h1)] font-medium tracking-[-0.01em] text-[var(--kin-chu-chinh)]">Buổi học</h1>
@@ -42,9 +45,9 @@ export default async function LopOnBuoiHoc({ searchParams }: { searchParams: Pro
           {mons.map((m) => <Link key={m.ma} href={href({ mon: m.ma })} aria-current={mon === m.ma ? "true" : undefined} className={chip(mon === m.ma)}><MonCham ma={m.ma} />{m.ten_ngan}</Link>)}
         </nav>
         <nav aria-label="Chọn tuần" className="ml-auto flex items-center gap-1 tabular-nums">
-          <Link href={href({ tuan: congNgay(t2, -7) })} aria-label="Tuần trước" className={`${kinButtonClass("secondary")} px-3`}>‹</Link>
+          <Link href={href({ tuan: congNgay(t2, -7) })} aria-label="Tuần trước" className={`${kinButtonClass("secondary")} min-w-11 px-3`}>‹</Link>
           <span className="px-2 text-[length:var(--kin-co-goc)] font-medium text-[var(--kin-chu-chinh)]">{ddmm(t2)} – {ddmm(cn)}</span>
-          <Link href={href({ tuan: congNgay(t2, 7) })} aria-label="Tuần sau" className={`${kinButtonClass("secondary")} px-3`}>›</Link>
+          <Link href={href({ tuan: congNgay(t2, 7) })} aria-label="Tuần sau" className={`${kinButtonClass("secondary")} min-w-11 px-3`}>›</Link>
           {hom < t2 || hom > cn ? <Link href={href({ tuan: congNgay(hom, 1 - thuISO(hom)) })} className={`${lienKet} px-2`}>Tuần này</Link> : null}
         </nav>
       </div>
@@ -68,7 +71,7 @@ export default async function LopOnBuoiHoc({ searchParams }: { searchParams: Pro
                         {huy ? `Lý do: ${b.ly_do_huy ?? "—"}` : [td ? `Đã điểm ${td.da_diem}/${td.si_so}` : null, b.mon.giao_vien.join(", ") || null, b.noi_dung, b.link_record ? "có record" : batDau < luc.getTime() ? "chưa có record" : null].filter(Boolean).join(" · ")}
                       </p>
                     </div>
-                    {!huy ? <Link href={`${LOP_GOC}/diem-danh/${b.id}`} className={kinButtonClass(td && td.da_diem < td.si_so && batDau - 30 * 60_000 <= luc.getTime() ? "primary" : "secondary")}>Điểm danh</Link> : null}
+                    {!huy ? <Link href={`${LOP_GOC}/diem-danh/${b.id}`} className={kinButtonClass(b.id === canDiem ? "primary" : "secondary")}>Điểm danh</Link> : null}
                     <BuoiThaoTac b={{ id: b.id, ten: `${b.mon.ten} ${ddmm(b.ngay)}`, huy, tuong_lai: batDau > luc.getTime(), noi_dung: b.noi_dung, link_record: b.link_record, ghi_chu: b.ghi_chu }} />
                   </li>
                 );

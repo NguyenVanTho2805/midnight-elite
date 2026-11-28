@@ -194,6 +194,7 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
       </section>
     );
   });
+  const mui = <span aria-hidden className="text-[length:var(--kin-co-tieu-de)] leading-none text-[var(--kin-nhan-link)]">›</span>; // dòng là liên kết ⇒ có mũi tên
   const rong = (chu: string) => <KinEmptyState title="Không còn việc ở mục này">{chu}</KinEmptyState>;
 
   const tabs: { id: string; nhan: string; so: number; noiDung: ReactNode }[] = [
@@ -232,20 +233,20 @@ function ViecCanLam({ viec, daAn, tab }: { viec: Viec[]; daAn: number; tab: stri
     {
       id: "don", nhan: "Đơn", so: don.length,
       noiDung: don.length ? don.map((v) => (
-        <KinListRow key={String(v.don_id)} href={`${LOP_GOC}/don?don=${v.don_id}#don-${v.don_id}`} title={<><span className="font-medium">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span></>} sub={v.ngay ? `Gửi ngày ${ddmm(v.ngay)}` : undefined} />
+        <KinListRow key={String(v.don_id)} aside={mui} href={`${LOP_GOC}/don?don=${v.don_id}#don-${v.don_id}`} title={<><span className="font-medium">Đơn chờ duyệt</span> · <span translate="no">{String(v.ho_ten)}</span></>} sub={v.ngay ? `Gửi ngày ${ddmm(v.ngay)}` : undefined} />
       )) : rong("Không có đơn nào chờ duyệt."),
     },
     {
       id: "record", nhan: "Thiếu record", so: dem(thieu),
       noiDung: thieu.length ? thieu.map((v) => (
-        <KinListRow key={`thieu-${(v.mon as Mon)?.ma}`} href={`${LOP_GOC}/buoi-hoc?tuan=${(v.buoi as { ngay: string }[])[0]?.ngay}&mon=${(v.mon as Mon)?.ma}`} title={<span className="font-medium">Buổi thiếu record · {(v.mon as Mon)?.ten}</span>}
+        <KinListRow key={`thieu-${(v.mon as Mon)?.ma}`} aside={mui} href={`${LOP_GOC}/buoi-hoc?tuan=${(v.buoi as { ngay: string }[])[0]?.ngay}&mon=${(v.mon as Mon)?.ma}`} title={<span className="font-medium">Buổi thiếu record · {(v.mon as Mon)?.ten}</span>}
           sub={<span className="tabular-nums">{(v.buoi as { id: number; ngay: string }[]).map((b) => thuNganNgay(b.ngay)).join(", ")}</span>} />
       )) : rong("Buổi nào đã điểm xong quá 24 giờ cũng đã có record."),
     },
     ...(sua.length ? [{
       id: "sua", nhan: "Sửa dữ liệu", so: sua.length,
       noiDung: sua.map((v) => (
-        <KinListRow key={`sua-${v.ma_hs}`} href={`${HS}/${v.ma_hs}`} title={<span translate="no" className="font-medium">{String(v.ho_ten)}</span>}
+        <KinListRow key={`sua-${v.ma_hs}`} aside={mui} href={`${HS}/${v.ma_hs}`} title={<span translate="no" className="font-medium">{String(v.ho_ten)}</span>}
           sub={`Thiếu hoặc sai: ${(v.loi as string[]).map((x) => ({ gmail: "Gmail", sdt: "SĐT", lua: "lứa", loi_tinh: "không tính được việc" })[x] ?? x).join(", ")}`} />
       )),
     }] : []),

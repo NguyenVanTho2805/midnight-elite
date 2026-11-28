@@ -58,6 +58,10 @@ async function main() {
   check("có dòng nhưng chưa phân công ⇒ không môn nào", d?.vai === "giao_vien" && d.monIds.length === 0, d);
   const e = await nguoiTuPhien(gv, kho(uGv({ email: "khoa@gmail.com" })), true);
   check("tài khoản lớp bị khoá (khoa_luc) ⇒ không môn nào", e?.vai === "giao_vien" && e.monIds.length === 0, e);
+  // Hai dòng cùng Gmail gốc, dòng KHÔNG khoá đứng trước: dòng khoá vẫn thắng (trước đây lấy dòng đầu ⇒ kết quả tuỳ thứ tự).
+  const trung = { giaoVien: async () => [{ gmail: "tr.ung@gmail.com", khoa_luc: null, phan_cong: [{ mon_id: 3 }] }, { gmail: "trung@gmail.com", khoa_luc: new Date(), phan_cong: [{ mon_id: 3 }] }] };
+  const e2 = await nguoiTuPhien(gv, kho(uGv({ email: "trung@gmail.com" }), trung), true);
+  check("hai dòng cùng Gmail gốc, một dòng khoá ⇒ không môn nào", e2?.vai === "giao_vien" && e2.monIds.length === 0, e2);
   const f = await nguoiTuPhien(gv, kho(uGv({ emailVerified: false })), true);
   check("email KiN chưa xác minh ⇒ không khớp phân công (không môn nào)", f?.vai === "giao_vien" && f.monIds.length === 0, f);
 

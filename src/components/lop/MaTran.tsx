@@ -18,6 +18,7 @@ const NEN: Record<TT, { background: string; color: string }> = {
   phep: { background: "var(--kin-lop-tt-nen-phep)", color: "var(--kin-lop-tt-chu-phep)" },
   vang: { background: "var(--kin-tt-nen-loi)", color: "var(--kin-tt-chu-loi-dam)" },
 };
+const CHUA = { background: "var(--kin-nen-bang)", color: "var(--kin-chu-phu)", borderColor: "var(--kin-vien-o-nhap)" };
 const O_CHUNG = "inline-flex size-9 items-center justify-center rounded-[var(--kin-bo-sm)] text-[length:var(--kin-co-goc)] font-semibold";
 const dem = (o: O[]) => ({ co: o.filter((x) => x === "co").length, phep: o.filter((x) => x === "phep").length, vang: o.filter((x) => x === "vang").length });
 
@@ -91,7 +92,7 @@ export function MaTran({ d, gocDiemDanh }: { d: D; gocDiemDanh: string }) {
                             <button type="button" onClick={() => { setMo({ hs: h.hoc_sinh_id, c }); setLoi(null); }} aria-pressed={mo?.hs === h.hoc_sinh_id && mo.c === c}
                               aria-label={`${h.ho_ten}, ${thuNganNgay(d.buoi[c].ngay)}: ${x ? TEN[x] : "Chưa điểm danh"} — bấm để sửa`}
                               className={`${O_CHUNG} size-11 border border-transparent focus-visible:outline-2 focus-visible:outline-[var(--kin-nhan-link)] aria-pressed:border-[var(--kin-nhan-nen)]`}
-                              style={x ? NEN[x] : { background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>{x ? KY[x] : "·"}</button>
+                              style={x ? NEN[x] : CHUA}>{x ? KY[x] : "·"}</button>
                           )}
                         </td>
                       ))}
@@ -106,7 +107,7 @@ export function MaTran({ d, gocDiemDanh }: { d: D; gocDiemDanh: string }) {
 
       <ul className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[length:var(--kin-co-phu)] text-[var(--kin-chu-phu)]">
         {(["co", "phep", "vang"] as const).map((k) => <li key={k} className="flex items-center gap-2"><span aria-hidden className={O_CHUNG} style={NEN[k]}>{KY[k]}</span>{TEN[k]}</li>)}
-        <li className="flex items-center gap-2"><span aria-hidden className={O_CHUNG} style={{ background: "var(--kin-nen-bang)", color: "var(--kin-chu-mo)" }}>·</span>Chưa điểm danh</li>
+        <li className="flex items-center gap-2"><span aria-hidden className={`${O_CHUNG} border`} style={CHUA}>·</span>Chưa điểm danh</li>
         <li className="text-[var(--kin-tt-chu-loi-dam)]">Số đỏ ở cột Có mặt = vắng không phép từ 2 buổi</li>
       </ul>
 

@@ -11,11 +11,15 @@ import { LoiQuyTac } from "../quy-tac";
 import { ghiTuChoi } from "./nhat-ky";
 
 export type Ctx<P = Record<string, string>> = { params: Promise<P> };
+const may = (s: string) => { try { return new URL(s).host; } catch { return null; } };
 const loi = (error: string, status: number, ma?: string) => NextResponse.json({ error, ma }, { status });
 
 function bao<U extends Nguoi, P>(lay: (req: Request) => Promise<U | null>, khongQuyen: string, fn: (u: U, req: Request, params: P) => Promise<unknown>) {
   return async (req: Request, ctx: Ctx<P>) => {
     if (!LOP_ON) return loi("Không tìm thấy", 404);
+    // Request GHI từ trang khác (CSRF): trình duyệt luôn gửi Origin cho POST/PUT/PATCH/DELETE; lệch tên miền ⇒ chặn. Không có Origin (script, test) thì cookie SameSite=Lax đã chặn.
+    const goc = req.method === "GET" ? null : req.headers.get("origin");
+    if (goc && may(goc) !== (req.headers.get("x-forwarded-host") ?? req.headers.get("host"))) return loi("Yêu cầu đến từ trang khác", 403);
     const u = await lay(req);
     if (!u) return (await getSession()) ? loi(khongQuyen, 403) : loi("Chưa đăng nhập", 401);
     // shortcut: đếm trong bộ nhớ của từng instance (như các route KiN khác), chặn vòng lặp dò id; cần chặn chắc thì chuyển sang kho dùng chung.
@@ -50,9 +54,12 @@ export const routeHs = <P = Record<string, string>>(fn: (u: NguoiHocSinh, req: R
 
 export async function docJson(req: Request): Promise<Record<string, unknown>> {
   try {
-    const v = await req.json();
+    const t = await req.text();
+    // Chặn chung cho mọi route: không ô nào của lớp cần quá 20 nghìn ký tự (nội dung buổi tối đa 2.000).
+    if (t.length > 20_000) throw new LoiDuLieu("Thân request quá lớn", 413);
+    const v = JSON.parse(t);
     if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
-  } catch {}
+  } catch (e) { if (e instanceof LoiDuLieu) throw e; }
   throw new LoiDuLieu("Thân request phải là JSON object");
 }
 /** Số nguyên vừa cột int4 của Postgres (id vượt int32 / NaN / số lẻ / "0x2" / "1e3" ⇒ 400, không 500). */

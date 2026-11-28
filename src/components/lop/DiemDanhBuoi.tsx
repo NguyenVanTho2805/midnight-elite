@@ -26,7 +26,7 @@ const Dau = () => <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fi
 const HOAN_TAC_MS = 5000;
 
 /** `day`: lớp Tailwind đặt mép dưới của thanh dính đáy — tuỳ vỏ (vỏ quản trị cuộn trong khung riêng ⇒ bottom-0; vỏ gia sư cuộn cả trang, có thanh tab dưới ở điện thoại). */
-export function DiemDanhBuoi({ d, chu, veHref, day = "bottom-0" }: { d: D; chu: boolean; veHref: string; day?: string }) {
+export function DiemDanhBuoi({ d, chu, nguoi, veHref, day = "bottom-0" }: { d: D; chu: boolean; nguoi: string; veHref: string; day?: string }) {
   const b = d.buoi, buoiId = b.id, nhom = `dd:${buoiId}`, api = `/api/lop/diem-danh/${buoiId}`;
   const [hang, setHang] = useState<Record<number, TT | null>>(() => Object.fromEntries(d.em.map((e) => [e.hoc_sinh_id, e.trang_thai])));
   const [moSua, setMoSua] = useState(false);
@@ -43,7 +43,7 @@ export function DiemDanhBuoi({ d, chu, veHref, day = "bottom-0" }: { d: D; chu: 
   const batDau = new Date(b.bat_dau_luc).getTime();
   const tenMon = tenMonDayDu(b.mon.ma, b.mon.ten);
 
-  useEffect(() => { khoiDongHangDoi(); }, []);
+  useEffect(() => { khoiDongHangDoi(nguoi); }, [nguoi]);
   // Thay đổi còn chờ từ lần mở trước → phủ lên dữ liệu máy chủ.
   useEffect(() => {
     let huy = false;
@@ -199,7 +199,7 @@ export function DiemDanhBuoi({ d, chu, veHref, day = "bottom-0" }: { d: D; chu: 
                     <div className="flex items-start justify-between gap-2">
                       <p translate="no" className="min-w-0 text-[length:var(--kin-co-body)] font-semibold leading-6 text-[var(--kin-chu-chinh)] [overflow-wrap:anywhere]">{e.ho_ten}</p>
                       {choGui ? <span className="shrink-0 pt-0.5 text-[length:var(--kin-co-phu)] font-medium text-[var(--kin-tt-chu-cho)]">Chờ gửi</span>
-                        : e.loai === "thu" ? <span className="shrink-0 whitespace-nowrap rounded-full bg-[var(--kin-tt-nen-cho)] px-2.5 py-0.5 text-[length:var(--kin-co-phu)] font-medium tabular-nums text-[var(--kin-tt-chu-cho)]">Thử{e.thu_con_ngay !== null ? ` · còn ${e.thu_con_ngay} ngày` : ""}</span> : null}
+                        : e.loai === "thu" ? <span className="shrink-0 whitespace-nowrap rounded-full bg-[var(--kin-tt-nen-cho)] px-2.5 py-0.5 text-[length:var(--kin-co-phu)] font-medium tabular-nums text-[var(--kin-tt-chu-cho)]">Thử{e.thu_con_ngay !== null && e.thu_con_ngay >= 0 ? ` · còn ${e.thu_con_ngay} ngày` : ""}</span> : null}
                     </div>
                     <div role="group" aria-label={`Điểm danh ${e.ho_ten}`} className="mt-2 grid grid-cols-3 gap-2">
                       {NUT.map((n) => {
@@ -223,7 +223,7 @@ export function DiemDanhBuoi({ d, chu, veHref, day = "bottom-0" }: { d: D; chu: 
           {d.het_thu_khong_co_ten.so_em > 0 ? <p className="mt-3 text-[length:var(--kin-co-goc)] tabular-nums text-[var(--kin-chu-phu)]">{d.het_thu_khong_co_ten.so_em} em đã hết thử nên không có tên trong buổi này.</p> : null}
 
           {tong && (ghiDuoc || qua48) ? (
-            <div className={`sticky ${day} z-10 -mx-1 mt-4 border-t border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)] px-1 pb-3 pt-3`}>
+            <div className={`sticky ${day} z-10 -mx-1 mt-4 border-t border-[var(--kin-vien-nhat)] bg-[var(--kin-nen-trang)] px-1 pb-3 pt-3 shadow-[0_2rem_0_0_var(--kin-nen-trang)]`}>
               {bao ? (
                 <div role="status" className="mb-2 flex items-center justify-between gap-3 rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-dang-chon)] py-1 pl-4 pr-1 text-[length:var(--kin-co-goc)] tabular-nums text-[var(--kin-chu-chinh)]">
                   <span>{bao.chu}</span>

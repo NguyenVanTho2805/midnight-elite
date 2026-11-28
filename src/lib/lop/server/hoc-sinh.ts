@@ -148,6 +148,7 @@ export async function taoHocSinh(u: Nguoi, v: HoSoMoi, luc = new Date()) {
 export async function taoHoSoTx(tx: Tx, u: Nguoi, v: HoSoMoi, luc: Date) {
   const ho_ten = catKhoangTrang(v.hoTen);
   if (!ho_ten) throw new LoiDuLieu("Cần họ tên");
+  if (Object.values(v).some((x) => typeof x === "string" && x.length > 2000)) throw new LoiDuLieu("Mỗi ô tối đa 2.000 ký tự");
   const ngay_tao = v.ngayTao ?? ngayVN(luc);
   const gmail = chuanHoaGmail(v.gmail), sdt_hs = chuanHoaSdt(v.sdtHs), sdt_ph = chuanHoaSdt(v.sdtPh), username_azota = catKhoangTrang(v.usernameAzota);
   const trungGmail = gmail && (await tx.bcaHocSinh.findUnique({ where: { gmail }, select: { ma_hs: true } }));
