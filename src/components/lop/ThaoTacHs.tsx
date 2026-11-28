@@ -105,7 +105,10 @@ export function HoSoThaoTac(p: HoSo) {
       dong();
       const ten = mon.map((x) => p.mon.find((m) => m.ma === x)?.ten).join(", ");
       // Em đã hết thử: máy chủ chỉ ghi "chủ cho nghỉ", ngày học giữ nguyên ⇒ không báo ngày.
-      baoLop({ chu: dangMo.length ? `Đã cho ${p.ten} nghỉ ${ten} · học đến hết ${ddmm(String(k.d.denNgay))}` : `Đã ghi nhận ${p.ten} nghỉ ${ten}` });
+      baoLop({
+        chu: dangMo.length ? `Đã cho ${p.ten} nghỉ ${ten} · học đến hết ${ddmm(String(k.d.denNgay))}` : `Đã ghi nhận ${p.ten} nghỉ ${ten}`,
+        hoanTac: () => goi("POST", `/api/lop/hoc-sinh/${p.maHs}/nghi-mon/hoan-tac`, { nhatKyId: k.d.nhatKyId }), sauHoanTac: () => g.router.refresh(),
+      });
     });
   }
   function them(e: FormEvent<HTMLFormElement>) {

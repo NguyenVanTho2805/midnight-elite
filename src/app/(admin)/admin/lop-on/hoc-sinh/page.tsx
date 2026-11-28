@@ -8,7 +8,7 @@ import { danhSachHocSinh } from "@/lib/lop/server/hoc-sinh";
 import { docLoc, hrefLoc, locHocSinh, TEN_HET, TEN_LOAI, type DongHs, type LocHs } from "@/lib/lop/loc-hoc-sinh";
 import { ddmm } from "@/lib/lop/ngay";
 import { ngayDayDu, sdt } from "@/lib/lop/dinh-dang";
-import { KhoiLoi, LOP_GOC, MonHuyHieu, NhanTinhTrang, lienKet, thuTai } from "@/components/lop/hien-thi";
+import { KhoiLoi, LOP_GOC, MonHuyHieu, Nhan, NhanTinhTrang, lienKet, thuTai } from "@/components/lop/hien-thi";
 import { ChonNhieu, OChon, OChonTatCa, ThemHocSinh } from "@/components/lop/ThaoTacHs";
 
 export const metadata = { title: "Lớp ôn · Học sinh" };
@@ -32,6 +32,13 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
       {nhan}<span aria-hidden className="ml-1">{p.sap === k ? "↑" : "↕"}</span><span className="sr-only">{p.sap === k ? " (đang sắp theo cột này)" : " (bấm để sắp)"}</span>
     </Link>
   );
+  // Đang lọc một môn: nhãn nói tình trạng của em Ở MÔN ĐÓ (em thử Toán nhưng chính thức môn khác không còn hiện "Chính thức").
+  const tenMonLoc = d.mon.find((m) => m.ma === p.mon)?.ten;
+  const nhanTheoMon = (x: (typeof r.hien)[number]) => {
+    const o = p.mon ? x.mon[p.mon] : null;
+    if (!o || !tenMonLoc || (o === "hoc" && x.tinh_trang === "Đang học") || (o === "thu" && x.thu && x.tinh_trang !== "Đang học")) return null; // trùng nhãn chung thì dùng nhãn chung (có số ngày còn lại)
+    return o === "hoc" ? <Nhan tone="xong">Chính thức {tenMonLoc}</Nhan> : o === "thu" ? <Nhan tone="thu">Thử {tenMonLoc}</Nhan> : <Nhan tone="mo">Đã nghỉ {tenMonLoc}</Nhan>;
+  };
   const chip = (k: keyof typeof TEN_HET) => (
     <Link key={k} href={hrefLoc(GOC, p, { het: p.het === k ? null : k })} aria-current={p.het === k ? "true" : undefined}
       className={`inline-flex min-h-11 items-center rounded-full border px-3.5 text-[length:var(--kin-co-goc)] ${p.het === k ? "border-[var(--kin-nhan-link)] bg-[var(--kin-nhan-nen-nhat)] font-medium text-[var(--kin-nhan-chu-tren-nhat)]" : "border-[var(--kin-vien-thuong)] text-[var(--kin-chu-phu)] hover:bg-[var(--kin-nen-re-chuot)]"}`}>
@@ -82,7 +89,7 @@ export default async function LopOnHocSinh({ searchParams }: { searchParams: Pro
                     <span translate="no" className="text-[length:var(--kin-co-phu)] tabular-nums text-[var(--kin-chu-mo)]">{x.ma_hs}{x.lua?.ma ? ` · ${x.lua.ma}` : ""}</span>
                   </Link>
                   <MonHuyHieu mon={d.mon} o={x.mon} />
-                  <span className="max-md:justify-self-end"><NhanTinhTrang tinhTrang={x.tinh_trang} thu={x.thu} /></span>
+                  <span className="max-md:justify-self-end">{nhanTheoMon(x) ?? <NhanTinhTrang tinhTrang={x.tinh_trang} thu={x.thu} />}</span>
                   <span className={`tabular-nums text-[var(--kin-chu-phu)] ${x.thu ? "" : "max-md:invisible"}`}><span className="md:hidden text-[var(--kin-chu-mo)]">Hạn thử </span>{x.thu ? ddmm(x.thu.den) : "—"}</span>
                   <span className="tabular-nums text-[var(--kin-chu-phu)] max-md:justify-self-end"><span className="md:hidden text-[var(--kin-chu-mo)]">Đăng ký </span>{x.dang_ky ? ngayDayDu(x.dang_ky) : "—"}</span>
                   <span translate="no" className="tabular-nums text-[var(--kin-chu-phu)] max-md:col-span-2">{sdt(x.sdt_hs) || "—"}</span>

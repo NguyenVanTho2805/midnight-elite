@@ -10,7 +10,7 @@ import { CHU, GV_ANH, buoiId, db, giay, hsId, loi, napLaiBca, nguoi } from "./lo
 import { d2s, lucVN, s2d } from "@/lib/lop/ngay";
 import { LoiQuyen } from "@/lib/lop/quyen";
 import { tenGiong } from "@/lib/lop/chuan-hoa";
-import { anHocSinh, boAnHocSinh, chuyenChinhThuc, giaHanThu, hoanTacChuyenChinhThuc, hoanTacGiaHan, nghiMon, themMon } from "@/lib/lop/server/ghi-danh";
+import { anHocSinh, boAnHocSinh, chuyenChinhThuc, giaHanThu, hoanTacChuyenChinhThuc, hoanTacGiaHan, hoanTacNghiMon, nghiMon, themMon } from "@/lib/lop/server/ghi-danh";
 import { chiTietHocSinh, danhSachHocSinh, suaGhiChuHocSinh, suaHoSoHocSinh, taoHocSinh } from "@/lib/lop/server/hoc-sinh";
 import { boQuaDon, hoanTacXuLyDon, taoHoSoTuDon, xemTruocDon } from "@/lib/lop/server/don";
 import { boDanhDauXong, danhDauXong, homNay } from "@/lib/lop/server/hom-nay";
@@ -112,6 +112,11 @@ async function main() {
     const doi = !eq(await dong("HS0027"), truoc);
     check("HS0027 thử Toán + Anh lên chính thức từ 26/11 (2 môn); hoàn tác sau 3 giây trả đúng như cũ", r.soMonChinhThuc === 2 && doi && eq(await hoanTacChuyenChinhThuc(chu, "HS0027", r.nhatKyId, giay(T22, 3)), { traLai: 4 }) && eq(await dong("HS0027"), truoc), await dong("HS0027"));
     check("hoàn tác lần hai → 409 da_hoan_tac", (await loi(() => hoanTacChuyenChinhThuc(chu, "HS0027", r.nhatKyId, giay(T22, 4))))?.ma === "da_hoan_tac");
+    // Cho nghỉ bấm nhầm: hoàn tác trả đúng ngày học cũ và gỡ dấu chủ-cho-nghỉ; sai em / lần hai / giáo viên đều bị chặn.
+    const t27 = await dong("HS0027"), ng27 = await nghiMon(chu, "HS0027", "toan", undefined, giay(T22, 20));
+    check("cho HS0027 nghỉ Toán rồi hoàn tác sau 3 giây → ghi danh trở lại đúng như trước; mã em khác → 404; lần hai → 409 da_hoan_tac; giáo viên → từ chối",
+      !eq(await dong("HS0027"), t27) && (await loi(() => hoanTacNghiMon(chu, "HS0028", ng27.nhatKyId, giay(T22, 21))))?.status === 404 && (await loi(() => hoanTacNghiMon(gvAnh, "HS0027", ng27.nhatKyId, giay(T22, 21)))) instanceof LoiQuyen
+      && (await hoanTacNghiMon(chu, "HS0027", ng27.nhatKyId, giay(T22, 23))).traLai >= 1 && eq(await dong("HS0027"), t27) && (await loi(() => hoanTacNghiMon(chu, "HS0027", ng27.nhatKyId, giay(T22, 24))))?.ma === "da_hoan_tac", await dong("HS0027"));
     const t28 = await dong("HS0028");
     const r28 = await chuyenChinhThuc(chu, "HS0028", ["su"], { nghiMonThuConLai: true }, T22);
     const soNghi = (await dong("HS0028")).filter((x) => x.endsWith(":nghi")).length;

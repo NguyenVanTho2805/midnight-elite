@@ -159,23 +159,26 @@ export async function traLai(tx: Tx, u: Nguoi, thayDoi: ThayDoi[], hanh_dong: st
   return true;
 }
 
-/** Hoàn tác một lần chuyển chính thức: chỉ chủ, một lần, trong hạn, và chỉ khi chưa ai sửa các dòng đó (tất cả hoặc không). */
-export async function hoanTacChuyenChinhThuc(u: Nguoi, maHs: string, nhatKyId: number, luc = new Date()) {
+/** Hoàn tác một thao tác nhóm trên ghi danh của MỘT em (chuyển chính thức / cho nghỉ): chỉ chủ, một lần, trong hạn, và chỉ khi chưa ai sửa các dòng đó (tất cả hoặc không). */
+async function hoanTacNhom(u: Nguoi, maHs: string, nhatKyId: number, doiTuong: string, hanhDong: string, ten: string, luc: Date) {
   canChu(u);
   return db.$transaction(async (tx) => {
     await khoaNhatKy(tx, nhatKyId);
     const nk = await tx.bcaNhatKy.findUnique({ where: { id: nhatKyId } });
-    if (!nk || nk.doi_tuong !== "nhom_chuyen_chinh_thuc" || nk.doi_tuong_id !== maHs) throw new LoiDuLieu("Không có lần chuyển chính thức này", 404);
+    if (!nk || nk.doi_tuong !== doiTuong || nk.doi_tuong_id !== maHs) throw new LoiDuLieu(`Không có lần ${ten} này`, 404);
     const sau = nk.sau as { luc: string; thay_doi: ThayDoi[] };
     if (!conHanHoanTac(sau.luc, luc)) throw new LoiDuLieu("Đã quá thời gian hoàn tác", 409, "het_gio");
-    if (await tx.bcaNhatKy.findFirst({ where: { hanh_dong: "hoan_tac_chuyen_chinh_thuc", doi_tuong: "nhom_chuyen_chinh_thuc", doi_tuong_id: String(nhatKyId) } }))
-      throw new LoiDuLieu("Lần chuyển này đã được hoàn tác", 409, "da_hoan_tac");
-    if (!(await traLai(tx, u, sau.thay_doi, "hoan_tac_chuyen_chinh_thuc")))
-      throw new LoiDuLieu("Ghi danh đã bị sửa sau lần chuyển này — không hoàn tác được", 409, "da_sua");
-    await ghiNhatKy(u, "hoan_tac_chuyen_chinh_thuc", "nhom_chuyen_chinh_thuc", nhatKyId, null, { ma_hs: maHs, so_dong: sau.thay_doi.length }, tx);
+    if (await tx.bcaNhatKy.findFirst({ where: { hanh_dong: hanhDong, doi_tuong: doiTuong, doi_tuong_id: String(nhatKyId) } }))
+      throw new LoiDuLieu(`Lần ${ten} này đã được hoàn tác`, 409, "da_hoan_tac");
+    if (!(await traLai(tx, u, sau.thay_doi, hanhDong)))
+      throw new LoiDuLieu(`Ghi danh đã bị sửa sau lần ${ten} này — không hoàn tác được`, 409, "da_sua");
+    await ghiNhatKy(u, hanhDong, doiTuong, nhatKyId, null, { ma_hs: maHs, so_dong: sau.thay_doi.length }, tx);
     return { traLai: sau.thay_doi.length };
   });
 }
+export const hoanTacChuyenChinhThuc = (u: Nguoi, maHs: string, nhatKyId: number, luc = new Date()) => hoanTacNhom(u, maHs, nhatKyId, "nhom_chuyen_chinh_thuc", "hoan_tac_chuyen_chinh_thuc", "chuyển chính thức", luc);
+/** Hoàn tác "Cho nghỉ" (bấm nhầm): trả ngày học cũ và gỡ dấu chủ-cho-nghỉ. */
+export const hoanTacNghiMon = (u: Nguoi, maHs: string, nhatKyId: number, luc = new Date()) => hoanTacNhom(u, maHs, nhatKyId, "nhom_nghi_mon", "hoan_tac_nghi_mon", "cho nghỉ", luc);
 
 /** ghi-danh.md Điều 6 — ghi danh thêm môn (Thử theo cửa sổ chung; Chính thức = chuyển chính thức). */
 export async function themMon(u: Nguoi, maHs: string, monMa: string, loai: "thu" | "chinh_thuc", tuNgay?: string, luc = new Date()) {
@@ -202,7 +205,8 @@ export async function nghiMon(u: Nguoi, maHs: string, monMa: string | string[], 
     const cat = denNgay ?? ngayNghiMacDinh(luc);
     const thayDoi: ThayDoi[] = [];
     for (const ma of mas) thayDoi.push(...(await apDung(tx, u, hs.id, keHoachNghi(gds, (await monTheoMa(tx, ma)).id, cat), "nghi_mon", null, luc)));
-    return { denNgay: cat, thayDoi };
+    const nk = await ghiNhatKy(u, "nghi_mon", "nhom_nghi_mon", hs.ma_hs, null, { luc: luc.toISOString(), mon: mas, thay_doi: thayDoi }, tx); // mốc cho Hoàn tác
+    return { denNgay: cat, thayDoi, nhatKyId: nk.id };
   });
 }
 

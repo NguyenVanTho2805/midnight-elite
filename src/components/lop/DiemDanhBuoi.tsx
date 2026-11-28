@@ -9,6 +9,8 @@ import { kinButtonClass, useKinConfirm } from "@/components/kin";
 import type { chiTietDiemDanh } from "@/lib/lop/server/diem-danh";
 import { gioVN } from "@/lib/lop/ngay";
 import { tenMonDayDu, thuNgay, thuNganNgay } from "@/lib/lop/dinh-dang";
+import { goi, Loi, TOM } from "./goi";
+import { KIN_FIELD, KIN_LABEL } from "@/components/kin";
 import { boViec, dangKyXuLy, datViec, khoiDongHangDoi, layViec, nap, thuLai, useHangDoi, viecCuaNhom } from "./hang-doi";
 
 type D = Awaited<ReturnType<typeof chiTietDiemDanh>>;
@@ -162,6 +164,8 @@ export function DiemDanhBuoi({ d, chu, nguoi, veHref, day = "bottom-0" }: { d: D
         </div>
       </header>
 
+      {d.trang_thai_ghi !== "huy" ? <NoiDungBuoi id={buoiId} noiDung={b.noi_dung} linkRecord={b.link_record} /> : null}
+
       {d.trang_thai_ghi === "huy" ? (
         <p className="mt-4 rounded-[var(--kin-bo-the)] bg-[var(--kin-nen-bang)] px-4 py-4 text-[var(--kin-chu-phu)]">Buổi này lớp nghỉ{b.ly_do_huy ? ` (${b.ly_do_huy})` : ""} — không điểm danh.</p>
       ) : (
@@ -251,5 +255,32 @@ export function DiemDanhBuoi({ d, chu, nguoi, veHref, day = "bottom-0" }: { d: D
       )}
       {dialog}
     </div>
+  );
+}
+
+/** Nội dung + link record của buổi (chủ và giáo viên của môn): dán link YouTube / Drive để học sinh còn hạn xem lại ở trang Lớp ôn của em. */
+function NoiDungBuoi({ id, noiDung, linkRecord }: { id: number; noiDung: string | null; linkRecord: string | null }) {
+  const [dang, setDang] = useState(false);
+  const [kq, setKq] = useState<{ loi: string | null; coRecord: boolean; xong: boolean }>({ loi: null, coRecord: !!linkRecord, xong: false });
+  async function luu(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget), link = String(f.get("linkRecord") ?? "");
+    setDang(true);
+    const k = await goi("PATCH", `/api/lop/buoi-hoc/${id}`, { noiDung: f.get("noiDung"), linkRecord: link });
+    setDang(false);
+    setKq(k.ok ? { loi: null, coRecord: !!link.trim(), xong: true } : { ...kq, loi: k.d.error ?? "Không lưu được", xong: false });
+  }
+  return (
+    <details className="mt-3">
+      <summary className={TOM}>Nội dung và link record · <span className="ml-1 font-normal text-[var(--kin-chu-mo)]">{kq.coRecord ? "đã có record" : "chưa có record"}</span></summary>
+      <form onSubmit={(e) => void luu(e)} className="mt-2 grid gap-3 rounded-[var(--kin-bo-lg)] bg-[var(--kin-nen-bang)] p-4">
+        <label className={KIN_LABEL}>Link record (YouTube, Drive…)<input name="linkRecord" defaultValue={linkRecord ?? ""} inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://youtu.be/…" className={`${KIN_FIELD} mt-1`} /></label>
+        <label className={KIN_LABEL}>Nội dung buổi học<textarea name="noiDung" defaultValue={noiDung ?? ""} maxLength={2000} rows={2} className={`${KIN_FIELD} mt-1 py-2`} /></label>
+        <p className="text-[length:var(--kin-co-phu)] text-[var(--kin-chu-mo)]">Học sinh còn hạn học thấy nút xem lại ở trang Lớp ôn của em. Để trống ô link rồi Lưu là gỡ record.</p>
+        <div className="flex flex-wrap items-center gap-3"><button type="submit" disabled={dang} data-kin-nut className={kinButtonClass("primary")}>Lưu</button>
+          {kq.xong ? <p role="status" className="text-[length:var(--kin-co-goc)] text-[var(--kin-tt-chu-xong)]">Đã lưu.</p> : null}</div>
+        <Loi chu={kq.loi} />
+      </form>
+    </details>
   );
 }

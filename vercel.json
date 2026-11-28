@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/het-han-hoc-thu",
       "schedule": "10 17 * * *"
+    },
+    {
+      "path": "/api/cron/lop-don-nhat-ky",
+      "schedule": "40 18 * * *"
     }
   ]
 }

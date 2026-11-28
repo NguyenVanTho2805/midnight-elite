@@ -54,7 +54,8 @@ export async function nguoiLop(): Promise<Nguoi | null> {
   return LOP_ON ? nguoiTuPhien(await getSession()) : null;
 }
 
-const ID_RONG = "00000000-0000-0000-0000-000000000000";
+/** Chủ lớp chưa có dòng bca_nguoi_dung (chỉ đọc): id giả, KHÔNG có trong bảng ⇒ không được ghi vào cột người ghi (khoá ngoại). */
+export const ID_RONG = "00000000-0000-0000-0000-000000000000";
 /**
  * Bước 5 — người quản lý với `id` = bca_nguoi_dung.id (uuid), KHÔNG phải User.id: các cột ghi_boi / tao_boi / nguoi_dung_id của bca_* là uuid trỏ bảng đó.
  * Mọi hàm trong ./server nhận người từ ĐÂY. Khớp theo Gmail dạng gốc = email KiN đã xác minh.

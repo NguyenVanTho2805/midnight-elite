@@ -119,3 +119,15 @@ Sau quyết định 28/11: thanh dưới điện thoại của giáo viên lớp
 2. Tạo tài khoản KiN (email đã xác minh, trùng Gmail khai ở lớp) cho từng giáo viên; chủ lớp là quản trị cấp 1.
 3. Chuyển dữ liệu từ Neon "Kin Class": xem trước → chủ đồng ý → `--apply`.
 4. Đặt `NEXT_PUBLIC_KIN_MO_LOP_ON=1` trên Vercel của KiN rồi triển khai lại.
+
+### Đợt 28/11 (tối): năm việc chủ giao thêm
+
+1. Màn Điểm danh (chủ và giáo viên của môn) có ngăn "Nội dung và link record": dán link YouTube / Drive, học sinh còn hạn thấy nút xem lại. Ghi chú từng em chưa làm (chủ chỉ yêu cầu link record).
+2. "Cho nghỉ" có Hoàn tác 10 giây (`hoanTacNghiMon`, route `/api/lop/hoc-sinh/[maHs]/nghi-mon/hoan-tac`): trả ngày học cũ, gỡ dấu chủ-cho-nghỉ; dùng chung `hoanTacNhom` với chuyển chính thức.
+3. Danh sách Học sinh đang lọc một môn: nhãn nói tình trạng của em ở môn đó ("Thử Toán"), không còn "Chính thức" lạc.
+4. Học sinh gõ địa chỉ quản trị: KHÔNG sửa. `hostRouting.ts` (tệp khoá) đã đưa học sinh đang đăng nhập về trang của em; form đăng nhập mà agent thấy là do máy thử dùng hai tên miền không chung cookie.
+5. Khoá ngoại người ghi (`bca_nhat_ky.nguoi_dung_id`, `bca_diem_danh.ghi_boi`, `bca_ghi_danh.tao_boi` / `nghi_boi` → `bca_nguoi_dung`, xoá tài khoản thì gỡ tên) và hạn lưu nhật ký:
+   "từ chối" 90 ngày thì xoá; sửa hồ sơ 365 ngày thì giữ dòng, xoá giá trị trước/sau. Cron `/api/cron/lop-don-nhat-ky` mỗi ngày 01:40 giờ VN (đã thêm vào `vercel.json` và `CRON_JOBS`).
+   Hệ quả: dữ liệu thật có người ghi không tồn tại trong `nguoi_dung` thì script chuyển dữ liệu báo LỖI ở bước xem trước (không ghi gì) — xử lý lúc đó.
+
+Kiểm: 16 bài, 834 ca đạt, 0 đỏ (`t-links`, `t-db-push-guard`, `t-adm-003-lib`, `t-admin-ops-lib` gồm trong đó); `tsc` sạch. Lệnh gộp cho người gộp: `docs/kin/lop/LENH-GOP-LOP-ON.md`.

@@ -12,7 +12,7 @@ import { LoiQuyen } from "@/lib/lop/quyen";
 import { chiTietDiemDanh, danhTatCaCoMat, datDiemDanh, hoanTacTatCa, maTranThang } from "@/lib/lop/server/diem-danh";
 import { boHuyBuoi, danhSachBuoi, hoanTacXoaBuoi, huyBuoi, sinhBuoiConThieu, suaNoiDungBuoi, themHocBu, xemTruocBuoiConThieu, xoaBuoi } from "@/lib/lop/server/buoi-hoc";
 import { homNay } from "@/lib/lop/server/hom-nay";
-import { ghiTuChoi } from "@/lib/lop/server/nhat-ky";
+import { donNhatKy, ghiNhatKy, ghiTuChoi } from "@/lib/lop/server/nhat-ky";
 
 const T22 = lucVN("2026-11-26", "22:00");
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -163,6 +163,25 @@ async function main() {
     for (const id of [1, 2, 3]) await ghiTuChoi(gvAnh, "GET", `/api/lop/diem-danh/${id}`, "Bạn không dạy môn này");
     const d = await db.bcaNhatKy.findFirst({ where: { hanh_dong: "tu_choi" }, orderBy: { id: "desc" } });
     check("3 lần bị chặn ở 3 id khác nhau trong một phút → MỘT dòng, so_lan = 3, khoá gộp :id", (await db.bcaNhatKy.count({ where: { hanh_dong: "tu_choi" } })) === n0 + 1 && d?.doi_tuong_id === "GET /api/lop/diem-danh/:id" && (d?.sau as { so_lan?: number })?.so_lan === 3, d);
+  }
+
+  section("Hạn lưu nhật ký + khoá ngoại người ghi");
+  {
+    const ngay = (n: number) => new Date(Date.now() - n * 86400_000);
+    const cu = await ghiNhatKy(gvAnh, "tu_choi", "request", "GET /cu", null, { so_lan: 1 }), moi = await ghiNhatKy(gvAnh, "tu_choi", "request", "GET /moi", null, { so_lan: 1 });
+    const hsCu = await ghiNhatKy(chu, "sua_ho_so_hoc_sinh", "hoc_sinh", "HS0001", { sdt_hs: "0900000000" }, { sdt_hs: "0911111111" }), hsMoi = await ghiNhatKy(chu, "sua_ho_so_hoc_sinh", "hoc_sinh", "HS0001", { sdt_hs: "a" }, { sdt_hs: "b" });
+    const dd = await ghiNhatKy(chu, "dat_diem_danh", "diem_danh", 1, { trang_thai: null }, { trang_thai: "co" });
+    await db.bcaNhatKy.update({ where: { id: cu.id }, data: { luc: ngay(91) } }); await db.bcaNhatKy.update({ where: { id: moi.id }, data: { luc: ngay(89) } });
+    await db.bcaNhatKy.update({ where: { id: hsCu.id }, data: { luc: ngay(366) } }); await db.bcaNhatKy.update({ where: { id: hsMoi.id }, data: { luc: ngay(364) } }); await db.bcaNhatKy.update({ where: { id: dd.id }, data: { luc: ngay(800) } });
+    const r = await donNhatKy(), lay = (id: number) => db.bcaNhatKy.findUnique({ where: { id } });
+    const a = await lay(hsCu.id), b = await lay(hsMoi.id), c = await lay(dd.id);
+    check("từ chối 91 ngày bị xoá, 89 ngày còn; sửa hồ sơ 366 ngày giữ dòng nhưng mất trước/sau, 364 ngày còn nguyên; nhật ký điểm danh 800 ngày không bị đụng", r.tu_choi >= 1 && r.sua_ho_so === 1 && (await lay(cu.id)) === null && (await lay(moi.id)) !== null
+      && !!a && a.truoc === null && a.sau === null && a.nguoi_dung_id === chu.id && (b?.sau as { sdt_hs?: string })?.sdt_hs === "b" && (c?.sau as { trang_thai?: string })?.trang_thai === "co", [r, a]);
+    check("chạy lại ngay → không còn gì để dọn", (await donNhatKy()).sua_ho_so === 0);
+    const la = "11111111-1111-4111-8111-111111111111";
+    check("người ghi không có trong bca_nguoi_dung → CSDL từ chối (khoá ngoại), không ghi dòng mồ côi", (await loi(() => ghiNhatKy({ ...chu, id: la }, "thu", "request", "x", null, null))) !== null);
+    const rong = await ghiNhatKy({ ...chu, id: "00000000-0000-0000-0000-000000000000" }, "tu_choi", "request", "GET /rong", null, { so_lan: 1 });
+    check("chủ chưa có dòng tài khoản lớp (id rỗng) → nhật ký vẫn ghi được, người ghi để trống", rong.nguoi_dung_id === null && rong.vai_tro === "chu");
   }
 }
 

@@ -3498,6 +3498,11 @@ model BcaNguoiDung {
   cap_nhat_luc  DateTime    @default(now()) @updatedAt @db.Timestamptz
   phan_cong     BcaPhanCong[]
   viec_xong     BcaViecXong[]
+  // Người ghi (28/11/2026): khoá ngoại để tên người làm trong nhật ký / điểm danh / ghi danh luôn trỏ tới một tài khoản lớp có thật; xoá tài khoản thì chỉ gỡ tên.
+  nhat_ky       BcaNhatKy[]
+  diem_danh_ghi BcaDiemDanh[]
+  ghi_danh_tao  BcaGhiDanh[] @relation("bca_gd_tao")
+  ghi_danh_nghi BcaGhiDanh[] @relation("bca_gd_nghi")
 
   @@map("bca_nguoi_dung")
 }
@@ -3568,6 +3573,8 @@ model BcaGhiDanh {
   cap_nhat_luc  DateTime      @default(now()) @updatedAt @db.Timestamptz
   hoc_sinh      BcaHocSinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
   mon           BcaMon           @relation(fields: [mon_id], references: [id])
+  nguoi_tao     BcaNguoiDung?    @relation("bca_gd_tao", fields: [tao_boi], references: [id], onDelete: SetNull)
+  nguoi_nghi    BcaNguoiDung?    @relation("bca_gd_nghi", fields: [nghi_boi], references: [id], onDelete: SetNull)
 
   @@index([hoc_sinh_id, mon_id])
   @@map("bca_ghi_danh")
@@ -3607,6 +3614,7 @@ model BcaDiemDanh {
   ghi_luc     DateTime      @db.Timestamptz
   ghi_boi     String?       @db.Uuid
   nguon       BcaNguonDd      @default(web)
+  nguoi_ghi   BcaNguoiDung?   @relation(fields: [ghi_boi], references: [id], onDelete: SetNull)
   buoi        BcaBuoiHoc      @relation(fields: [buoi_id], references: [id], onDelete: Restrict)
   hoc_sinh    BcaHocSinh      @relation(fields: [hoc_sinh_id], references: [id], onDelete: Restrict)
 
@@ -3675,6 +3683,7 @@ model BcaNhatKy {
   doi_tuong_id  String?
   truoc         Json?
   sau           Json?
+  nguoi_dung    BcaNguoiDung? @relation(fields: [nguoi_dung_id], references: [id], onDelete: SetNull)
 
   @@index([doi_tuong, doi_tuong_id])
   @@index([nguoi_dung_id])
